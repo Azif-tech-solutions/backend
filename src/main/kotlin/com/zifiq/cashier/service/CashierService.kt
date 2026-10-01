@@ -4,6 +4,7 @@ import com.zifiq.cashier.dto.*
 import com.zifiq.platform.identity.UserDirectory
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.Instant
 import java.util.UUID
 
@@ -29,7 +30,9 @@ class CashierService(
     }
 
     fun generateProForma(request: ProFormaInvoiceRequest): ProFormaInvoiceSummary {
-        val total = request.items.sumOf { it.unitPrice * BigDecimal.valueOf(it.quantity) }
+        val total = request.items
+            .sumOf { it.unitPrice * BigDecimal.valueOf(it.quantity) }
+            .setScale(2, RoundingMode.HALF_UP)
         return ProFormaInvoiceSummary(
             id = UUID.randomUUID(),
             proFormaNumber = "PRO-" + UUID.randomUUID().toString().take(8).uppercase(),
@@ -50,7 +53,9 @@ class CashierService(
     }
 
     fun processPosCheckout(request: PosCheckoutRequest): PosCheckoutSummary {
-        val total = request.items.sumOf { it.unitPrice * BigDecimal.valueOf(it.quantity) }
+        val total = request.items
+            .sumOf { it.unitPrice * BigDecimal.valueOf(it.quantity) }
+            .setScale(2, RoundingMode.HALF_UP)
         return PosCheckoutSummary(
             transactionId = UUID.randomUUID(),
             receiptNumber = "REC-" + UUID.randomUUID().toString().take(8).uppercase(),

@@ -1,5 +1,6 @@
 package com.zifiq
 
+import com.zifiq.common.errors.ErrorCode
 import com.zifiq.platform.PostgresIntegrationTest
 import com.zifiq.platform.api.ApiException
 import com.zifiq.platform.identity.AuthService
@@ -63,7 +64,7 @@ class AuthServiceTest : PostgresIntegrationTest() {
                 TenantRegistrationRequest("Another Co", email, "Bob", "password456"),
             )
         }
-        assertEquals("USER_EXISTS", exception.code)
+        assertEquals(ErrorCode.USER_EXISTS, exception.code)
     }
 
     @Test
@@ -89,7 +90,7 @@ class AuthServiceTest : PostgresIntegrationTest() {
         val exception = assertThrows(ApiException::class.java) {
             authService.login(UserLoginRequest(email = email, password = "wrong-password"))
         }
-        assertEquals("INVALID_CREDENTIALS", exception.code)
+        assertEquals(ErrorCode.INVALID_CREDENTIALS, exception.code)
     }
 
     @Test
@@ -121,7 +122,7 @@ class AuthServiceTest : PostgresIntegrationTest() {
         val exception = assertThrows(ApiException::class.java) {
             authService.refreshToken(RefreshTokenRequest(registration.tokenResponse.refreshToken))
         }
-        assertEquals("INVALID_REFRESH_TOKEN", exception.code)
+        assertEquals(ErrorCode.EXPIRED_REFRESH_TOKEN, exception.code)
     }
 
     @Test
