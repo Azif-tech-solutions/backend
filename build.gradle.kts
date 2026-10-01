@@ -1,5 +1,5 @@
 plugins {
-    id("org.springframework.boot") version "3.4.4"
+    id("org.springframework.boot") version "3.5.16"
     id("io.spring.dependency-management") version "1.1.7"
     kotlin("jvm") version "2.1.10"
     kotlin("plugin.spring") version "2.1.10"
@@ -18,9 +18,16 @@ repositories {
     mavenCentral()
 }
 
-extra["springModulithVersion"] = "1.3.4"
+extra["springModulithVersion"] = "1.4.13"
 extra["exposedVersion"] = "0.61.0"
 extra["testcontainersVersion"] = "1.21.4"
+
+// Spring Boot 3.5.16's own BOM still pins these three below the patched
+// version needed to clear known CVEs (see Trivy's image scan) -- override
+// them explicitly rather than waiting for the next Boot patch release.
+extra["jackson-bom.version"] = "2.21.7"
+extra["tomcat.version"] = "10.1.60"
+extra["postgresql.version"] = "42.7.13"
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
