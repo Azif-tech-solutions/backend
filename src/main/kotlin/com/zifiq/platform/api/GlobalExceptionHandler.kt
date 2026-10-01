@@ -1,0 +1,68 @@
+package com.zifiq.platform.api
+
+import com.zifiq.common.errors.ApiErrors
+import jakarta.validation.ConstraintViolationException
+import org.slf4j.LoggerFactory
+import org.springframework.http.ResponseEntity
+import org.springframework.http.converter.HttpMessageNotReadableException
+import org.springframework.security.access.AccessDeniedException
+import org.springframework.web.bind.MethodArgumentNotValidException
+import org.springframework.web.bind.MissingServletRequestParameterException
+import org.springframework.web.bind.annotation.ExceptionHandler
+import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
+import org.springframework.web.servlet.resource.NoResourceFoundException
+
+/**
+ * The only place an exception becomes an HTTP response. Every error is defined once in
+ * `com.zifiq.common.errors.ApiErrors` (paired with `ErrorCode`) — this class only maps exception
+ * *types* to the named error to return; it never constructs a status/code/message itself, and
+ * no controller or service anywhere uses try/catch.
+ */
+@RestControllerAdvice
+class GlobalExceptionHandler {
+    private val logger = LoggerFactory.getLogger(javaClass)
+
+    @ExceptionHandler(ApiException::class)
+    fun handleApiException(exception: ApiException): ResponseEntity<ApiErrorEnvelope> = toResponse(exception)
+
+    @ExceptionHandler(NoResourceFoundException::class)
+    fun handleNoResourceFound(exception: NoResourceFoundException): ResponseEntity<ApiErrorEnvelope> =
+        toResponse(ApiErrors.noRouteFound())
+
+    @ExceptionHandler(MethodArgumentNotValidException::class)
+    fun handleInvalidRequest(exception: MethodArgumentNotValidException): ResponseEntity<ApiErrorEnvelope> {
+        val details = exception.bindingResult.fieldErrors.associate { it.field to (it.defaultMessage ?: "Invalid value") }
+        return toResponse(ApiErrors.validationFailed(details))
+    }
+
+    @ExceptionHandler(ConstraintViolationException::class)
+    fun handleConstraintViolation(exception: ConstraintViolationException): ResponseEntity<ApiErrorEnvelope> =
+        toResponse(ApiErrors.validationFailed())
+
+    @ExceptionHandler(MissingServletRequestParameterException::class)
+    fun handleMissingParameter(exception: MissingServletRequestParameterException): ResponseEntity<ApiErrorEnvelope> =
+        toResponse(ApiErrors.validationFailed(mapOf(exception.parameterName to "This parameter is required")))
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException::class)
+    fun handleTypeMismatch(exception: MethodArgumentTypeMismatchException): ResponseEntity<ApiErrorEnvelope> =
+        toResponse(ApiErrors.validationFailed(mapOf((exception.name) to "This value is not a valid ${exception.requiredType?.simpleName ?: "value"}")))
+
+    @ExceptionHandler(HttpMessageNotReadableException::class)
+    fun handleMalformedBody(exception: HttpMessageNotReadableException): ResponseEntity<ApiErrorEnvelope> =
+        toResponse(ApiErrors.validationFailed(mapOf("body" to "Request body is missing or malformed")))
+
+    @ExceptionHandler(AccessDeniedException::class)
+    fun handleAccessDenied(exception: AccessDeniedException): ResponseEntity<ApiErrorEnvelope> =
+        toResponse(ApiErrors.accessDenied())
+
+    @ExceptionHandler(Exception::class)
+    fun handleUnexpected(exception: Exception): ResponseEntity<ApiErrorEnvelope> {
+        logger.error("Unhandled request failure", exception)
+        return toResponse(ApiErrors.internalError())
+    }
+
+    private fun toResponse(exception: ApiException): ResponseEntity<ApiErrorEnvelope> =
+        ResponseEntity.status(exception.status)
+            .body(ApiErrorEnvelope(error = ApiError(exception.code, exception.message, exception.details)))
+}
