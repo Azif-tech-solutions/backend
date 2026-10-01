@@ -1,0 +1,250 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  JAVA_VERSION: "17"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Compiles the whole project (main + test sources). Fails fast before the
+  # slower jobs (Testcontainers-backed tests, Docker build, scans) even start.
+  # ---------------------------------------------------------------------------
+  build:
+    name: Compile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Compile main + test sources
+        run: ./gradlew compileKotlin compileTestKotlin --no-daemon
+
+  # ---------------------------------------------------------------------------
+  # Full test suite, including ModularityTests (Spring Modulith boundary
+  # check) and the Testcontainers-backed AuthServiceTest against a real
+  # Postgres. GitHub-hosted ubuntu runners have Docker available, so
+  # Testcontainers works here even though it doesn't locally on Windows.
+  # ---------------------------------------------------------------------------
+  test:
+    name: Tests
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Run test suite
+        run: ./gradlew test --no-daemon
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: build/reports/tests/test
+          retention-days: 14
+
+  # ---------------------------------------------------------------------------
+  # Secret scanning over the full git history. Runs the gitleaks CLI image
+  # directly (not the gitleaks/gitleaks-action marketplace action), since
+  # that action requires a paid license for private-org repos -- the
+  # underlying tool itself is free regardless of repo visibility.
+  # ---------------------------------------------------------------------------
+  gitleaks:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        run: |
+          docker run --rm -v "${{ github.workspace }}:/repo" zricethezav/gitleaks:latest \
+            detect --source="/repo" --verbose --redact --exit-code 1
+
+  # ---------------------------------------------------------------------------
+  # Dependency vulnerability + misconfiguration scan over the repo contents
+  # (build.gradle.kts dependency graph, Dockerfile, compose.yaml, etc.).
+  # ---------------------------------------------------------------------------
+  trivy-fs:
+    name: Dependency & config scan (trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,config
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+
+  # ---------------------------------------------------------------------------
+  # Static security analysis (SQL injection, insecure deserialization, etc.)
+  # over the Kotlin/Java source. NOTE: code scanning upload requires GitHub
+  # Advanced Security if this repo is private. If GHAS isn't enabled on this
+  # repo/org, remove this job or the analyze step will fail on upload.
+  # ---------------------------------------------------------------------------
+  codeql:
+    name: Static analysis (CodeQL)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: java-kotlin
+
+      - name: Build for analysis
+        run: ./gradlew compileKotlin --no-daemon
+
+      - uses: github/codeql-action/analyze@v3
+
+  # ---------------------------------------------------------------------------
+  # Builds the production Docker image and scans it for OS + application
+  # vulnerabilities before it's ever allowed near a registry.
+  # ---------------------------------------------------------------------------
+  docker-build-and-scan:
+    name: Docker build + image scan (trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t zifiq-backend:${{ github.sha }} .
+
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: image
+          image-ref: zifiq-backend:${{ github.sha }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+
+  # ---------------------------------------------------------------------------
+  # Boots the real stack (Postgres + the built image) via the project's own
+  # compose.yaml, confirms Flyway migrations V1-V4 apply cleanly against a
+  # fresh database, then runs the full Postman collection through Newman as
+  # an end-to-end smoke test -- the same verification used throughout local
+  # development, now automated.
+  # ---------------------------------------------------------------------------
+  migration-and-smoke-check:
+    name: Migration + API smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Start stack
+        run: docker compose up --build -d
+
+      - name: Wait for app health
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then
+              echo "App is healthy"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "App did not become healthy in time"
+          docker compose logs
+          exit 1
+
+      - name: Confirm Flyway migrations applied
+        run: |
+          docker compose logs backend | grep -q "Successfully applied .* migrations" \
+            || (echo "Flyway did not report a successful migration" && docker compose logs backend && exit 1)
+
+      - name: Run Postman collection (Newman)
+        run: |
+          npx newman run postman/ZifIQ-API.postman_collection.json \
+            -e postman/ZifIQ-Local.postman_environment.json \
+            --reporters cli
+
+      - name: Stack logs (on failure)
+        if: failure()
+        run: docker compose logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
+
+  # ---------------------------------------------------------------------------
+  # Flags newly-introduced vulnerable dependencies on pull requests, by
+  # diffing the dependency graph against the base branch.
+  # ---------------------------------------------------------------------------
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+
+  # ---------------------------------------------------------------------------
+  # Single required status check for branch protection -- green only when
+  # every gate above passed. Point your "commence deployment" trigger at this.
+  # ---------------------------------------------------------------------------
+  ready-to-deploy:
+    name: Ready to deploy
+    if: always()
+    needs:
+      - test
+      - gitleaks
+      - trivy-fs
+      - docker-build-and-scan
+      - migration-and-smoke-check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check all required jobs succeeded
+        run: |
+          if [ "${{ contains(needs.*.result, 'failure') }}" = "true" ] || [ "${{ contains(needs.*.result, 'cancelled') }}" = "true" ]; then
+            echo "One or more required checks failed."
+            exit 1
+          fi
+          echo "All required checks passed. Ready to deploy."
