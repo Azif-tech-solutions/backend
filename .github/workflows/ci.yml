@@ -131,7 +131,11 @@ jobs:
           languages: java-kotlin
 
       - name: Build for analysis
-        run: ./gradlew compileKotlin --no-daemon
+        # --rerun-tasks: compileKotlin would otherwise come FROM-CACHE (Gradle's build cache,
+        # shared via gradle/actions/setup-gradle across jobs in this run, already has it from the
+        # Compile job) -- the compiler never actually runs, so CodeQL's tracer sees zero source
+        # files and the database finalize step fails with "no source code seen during build".
+        run: ./gradlew compileKotlin --no-daemon --rerun-tasks
 
       - uses: github/codeql-action/analyze@v3
 
