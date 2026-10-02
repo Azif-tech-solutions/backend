@@ -32,6 +32,7 @@ object RoleDefaults {
         ACCOUNTS_PERSONNEL to setOf(
             "accounting.read",
             "accounting.manage",
+            "accounting.vat.manage",
             "cashier.sales.read",
         ),
         STOCK_KEEPER to setOf(

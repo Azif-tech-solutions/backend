@@ -8,7 +8,7 @@ import io.swagger.v3.oas.annotations.tags.Tag
 import java.time.LocalDate
 import java.util.UUID
 
-@Tag(name = "Inventory & Stock", description = "Stock Register, Refills, Stock/Bin Card, Comprehensive Stock Report, Re-Order Report")
+@Tag(name = "Inventory & Stock", description = "Stock Register, Refills, Stock/Bin Card, Comprehensive Stock Report, Stock Movement Report, Re-Order Report")
 @SecurityRequirement(name = "bearerAuth")
 interface InventoryStockApi {
     @Operation(summary = "List stock items (products/materials/recipes)")
@@ -40,6 +40,9 @@ interface InventoryStockApi {
 
     @Operation(summary = "Comprehensive Stock Report (by Category or, for finished goods, by Group)")
     fun comprehensiveStockReport(locationId: UUID?, view: String): ApiEnvelope<List<ComprehensiveStockRow>>
+
+    @Operation(summary = "Stock Movement Report — cross-item ledger view across every movement type (refills, production, transfers, trades, adjustments)")
+    fun stockMovementReport(locationId: UUID?, stockItemId: UUID?, sourceType: String?, from: LocalDate?, to: LocalDate?): ApiEnvelope<List<StockMovementRow>>
 
     @Operation(summary = "Items at or below their reorder level — linked from Factory & Production's Reports menu")
     fun reOrderReport(locationId: UUID?): ApiEnvelope<List<ReOrderRow>>

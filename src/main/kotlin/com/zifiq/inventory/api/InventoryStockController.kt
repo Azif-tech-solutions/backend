@@ -91,6 +91,17 @@ class InventoryStockController(
     ): ApiEnvelope<List<ComprehensiveStockRow>> =
         ApiEnvelope(inventoryStockService.comprehensiveStockReport(locationId, view))
 
+    @GetMapping("/stock/movement-report")
+    @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'inventory.stock.read')")
+    override fun stockMovementReport(
+        @RequestParam(required = false) locationId: UUID?,
+        @RequestParam(required = false) stockItemId: UUID?,
+        @RequestParam(required = false) sourceType: String?,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate?,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate?,
+    ): ApiEnvelope<List<StockMovementRow>> =
+        ApiEnvelope(inventoryStockService.stockMovementReport(locationId, stockItemId, sourceType, from, to))
+
     @GetMapping("/stock/re-order-report")
     @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'inventory.stock.read')")
     override fun reOrderReport(@RequestParam(required = false) locationId: UUID?): ApiEnvelope<List<ReOrderRow>> =

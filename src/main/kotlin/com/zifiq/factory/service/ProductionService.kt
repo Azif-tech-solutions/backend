@@ -7,6 +7,7 @@ import com.zifiq.common.errors.ApiErrors
 import com.zifiq.platform.numbering.DocumentSequenceService
 import com.zifiq.platform.security.CostVisibility
 import com.zifiq.platform.security.CurrentActorProvider
+import com.zifiq.platform.security.LocationAccessService
 import com.zifiq.platform.security.PermissionAuthorizer
 import com.zifiq.platform.tenancy.TenantScopedTransaction
 import java.math.BigDecimal
@@ -30,11 +31,13 @@ class ProductionService(
     private val documentSequenceService: DocumentSequenceService,
     private val stockLedgerRepository: com.zifiq.inventory.repository.StockLedgerRepository,
     private val costVisibility: CostVisibility,
+    private val locationAccessService: LocationAccessService,
 ) {
     // ---- Recipes ----
 
     fun registerRecipe(request: RecipeRequest): RecipeSummary = tenantScopedTransaction.execute {
         val actor = currentActorProvider.current()
+        locationAccessService.assertAccess(request.locationId)
         val code = request.code?.trim()?.takeIf(String::isNotEmpty) ?: documentSequenceService.next("RCP")
 
         val id = RecipesTable.insertAndGetId {
@@ -67,8 +70,9 @@ class ProductionService(
 
     fun listRecipes(locationId: UUID?, status: String?): List<RecipeSummary> = tenantScopedTransaction.execute {
         val tenantId = currentActorProvider.current().tenantId
+        val effectiveLocationId = locationAccessService.resolveFilter(locationId)
         val query = RecipesTable.selectAll().andWhere { RecipesTable.tenantId eq tenantId }
-        if (locationId != null) query.andWhere { RecipesTable.locationId eq locationId }
+        if (effectiveLocationId != null) query.andWhere { RecipesTable.locationId eq effectiveLocationId }
         if (status != null) query.andWhere { RecipesTable.status eq status }
         query.orderBy(RecipesTable.name).map { row ->
             val ingredients = RecipeIngredientsTable.selectAll()
@@ -90,6 +94,7 @@ class ProductionService(
 
     fun createCostCalculation(request: ProductionCostingRequest): ProductionCostingSummary = tenantScopedTransaction.execute {
         val actor = currentActorProvider.current()
+        locationAccessService.assertAccess(request.locationId)
 
         val materialLines: List<MaterialLineInput> = request.materials?.takeIf(List<MaterialLineInput>::isNotEmpty)
             ?: request.recipeId?.let { recipeId ->
@@ -143,6 +148,7 @@ class ProductionService(
     fun getCostingDetail(id: UUID): ProductionCostingDetail = tenantScopedTransaction.execute {
         val row = ProductionCostingsTable.selectAll().andWhere { ProductionCostingsTable.id eq id }.firstOrNull()
             ?: throw ApiErrors.costingNotFound()
+        locationAccessService.assertAccess(row[ProductionCostingsTable.locationId])
         rowToCostingDetail(row)
     }
 
@@ -166,6 +172,7 @@ class ProductionService(
         val actor = currentActorProvider.current()
         val current = ProductionCostingsTable.selectAll().andWhere { ProductionCostingsTable.id eq id }.firstOrNull()
             ?: throw ApiErrors.costingNotFound()
+        locationAccessService.assertAccess(current[ProductionCostingsTable.locationId])
         if (current[ProductionCostingsTable.status] != "PENDING") {
             throw ApiErrors.costingAlreadyDecided()
         }
@@ -180,6 +187,7 @@ class ProductionService(
     fun rejectCosting(id: UUID, reason: String): ProductionCostingDetail = tenantScopedTransaction.execute {
         val current = ProductionCostingsTable.selectAll().andWhere { ProductionCostingsTable.id eq id }.firstOrNull()
             ?: throw ApiErrors.costingNotFound()
+        locationAccessService.assertAccess(current[ProductionCostingsTable.locationId])
         if (current[ProductionCostingsTable.status] != "PENDING") {
             throw ApiErrors.costingAlreadyDecided()
         }
@@ -202,6 +210,7 @@ class ProductionService(
         }
 
         val locationId = costing[ProductionCostingsTable.locationId]
+        locationAccessService.assertAccess(locationId)
         val batchRef = documentSequenceService.next("PB")
         val materialsSnapshot = costing[ProductionCostingsTable.materialsSnapshot]
 
@@ -273,8 +282,9 @@ class ProductionService(
         tenantScopedTransaction.execute {
             val actor = currentActorProvider.current()
             val canSeeCost = permissionAuthorizer.hasPermission(actor.userId, "factory.costing.read")
+            val effectiveLocationId = locationAccessService.resolveFilter(locationId)
             val query = ProductionRunsTable.selectAll().andWhere { ProductionRunsTable.tenantId eq actor.tenantId }
-            if (locationId != null) query.andWhere { ProductionRunsTable.locationId eq locationId }
+            if (effectiveLocationId != null) query.andWhere { ProductionRunsTable.locationId eq effectiveLocationId }
             query.map { row ->
                 ProductionRunSummary(
                     batchRef = row[ProductionRunsTable.batchRef],
@@ -321,6 +331,7 @@ class ProductionService(
 
     fun createSpecialProductionRun(request: SpecialProductionRunRequest): SpecialProductionRunSummary = tenantScopedTransaction.execute {
         val actor = currentActorProvider.current()
+        locationAccessService.assertAccess(request.locationId)
         val orderRef = documentSequenceService.next("SO")
         val batchRef = documentSequenceService.next("SB")
 
@@ -369,12 +380,16 @@ class ProductionService(
 
     fun updateSpecialProductionStatus(id: UUID, status: String): SpecialProductionRunSummary = tenantScopedTransaction.execute {
         val tenantId = currentActorProvider.current().tenantId
-        val updated = SpecialProductionRunsTable.update({
+        val existing = SpecialProductionRunsTable.selectAll()
+            .andWhere { (SpecialProductionRunsTable.id eq id) and (SpecialProductionRunsTable.tenantId eq tenantId) }
+            .firstOrNull() ?: throw ApiErrors.specialProductionRunNotFound()
+        locationAccessService.assertAccess(existing[SpecialProductionRunsTable.locationId])
+
+        SpecialProductionRunsTable.update({
             (SpecialProductionRunsTable.id eq id) and (SpecialProductionRunsTable.tenantId eq tenantId)
         }) {
             it[SpecialProductionRunsTable.status] = status
         }
-        if (updated == 0) throw ApiErrors.specialProductionRunNotFound()
         val row = SpecialProductionRunsTable.selectAll().andWhere { SpecialProductionRunsTable.id eq id }.single()
         SpecialProductionRunSummary(
             id, row[SpecialProductionRunsTable.orderRef], row[SpecialProductionRunsTable.batchRef],
@@ -385,8 +400,9 @@ class ProductionService(
 
     fun listSpecialProductionRuns(locationId: UUID?, clientId: UUID?): List<SpecialProductionRunSummary> = tenantScopedTransaction.execute {
         val tenantId = currentActorProvider.current().tenantId
+        val effectiveLocationId = locationAccessService.resolveFilter(locationId)
         val query = SpecialProductionRunsTable.selectAll().andWhere { SpecialProductionRunsTable.tenantId eq tenantId }
-        if (locationId != null) query.andWhere { SpecialProductionRunsTable.locationId eq locationId }
+        if (effectiveLocationId != null) query.andWhere { SpecialProductionRunsTable.locationId eq effectiveLocationId }
         if (clientId != null) query.andWhere { SpecialProductionRunsTable.clientId eq clientId }
         query.map { row ->
             SpecialProductionRunSummary(

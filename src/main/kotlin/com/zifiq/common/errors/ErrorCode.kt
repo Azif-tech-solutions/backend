@@ -75,4 +75,13 @@ enum class ErrorCode {
     INSUFFICIENT_STOCK,
     TRANSFER_NOT_FOUND,
     TRANSFER_LINE_NOT_FOUND,
+
+    // ---- Tax Classification / VAT Control ----
+    UNKNOWN_VAT_CATEGORY,
+    VAT_CATEGORY_NOT_ACTIVE,
+    UNKNOWN_HSN_SECTION,
+    UNKNOWN_ISIC_SECTION,
+
+    // ---- Location Access ----
+    LOCATION_ACCESS_DENIED,
 }

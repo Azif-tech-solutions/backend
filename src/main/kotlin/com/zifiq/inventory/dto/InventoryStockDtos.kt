@@ -23,6 +23,12 @@ data class StockItemRequest(
     val barcode: String?,
     val landingCost: BigDecimal?,
     val markupCost: BigDecimal?,
+    // Every product carries a tax/trade classification -- see com.zifiq.account's VAT Control
+    // (GET /api/v1/account/vat-control/{vat-categories,hsn-sections,isic-sections} for valid IDs).
+    // vatCategoryId must be one the active tenant has activated via VAT Control.
+    @field:NotNull val vatCategoryId: UUID,
+    @field:NotNull val hsnSectionId: UUID,
+    @field:NotNull val isicSectionId: UUID,
 )
 
 data class StockItemStatusRequest(
@@ -42,6 +48,9 @@ data class StockItemSummary(
     val barcode: String?,
     val landingCost: BigDecimal?,
     val markupCost: BigDecimal?,
+    val vatCategoryId: UUID,
+    val hsnSectionId: UUID,
+    val isicSectionId: UUID,
     val status: String,
     val createdAt: Instant,
 )
@@ -123,6 +132,21 @@ data class ComprehensiveStockRow(
     val unitCost: BigDecimal,
     val quantityLeft: BigDecimal,
     val totalCost: BigDecimal,
+)
+
+// ---- Stock Movement Report ----
+
+data class StockMovementRow(
+    val sn: Int,
+    val date: LocalDate,
+    val locationId: UUID,
+    val stockItemId: UUID,
+    val itemCode: String,
+    val itemName: String,
+    val sourceType: String,
+    val sourceReference: String,
+    val qtyIn: BigDecimal,
+    val qtyOut: BigDecimal,
 )
 
 // ---- Re-Order Report ----

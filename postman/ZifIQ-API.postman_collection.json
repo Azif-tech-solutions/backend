@@ -1851,7 +1851,389 @@
       ]
     },
     {
-      "name": "04 - Settings",
+      "name": "04 - VAT Control",
+      "item": [
+        {
+          "name": "List VAT Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/vat-control/vat-categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "vat-control",
+                "vat-categories"
+              ]
+            },
+            "description": "System-seeded, global, never tenant-created -- see V5__tax_classification.sql. Always exactly these 3 rows (NRS / Nigeria Tax Act 2025, effective 1 Jan 2026)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    const standard = json.data.find(c => c.code === 'STANDARD_RATE');",
+                  "    const zero = json.data.find(c => c.code === 'ZERO_RATED');",
+                  "    const exempt = json.data.find(c => c.code === 'EXEMPT');",
+                  "    if (standard) pm.collectionVariables.set('standardRateVatCategoryId', standard.id);",
+                  "    if (zero) pm.collectionVariables.set('zeroRatedVatCategoryId', zero.id);",
+                  "    if (exempt) pm.collectionVariables.set('exemptVatCategoryId', exempt.id);",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "List VAT Categories - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/vat-control/vat-categories",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "vat-control",
+                    "vat-categories"
+                  ]
+                },
+                "description": "System-seeded, global, never tenant-created -- see V5__tax_classification.sql. Always exactly these 3 rows (NRS / Nigeria Tax Act 2025, effective 1 Jan 2026)."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{standardRateVatCategoryId}}\",\n      \"code\": \"STANDARD_RATE\",\n      \"name\": \"Standard Rate\",\n      \"rate\": 7.5,\n      \"inputVatRecoverable\": true,\n      \"description\": \"Standard-rated supplies under the Nigeria Tax Act 2025: manufactured goods, professional/consulting services, digital services, retail sales, and most B2B transactions. VAT charged at 7.5%, fully recoverable as input VAT.\",\n      \"nrsTaxCategoryCode\": \"STANDARD_VAT\"\n    },\n    {\n      \"id\": \"{{zeroRatedVatCategoryId}}\",\n      \"code\": \"ZERO_RATED\",\n      \"name\": \"Zero-Rated\",\n      \"rate\": 0.0,\n      \"inputVatRecoverable\": true,\n      \"description\": \"Zero-rated supplies under the Nigeria Tax Act 2025: no VAT charged on the final sale (0%), but input VAT on related purchases remains fully recoverable. Includes exports, basic staples, textbooks and school supplies, and tuition fees.\",\n      \"nrsTaxCategoryCode\": \"ZERO_VAT\"\n    },\n    {\n      \"id\": \"{{exemptVatCategoryId}}\",\n      \"code\": \"EXEMPT\",\n      \"name\": \"Exempt\",\n      \"rate\": 0.0,\n      \"inputVatRecoverable\": false,\n      \"description\": \"Exempt supplies under the Nigeria Tax Act 2025: no VAT charged, and input VAT on related costs is NOT recoverable. Includes most financial services, residential rent, certain land/building sales, and specified government services.\",\n      \"nrsTaxCategoryCode\": \"EXEMPTED\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "List HSN Sections",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/vat-control/hsn-sections",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "vat-control",
+                "hsn-sections"
+              ]
+            },
+            "description": "WCO Harmonized System, 21 sections (chapter-level detail is out of scope until an authoritative Nigeria Customs tariff dataset is supplied -- see the migration's scope note). Captures Section VI (chemicals) to match this collection's Cocoa Powder/chemicals sample data."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    const chemicals = json.data.find(s => s.code === 'VI');",
+                  "    if (chemicals) pm.collectionVariables.set('hsnSectionId', chemicals.id);",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "List HSN Sections - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/vat-control/hsn-sections",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "vat-control",
+                    "hsn-sections"
+                  ]
+                },
+                "description": "WCO Harmonized System, 21 sections (chapter-level detail is out of scope until an authoritative Nigeria Customs tariff dataset is supplied -- see the migration's scope note). Captures Section VI (chemicals) to match this collection's Cocoa Powder/chemicals sample data."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"7f73a0eb-0cce-4182-86f8-51e2491f72f8\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "List ISIC Sections",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/vat-control/isic-sections",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "vat-control",
+                "isic-sections"
+              ]
+            },
+            "description": "UN Statistics Division, ISIC Rev.4, 21 sections. Captures Section C (Manufacturing) to match this factory-floor sample data."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    const manufacturing = json.data.find(s => s.code === 'C');",
+                  "    if (manufacturing) pm.collectionVariables.set('isicSectionId', manufacturing.id);",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "List ISIC Sections - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/vat-control/isic-sections",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "vat-control",
+                    "isic-sections"
+                  ]
+                },
+                "description": "UN Statistics Division, ISIC Rev.4, 21 sections. Captures Section C (Manufacturing) to match this factory-floor sample data."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"9cc7f446-8370-4b5b-8b5f-6b889109927d\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Tenant VAT Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/vat-control/tenant-vat-categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "vat-control",
+                "tenant-vat-categories"
+              ]
+            },
+            "description": "Every tenant starts with none of the 3 categories activated -- run Select Tenant VAT Categories below before registering any stock item, which requires an active vatCategoryId."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Get Tenant VAT Categories - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/vat-control/tenant-vat-categories",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "vat-control",
+                    "tenant-vat-categories"
+                  ]
+                },
+                "description": "Every tenant starts with none of the 3 categories activated -- run Select Tenant VAT Categories below before registering any stock item, which requires an active vatCategoryId."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"vatCategoryId\": \"{{standardRateVatCategoryId}}\",\n      \"code\": \"STANDARD_RATE\",\n      \"name\": \"Standard Rate\",\n      \"rate\": 7.5,\n      \"isActive\": false,\n      \"activatedAt\": \"1970-01-01T00:00:00Z\"\n    },\n    {\n      \"vatCategoryId\": \"{{zeroRatedVatCategoryId}}\",\n      \"code\": \"ZERO_RATED\",\n      \"name\": \"Zero-Rated\",\n      \"rate\": 0.0,\n      \"isActive\": false,\n      \"activatedAt\": \"1970-01-01T00:00:00Z\"\n    },\n    {\n      \"vatCategoryId\": \"{{exemptVatCategoryId}}\",\n      \"code\": \"EXEMPT\",\n      \"name\": \"Exempt\",\n      \"rate\": 0.0,\n      \"isActive\": false,\n      \"activatedAt\": \"1970-01-01T00:00:00Z\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Select Tenant VAT Categories",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/vat-control/tenant-vat-categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "vat-control",
+                "tenant-vat-categories"
+              ]
+            },
+            "description": "Replaces the tenant's active VAT category set with exactly the codes given -- this call activates all 3. A stock item's vatCategoryId must be one the tenant has activated here, or registration fails with VAT_CATEGORY_NOT_ACTIVE.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vatCategoryCodes\": [\n    \"STANDARD_RATE\",\n    \"ZERO_RATED\",\n    \"EXEMPT\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Select Tenant VAT Categories - 200 OK",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/vat-control/tenant-vat-categories",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "vat-control",
+                    "tenant-vat-categories"
+                  ]
+                },
+                "description": "Replaces the tenant's active VAT category set with exactly the codes given -- this call activates all 3. A stock item's vatCategoryId must be one the tenant has activated here, or registration fails with VAT_CATEGORY_NOT_ACTIVE.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"vatCategoryCodes\": [\n    \"STANDARD_RATE\",\n    \"ZERO_RATED\",\n    \"EXEMPT\"\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"vatCategoryId\": \"{{standardRateVatCategoryId}}\",\n      \"code\": \"STANDARD_RATE\",\n      \"name\": \"Standard Rate\",\n      \"rate\": 7.5,\n      \"isActive\": true,\n      \"activatedAt\": \"2026-10-01T10:15:30Z\"\n    },\n    {\n      \"vatCategoryId\": \"{{zeroRatedVatCategoryId}}\",\n      \"code\": \"ZERO_RATED\",\n      \"name\": \"Zero-Rated\",\n      \"rate\": 0.0,\n      \"isActive\": true,\n      \"activatedAt\": \"2026-10-01T10:15:30Z\"\n    },\n    {\n      \"vatCategoryId\": \"{{exemptVatCategoryId}}\",\n      \"code\": \"EXEMPT\",\n      \"name\": \"Exempt\",\n      \"rate\": 0.0,\n      \"isActive\": true,\n      \"activatedAt\": \"2026-10-01T10:15:30Z\"\n    }\n  ]\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 - Settings",
       "item": [
         {
           "name": "Get Company Settings",
@@ -2008,7 +2390,7 @@
       ]
     },
     {
-      "name": "05 - Factory Setup",
+      "name": "06 - Factory Setup",
       "item": [
         {
           "name": "Create Factory",
@@ -3103,7 +3485,7 @@
       ]
     },
     {
-      "name": "06 - Inventory Stock",
+      "name": "07 - Inventory Stock",
       "item": [
         {
           "name": "Register Raw Material",
@@ -3127,10 +3509,10 @@
                 "stock-items"
               ]
             },
-            "description": "itemType is one of FINISHED_PRODUCT, RAW_MATERIAL, IN_HOUSE_RECIPE, OUTSOURCED.",
+            "description": "itemType is one of FINISHED_PRODUCT, RAW_MATERIAL, IN_HOUSE_RECIPE, OUTSOURCED. vatCategoryId/hsnSectionId/isicSectionId are required on every product -- run 04 - VAT Control first (List VAT Categories, List HSN Sections, List ISIC Sections, Select Tenant VAT Categories) to populate these variables. vatCategoryId must be one the active tenant has activated, or this returns 400 VAT_CATEGORY_NOT_ACTIVE.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"locationId\": \"{{factoryId}}\",\n  \"itemType\": \"RAW_MATERIAL\",\n  \"code\": null,\n  \"name\": \"Cocoa Powder\",\n  \"categoryId\": \"{{categoryId}}\",\n  \"brand\": null,\n  \"unitOfMeasureId\": \"{{unitId}}\",\n  \"reorderLevel\": 10,\n  \"barcode\": null,\n  \"landingCost\": 5.0,\n  \"markupCost\": null\n}",
+              "raw": "{\n  \"locationId\": \"{{factoryId}}\",\n  \"itemType\": \"RAW_MATERIAL\",\n  \"code\": null,\n  \"name\": \"Cocoa Powder\",\n  \"categoryId\": \"{{categoryId}}\",\n  \"brand\": null,\n  \"unitOfMeasureId\": \"{{unitId}}\",\n  \"reorderLevel\": 10,\n  \"barcode\": null,\n  \"landingCost\": 5.0,\n  \"markupCost\": null,\n  \"vatCategoryId\": \"{{standardRateVatCategoryId}}\",\n  \"hsnSectionId\": \"{{hsnSectionId}}\",\n  \"isicSectionId\": \"{{isicSectionId}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -3176,10 +3558,10 @@
                     "stock-items"
                   ]
                 },
-                "description": "itemType is one of FINISHED_PRODUCT, RAW_MATERIAL, IN_HOUSE_RECIPE, OUTSOURCED.",
+                "description": "itemType is one of FINISHED_PRODUCT, RAW_MATERIAL, IN_HOUSE_RECIPE, OUTSOURCED. vatCategoryId/hsnSectionId/isicSectionId are required on every product -- run 04 - VAT Control first (List VAT Categories, List HSN Sections, List ISIC Sections, Select Tenant VAT Categories) to populate these variables. vatCategoryId must be one the active tenant has activated, or this returns 400 VAT_CATEGORY_NOT_ACTIVE.",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"locationId\": \"{{factoryId}}\",\n  \"itemType\": \"RAW_MATERIAL\",\n  \"code\": null,\n  \"name\": \"Cocoa Powder\",\n  \"categoryId\": \"{{categoryId}}\",\n  \"brand\": null,\n  \"unitOfMeasureId\": \"{{unitId}}\",\n  \"reorderLevel\": 10,\n  \"barcode\": null,\n  \"landingCost\": 5.0,\n  \"markupCost\": null\n}",
+                  "raw": "{\n  \"locationId\": \"{{factoryId}}\",\n  \"itemType\": \"RAW_MATERIAL\",\n  \"code\": null,\n  \"name\": \"Cocoa Powder\",\n  \"categoryId\": \"{{categoryId}}\",\n  \"brand\": null,\n  \"unitOfMeasureId\": \"{{unitId}}\",\n  \"reorderLevel\": 10,\n  \"barcode\": null,\n  \"landingCost\": 5.0,\n  \"markupCost\": null,\n  \"vatCategoryId\": \"{{standardRateVatCategoryId}}\",\n  \"hsnSectionId\": \"{{hsnSectionId}}\",\n  \"isicSectionId\": \"{{isicSectionId}}\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -3197,7 +3579,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": {\n    \"id\": \"{{rawMaterialId}}\",\n    \"locationId\": \"{{factoryId}}\",\n    \"itemType\": \"RAW_MATERIAL\",\n    \"code\": \"ITM-1\",\n    \"name\": \"Cocoa Powder\",\n    \"categoryId\": \"{{categoryId}}\",\n    \"brand\": null,\n    \"unitOfMeasureId\": \"{{unitId}}\",\n    \"reorderLevel\": 10.0,\n    \"barcode\": null,\n    \"landingCost\": 5.0,\n    \"markupCost\": null,\n    \"status\": \"ACTIVE\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+              "body": "{\n  \"data\": {\n    \"id\": \"{{rawMaterialId}}\",\n    \"locationId\": \"{{factoryId}}\",\n    \"itemType\": \"RAW_MATERIAL\",\n    \"code\": \"ITM-1\",\n    \"name\": \"Cocoa Powder\",\n    \"categoryId\": \"{{categoryId}}\",\n    \"brand\": null,\n    \"unitOfMeasureId\": \"{{unitId}}\",\n    \"reorderLevel\": 10.0,\n    \"barcode\": null,\n    \"landingCost\": 5.0,\n    \"markupCost\": null,\n    \"vatCategoryId\": \"{{standardRateVatCategoryId}}\",\n    \"hsnSectionId\": \"{{hsnSectionId}}\",\n    \"isicSectionId\": \"{{isicSectionId}}\",\n    \"status\": \"ACTIVE\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
             }
           ]
         },
@@ -3225,7 +3607,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"locationId\": \"{{factoryId}}\",\n  \"itemType\": \"FINISHED_PRODUCT\",\n  \"code\": null,\n  \"name\": \"Premium Blend\",\n  \"categoryId\": null,\n  \"brand\": null,\n  \"unitOfMeasureId\": \"{{unitId}}\",\n  \"reorderLevel\": 5,\n  \"barcode\": null,\n  \"landingCost\": null,\n  \"markupCost\": null\n}",
+              "raw": "{\n  \"locationId\": \"{{factoryId}}\",\n  \"itemType\": \"FINISHED_PRODUCT\",\n  \"code\": null,\n  \"name\": \"Premium Blend\",\n  \"categoryId\": null,\n  \"brand\": null,\n  \"unitOfMeasureId\": \"{{unitId}}\",\n  \"reorderLevel\": 5,\n  \"barcode\": null,\n  \"landingCost\": null,\n  \"markupCost\": null,\n  \"vatCategoryId\": \"{{standardRateVatCategoryId}}\",\n  \"hsnSectionId\": \"{{hsnSectionId}}\",\n  \"isicSectionId\": \"{{isicSectionId}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -3273,7 +3655,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"locationId\": \"{{factoryId}}\",\n  \"itemType\": \"FINISHED_PRODUCT\",\n  \"code\": null,\n  \"name\": \"Premium Blend\",\n  \"categoryId\": null,\n  \"brand\": null,\n  \"unitOfMeasureId\": \"{{unitId}}\",\n  \"reorderLevel\": 5,\n  \"barcode\": null,\n  \"landingCost\": null,\n  \"markupCost\": null\n}",
+                  "raw": "{\n  \"locationId\": \"{{factoryId}}\",\n  \"itemType\": \"FINISHED_PRODUCT\",\n  \"code\": null,\n  \"name\": \"Premium Blend\",\n  \"categoryId\": null,\n  \"brand\": null,\n  \"unitOfMeasureId\": \"{{unitId}}\",\n  \"reorderLevel\": 5,\n  \"barcode\": null,\n  \"landingCost\": null,\n  \"markupCost\": null,\n  \"vatCategoryId\": \"{{standardRateVatCategoryId}}\",\n  \"hsnSectionId\": \"{{hsnSectionId}}\",\n  \"isicSectionId\": \"{{isicSectionId}}\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -3291,7 +3673,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": {\n    \"id\": \"{{finishedProductId}}\",\n    \"locationId\": \"{{factoryId}}\",\n    \"itemType\": \"FINISHED_PRODUCT\",\n    \"code\": \"ITM-2\",\n    \"name\": \"Premium Blend\",\n    \"categoryId\": null,\n    \"brand\": null,\n    \"unitOfMeasureId\": \"{{unitId}}\",\n    \"reorderLevel\": 5.0,\n    \"barcode\": null,\n    \"landingCost\": null,\n    \"markupCost\": null,\n    \"status\": \"ACTIVE\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+              "body": "{\n  \"data\": {\n    \"id\": \"{{finishedProductId}}\",\n    \"locationId\": \"{{factoryId}}\",\n    \"itemType\": \"FINISHED_PRODUCT\",\n    \"code\": \"ITM-2\",\n    \"name\": \"Premium Blend\",\n    \"categoryId\": null,\n    \"brand\": null,\n    \"unitOfMeasureId\": \"{{unitId}}\",\n    \"reorderLevel\": 5.0,\n    \"barcode\": null,\n    \"landingCost\": null,\n    \"markupCost\": null,\n    \"vatCategoryId\": \"{{standardRateVatCategoryId}}\",\n    \"hsnSectionId\": \"{{hsnSectionId}}\",\n    \"isicSectionId\": \"{{isicSectionId}}\",\n    \"status\": \"ACTIVE\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
             }
           ]
         },
@@ -3365,7 +3747,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{rawMaterialId}}\",\n      \"locationId\": \"{{factoryId}}\",\n      \"itemType\": \"RAW_MATERIAL\",\n      \"code\": \"ITM-1\",\n      \"name\": \"Cocoa Powder\",\n      \"categoryId\": \"{{categoryId}}\",\n      \"brand\": null,\n      \"unitOfMeasureId\": \"{{unitId}}\",\n      \"reorderLevel\": 10.0,\n      \"barcode\": null,\n      \"landingCost\": 5.0,\n      \"markupCost\": null,\n      \"status\": \"ACTIVE\",\n      \"createdAt\": \"2026-10-01T10:15:30Z\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{rawMaterialId}}\",\n      \"locationId\": \"{{factoryId}}\",\n      \"itemType\": \"RAW_MATERIAL\",\n      \"code\": \"ITM-1\",\n      \"name\": \"Cocoa Powder\",\n      \"categoryId\": \"{{categoryId}}\",\n      \"brand\": null,\n      \"unitOfMeasureId\": \"{{unitId}}\",\n      \"reorderLevel\": 10.0,\n      \"barcode\": null,\n      \"landingCost\": 5.0,\n      \"markupCost\": null,\n      \"vatCategoryId\": \"{{standardRateVatCategoryId}}\",\n      \"hsnSectionId\": \"{{hsnSectionId}}\",\n      \"isicSectionId\": \"{{isicSectionId}}\",\n      \"status\": \"ACTIVE\",\n      \"createdAt\": \"2026-10-01T10:15:30Z\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -3459,7 +3841,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": {\n    \"id\": \"{{rawMaterialId}}\",\n    \"locationId\": \"{{factoryId}}\",\n    \"itemType\": \"RAW_MATERIAL\",\n    \"code\": \"ITM-1\",\n    \"name\": \"Cocoa Powder\",\n    \"categoryId\": \"{{categoryId}}\",\n    \"brand\": null,\n    \"unitOfMeasureId\": \"{{unitId}}\",\n    \"reorderLevel\": 10.0,\n    \"barcode\": null,\n    \"landingCost\": 5.0,\n    \"markupCost\": null,\n    \"status\": \"SUSPENDED\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+              "body": "{\n  \"data\": {\n    \"id\": \"{{rawMaterialId}}\",\n    \"locationId\": \"{{factoryId}}\",\n    \"itemType\": \"RAW_MATERIAL\",\n    \"code\": \"ITM-1\",\n    \"name\": \"Cocoa Powder\",\n    \"categoryId\": \"{{categoryId}}\",\n    \"brand\": null,\n    \"unitOfMeasureId\": \"{{unitId}}\",\n    \"reorderLevel\": 10.0,\n    \"barcode\": null,\n    \"landingCost\": 5.0,\n    \"markupCost\": null,\n    \"vatCategoryId\": \"{{standardRateVatCategoryId}}\",\n    \"hsnSectionId\": \"{{hsnSectionId}}\",\n    \"isicSectionId\": \"{{isicSectionId}}\",\n    \"status\": \"SUSPENDED\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
             }
           ]
         },
@@ -3555,7 +3937,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": {\n    \"id\": \"{{rawMaterialId}}\",\n    \"locationId\": \"{{factoryId}}\",\n    \"itemType\": \"RAW_MATERIAL\",\n    \"code\": \"ITM-1\",\n    \"name\": \"Cocoa Powder\",\n    \"categoryId\": \"{{categoryId}}\",\n    \"brand\": null,\n    \"unitOfMeasureId\": \"{{unitId}}\",\n    \"reorderLevel\": 10.0,\n    \"barcode\": null,\n    \"landingCost\": 5.0,\n    \"markupCost\": null,\n    \"status\": \"ACTIVE\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+              "body": "{\n  \"data\": {\n    \"id\": \"{{rawMaterialId}}\",\n    \"locationId\": \"{{factoryId}}\",\n    \"itemType\": \"RAW_MATERIAL\",\n    \"code\": \"ITM-1\",\n    \"name\": \"Cocoa Powder\",\n    \"categoryId\": \"{{categoryId}}\",\n    \"brand\": null,\n    \"unitOfMeasureId\": \"{{unitId}}\",\n    \"reorderLevel\": 10.0,\n    \"barcode\": null,\n    \"landingCost\": 5.0,\n    \"markupCost\": null,\n    \"vatCategoryId\": \"{{standardRateVatCategoryId}}\",\n    \"hsnSectionId\": \"{{hsnSectionId}}\",\n    \"isicSectionId\": \"{{isicSectionId}}\",\n    \"status\": \"ACTIVE\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
             }
           ]
         },
@@ -4168,6 +4550,84 @@
           ]
         },
         {
+          "name": "Stock Movement Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/inventory/stock/movement-report?locationId={{factoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "inventory",
+                "stock",
+                "movement-report"
+              ],
+              "query": [
+                {
+                  "key": "locationId",
+                  "value": "{{factoryId}}"
+                }
+              ]
+            },
+            "description": "Cross-item, cross-movement-type ledger view (unlike Stock Card, which is scoped to a single item) -- every stock-affecting action across every module writes to the same ledger this reads from. All filters (locationId, stockItemId, sourceType, from, to) are optional. sourceType is one of REFILL, RECEIVE, PRODUCTION_RUN, TRANSFER_OUT, TRANSFER_IN, QUANTITY_ADJUSTMENT, TRADE_OUT, TRADE_IN."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Stock Movement Report - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/inventory/stock/movement-report?locationId={{factoryId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "inventory",
+                    "stock",
+                    "movement-report"
+                  ],
+                  "query": [
+                    {
+                      "key": "locationId",
+                      "value": "{{factoryId}}"
+                    }
+                  ]
+                },
+                "description": "Cross-item, cross-movement-type ledger view (unlike Stock Card, which is scoped to a single item) -- every stock-affecting action across every module writes to the same ledger this reads from. All filters (locationId, stockItemId, sourceType, from, to) are optional. sourceType is one of REFILL, RECEIVE, PRODUCTION_RUN, TRANSFER_OUT, TRANSFER_IN, QUANTITY_ADJUSTMENT, TRADE_OUT, TRADE_IN."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"sn\": 1,\n      \"date\": \"2026-10-01\",\n      \"locationId\": \"{{factoryId}}\",\n      \"stockItemId\": \"{{rawMaterialId}}\",\n      \"itemCode\": \"ITM-1\",\n      \"itemName\": \"Cocoa Powder\",\n      \"sourceType\": \"RECEIVE\",\n      \"sourceReference\": \"DL-1\",\n      \"qtyIn\": 100.0,\n      \"qtyOut\": 0.0\n    },\n    {\n      \"sn\": 2,\n      \"date\": \"2026-10-01\",\n      \"locationId\": \"{{factoryId}}\",\n      \"stockItemId\": \"{{rawMaterialId}}\",\n      \"itemCode\": \"ITM-1\",\n      \"itemName\": \"Cocoa Powder\",\n      \"sourceType\": \"TRANSFER_OUT\",\n      \"sourceReference\": \"WB-1\",\n      \"qtyIn\": 0.0,\n      \"qtyOut\": 10.0\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
           "name": "Re-Order Report",
           "request": {
             "method": "GET",
@@ -4248,7 +4708,7 @@
       ]
     },
     {
-      "name": "07 - Inventory Operations",
+      "name": "08 - Inventory Operations",
       "item": [
         {
           "name": "Dispatch Stock Transfer",
@@ -4782,7 +5242,7 @@
       ]
     },
     {
-      "name": "08 - Factory Production",
+      "name": "09 - Factory Production",
       "item": [
         {
           "name": "Register Recipe",
@@ -5901,7 +6361,7 @@
       ]
     },
     {
-      "name": "09 - Factory Trading",
+      "name": "10 - Factory Trading",
       "item": [
         {
           "name": "Offer Trade",
@@ -6166,6 +6626,575 @@
               ],
               "cookie": [],
               "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{tradeOfferId}}\",\n      \"ref\": \"FT-1\",\n      \"fromLocationId\": \"{{factoryId2}}\",\n      \"toLocationId\": \"{{factoryId}}\",\n      \"stockItemId\": \"{{rawMaterialId}}\",\n      \"quantity\": 5.0,\n      \"reason\": \"SURPLUS\",\n      \"status\": \"ACCEPTED\",\n      \"offeredAt\": \"2026-10-01T10:15:30Z\",\n      \"expiresAt\": \"2026-12-31T00:00:00Z\"\n    }\n  ]\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "11 - NRS Reference Data",
+      "item": [
+        {
+          "name": "List NRS Tax Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/invoicing/reference/tax-categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "invoicing",
+                "reference",
+                "tax-categories"
+              ]
+            },
+            "description": "System-seeded, global -- see V6__nrs_reference_data.sql. The full 25-code enum NRS's real invoice schema accepts for tax_total[].tax_subtotal[].tax_category.id. ZifIQ's own vat_categories (see VAT Control) each map to one of these via nrsTaxCategoryCode."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "List NRS Tax Categories - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/invoicing/reference/tax-categories",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "invoicing",
+                    "reference",
+                    "tax-categories"
+                  ]
+                },
+                "description": "System-seeded, global -- see V6__nrs_reference_data.sql. The full 25-code enum NRS's real invoice schema accepts for tax_total[].tax_subtotal[].tax_category.id. ZifIQ's own vat_categories (see VAT Control) each map to one of these via nrsTaxCategoryCode."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"code\": \"STANDARD_VAT\",\n      \"name\": \"Standard Value-Added Tax\"\n    },\n    {\n      \"code\": \"ZERO_VAT\",\n      \"name\": \"Zero Value-Added Tax\"\n    },\n    {\n      \"code\": \"EXEMPTED\",\n      \"name\": \"Tax Exemption\"\n    },\n    {\n      \"code\": \"IMPORT_DUTY\",\n      \"name\": \"Import Duty\"\n    },\n    {\n      \"code\": \"WITHHOLDING_TAX\",\n      \"name\": \"Withholding Tax\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "List NRS Invoice Type Codes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/invoicing/reference/invoice-type-codes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "invoicing",
+                "reference",
+                "invoice-type-codes"
+              ]
+            },
+            "description": "NRS invoice_type_code (field 1.6 of the real Invoice Schema)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "List NRS Invoice Type Codes - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/invoicing/reference/invoice-type-codes",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "invoicing",
+                    "reference",
+                    "invoice-type-codes"
+                  ]
+                },
+                "description": "NRS invoice_type_code (field 1.6 of the real Invoice Schema)."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"code\": \"380\",\n      \"name\": \"Credit Note\",\n      \"description\": \"Credit Note\"\n    },\n    {\n      \"code\": \"381\",\n      \"name\": \"Commercial Invoice\",\n      \"description\": \"Commercial Invoice\"\n    },\n    {\n      \"code\": \"384\",\n      \"name\": \"Debit Note\",\n      \"description\": \"Debit Note\"\n    },\n    {\n      \"code\": \"385\",\n      \"name\": \"Self Billed Invoice\",\n      \"description\": \"Self Billed Invoice\"\n    },\n    {\n      \"code\": \"388\",\n      \"name\": \"Factored Invoice\",\n      \"description\": \"Factored Invoice\"\n    },\n    {\n      \"code\": \"389\",\n      \"name\": \"Statement of Account\",\n      \"description\": \"Statement of Account\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "List NRS Payment Means Codes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/invoicing/reference/payment-means-codes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "invoicing",
+                "reference",
+                "payment-means-codes"
+              ]
+            },
+            "description": "NRS payment_means_code (field 1.30 of the real Invoice Schema)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "List NRS Payment Means Codes - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/invoicing/reference/payment-means-codes",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "invoicing",
+                    "reference",
+                    "payment-means-codes"
+                  ]
+                },
+                "description": "NRS payment_means_code (field 1.30 of the real Invoice Schema)."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"code\": \"10\",\n      \"name\": \"Cash\",\n      \"description\": \"Cash\"\n    },\n    {\n      \"code\": \"20\",\n      \"name\": \"Cheque\",\n      \"description\": \"Cheque\"\n    },\n    {\n      \"code\": \"30\",\n      \"name\": \"Credit Transfer\",\n      \"description\": \"Credit Transfer\"\n    },\n    {\n      \"code\": \"31\",\n      \"name\": \"Debit Transfer\",\n      \"description\": \"Debit Transfer\"\n    },\n    {\n      \"code\": \"42\",\n      \"name\": \"ACH Credit\",\n      \"description\": \"ACH Credit\"\n    },\n    {\n      \"code\": \"43\",\n      \"name\": \"ACH Debit\",\n      \"description\": \"ACH Debit\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "List NRS Unit-of-Measure Codes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/invoicing/reference/unit-of-measure-codes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "invoicing",
+                "reference",
+                "unit-of-measure-codes"
+              ]
+            },
+            "description": "UN/CEFACT Rec 20 style codes for invoice_line.price.price_unit. Distinct from a tenant's own Units of Measure (Factory Setup) -- this is NRS's fixed compliance code list. Sample only; see migration scope note."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "List NRS Unit-of-Measure Codes - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/invoicing/reference/unit-of-measure-codes",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "invoicing",
+                    "reference",
+                    "unit-of-measure-codes"
+                  ]
+                },
+                "description": "UN/CEFACT Rec 20 style codes for invoice_line.price.price_unit. Distinct from a tenant's own Units of Measure (Factory Setup) -- this is NRS's fixed compliance code list. Sample only; see migration scope note."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"code\": \"10\",\n      \"name\": \"group\",\n      \"description\": \"A unit of count defining the number of groups (group: set of items classified together).\"\n    },\n    {\n      \"code\": \"20\",\n      \"name\": \"twenty foot container\",\n      \"description\": \"A unit of count defining the number of shipping containers that measure 20 foot in length.\"\n    },\n    {\n      \"code\": \"21\",\n      \"name\": \"forty foot container\",\n      \"description\": \"A unit of count defining the number of shipping containers that measure 40 foot in length.\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "List HSN Codes (subheading level)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/invoicing/reference/hsn-codes?sectionCode=I",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "invoicing",
+                "reference",
+                "hsn-codes"
+              ],
+              "query": [
+                {
+                  "key": "sectionCode",
+                  "value": "I"
+                }
+              ]
+            },
+            "description": "True dotted HS subheading codes (invoice_line.hsn_code for goods line items), optionally filtered by hsnSections code (see VAT Control). Sample only (WCO Chapter 01); see migration scope note."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "List HSN Codes (subheading level) - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/invoicing/reference/hsn-codes?sectionCode=I",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "invoicing",
+                    "reference",
+                    "hsn-codes"
+                  ],
+                  "query": [
+                    {
+                      "key": "sectionCode",
+                      "value": "I"
+                    }
+                  ]
+                },
+                "description": "True dotted HS subheading codes (invoice_line.hsn_code for goods line items), optionally filtered by hsnSections code (see VAT Control). Sample only (WCO Chapter 01); see migration scope note."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"code\": \"0101.21\",\n      \"sectionCode\": \"I\",\n      \"description\": \"Horses; live, pure-bred breeding animals\"\n    },\n    {\n      \"code\": \"0102.90\",\n      \"sectionCode\": \"I\",\n      \"description\": \"Bovine animals; live, other than cattle and buffalo\"\n    },\n    {\n      \"code\": \"1006.30\",\n      \"sectionCode\": \"I\",\n      \"description\": \"Cereals; rice, semi-milled or wholly milled, whether or not polished or glazed\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "List ISIC Classes (4-digit level)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/invoicing/reference/isic-classes?sectionCode=A",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "invoicing",
+                "reference",
+                "isic-classes"
+              ],
+              "query": [
+                {
+                  "key": "sectionCode",
+                  "value": "A"
+                }
+              ]
+            },
+            "description": "True 4-digit ISIC Rev.4 class codes (invoice_line.isic_code for service line items), optionally filtered by isicSections code (see VAT Control). Sample only (Section A); see migration scope note."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "List ISIC Classes (4-digit level) - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/invoicing/reference/isic-classes?sectionCode=A",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "invoicing",
+                    "reference",
+                    "isic-classes"
+                  ],
+                  "query": [
+                    {
+                      "key": "sectionCode",
+                      "value": "A"
+                    }
+                  ]
+                },
+                "description": "True 4-digit ISIC Rev.4 class codes (invoice_line.isic_code for service line items), optionally filtered by isicSections code (see VAT Control). Sample only (Section A); see migration scope note."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"code\": \"0111\",\n      \"sectionCode\": \"A\",\n      \"description\": \"Growing of cereals (except rice), leguminous crops and oil seeds\"\n    },\n    {\n      \"code\": \"0112\",\n      \"sectionCode\": \"A\",\n      \"description\": \"Growing of rice\"\n    },\n    {\n      \"code\": \"0124\",\n      \"sectionCode\": \"A\",\n      \"description\": \"Growing of pome fruits and stone fruits\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "List Nigeria States",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/invoicing/reference/states",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "invoicing",
+                "reference",
+                "states"
+              ]
+            },
+            "description": "postal_address.state. Seeded in full -- all 36 states + FCT (ISO 3166-2:NG)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "List Nigeria States - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/invoicing/reference/states",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "invoicing",
+                    "reference",
+                    "states"
+                  ]
+                },
+                "description": "postal_address.state. Seeded in full -- all 36 states + FCT (ISO 3166-2:NG)."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"code\": \"NG-AB\",\n      \"name\": \"Abia\"\n    },\n    {\n      \"code\": \"NG-FC\",\n      \"name\": \"Federal Capital Territory\"\n    },\n    {\n      \"code\": \"NG-LA\",\n      \"name\": \"Lagos\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "List Nigeria LGAs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/invoicing/reference/lgas?stateCode=NG-AB",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "invoicing",
+                "reference",
+                "lgas"
+              ],
+              "query": [
+                {
+                  "key": "stateCode",
+                  "value": "NG-AB"
+                }
+              ]
+            },
+            "description": "postal_address.lga, filtered by Nigeria state code. Only Abia state seeded so far (sample as supplied from the real NRS docs) -- Nigeria has 774 LGAs total; extend state-by-state as confirmed."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "List Nigeria LGAs - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/invoicing/reference/lgas?stateCode=NG-AB",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "invoicing",
+                    "reference",
+                    "lgas"
+                  ],
+                  "query": [
+                    {
+                      "key": "stateCode",
+                      "value": "NG-AB"
+                    }
+                  ]
+                },
+                "description": "postal_address.lga, filtered by Nigeria state code. Only Abia state seeded so far (sample as supplied from the real NRS docs) -- Nigeria has 774 LGAs total; extend state-by-state as confirmed."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"code\": \"NG-AB-ANO\",\n      \"stateCode\": \"NG-AB\",\n      \"name\": \"Aba North\"\n    },\n    {\n      \"code\": \"NG-AB-UWE\",\n      \"stateCode\": \"NG-AB\",\n      \"name\": \"Ukwa West\"\n    }\n  ]\n}"
             }
           ]
         }

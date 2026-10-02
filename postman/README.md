@@ -1,14 +1,17 @@
 # ZifIQ Postman Collection
 
 Covers only the modules that have real persistence and business logic today:
-Auth, Tenants & Members, OTP, Settings, Factory Setup, Factory Production,
-Factory Trading, Inventory Stock, Inventory Operations.
+Auth, Tenants & Members, OTP, VAT Control, Settings, Factory Setup, Factory
+Production, Factory Trading, Inventory Stock, Inventory Operations, and the
+NRS Reference Data lookups that lay the foundation for the Electronic
+Invoicing module.
 
 The remaining scaffolded modules (Account, AI, Barcode, Cashier, Customers,
-History, Invoicing, Menu, Process Guide, Showroom) still return hardcoded
-mock data server-side with no real tables behind them, so they're
-intentionally left out of this collection. They'll get added here once each
-one is built out for real, the same way Factory and Inventory were.
+History, Menu, Process Guide, Showroom, and Electronic Invoicing's own
+generate/deliver/history endpoints) still return hardcoded mock data
+server-side with no real tables behind them, so they're intentionally left
+out of this collection. They'll get added here once each one is built out
+for real, the same way Factory and Inventory were.
 
 ## Setup
 
@@ -22,19 +25,24 @@ one is built out for real, the same way Factory and Inventory were.
 
 ## Running it
 
-Run folders **01 through 09 in order**, either by hand or with the
+Run folders **01 through 11 in order**, either by hand or with the
 Collection Runner. Each request's Tests script captures tokens and
 created-entity IDs (tenant id, access token, factory id, stock item ids,
 recipe id, costing id, etc.) into collection variables that later requests
 reuse automatically — nothing needs to be copy-pasted between requests.
 
 Two requests are deliberately order-sensitive and documented inline:
-- **07 - Inventory Operations > Post Quantity Adjustment (above threshold,
+- **08 - Inventory Operations > Post Quantity Adjustment (above threshold,
   OTP-gated)** needs the **03 - OTP** folder (request → issue → verify) run
   first, or it returns `403 OTP_REQUIRED`.
-- **09 - Factory Trading > Offer Trade** needs stock to actually exist at
-  the *source* location, so run **06 - Inventory Stock** and
-  **05 - Factory Setup > Create Second Factory** first.
+- **10 - Factory Trading > Offer Trade** needs stock to actually exist at
+  the *source* location, so run **07 - Inventory Stock** and
+  **06 - Factory Setup > Create Second Factory** first.
+
+**04 - VAT Control > Select Tenant VAT Categories** needs to run before any
+**07 - Inventory Stock** registration request — a stock item's
+`vatCategoryId` must already be in the tenant's active set, or registration
+fails with `VAT_CATEGORY_NOT_ACTIVE`.
 
 Every request also carries one saved example response showing the exact
 `ApiEnvelope<T>` / `ApiErrorEnvelope` wire shape it returns.
@@ -73,11 +81,11 @@ Postman app:
 npx newman run ZifIQ-API.postman_collection.json -e ZifIQ-Local.postman_environment.json
 ```
 
-A clean run reports `69/69` requests passing except two *expected* failures
+A clean run reports `83/83` requests passing except two *expected* failures
 that are not bugs (both documented inline on their own requests):
 - **01 - Auth > Reset Password** — `400 INVALID_RESET_TOKEN`, since the
   collection uses a placeholder token (`RST-482913`); the real one lives in
   `notification_outbox`.
-- **08 - Factory Production > Reject Costing** — `409 ALREADY_DECIDED`,
+- **09 - Factory Production > Reject Costing** — `409 ALREADY_DECIDED`,
   since it deliberately runs against the same costing **Approve Costing**
   just approved, to demonstrate the mutual-exclusion check.

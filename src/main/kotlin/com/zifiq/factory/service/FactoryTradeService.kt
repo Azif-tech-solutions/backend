@@ -9,6 +9,7 @@ import com.zifiq.platform.notifications.NotificationChannelType
 import com.zifiq.platform.notifications.model.NotificationOutboxTable
 import com.zifiq.platform.numbering.DocumentSequenceService
 import com.zifiq.platform.security.CurrentActorProvider
+import com.zifiq.platform.security.LocationAccessService
 import com.zifiq.platform.tenancy.TenantScopedTransaction
 import java.time.Instant
 import java.util.UUID
@@ -33,9 +34,11 @@ class FactoryTradeService(
     private val tenantScopedTransaction: TenantScopedTransaction,
     private val documentSequenceService: DocumentSequenceService,
     private val stockLedgerRepository: StockLedgerRepository,
+    private val locationAccessService: LocationAccessService,
 ) {
     fun offerTrade(request: FactoryTradeOfferRequest): FactoryTradeOfferSummary = tenantScopedTransaction.execute {
         val actor = currentActorProvider.current()
+        locationAccessService.assertAccess(request.fromLocationId)
         val ref = documentSequenceService.next("FT")
 
         val id = FactoryTradeOffersTable.insertAndGetId {
@@ -71,6 +74,7 @@ class FactoryTradeService(
         val actor = currentActorProvider.current()
         val offer = FactoryTradeOffersTable.selectAll().andWhere { FactoryTradeOffersTable.id eq id }.firstOrNull()
             ?: throw ApiErrors.tradeOfferNotFound()
+        locationAccessService.assertAccess(offer[FactoryTradeOffersTable.toLocationId])
 
         if (offer[FactoryTradeOffersTable.status] !in listOf("PENDING", "OPEN")) {
             throw ApiErrors.tradeAlreadyDecided()
@@ -109,9 +113,10 @@ class FactoryTradeService(
 
     fun listTrades(locationId: UUID?, status: String?): List<FactoryTradeOfferSummary> = tenantScopedTransaction.execute {
         val tenantId = currentActorProvider.current().tenantId
+        val effectiveLocationId = locationAccessService.resolveFilter(locationId)
         val query = FactoryTradeOffersTable.selectAll().andWhere { FactoryTradeOffersTable.tenantId eq tenantId }
-        if (locationId != null) {
-            query.andWhere { (FactoryTradeOffersTable.fromLocationId eq locationId) or (FactoryTradeOffersTable.toLocationId eq locationId) }
+        if (effectiveLocationId != null) {
+            query.andWhere { (FactoryTradeOffersTable.fromLocationId eq effectiveLocationId) or (FactoryTradeOffersTable.toLocationId eq effectiveLocationId) }
         }
         if (status != null) query.andWhere { FactoryTradeOffersTable.status eq status }
         query.orderBy(FactoryTradeOffersTable.offeredAt).map(::rowToTradeOfferSummary)

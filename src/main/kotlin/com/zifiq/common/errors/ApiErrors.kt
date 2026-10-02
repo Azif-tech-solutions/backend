@@ -94,4 +94,18 @@ object ApiErrors {
     fun transferNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.TRANSFER_NOT_FOUND, "Stock transfer not found")
     fun transferLineNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.TRANSFER_LINE_NOT_FOUND, "Transfer line not found")
     fun adjustmentExceedsBalance() = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.INSUFFICIENT_STOCK, "Adjustment quantity exceeds current balance")
+
+    // ---- Tax Classification / VAT Control ----
+    fun unknownVatCategories(unknown: Set<String>) = ApiException(
+        HttpStatus.BAD_REQUEST,
+        ErrorCode.UNKNOWN_VAT_CATEGORY,
+        "One or more VAT category codes are not recognized",
+        mapOf("codes" to unknown.sorted().joinToString(",")),
+    )
+    fun vatCategoryNotActive() = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.VAT_CATEGORY_NOT_ACTIVE, "This VAT category has not been activated for the active tenant (see VAT Control)")
+    fun unknownHsnSection() = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.UNKNOWN_HSN_SECTION, "Unknown HSN section")
+    fun unknownIsicSection() = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.UNKNOWN_ISIC_SECTION, "Unknown ISIC section")
+
+    // ---- Location Access ----
+    fun locationAccessDenied() = ApiException(HttpStatus.FORBIDDEN, ErrorCode.LOCATION_ACCESS_DENIED, "You are not assigned to this location")
 }

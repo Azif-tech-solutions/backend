@@ -28,6 +28,12 @@ object StockItemsTable : UUIDTable("stock_items") {
     val barcode = varchar("barcode", 64).nullable()
     val landingCost = decimal("landing_cost", 14, 2).nullable()
     val markupCost = decimal("markup_cost", 14, 2).nullable()
+    // Plain uuid columns for the same reason as categoryId/unitOfMeasureId above: these reference
+    // com.zifiq.account's global tax-classification catalogs (V5__tax_classification.sql), and
+    // Inventory must not import account's Kotlin types. Every product carries all three.
+    val vatCategoryId = uuid("vat_category_id")
+    val hsnSectionId = uuid("hsn_section_id")
+    val isicSectionId = uuid("isic_section_id")
     val status = varchar("status", 20).default("ACTIVE")
     val createdByUserId = reference("created_by_user_id", AppUsersTable)
     val createdAt = timestamp("created_at")
