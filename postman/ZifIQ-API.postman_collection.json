@@ -833,7 +833,7 @@
                 "reset-password"
               ]
             },
-            "description": "resetToken comes from the EMAIL notification queued by Forgot Password (check notification_outbox while testing locally).",
+            "description": "resetToken comes from the EMAIL notification queued by Forgot Password (check notification_outbox while testing locally) -- this collection uses a placeholder token, so a full run is expected to get 400 INVALID_RESET_TOKEN here, asserted below rather than just tolerated.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"resetToken\": \"RST-482913\",\n  \"newPassword\": \"newPassword456\"\n}",
@@ -853,7 +853,12 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                  "pm.test('fails as expected with 400 INVALID_RESET_TOKEN', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('INVALID_RESET_TOKEN');",
+                  "});"
                 ]
               }
             }
@@ -881,7 +886,7 @@
                     "reset-password"
                   ]
                 },
-                "description": "resetToken comes from the EMAIL notification queued by Forgot Password (check notification_outbox while testing locally).",
+                "description": "resetToken comes from the EMAIL notification queued by Forgot Password (check notification_outbox while testing locally) -- this collection uses a placeholder token, so a full run is expected to get 400 INVALID_RESET_TOKEN here, asserted below rather than just tolerated.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"resetToken\": \"RST-482913\",\n  \"newPassword\": \"newPassword456\"\n}",
@@ -1995,7 +2000,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"7f73a0eb-0cce-4182-86f8-51e2491f72f8\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"08a216a4-6c90-430f-93d7-623163dc4281\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -2066,7 +2071,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"9cc7f446-8370-4b5b-8b5f-6b889109927d\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"e80e4aa7-968b-41d2-b625-3da99a6d2947\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -5673,7 +5678,7 @@
                 "reject"
               ]
             },
-            "description": "Mutually exclusive with Approve -- only run this if you want to test the rejection path on a fresh costing instead.",
+            "description": "Mutually exclusive with Approve -- in a full sequential run, Approve Costing (just above) already decided this same costing, so this is expected to get 409 ALREADY_DECIDED, asserted below. Run this in isolation against a fresh costing instead if you want to see the actual rejection path succeed.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"rejectionReason\": \"Material substitution needed -- cost too high\"\n}",
@@ -5690,7 +5695,12 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                  "pm.test('fails as expected with 409 ALREADY_DECIDED', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('ALREADY_DECIDED');",
+                  "});"
                 ]
               }
             }
@@ -5721,7 +5731,7 @@
                     "reject"
                   ]
                 },
-                "description": "Mutually exclusive with Approve -- only run this if you want to test the rejection path on a fresh costing instead.",
+                "description": "Mutually exclusive with Approve -- in a full sequential run, Approve Costing (just above) already decided this same costing, so this is expected to get 409 ALREADY_DECIDED, asserted below. Run this in isolation against a fresh costing instead if you want to see the actual rejection path succeed.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"rejectionReason\": \"Material substitution needed -- cost too high\"\n}",

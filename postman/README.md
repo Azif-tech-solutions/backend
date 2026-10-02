@@ -81,11 +81,15 @@ Postman app:
 npx newman run ZifIQ-API.postman_collection.json -e ZifIQ-Local.postman_environment.json
 ```
 
-A clean run reports `83/83` requests passing except two *expected* failures
-that are not bugs (both documented inline on their own requests):
-- **01 - Auth > Reset Password** — `400 INVALID_RESET_TOKEN`, since the
-  collection uses a placeholder token (`RST-482913`); the real one lives in
-  `notification_outbox`.
-- **09 - Factory Production > Reject Costing** — `409 ALREADY_DECIDED`,
-  since it deliberately runs against the same costing **Approve Costing**
-  just approved, to demonstrate the mutual-exclusion check.
+A clean run reports `83/83` requests passing, `0` failures. Two requests are
+*deliberately* run against a state that makes them error — not bugs, but
+real error paths demonstrated on purpose — so each gets its own
+status+error-code assertion instead of the generic one every other request
+uses, documented inline on the request itself:
+- **01 - Auth > Reset Password** — asserts `400 INVALID_RESET_TOKEN`, since
+  the collection uses a placeholder token (`RST-482913`); the real one
+  lives in `notification_outbox`.
+- **09 - Factory Production > Reject Costing** — asserts `409
+  ALREADY_DECIDED`, since it deliberately runs against the same costing
+  **Approve Costing** just approved, to demonstrate the mutual-exclusion
+  check.
