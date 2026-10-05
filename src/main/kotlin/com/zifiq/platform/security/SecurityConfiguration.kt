@@ -15,6 +15,9 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.oauth2.jwt.JwtDecoder
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder
 import org.springframework.security.web.SecurityFilterChain
+import org.springframework.web.cors.CorsConfiguration
+import org.springframework.web.cors.CorsConfigurationSource
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 import javax.crypto.spec.SecretKeySpec
 
 @Configuration
@@ -23,9 +26,28 @@ class SecurityConfiguration(
     private val objectMapper: ObjectMapper,
     @Value("\${jwt.secret:zifiq-secret-key-must-be-at-least-256-bits-long-for-hmac-sha256-signing!}")
     private val secret: String,
+    // Comma-separated allowed-origin patterns (supports * wildcards, e.g. "http://localhost:*").
+    // Defaults cover any local dev frontend (Vite/CRA/etc. on any port) -- tighten this via the
+    // CORS_ALLOWED_ORIGINS env var once there's a real frontend deployment to allowlist instead.
+    @Value("\${cors.allowed-origins:http://localhost:*,http://127.0.0.1:*}")
+    private val corsAllowedOrigins: String,
 ) {
     @Bean
     fun passwordEncoder(): PasswordEncoder = BCryptPasswordEncoder()
+
+    @Bean
+    fun corsConfigurationSource(): CorsConfigurationSource {
+        val config = CorsConfiguration().apply {
+            allowedOriginPatterns = corsAllowedOrigins.split(",").map { it.trim() }
+            allowedMethods = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+            allowedHeaders = listOf("Authorization", "Content-Type")
+            allowCredentials = true
+            maxAge = 3600
+        }
+        return UrlBasedCorsConfigurationSource().apply {
+            registerCorsConfiguration("/**", config)
+        }
+    }
 
     @Bean
     fun jwtDecoder(): JwtDecoder {
@@ -38,6 +60,7 @@ class SecurityConfiguration(
 
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain = http
+        .cors { it.configurationSource(corsConfigurationSource()) }
         .csrf { it.disable() }
         .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
         // Without this, Spring Security's default AnonymousAuthenticationFilter assigns an
