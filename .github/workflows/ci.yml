@@ -254,6 +254,9 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          # Default command_timeout (10m) isn't enough for a Gradle/Kotlin compile on a
+          # memory-constrained dev box -- give it real headroom rather than guessing lower.
+          command_timeout: 30m
           script: |
             set -e
             cd ~/backend
