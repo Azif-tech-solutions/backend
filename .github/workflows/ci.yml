@@ -217,3 +217,45 @@ jobs:
             exit 1
           fi
           echo "All required checks passed. Ready to deploy."
+
+  # ---------------------------------------------------------------------------
+  # Deploys to the dev EC2 box. The runner already has the repo checked out
+  # (every job does, via actions/checkout), so it rsyncs those files straight
+  # to the box over SSH instead of having the box itself authenticate to
+  # GitHub -- the org disabled deploy keys, and a PAT on the server is both
+  # more setup and a worse security posture than just reusing the SSH
+  # connection we already have. Only runs after every check above has passed,
+  # and only for pushes to main (never on pull_request).
+  #
+  # Needs three repo secrets: EC2_SSH_PRIVATE_KEY (the full .pem contents),
+  # EC2_HOST, EC2_USER.
+  # ---------------------------------------------------------------------------
+  deploy:
+    name: Deploy to dev EC2
+    needs: ready-to-deploy
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync repo to EC2
+        uses: burnett01/rsync-deployments@7.0.1
+        with:
+          switches: -avz --delete --exclude=.git
+          path: ./
+          remote_path: ~/backend/
+          remote_host: ${{ secrets.EC2_HOST }}
+          remote_user: ${{ secrets.EC2_USER }}
+          remote_key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+
+      - name: Rebuild and restart stack
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            cd ~/backend
+            docker compose up --build -d
+            docker image prune -f
