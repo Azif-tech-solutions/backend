@@ -103,6 +103,7 @@ jobs:
           severity: HIGH,CRITICAL
           exit-code: "1"
           ignore-unfixed: true
+          trivyignores: .trivyignore
 
   # ---------------------------------------------------------------------------
   # Builds the production Docker image and scans it for OS + application
@@ -126,6 +127,7 @@ jobs:
           severity: HIGH,CRITICAL
           exit-code: "1"
           ignore-unfixed: true
+          trivyignores: .trivyignore
 
   # ---------------------------------------------------------------------------
   # Boots the real stack (Postgres + the built image) via the project's own

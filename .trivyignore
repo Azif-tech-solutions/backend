@@ -1,0 +1,12 @@
+# Vulnerability exceptions for Trivy (both the filesystem and the image scan in CI).
+# Every entry needs: why it is not exploitable here, what enforces that, and an expiry date.
+# An expired entry stops being ignored, so CI fails again and forces a fresh decision.
+
+# CVE-2026-47884 — spring-webmvc XsltView SSRF/RCE (CRITICAL, CVSS 9.8).
+# Affects all OSS Spring Framework 6.2.x; the only open-source fix is 7.0.9 (Spring Boot 4).
+# Exploitable only when an application renders views through XsltView behind a "/**" mapping
+# with no explicit view name. This service is a JSON-only REST API: no XsltView, no view
+# resolvers, no template engine. Enforced by NoXsltViewArchitectureTest, which fails the build if
+# any class references org.springframework.web.servlet.view.xslt.
+# Remove when Spring publishes a 6.2.x fix, or when the Spring Boot 4 upgrade lands.
+CVE-2026-47884 exp:2026-11-30
