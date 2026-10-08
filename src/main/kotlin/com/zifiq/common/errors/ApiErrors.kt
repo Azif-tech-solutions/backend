@@ -141,6 +141,7 @@ object ApiErrors {
     // ---- Generic, reused by later modules ----
     fun duplicateName(name: String) = ApiException(HttpStatus.CONFLICT, ErrorCode.DUPLICATE_NAME, "'$name' is already in use", mapOf("name" to name))
     fun invalidStatusTransition(from: String, to: String) = ApiException(HttpStatus.CONFLICT, ErrorCode.INVALID_STATUS_TRANSITION, "Cannot change status from $from to $to", mapOf("from" to from, "to" to to))
+    fun notConvertible(status: String) = ApiException(HttpStatus.CONFLICT, ErrorCode.INVALID_STATUS_TRANSITION, "Only an active temporary walk-in customer can be registered this way; this one is $status", mapOf("from" to status, "to" to "REGISTERED"))
     fun invalidLocation(reason: String) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_LOCATION, reason)
 
     // ---- Customers & Distributors ----

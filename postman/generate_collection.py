@@ -670,6 +670,8 @@ ep("11 - NRS Reference Data", "List Nigeria LGAs", "GET", "/api/v1/invoicing/ref
 
 
 # ============================== CUSTOMERS (docs/04) ==============================
+# Ordered so each request sets up the state the next one needs; every id/ref is captured into a
+# collection variable. Requests named "(... error ...)" deliberately demonstrate a business rule.
 C = "12 - Customers"
 CUST = {"id": "{{customerId}}", "code": "CU-1", "type": "ORDINARY_CUSTOMER", "isTemporary": False, "name": "Chidi Nwosu",
         "contactPerson": None, "phone": "0809 111 2222", "alternatePhone": None, "email": "chidi@example.com", "tin": None,
@@ -679,10 +681,12 @@ CUST = {"id": "{{customerId}}", "code": "CU-1", "type": "ORDINARY_CUSTOMER", "is
         "correspondent": None, "dealerCategory": None, "creditLimit": 0.00, "walletBalance": 0.00, "depositBalance": 0.00,
         "lifetimeValue": 0.00, "lastPurchaseAt": None, "customerSince": "2026-10-08", "status": "ACTIVE", "statusReason": None,
         "userId": None, "customAttributes": {}, "createdAt": NOW}
-DEALER = dict(CUST, id="{{dealerId}}", code="DLR-1", type="AUTHORISED_DEALER", name="Okafor & Sons Distribution",
-              contactPerson="Tunde Okafor", phone="0803 412 7781", streetAddress="14 Ikorodu Rd",
+DEALER = dict(CUST, id="{{dealerId}}", code="DLR-1", type="AUTHORISED_DEALER", name="Okafor & Sons Distribution 482",
+              contactPerson="Tunde Okafor", phone="0803 412 7781", email="orders@okaforsons.ng", city=None, streetAddress="14 Ikorodu Rd",
               correspondent={"id": "{{correspondentId}}", "code": "CR-1", "name": "Bisi Adeyemi", "status": "ASSIGNED"},
               dealerCategory={"id": "{{goldCategoryId}}", "name": "Gold", "discountPct": 3.50}, creditLimit=1500000.00)
+SPECIAL = dict(CUST, id="{{specialId}}", code="CU-3", type="SPECIAL_CUSTOMER", name="Adaeze Foods Ltd", contactPerson="Adaeze Obi",
+               phone="0701 555 0101", email=None, creditLimit=250000.00)
 SUMMARY = {k: DEALER[k] for k in ("id", "code", "type", "isTemporary", "name", "contactPerson", "phone", "stateCode", "stateName",
                                    "creditLimit", "walletBalance", "depositBalance", "lifetimeValue", "lastPurchaseAt", "customerSince", "status")}
 SUMMARY.update({"locationId": "{{customerLocationId}}", "locationName": "Customer Home Plant", "correspondentId": "{{correspondentId}}",
@@ -695,54 +699,123 @@ def PAGE(items, **extra):
                           "meta": {"appliedFilters": {}, "ignoredQualifiers": [], "suggestions": [], "matches": {}}}, **extra)}
 
 
+def ERR(code, message, details=None):
+    return {"error": {"code": code, "message": message, "details": details or {}}}
+
+
 CORR = {"id": "{{correspondentId}}", "code": "CR-1", "name": "Bisi Adeyemi", "phone": "0802 123 4567", "email": None,
         "region": "Lagos Mainland", "locationId": "{{customerLocationId}}", "locationName": "Customer Home Plant", "status": "ASSIGNED",
         "assignedAt": "2026-10-08", "customerCount": 1, "dealerCount": 1, "responsibilities": "Lagos dealers", "userLinked": False}
+CORR2 = dict(CORR, id="{{correspondent2Id}}", code="CR-2", name="Emeka Eze", phone="0805 999 0000", region="South West",
+             responsibilities="Ibadan and Abeokuta walk-in accounts", customerCount=0, dealerCount=0)
+HISTORY_ROW = {"action": "ASSIGNED", "region": "Lagos Mainland", "locationId": "{{customerLocationId}}", "locationName": "Customer Home Plant",
+               "effectiveFrom": "2026-10-08", "note": None, "performedByUserId": "{{userId}}", "createdAt": NOW}
+CATEGORY = {"id": "{{diamondCategoryId}}", "name": "Diamond", "discountPct": 7.50, "suggestedCreditLimit": 5000000.00, "sortOrder": 5,
+            "status": "ACTIVE", "dealerCount": 0}
+ENTRY = {"id": "{{adjustmentEntryId}}", "customerId": "{{dealerId}}", "balanceType": "WALLET", "entryType": "ADJUSTMENT_CREDIT",
+         "amount": 2500.00, "balanceAfter": 2500.00, "reference": "WLT-1"}
+RECLASS = {"id": "{{reclassificationId}}", "customerId": "{{customerId}}", "customerCode": "CU-1", "customerName": "Chidi Nwosu",
+           "fromType": "ORDINARY_CUSTOMER", "toType": "SPECIAL_CUSTOMER", "direction": "PROMOTION", "reason": "MET_PURCHASE_VOLUME",
+           "note": "Crossed N5m in 90 days", "effectiveFrom": "2026-10-08", "status": "APPLIED", "fromCreditLimit": 0.00,
+           "toCreditLimit": 0.00, "toDealerCategoryName": None, "walletBalanceCarriedOver": 0.00, "authorisedByUserId": "{{userId}}",
+           "appliedAt": NOW, "createdAt": NOW}
 
-ep(C, "Create Customer Home Location", "POST", "/api/v1/factory/setup/factories",
+# ---- A. Setup ----
+ep(C, "A1 Create Customer Home Location", "POST", "/api/v1/factory/setup/factories",
    body={"code": None, "name": "Customer Home Plant", "address": "3 Allen Ave, Ikeja", "state": "Lagos", "phone": "+2348000000003",
          "vatRate": 7.5, "vatEnabled": True, "vatRegistrationNumber": None},
    resp={"data": {"id": "{{customerLocationId}}", "code": "FAC-3", "name": "Customer Home Plant", "status": "ACTIVE"}},
    tests=["const json = pm.response.json();", "pm.collectionVariables.set('customerLocationId', json.data.id);",
           "pm.collectionVariables.set('today', new Date(Date.now() + 3600 * 1000).toISOString().slice(0, 10));"],
-   desc="An ACTIVE location to home this folder's customers at (folder 06 leaves {{factoryId}} SUSPENDED on purpose). Also captures {{today}} in the "
-        "tenant's default timezone (Africa/Lagos, UTC+1) for the immediate reclassification below.")
+   desc="Creates an ACTIVE location to home this folder's customers and correspondents at (folder 06 leaves {{factoryId}} SUSPENDED on purpose). "
+        "Customers can be homed at an ACTIVE showroom or factory. Also stores today's date in the tenant's default timezone (Africa/Lagos) as {{today}}, "
+        "used by A-today reclassification below.")
 
-ep(C, "List Dealer Categories", "GET", "/api/v1/customers/dealer-categories",
+# ---- B. Dealer categories ----
+ep(C, "B1 List Dealer Categories", "GET", "/api/v1/customers/dealer-categories",
    resp={"data": [{"id": "{{goldCategoryId}}", "name": "Gold", "discountPct": 3.50, "suggestedCreditLimit": 1500000.00, "sortOrder": 3, "status": "ACTIVE", "dealerCount": 0}]},
    tests=["const json = pm.response.json();",
           "pm.test('new tenant has the 4 default categories', () => pm.expect(json.data.map(c => c.name).sort()).to.eql(['Bronze', 'Gold', 'Platinum', 'Silver']));",
           "pm.collectionVariables.set('goldCategoryId', json.data.find(c => c.name === 'Gold').id);"],
-   desc="Platinum / Gold / Silver / Bronze are seeded for every new tenant. Query: status, q.")
+   desc="Every new company starts with Platinum (5%, N3m), Gold (3.5%, N1.5m), Silver (2%, N500k) and Bronze (0%, N200k). "
+        "Optional query: status=ACTIVE|INACTIVE, q=<name>. dealerCount = live dealers in the category. Perm customers.read.")
 
-ep(C, "Create Dealer Category", "POST", "/api/v1/customers/dealer-categories",
+ep(C, "B2 Create Dealer Category", "POST", "/api/v1/customers/dealer-categories",
    body={"name": "Diamond", "discountPct": 7.5, "suggestedCreditLimit": 5000000, "sortOrder": 5},
-   resp={"data": {"id": "{{diamondCategoryId}}", "name": "Diamond", "discountPct": 7.50, "suggestedCreditLimit": 5000000.00, "sortOrder": 5, "status": "ACTIVE", "dealerCount": 0}},
+   resp={"data": CATEGORY},
    tests=["const json = pm.response.json();", "pm.collectionVariables.set('diamondCategoryId', json.data.id);"],
-   desc="Perm customers.categories.manage (Administrator).")
+   desc="Perm customers.categories.manage (Administrator). Names are unique per company (409 DUPLICATE_NAME).")
 
-ep(C, "Deactivate Dealer Category", "PUT", "/api/v1/customers/dealer-categories/{{diamondCategoryId}}/status",
+ep(C, "B3 Update Dealer Category", "PUT", "/api/v1/customers/dealer-categories/{{diamondCategoryId}}",
+   body={"name": "Diamond", "discountPct": 8, "suggestedCreditLimit": 6000000, "sortOrder": 5},
+   resp={"data": dict(CATEGORY, discountPct=8.00, suggestedCreditLimit=6000000.00)},
+   desc="A new suggested credit limit applies to dealers registered or promoted from now on; existing dealers' limits don't change.")
+
+ep(C, "B4 Deactivate Dealer Category", "PUT", "/api/v1/customers/dealer-categories/{{diamondCategoryId}}/status",
    body={"status": "INACTIVE"},
-   resp={"data": {"id": "{{diamondCategoryId}}", "name": "Diamond", "discountPct": 7.50, "suggestedCreditLimit": 5000000.00, "sortOrder": 5, "status": "INACTIVE", "dealerCount": 0}},
-   desc="Blocked with 409 CATEGORY_IN_USE while dealers use the category.")
+   resp={"data": dict(CATEGORY, discountPct=8.00, suggestedCreditLimit=6000000.00, status="INACTIVE")},
+   desc="status=ACTIVE|INACTIVE. Inactive categories can't be given to new dealers. Deactivating a category dealers still use fails (see I1).")
 
-ep(C, "Register Correspondent (and assign)", "POST", "/api/v1/customers/correspondents",
+# ---- C. Correspondents ----
+ep(C, "C1 Register Correspondent (and assign)", "POST", "/api/v1/customers/correspondents",
    body={"name": "Bisi Adeyemi", "phone": "0802 123 4567", "email": None, "userId": None, "region": "Lagos Mainland",
          "locationId": "{{customerLocationId}}", "responsibilities": "Lagos dealers"},
-   resp={"data": {"correspondent": CORR, "history": [{"action": "ASSIGNED", "region": "Lagos Mainland", "locationId": "{{customerLocationId}}",
-                                                      "locationName": "Customer Home Plant", "effectiveFrom": "2026-10-08", "note": None,
-                                                      "performedByUserId": "{{userId}}", "createdAt": NOW}], "affectedCustomers": None}},
+   resp={"data": {"correspondent": dict(CORR, customerCount=0, dealerCount=0), "history": [HISTORY_ROW], "affectedCustomers": None}},
    tests=["const json = pm.response.json();", "pm.collectionVariables.set('correspondentId', json.data.correspondent.id);",
           "pm.test('assigned in one step', () => pm.expect(json.data.correspondent.status).to.eql('ASSIGNED'));"],
-   desc="Code CR-n. With region + locationId it's registered and assigned at once. Regions come from the module setting customers.correspondent.regions.")
+   desc="Perm customers.correspondents.manage. Code CR-n. Giving region + locationId registers and assigns in one step; leave both out to register "
+        "UNASSIGNED (C2). Regions come from the module setting customers.correspondent.regions (Settings > module settings). "
+        "Optional userId links a staff login so the correspondent sees their own customers (customers.read.own).")
 
-ep(C, "Register Correspondent (unknown region)", "POST", "/api/v1/customers/correspondents",
+ep(C, "C2 Register Correspondent (unassigned)", "POST", "/api/v1/customers/correspondents",
+   body={"name": "Emeka Eze", "phone": "0805 999 0000", "email": "emeka@example.com", "responsibilities": "Walk-in accounts"},
+   resp={"data": {"correspondent": dict(CORR2, status="UNASSIGNED", region=None, locationId=None, locationName=None, assignedAt=None,
+                                        responsibilities="Walk-in accounts", email="emeka@example.com"), "history": [], "affectedCustomers": None}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('correspondent2Id', json.data.correspondent.id);",
+          "pm.test('starts unassigned', () => pm.expect(json.data.correspondent.status).to.eql('UNASSIGNED'));"])
+
+ep(C, "C3 Register Correspondent (error: unknown region)", "POST", "/api/v1/customers/correspondents",
    body={"name": "Nobody", "phone": "08020000000", "region": "Atlantis", "locationId": "{{customerLocationId}}"},
    status=400, status_text="Bad Request",
-   resp={"error": {"code": "INVALID_REGION", "message": "Unknown region"}},
-   expect_error={"status": 400, "code": "INVALID_REGION"})
+   resp=ERR("INVALID_REGION", "Unknown region", {"allowed": "Lagos Mainland,Lagos Island,North Central,North West,South East,South South,South West"}),
+   expect_error={"status": 400, "code": "INVALID_REGION"},
+   desc="details.allowed lists the configured regions.")
 
-ep(C, "Register Dealer", "POST", "/api/v1/customers",
+ep(C, "C4 Assign Correspondent", "POST", "/api/v1/customers/correspondents/{{correspondent2Id}}/assign",
+   body={"region": "Lagos Island", "locationId": "{{customerLocationId}}", "effectiveFrom": None, "note": "Covering Lagos Island"},
+   resp={"data": {"correspondent": dict(CORR2, region="Lagos Island"), "history": [dict(HISTORY_ROW, region="Lagos Island", note="Covering Lagos Island")], "affectedCustomers": None}},
+   desc="UNASSIGNED or DE_ASSIGNED -> ASSIGNED. effectiveFrom defaults to today. Wrong starting state -> 409 INVALID_STATUS_TRANSITION.")
+
+ep(C, "C5 Reassign Correspondent", "POST", "/api/v1/customers/correspondents/{{correspondent2Id}}/reassign",
+   body={"region": "South West", "locationId": "{{customerLocationId}}", "note": "Moved to Ibadan office"},
+   resp={"data": {"correspondent": CORR2, "history": [dict(HISTORY_ROW, action="REASSIGNED", region="South West", note="Moved to Ibadan office"),
+                                                      dict(HISTORY_ROW, region="Lagos Island", note="Covering Lagos Island")], "affectedCustomers": None}},
+   desc="ASSIGNED only. Moves region/location; linked customers stay linked and the history keeps both rows.")
+
+ep(C, "C6 Update Correspondent", "PUT", "/api/v1/customers/correspondents/{{correspondent2Id}}",
+   body={"name": "Emeka Eze", "phone": "0805 999 0000", "email": "emeka@example.com", "userId": None,
+         "responsibilities": "Ibadan and Abeokuta walk-in accounts"},
+   resp={"data": {"correspondent": CORR2, "history": [], "affectedCustomers": None}},
+   desc="Edits name/phone/e-mail/linked user/responsibilities only; region, location and status change through assign/reassign/de-assign.")
+
+ep(C, "C7 Get Correspondent", "GET", "/api/v1/customers/correspondents/{{correspondent2Id}}",
+   resp={"data": {"correspondent": CORR2, "history": [dict(HISTORY_ROW, action="REASSIGNED", region="South West"), HISTORY_ROW], "affectedCustomers": None}},
+   tests=["const json = pm.response.json();", "pm.test('history is kept', () => pm.expect(json.data.history.length).to.eql(2));"],
+   desc="Detail with the append-only assignment history, newest first.")
+
+ep(C, "C8 List Correspondents", "GET", "/api/v1/customers/correspondents",
+   query=[{"key": "status", "value": "ASSIGNED"}],
+   resp={"data": [CORR, CORR2]},
+   desc="Unpaged. Query: q (code, name, phone, e-mail, responsibilities), status (repeatable), region (repeatable), locationId, userLinked, hasCustomers, "
+        "sort=name|customerCount|dealerCount|assignedAt.")
+
+ep(C, "C9 Correspondent Lookup (picker)", "GET", "/api/v1/customers/correspondents/lookup",
+   query=[{"key": "q", "value": "bisi"}, {"key": "assignedOnly", "value": "true"}],
+   resp={"data": [CORR]},
+   desc="For the correspondent picker on the customer form. assignedOnly defaults to true (only assigned correspondents can be linked).")
+
+# ---- D. Register and edit customers ----
+ep(C, "D1 Register Dealer", "POST", "/api/v1/customers",
    body={"type": "AUTHORISED_DEALER", "name": "Okafor & Sons Distribution {{$randomInt}}", "contactPerson": "Tunde Okafor",
          "phone": "0803 412 7781", "email": "orders@okaforsons.ng", "stateCode": "NG-LA", "streetAddress": "14 Ikorodu Rd",
          "locationId": "{{customerLocationId}}", "dealerCategoryId": "{{goldCategoryId}}", "correspondentId": "{{correspondentId}}"},
@@ -750,82 +823,181 @@ ep(C, "Register Dealer", "POST", "/api/v1/customers",
    tests=["const json = pm.response.json();", "pm.collectionVariables.set('dealerId', json.data.id);",
           "pm.collectionVariables.set('dealerName', json.data.name);", "pm.collectionVariables.set('dealerCode', json.data.code);",
           "pm.test('credit limit defaults to the category suggestion', () => pm.expect(json.data.creditLimit).to.eql(1500000));"],
-   desc="Perm customers.manage + customers.dealers.manage. Dealers need contactPerson, streetAddress, stateCode and an ACTIVE dealerCategoryId. "
-        "Code DLR-n; phone stored as given and normalised to +234... for matching. Opening wallet funding is a separate Account call (doc 07).")
+   desc="Perm customers.manage + customers.dealers.manage. Dealers need contactPerson, streetAddress, stateCode and an ACTIVE dealerCategoryId; "
+        "creditLimit defaults to the category's suggestion. Code DLR-n. The phone is kept as typed and matched in any format (0803..., +234803..., with spaces). "
+        "Funding a dealer's wallet is a separate Account call (not built yet). Other optional fields: alternatePhone, tin, businessDescription, city, "
+        "lgaCode (must belong to stateCode), customerSince (<= today), userId (self-service login), customAttributes.")
 
-ep(C, "Register Dealer (duplicate name)", "POST", "/api/v1/customers",
+ep(C, "D2 Register Dealer (error: duplicate name)", "POST", "/api/v1/customers",
    body={"type": "AUTHORISED_DEALER", "name": "{{dealerName}}", "contactPerson": "Someone", "phone": "08030000000",
          "stateCode": "NG-LA", "streetAddress": "1 Elsewhere", "dealerCategoryId": "{{goldCategoryId}}"},
-   status=409, status_text="Conflict", resp={"error": {"code": "DUPLICATE_NAME", "message": "'Okafor & Sons Distribution' is already in use"}},
-   expect_error={"status": 409, "code": "DUPLICATE_NAME"})
+   status=409, status_text="Conflict", resp=ERR("DUPLICATE_NAME", "'Okafor & Sons Distribution 482' is already in use", {"name": "Okafor & Sons Distribution 482"}),
+   expect_error={"status": 409, "code": "DUPLICATE_NAME"},
+   desc="Dealer names are unique (case-insensitive).")
 
-ep(C, "Register Ordinary Customer", "POST", "/api/v1/customers",
+ep(C, "D3 Register Dealer (error: no category)", "POST", "/api/v1/customers",
+   body={"type": "AUTHORISED_DEALER", "name": "Category-less Traders", "contactPerson": "Someone", "phone": "08030000002",
+         "stateCode": "NG-LA", "streetAddress": "2 Elsewhere"},
+   status=400, status_text="Bad Request",
+   resp=ERR("CATEGORY_REQUIRED_FOR_DEALER", "Authorised dealers need a dealer category (and only dealers may have one)"),
+   expect_error={"status": 400, "code": "CATEGORY_REQUIRED_FOR_DEALER"})
+
+ep(C, "D4 Register Ordinary Customer", "POST", "/api/v1/customers",
    body={"type": "ORDINARY_CUSTOMER", "name": "Chidi Nwosu", "phone": "0809 111 2222", "email": "chidi@example.com", "city": "Lagos",
          "stateCode": "NG-LA", "locationId": "{{customerLocationId}}"},
    resp={"data": CUST},
    tests=["const json = pm.response.json();", "pm.collectionVariables.set('customerId', json.data.id);"],
-   desc="Code CU-n. Phone is required for every type except NO_CREDIT_WALKIN.")
+   desc="Code CU-n. Phone is required for every type except NO_CREDIT_WALKIN. Granting a creditLimit > 0 needs customers.dealers.manage.")
 
-ep(C, "List / Search Customers", "GET", "/api/v1/customers",
+ep(C, "D5 Register Ordinary Customer (error: no phone)", "POST", "/api/v1/customers",
+   body={"type": "ORDINARY_CUSTOMER", "name": "No Phone Person"},
+   status=400, status_text="Bad Request", resp=ERR("PHONE_REQUIRED", "A phone number is required"),
+   expect_error={"status": 400, "code": "PHONE_REQUIRED"})
+
+ep(C, "D6 Register Special Customer", "POST", "/api/v1/customers",
+   body={"type": "SPECIAL_CUSTOMER", "name": "Adaeze Foods Ltd", "contactPerson": "Adaeze Obi", "phone": "0701 555 0101",
+         "stateCode": "NG-LA", "locationId": "{{customerLocationId}}", "creditLimit": 250000},
+   resp={"data": SPECIAL},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('specialId', json.data.id);"],
+   desc="Special Customers are the only type that can hold a deposit balance (see F4).")
+
+ep(C, "D7 Register Walk-in Customer", "POST", "/api/v1/customers",
+   body={"type": "NO_CREDIT_WALKIN", "name": "Walk-in Buyer"},
+   resp={"data": dict(CUST, id="{{walkinId}}", code="CU-4", type="NO_CREDIT_WALKIN", name="Walk-in Buyer", phone=None, email=None,
+                      city=None, stateCode=None, stateName=None, location=None)},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('walkinId', json.data.id);"],
+   desc="No-credit walk-ins may be registered without a phone and never have a credit limit. (Temporary walk-ins are created automatically "
+        "by Showroom returns, not through this endpoint.)")
+
+ep(C, "D8 Register Walk-in Customer (error: credit limit)", "POST", "/api/v1/customers",
+   body={"type": "NO_CREDIT_WALKIN", "name": "Credit Seeker", "creditLimit": 1000},
+   status=400, status_text="Bad Request", resp=ERR("CREDIT_LIMIT_NOT_ALLOWED", "No-credit customers cannot have a credit limit"),
+   expect_error={"status": 400, "code": "CREDIT_LIMIT_NOT_ALLOWED"})
+
+ep(C, "D9 Get Customer", "GET", "/api/v1/customers/{{dealerId}}", resp={"data": DEALER},
+   desc="Out-of-scope customers (another location for single-location staff, or not your customer for a correspondent) return 404 CUSTOMER_NOT_FOUND.")
+
+ep(C, "D10 Update Customer", "PUT", "/api/v1/customers/{{customerId}}",
+   body={"name": "Chidi Nwosu", "phone": "0809 111 2222", "alternatePhone": "0812 000 0000", "email": "chidi@example.com",
+         "city": "Ikeja", "stateCode": "NG-LA", "locationId": "{{customerLocationId}}"},
+   resp={"data": dict(CUST, alternatePhone="0812 000 0000", city="Ikeja")},
+   desc="Send the whole form (fields left out are cleared). Type and dealer category change only through reclassification (G); customerSince "
+        "never changes. Changing creditLimit needs customers.dealers.manage and notifies the other dealer managers.")
+
+ep(C, "D11 Link Customer to Correspondent", "PUT", "/api/v1/customers/{{customerId}}/correspondent",
+   body={"correspondentId": "{{correspondent2Id}}"},
+   resp={"data": dict(CUST, alternatePhone="0812 000 0000", city="Ikeja",
+                      correspondent={"id": "{{correspondent2Id}}", "code": "CR-2", "name": "Emeka Eze", "status": "ASSIGNED"})},
+   desc="Perm customers.correspondents.manage. {\"correspondentId\": null} unlinks. The correspondent must be ASSIGNED (409 CORRESPONDENT_NOT_ASSIGNED).")
+
+ep(C, "D12 Convert Temporary Customer (error: already registered)", "POST", "/api/v1/customers/{{customerId}}/register",
+   body={"type": "ORDINARY_CUSTOMER", "name": "Chidi Nwosu", "phone": "0809 111 2222"},
+   status=409, status_text="Conflict",
+   resp=ERR("INVALID_STATUS_TRANSITION", "Only an active temporary walk-in customer can be registered this way; this one is already registered",
+            {"from": "already registered", "to": "REGISTERED"}),
+   expect_error={"status": 409, "code": "INVALID_STATUS_TRANSITION"},
+   desc="Turns a temporary walk-in (auto-created by a Showroom return) into a registered customer of any type, keeping its CU code and wallet. "
+        "Body = the register body. On a customer that isn't temporary it's refused, as here.")
+
+# ---- E. Search, filters and pickers ----
+ep(C, "E1 Search Customers (q, facets, highlight)", "GET", "/api/v1/customers",
    query=[{"key": "q", "value": "okafor"}, {"key": "facets", "value": "type,status"}, {"key": "highlight", "value": "true"}],
-   resp=PAGE([SUMMARY], facets={"type": [{"value": "AUTHORISED_DEALER", "label": "Authorised Dealer", "count": 1}]},
+   resp=PAGE([SUMMARY], facets={"type": [{"value": "AUTHORISED_DEALER", "label": "Authorised Dealer", "count": 1}],
+                                "status": [{"value": "ACTIVE", "label": "ACTIVE", "count": 1}]},
              summary={"count": 1, "walletBalanceTotal": 0.00, "depositBalanceTotal": 0.00, "lifetimeValueTotal": 0.00}),
    tests=["const json = pm.response.json();",
-          "pm.test('dealer ranks first', () => pm.expect(json.data.items[0].id).to.eql(pm.collectionVariables.get('dealerId')));"],
-   desc="q searches code (DLR-42 or bare 42), phone (any format), e-mail, TIN, name/contact person (accent-insensitive, typo-tolerant) and address text; "
-        "qualifiers like type:dealer status:watch state:NG-LA. Simple filters: type, status, isTemporary, locationId, correspondentId, dealerCategoryId, "
-        "stateCode, lgaCode, walletBalanceMin/Max, creditLimit.gte, hasWalletBalance, customerSince.from, lastPurchaseAt.lt, attr.<customField>, ... "
-        "(GET /customers/filters lists them all). REMOVED and temporary records are excluded unless filtered for.")
+          "pm.test('dealer ranks first', () => pm.expect(json.data.items[0].id).to.eql(pm.collectionVariables.get('dealerId')));",
+          "pm.test('matched words are highlighted', () => pm.expect(JSON.stringify(json.data.meta.matches)).to.include('<mark>'));"],
+   desc="q searches code (DLR-42 or bare 42), phone in any format, e-mail, TIN, name and contact person (accent-insensitive, tolerates typos) and "
+        "address text. Supports \"exact phrase\", -exclude, OR, and qualifiers like type:dealer status:watch state:NG-LA. "
+        "facets=<keys> returns counts per value; highlight=true returns <mark>ed snippets in meta.matches; summary (on by default) totals the balances. "
+        "No results? meta.suggestions offers close names. REMOVED and temporary customers are hidden unless you filter for them.")
 
-ep(C, "Search Customers (advanced filter)", "POST", "/api/v1/customers/search",
-   body={"filter": {"all": [{"field": "type", "op": "in", "value": ["AUTHORISED_DEALER", "SPECIAL_CUSTOMER"]},
-                            {"field": "creditLimit", "op": "gte", "value": 1000000}]},
-         "sort": [{"field": "name", "dir": "asc"}], "page": 0, "size": 20},
+ep(C, "E2 Search Customers by phone", "GET", "/api/v1/customers",
+   query=[{"key": "q", "value": "08034127781"}],
    resp=PAGE([SUMMARY]),
-   desc="Same result shape as GET; the filter tree supports all/any/not and the ledger collection, e.g. "
-        "{\"ledger\": {\"all\": [{\"field\": \"entryType\", \"op\": \"eq\", \"value\": \"WITHDRAWAL_DEBIT\"}, {\"field\": \"amount\", \"op\": \"gt\", \"value\": 100000}]}}.")
+   tests=["const json = pm.response.json();",
+          "pm.test('phone matches regardless of format', () => pm.expect(json.data.items.map(c => c.id)).to.eql([pm.collectionVariables.get('dealerId')]));"],
+   desc="The dealer was registered as \"0803 412 7781\"; 08034127781, +2348034127781 and 0803 412 7781 all find it.")
 
-ep(C, "Customer Filter Metadata", "GET", "/api/v1/customers/filters",
+ep(C, "E3 Filter Customers (simple filters)", "GET", "/api/v1/customers",
+   query=[{"key": "type", "value": "AUTHORISED_DEALER"}, {"key": "type", "value": "SPECIAL_CUSTOMER"},
+          {"key": "creditLimit.gte", "value": "200000"}, {"key": "sort", "value": "creditLimit,desc"}],
+   resp=PAGE([SUMMARY]),
+   tests=["const json = pm.response.json();",
+          "pm.test('dealer and special customer only', () => pm.expect(json.data.items.map(c => c.type).sort()).to.eql(['AUTHORISED_DEALER', 'SPECIAL_CUSTOMER']));"],
+   desc="Repeat a parameter for OR (type=A&type=B). Suffixes: .gte/.lte/.gt/.lt, Min/Max, .from/.to, .isNull, key!=value. "
+        "Other filters: status, isTemporary, locationId, correspondentId, dealerCategoryId, stateCode, lgaCode, walletBalance, depositBalance, "
+        "lifetimeValue, hasWalletBalance, hasEmail, hasPhone, hasTin, hasCorrespondent, customerSince, lastPurchaseAt, createdAt, createdBy, "
+        "from/to/period (on customerSince) and attr.<customField>. Sort: name (default), code, creditLimit, walletBalance, depositBalance, "
+        "lifetimeValue, customerSince, lastPurchaseAt, createdAt.")
+
+ep(C, "E4 Search Customers (error: unknown filter)", "GET", "/api/v1/customers",
+   query=[{"key": "colour", "value": "blue"}],
+   status=400, status_text="Bad Request",
+   resp=ERR("INVALID_FILTER", "Invalid filter on 'colour': Unknown filter", {"field": "colour", "reason": "Unknown filter", "allowed": "type,status,..."}),
+   expect_error={"status": 400, "code": "INVALID_FILTER"},
+   desc="A misspelt filter is an error listing the allowed names - never a silently unfiltered list.")
+
+ep(C, "E5 Customer Filter Metadata", "GET", "/api/v1/customers/filters",
    resp={"data": {"fields": [{"key": "type", "label": "Customer type", "type": "ENUM", "operators": ["eq", "ne", "in", "not_in", "is_null", "is_not_null"],
                               "options": [{"value": "AUTHORISED_DEALER", "label": "Authorised Dealer"}], "lookup": None, "facetable": True,
                               "sortable": False, "qualifierAliases": []}],
                   "collections": [{"key": "ledger", "label": "Wallet/deposit history"}], "primaryDate": "customerSince",
-                  "defaultSort": [{"field": "name", "dir": "asc"}], "periodPresets": ["TODAY", "THIS_MONTH"]}})
+                  "defaultSort": [{"field": "name", "dir": "asc"}], "periodPresets": ["TODAY", "THIS_MONTH"]}},
+   desc="Every filter with its type, operators, options and lookup endpoint - build the filter UI from this.")
 
-ep(C, "Customer Stats", "GET", "/api/v1/customers/stats",
-   resp={"data": {"total": 2, "active": 2, "watch": 0, "suspended": 0, "dealers": 1, "special": 0, "ordinary": 1, "noCredit": 0,
+ep(C, "E6 Customer Stats", "GET", "/api/v1/customers/stats",
+   resp={"data": {"total": 4, "active": 4, "watch": 0, "suspended": 0, "dealers": 1, "special": 1, "ordinary": 1, "noCredit": 1,
                   "walletsHeld": 0, "walletBalanceTotal": 0.00, "depositBalanceTotal": 0.00}},
-   desc="Register header tiles. Query: type, locationId.")
+   desc="Register header tiles. Optional query: type, locationId.")
 
-ep(C, "Customer Lookup (picker)", "GET", "/api/v1/customers/lookup",
+ep(C, "E7 Customer Lookup (picker)", "GET", "/api/v1/customers/lookup",
    query=[{"key": "q", "value": "chidi"}, {"key": "forSale", "value": "true"}],
    resp={"data": [{"id": "{{customerId}}", "code": "CU-1", "label": "Chidi Nwosu", "sublabel": "CU-1 · Ordinary Customer · …2222",
                    "type": "ORDINARY_CUSTOMER", "status": "ACTIVE", "disabled": False, "disabledReason": None,
                    "walletBalance": 0.00, "depositBalance": 0.00, "creditLimit": 0.00}]},
-   desc="POS / pro-forma / returns picker. Not location-restricted. forSale=true shows suspended customers disabled with the reason.")
+   desc="Customer picker for POS, pro-forma and returns. Not location-restricted (a customer can buy anywhere). Query: q, types (repeatable), "
+        "forSale=true (suspended customers show disabled with the reason), limit (default 20, max 50).")
 
-ep(C, "Get Customer", "GET", "/api/v1/customers/{{dealerId}}", resp={"data": DEALER})
+ep(C, "E8 Global Search", "GET", "/api/v1/search",
+   query=[{"key": "q", "value": "{{dealerCode}}"}],
+   resp={"data": {"groups": [{"type": "customer", "label": "Customers", "hits": [{"type": "customer", "id": "{{dealerId}}",
+                  "title": "Okafor & Sons Distribution 482", "subtitle": "DLR-1 · Gold · …7781", "ref": "DLR-1", "route": "/customers/{{dealerId}}"}],
+                  "more": False, "moreRoute": "/customers?q=DLR-1"}], "timedOut": []}},
+   tests=["const json = pm.response.json();",
+          "pm.test('exact reference is the single hit', () => pm.expect(json.data.groups[0].hits[0].id).to.eql(pm.collectionVariables.get('dealerId')));"],
+   desc="The header search box across every module you can access (customers and correspondents so far). An exact reference returns just that "
+        "record. Try q=okafor for grouped results. Query: q (min 2 chars), types (e.g. customer), limit per group (default 5).")
 
-ep(C, "Update Customer", "PUT", "/api/v1/customers/{{customerId}}",
-   body={"name": "Chidi Nwosu", "phone": "0809 111 2222", "alternatePhone": "0812 000 0000", "email": "chidi@example.com",
-         "city": "Ikeja", "stateCode": "NG-LA", "locationId": "{{customerLocationId}}"},
-   resp={"data": dict(CUST, alternatePhone="0812 000 0000", city="Ikeja")},
-   desc="Type and dealer category change only through reclassification; customerSince is immutable. Changing creditLimit needs customers.dealers.manage.")
-
-ep(C, "Wallet Adjustment (credit)", "POST", "/api/v1/customers/{{dealerId}}/wallet-adjustments",
+# ---- F. Wallet, deposit and ledger ----
+ep(C, "F1 Wallet Adjustment (credit)", "POST", "/api/v1/customers/{{dealerId}}/wallet-adjustments",
    body={"balanceType": "WALLET", "direction": "CREDIT", "amount": 2500, "reason": "Opening balance migration"},
-   resp={"data": {"id": "{{adjustmentEntryId}}", "customerId": "{{dealerId}}", "balanceType": "WALLET", "entryType": "ADJUSTMENT_CREDIT",
-                  "amount": 2500.00, "balanceAfter": 2500.00, "reference": "WLT-1"}},
-   tests=["const json = pm.response.json();", "pm.collectionVariables.set('adjustmentEntryId', json.data.id);"],
-   desc="Perm customers.wallet.adjust (Administrator). Deposit adjustments only on Special Customers.")
+   resp={"data": ENTRY},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('adjustmentEntryId', json.data.id);",
+          "pm.test('balance after is 2500', () => pm.expect(json.data.balanceAfter).to.eql(2500));"],
+   desc="Perm customers.wallet.adjust (Administrator). An Administrator's correction, posted through the same ledger as every other movement; "
+        "reference WLT-n; the reason is required and shown in the customer's history. direction=CREDIT|DEBIT.")
 
-ep(C, "Wallet Adjustment (overdraw)", "POST", "/api/v1/customers/{{dealerId}}/wallet-adjustments",
+ep(C, "F2 Wallet Adjustment (error: overdraw)", "POST", "/api/v1/customers/{{dealerId}}/wallet-adjustments",
    body={"balanceType": "WALLET", "direction": "DEBIT", "amount": 999999, "reason": "More than the balance"},
    status=400, status_text="Bad Request",
-   resp={"error": {"code": "INSUFFICIENT_WALLET_BALANCE", "message": "Insufficient wallet balance", "details": {"available": "2500.00", "requested": "999999.00"}}},
-   expect_error={"status": 400, "code": "INSUFFICIENT_WALLET_BALANCE"})
+   resp=ERR("INSUFFICIENT_WALLET_BALANCE", "Insufficient wallet balance", {"available": "2500.00", "requested": "999999.00"}),
+   expect_error={"status": 400, "code": "INSUFFICIENT_WALLET_BALANCE"},
+   desc="A balance can never go negative.")
 
-ep(C, "Customer Ledger", "GET", "/api/v1/customers/{{dealerId}}/ledger",
+ep(C, "F3 Wallet Adjustment (error: deposit on a dealer)", "POST", "/api/v1/customers/{{dealerId}}/wallet-adjustments",
+   body={"balanceType": "DEPOSIT", "direction": "CREDIT", "amount": 100, "reason": "Dealers don't hold deposits"},
+   status=400, status_text="Bad Request", resp=ERR("BALANCE_TYPE_NOT_ALLOWED", "Only Special Customers hold a deposit"),
+   expect_error={"status": 400, "code": "BALANCE_TYPE_NOT_ALLOWED"})
+
+ep(C, "F4 Deposit Adjustment (special customer)", "POST", "/api/v1/customers/{{specialId}}/wallet-adjustments",
+   body={"balanceType": "DEPOSIT", "direction": "CREDIT", "amount": 10000, "reason": "Deposit carried over from the old system"},
+   resp={"data": dict(ENTRY, id="7c1e0a52-2222-4c4c-9a9a-000000000002", customerId="{{specialId}}", balanceType="DEPOSIT",
+                      amount=10000.00, balanceAfter=10000.00, reference="WLT-2")},
+   desc="Special Customers hold a deposit balance alongside the wallet. Used again in G3.")
+
+ep(C, "F5 Customer Ledger (wallet)", "GET", "/api/v1/customers/{{dealerId}}/ledger",
    query=[{"key": "balanceType", "value": "WALLET"}],
    resp={"data": {"customer": SUMMARY, "balanceType": "WALLET", "openingBalance": 0.00, "closingBalance": 2500.00, "totalCredits": 2500.00,
                   "totalDebits": 0.00, "items": [{"id": "{{adjustmentEntryId}}", "entryDate": "2026-10-08", "reference": "WLT-1",
@@ -834,75 +1006,164 @@ ep(C, "Customer Ledger", "GET", "/api/v1/customers/{{dealerId}}/ledger",
                   "balanceAfter": 2500.00, "locationId": "{{customerLocationId}}", "sourceModule": "customers", "performedByUserId": "{{userId}}",
                   "reversible": True, "reversedByEntryId": None, "createdAt": NOW}],
                   "page": 0, "size": 50, "totalItems": 1, "totalPages": 1}},
-   desc="Customer History, oldest first so running balances read top-down. Query: balanceType, entryType, direction, from/to/period, q (reference, description, amount).")
+   tests=["const json = pm.response.json();", "pm.test('closing balance 2500', () => pm.expect(json.data.closingBalance).to.eql(2500));"],
+   desc="Perm customers.ledger.read. Customer History, oldest first so balances read top-down; amount is signed (credit +, debit -). "
+        "Query: balanceType=WALLET|DEPOSIT, entryType (repeatable), direction, sourceModule, locationId, performedBy, amount range, "
+        "from/to/period (bound opening/closing balances), q (reference, description, amount), page, size.")
 
-ep(C, "Reverse Ledger Entry", "POST", "/api/v1/customers/ledger-entries/{{adjustmentEntryId}}/reverse",
+ep(C, "F6 Customer Ledger (deposit)", "GET", "/api/v1/customers/{{specialId}}/ledger",
+   query=[{"key": "balanceType", "value": "DEPOSIT"}],
+   resp={"data": {"customer": dict(SUMMARY, id="{{specialId}}"), "balanceType": "DEPOSIT", "openingBalance": 0.00, "closingBalance": 10000.00,
+                  "totalCredits": 10000.00, "totalDebits": 0.00, "items": [], "page": 0, "size": 50, "totalItems": 1, "totalPages": 1}})
+
+ep(C, "F7 Ledger Filter Metadata", "GET", "/api/v1/customers/ledger/filters",
+   resp={"data": {"fields": [{"key": "entryType", "label": "Entry type", "type": "ENUM", "operators": ["eq", "in"], "options": [],
+                              "lookup": None, "facetable": True, "sortable": False, "qualifierAliases": []}],
+                  "collections": [], "primaryDate": "entryDate", "defaultSort": [{"field": "createdAt", "dir": "asc"}], "periodPresets": ["TODAY"]}})
+
+ep(C, "F8 Search Customers by ledger history (advanced)", "POST", "/api/v1/customers/search",
+   body={"filter": {"ledger": {"all": [{"field": "balanceType", "op": "eq", "value": "DEPOSIT"},
+                                       {"field": "amount", "op": "gte", "value": 5000}]}},
+         "sort": [{"field": "name", "dir": "asc"}], "page": 0, "size": 20},
+   resp=PAGE([dict(SUMMARY, id="{{specialId}}", code="CU-3", type="SPECIAL_CUSTOMER", name="Adaeze Foods Ltd")]),
+   tests=["const json = pm.response.json();",
+          "pm.test('finds the customer with a deposit of 5000+', () => pm.expect(json.data.items.map(c => c.id)).to.eql([pm.collectionVariables.get('specialId')]));"],
+   desc="POST /customers/search takes { q, filter, params, sort, page, size, facets, highlight }. The filter tree supports all / any / not and the "
+        "ledger collection: conditions grouped under \"ledger\" must hold for the same ledger entry (here: a DEPOSIT entry of at least 5000).")
+
+ep(C, "F9 Reverse Ledger Entry", "POST", "/api/v1/customers/ledger-entries/{{adjustmentEntryId}}/reverse",
    body={"reason": "Entered twice"},
-   resp={"data": {"id": "6b0f0e1e-1111-4c4c-9a9a-000000000001", "customerId": "{{dealerId}}", "balanceType": "WALLET", "entryType": "REVERSAL_DEBIT",
-                  "amount": 2500.00, "balanceAfter": 0.00, "reference": "WLT-1"}},
-   desc="Only this module's own adjustments; sales/withdrawals are reversed by voiding their source document (409 REVERSE_IN_SOURCE_MODULE).")
+   resp={"data": dict(ENTRY, id="6b0f0e1e-1111-4c4c-9a9a-000000000001", entryType="REVERSAL_DEBIT", balanceAfter=0.00)},
+   tests=["const json = pm.response.json();", "pm.test('balance back to 0', () => pm.expect(json.data.balanceAfter).to.eql(0));"],
+   desc="Perm customers.wallet.adjust. Posts the opposite entry; the original stays in the history marked reversed. Only this module's own "
+        "adjustments can be reversed here - sales and withdrawals are reversed by voiding their source document (409 REVERSE_IN_SOURCE_MODULE).")
 
-ep(C, "Reverse Ledger Entry (again)", "POST", "/api/v1/customers/ledger-entries/{{adjustmentEntryId}}/reverse",
+ep(C, "F10 Reverse Ledger Entry (error: twice)", "POST", "/api/v1/customers/ledger-entries/{{adjustmentEntryId}}/reverse",
    body={"reason": "Twice"}, status=409, status_text="Conflict",
-   resp={"error": {"code": "ALREADY_REVERSED", "message": "This entry has already been reversed"}},
+   resp=ERR("ALREADY_REVERSED", "This entry has already been reversed"),
    expect_error={"status": 409, "code": "ALREADY_REVERSED"})
 
-ep(C, "Reclassify Customer (today)", "POST", "/api/v1/customers/{{customerId}}/reclassifications",
-   body={"toType": "SPECIAL_CUSTOMER", "reason": "MET_PURCHASE_VOLUME", "note": "Crossed 5m in 90 days", "effectiveFrom": "{{today}}"},
-   resp={"data": {"id": "{{reclassificationId}}", "customerId": "{{customerId}}", "customerCode": "CU-1", "customerName": "Chidi Nwosu",
-                  "fromType": "ORDINARY_CUSTOMER", "toType": "SPECIAL_CUSTOMER", "direction": "PROMOTION", "reason": "MET_PURCHASE_VOLUME",
-                  "note": "Crossed 5m in 90 days", "effectiveFrom": "2026-10-08", "status": "APPLIED", "fromCreditLimit": 0.00,
-                  "toCreditLimit": 0.00, "toDealerCategoryName": None, "walletBalanceCarriedOver": 0.00, "authorisedByUserId": "{{userId}}",
-                  "appliedAt": NOW, "createdAt": NOW}},
+# ---- G. Reclassification (promotion / demotion) ----
+ep(C, "G1 Reclassify Customer (today)", "POST", "/api/v1/customers/{{customerId}}/reclassifications",
+   body={"toType": "SPECIAL_CUSTOMER", "reason": "MET_PURCHASE_VOLUME", "note": "Crossed N5m in 90 days", "effectiveFrom": "{{today}}"},
+   resp={"data": RECLASS},
    tests=["const json = pm.response.json();", "pm.test('applied immediately', () => pm.expect(json.data.status).to.eql('APPLIED'));"],
-   desc="Perm customers.reclassify. effectiveFrom today applies now; a future date schedules it (applied by the hourly job once due). Wallet always carries over.")
+   desc="Perm customers.reclassify. effectiveFrom today applies at once (APPLIED); a future date is SCHEDULED and applied automatically once due. "
+        "The wallet always carries over. Promoting to AUTHORISED_DEALER needs toDealerCategoryId; toCreditLimit is optional "
+        "(defaults: dealer = category suggestion, walk-in = 0, otherwise unchanged). reason: SUSTAINED_SALES_PERFORMANCE | MET_PURCHASE_VOLUME | "
+        "COMPLIANCE_CONCERN | PAYMENT_ARREARS | PROLONGED_INACTIVITY | MANAGEMENT_DECISION.")
 
-ep(C, "Schedule Reclassification", "POST", "/api/v1/customers/{{customerId}}/reclassifications",
+ep(C, "G2 Reclassify Customer (error: same type)", "POST", "/api/v1/customers/{{customerId}}/reclassifications",
+   body={"toType": "SPECIAL_CUSTOMER", "reason": "MANAGEMENT_DECISION", "effectiveFrom": "{{today}}"},
+   status=400, status_text="Bad Request", resp=ERR("RECLASSIFICATION_SAME_TYPE", "The customer already has this type"),
+   expect_error={"status": 400, "code": "RECLASSIFICATION_SAME_TYPE"})
+
+ep(C, "G3 Reclassify Customer (error: deposit not settled)", "POST", "/api/v1/customers/{{specialId}}/reclassifications",
+   body={"toType": "ORDINARY_CUSTOMER", "reason": "PAYMENT_ARREARS", "effectiveFrom": "{{today}}"},
+   status=409, status_text="Conflict",
+   resp=ERR("DEPOSIT_MUST_BE_SETTLED", "Draw or refund the deposit before moving this customer away from Special Customer"),
+   expect_error={"status": 409, "code": "DEPOSIT_MUST_BE_SETTLED"},
+   desc="The special customer holds a 10,000 deposit (F4), so they can't leave Special Customer until it's drawn or refunded.")
+
+ep(C, "G4 Schedule Reclassification", "POST", "/api/v1/customers/{{customerId}}/reclassifications",
    body={"toType": "ORDINARY_CUSTOMER", "reason": "PROLONGED_INACTIVITY", "effectiveFrom": "2099-01-01"},
-   resp={"data": {"id": "{{reclassificationId}}", "status": "SCHEDULED", "fromType": "SPECIAL_CUSTOMER", "toType": "ORDINARY_CUSTOMER", "direction": "DEMOTION"}},
-   tests=["const json = pm.response.json();", "pm.collectionVariables.set('reclassificationId', json.data.id);"])
+   resp={"data": dict(RECLASS, status="SCHEDULED", fromType="SPECIAL_CUSTOMER", toType="ORDINARY_CUSTOMER", direction="DEMOTION",
+                      reason="PROLONGED_INACTIVITY", note=None, effectiveFrom="2099-01-01", appliedAt=None)},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('reclassificationId', json.data.id);",
+          "pm.test('scheduled', () => pm.expect(json.data.status).to.eql('SCHEDULED'));"])
 
-ep(C, "Cancel Scheduled Reclassification", "DELETE", "/api/v1/customers/{{customerId}}/reclassifications/{{reclassificationId}}",
-   resp={"data": {"id": "{{reclassificationId}}", "status": "CANCELLED"}})
+ep(C, "G5 Schedule Reclassification (error: one already pending)", "POST", "/api/v1/customers/{{customerId}}/reclassifications",
+   body={"toType": "NO_CREDIT_WALKIN", "reason": "PAYMENT_ARREARS", "effectiveFrom": "2099-02-01"},
+   status=409, status_text="Conflict", resp=ERR("RECLASSIFICATION_PENDING", "A reclassification is already scheduled for this customer"),
+   expect_error={"status": 409, "code": "RECLASSIFICATION_PENDING"},
+   desc="Only one scheduled reclassification per customer; cancel it first (G6).")
 
-ep(C, "List Reclassifications", "GET", "/api/v1/customers/reclassifications",
+ep(C, "G6 Cancel Scheduled Reclassification", "DELETE", "/api/v1/customers/{{customerId}}/reclassifications/{{reclassificationId}}",
+   resp={"data": dict(RECLASS, status="CANCELLED", fromType="SPECIAL_CUSTOMER", toType="ORDINARY_CUSTOMER", direction="DEMOTION",
+                      effectiveFrom="2099-01-01", appliedAt=None)},
+   tests=["const json = pm.response.json();", "pm.test('cancelled', () => pm.expect(json.data.status).to.eql('CANCELLED'));"],
+   desc="Only SCHEDULED ones can be cancelled; the row is kept in the history.")
+
+ep(C, "G7 List Reclassifications", "GET", "/api/v1/customers/reclassifications",
    query=[{"key": "customerId", "value": "{{customerId}}"}],
-   resp=PAGE([{"id": "{{reclassificationId}}", "status": "CANCELLED"}]),
-   desc="History. Filters: customerId, direction, fromType, toType, reason, status, effectiveFrom range; q = customer code/name, note.")
+   resp=PAGE([dict(RECLASS, status="CANCELLED"), RECLASS]),
+   tests=["const json = pm.response.json();", "pm.test('both kept in history', () => pm.expect(json.data.totalItems).to.eql(2));"],
+   desc="History, newest effective date first. Filters: customerId, direction, fromType, toType, reason, status, effectiveFrom (range/period), "
+        "authorisedBy, createdAt; q = customer code or name, note.")
 
-ep(C, "Set Customer Status (WATCH)", "PUT", "/api/v1/customers/{{customerId}}/status",
+ep(C, "G8 Search Reclassifications (advanced)", "POST", "/api/v1/customers/reclassifications/search",
+   body={"filter": {"all": [{"field": "direction", "op": "eq", "value": "PROMOTION"}, {"field": "status", "op": "eq", "value": "APPLIED"}]}},
+   resp=PAGE([RECLASS]))
+
+ep(C, "G9 Reclassification Filter Metadata", "GET", "/api/v1/customers/reclassifications/filters",
+   resp={"data": {"fields": [], "collections": [], "primaryDate": "effectiveFrom", "defaultSort": [{"field": "effectiveFrom", "dir": "desc"}], "periodPresets": []}})
+
+# ---- H. Status ----
+ep(C, "H1 Set Customer Status (WATCH)", "PUT", "/api/v1/customers/{{customerId}}/status",
    body={"status": "WATCH", "reason": "Two late payments"},
    resp={"data": dict(CUST, type="SPECIAL_CUSTOMER", status="WATCH", statusReason="Two late payments")},
-   desc="WATCH <-> ACTIVE needs customers.manage; anything involving SUSPENDED needs customers.dealers.manage; REMOVED can't be set by hand.")
+   desc="status=ACTIVE|WATCH|SUSPENDED, reason required. WATCH <-> ACTIVE needs customers.manage; anything involving SUSPENDED needs "
+        "customers.dealers.manage. WATCH is a warning badge only; SUSPENDED blocks sales and wallet movements.")
 
-ep(C, "Set Customer Status (REMOVED)", "PUT", "/api/v1/customers/{{customerId}}/status",
+ep(C, "H2 Set Customer Status (error: REMOVED)", "PUT", "/api/v1/customers/{{customerId}}/status",
    body={"status": "REMOVED", "reason": "Not allowed"}, status=409, status_text="Conflict",
-   resp={"error": {"code": "INVALID_STATUS_TRANSITION", "message": "Cannot change status from WATCH to REMOVED"}},
-   expect_error={"status": 409, "code": "INVALID_STATUS_TRANSITION"})
+   resp=ERR("INVALID_STATUS_TRANSITION", "Cannot change status from WATCH to REMOVED", {"from": "WATCH", "to": "REMOVED"}),
+   expect_error={"status": 409, "code": "INVALID_STATUS_TRANSITION"},
+   desc="REMOVED is set only automatically (a temporary walk-in whose wallet is fully spent).")
 
-ep(C, "List Correspondents", "GET", "/api/v1/customers/correspondents",
-   query=[{"key": "status", "value": "ASSIGNED"}],
-   resp={"data": [CORR]},
-   desc="Unpaged. Query: q, status, region, locationId, userLinked, hasCustomers, sort (name, customerCount, dealerCount, assignedAt).")
+ep(C, "H3 Suspend Dealer", "PUT", "/api/v1/customers/{{dealerId}}/status",
+   body={"status": "SUSPENDED", "reason": "Cheque bounced"},
+   resp={"data": dict(DEALER, status="SUSPENDED", statusReason="Cheque bounced")})
 
-ep(C, "Correspondent's Customers", "GET", "/api/v1/customers/correspondents/{{correspondentId}}/customers",
-   resp=PAGE([SUMMARY]))
+ep(C, "H4 Wallet Adjustment (error: suspended customer)", "POST", "/api/v1/customers/{{dealerId}}/wallet-adjustments",
+   body={"balanceType": "WALLET", "direction": "CREDIT", "amount": 100, "reason": "Should be blocked"},
+   status=409, status_text="Conflict",
+   resp=ERR("CUSTOMER_NOT_ACTIVE", "This customer is SUSPENDED and cannot be transacted with", {"status": "SUSPENDED"}),
+   expect_error={"status": 409, "code": "CUSTOMER_NOT_ACTIVE"})
 
-ep(C, "De-assign Correspondent", "POST", "/api/v1/customers/correspondents/{{correspondentId}}/de-assign",
+ep(C, "H5 Reactivate Dealer", "PUT", "/api/v1/customers/{{dealerId}}/status",
+   body={"status": "ACTIVE", "reason": "Cheque cleared"},
+   resp={"data": dict(DEALER, statusReason="Cheque cleared")})
+
+# ---- I. Rules that span records ----
+ep(C, "I1 Deactivate Dealer Category (error: in use)", "PUT", "/api/v1/customers/dealer-categories/{{goldCategoryId}}/status",
+   body={"status": "INACTIVE"}, status=409, status_text="Conflict",
+   resp=ERR("CATEGORY_IN_USE", "This category is used by 1 dealer(s)", {"dealers": "1"}),
+   expect_error={"status": 409, "code": "CATEGORY_IN_USE"},
+   desc="Gold is used by the dealer from D1.")
+
+ep(C, "I2 Correspondent's Customers", "GET", "/api/v1/customers/correspondents/{{correspondentId}}/customers",
+   resp=PAGE([SUMMARY]),
+   tests=["const json = pm.response.json();",
+          "pm.test('the dealer belongs to this correspondent', () => pm.expect(json.data.items.map(c => c.id)).to.include(pm.collectionVariables.get('dealerId')));"],
+   desc="Same filters, search and paging as the customer list, fixed to one correspondent.")
+
+ep(C, "I3 De-assign Correspondent", "POST", "/api/v1/customers/correspondents/{{correspondentId}}/de-assign",
    body={"note": "Left the company"},
    resp={"data": {"correspondent": dict(CORR, status="DE_ASSIGNED", region=None, locationId=None, locationName=None, assignedAt=None),
-                  "history": [], "affectedCustomers": 1}},
+                  "history": [dict(HISTORY_ROW, action="DE_ASSIGNED", note="Left the company"), HISTORY_ROW], "affectedCustomers": 1}},
    tests=["const json = pm.response.json();", "pm.test('reports linked customers', () => pm.expect(json.data.affectedCustomers).to.eql(1));"],
-   desc="Linked customers keep the link (history stays attributable) but the correspondent earns no new sales credit.")
+   desc="ASSIGNED -> DE_ASSIGNED. Linked customers keep the link so past sales stay attributed, but the correspondent earns no credit for new sales; "
+        "affectedCustomers tells the UI how many customers to offer re-linking for. Assign again with C4's endpoint.")
 
-ep(C, "Global Search", "GET", "/api/v1/search",
-   query=[{"key": "q", "value": "{{dealerCode}}"}],
-   resp={"data": {"groups": [{"type": "customer", "label": "Customers", "hits": [{"type": "customer", "id": "{{dealerId}}",
-                  "title": "Okafor & Sons Distribution", "subtitle": "DLR-1 · Gold · …7781", "ref": "DLR-1", "route": "/customers/{{dealerId}}"}],
-                  "more": False, "moreRoute": "/customers?q=DLR-1"}], "timedOut": []}},
-   tests=["const json = pm.response.json();",
-          "pm.test('exact reference is the single hit', () => pm.expect(json.data.groups[0].hits[0].id).to.eql(pm.collectionVariables.get('dealerId')));"],
-   desc="Header search box across every module the caller can access (docs/03 section 4.7). An exact reference jumps straight to that record.")
+ep(C, "I4 De-assign Correspondent (error: already de-assigned)", "POST", "/api/v1/customers/correspondents/{{correspondentId}}/de-assign",
+   body={}, status=409, status_text="Conflict",
+   resp=ERR("INVALID_STATUS_TRANSITION", "Cannot change status from DE_ASSIGNED to DE_ASSIGNED", {"from": "DE_ASSIGNED", "to": "DE_ASSIGNED"}),
+   expect_error={"status": 409, "code": "INVALID_STATUS_TRANSITION"})
+
+# ---- J. Self-service ----
+ep(C, "J1 My Customer Record (self-service)", "GET", "/api/v1/customers/me",
+   status=404, status_text="Not Found", resp=ERR("CUSTOMER_NOT_FOUND", "Customer not found"),
+   expect_error={"status": 404, "code": "CUSTOMER_NOT_FOUND"},
+   desc="For dealer/customer logins (perm customers.self.read): returns the customer record whose userId is the caller. The collection's admin "
+        "isn't linked to a customer, so this returns 404 here. To try it for real: invite a user (folder 02), set that user's id as userId on a "
+        "customer (D10), log in as them and call this.")
+
+ep(C, "J2 My Ledger (self-service)", "GET", "/api/v1/customers/me/ledger",
+   query=[{"key": "balanceType", "value": "WALLET"}],
+   status=404, status_text="Not Found", resp=ERR("CUSTOMER_NOT_FOUND", "Customer not found"),
+   expect_error={"status": 404, "code": "CUSTOMER_NOT_FOUND"},
+   desc="The caller's own wallet/deposit history; same shape and query as F5.")
 
 print(f"TOTAL ENDPOINTS: {len(ENDPOINTS)}")
 
@@ -982,6 +1243,20 @@ def pm_request_item(e, with_examples=True):
         item["response"] = [example]
     return item
 
+FOLDER_DESCRIPTIONS = {
+    "12 - Customers": (
+        "Customers & Distributors (backend docs/04). Needs 01 - Auth > Register Tenant first (for the token); everything else this folder "
+        "needs it creates itself, so it can be run on its own right after Register Tenant.\n\n"
+        "Run top to bottom - requests are lettered by area and each one sets up the next:\n"
+        "A setup (a home location) - B dealer categories - C correspondents - D registering customers of every type - "
+        "E search, filters and pickers - F wallet/deposit ledger, adjustments, reversals - G promotion/demotion - H status - "
+        "I rules that span records - J dealer self-service.\n\n"
+        "Requests marked \"(error: ...)\" deliberately break a business rule and assert the exact error code, so a full run is all green. "
+        "Captured variables: customerLocationId, today, goldCategoryId, diamondCategoryId, correspondentId, correspondent2Id, dealerId, "
+        "dealerName, dealerCode, customerId, specialId, walkinId, adjustmentEntryId, reclassificationId."
+    ),
+}
+
 def build_collection():
     folders = {}
     order = []
@@ -991,7 +1266,8 @@ def build_collection():
             order.append(e["folder"])
         folders[e["folder"]].append(pm_request_item(e))
 
-    items = [{"name": f, "item": folders[f]} for f in order]
+    items = [dict({"name": f, "item": folders[f]}, **({"description": FOLDER_DESCRIPTIONS[f]} if f in FOLDER_DESCRIPTIONS else {}))
+             for f in order]
 
     collection_vars = [
         "tenantId", "userId", "accessToken", "refreshToken", "childTenantId",
@@ -1004,6 +1280,7 @@ def build_collection():
         "tradeOfferId",
         "customerLocationId", "today", "goldCategoryId", "diamondCategoryId", "correspondentId",
         "dealerId", "dealerName", "dealerCode", "customerId", "adjustmentEntryId", "reclassificationId",
+        "correspondent2Id", "specialId", "walkinId",
     ]
 
     collection = {

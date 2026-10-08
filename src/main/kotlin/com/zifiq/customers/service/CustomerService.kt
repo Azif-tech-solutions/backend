@@ -209,7 +209,7 @@ class CustomerService(
     fun convertTemporary(id: UUID, request: CustomerRequest): CustomerDetail = tx.execute {
         val row = support.row(id, forUpdate = true)
         if (!row[CustomersTable.isTemporary] || row[CustomersTable.status] != CustomerStatus.ACTIVE.name) {
-            throw ApiErrors.invalidStatusTransition(if (row[CustomersTable.isTemporary]) row[CustomersTable.status] else "REGISTERED", "REGISTERED")
+            throw ApiErrors.notConvertible(if (row[CustomersTable.isTemporary]) row[CustomersTable.status] else "already registered")
         }
         val type = request.type!!
         if (type == CustomerType.AUTHORISED_DEALER) support.require("customers.dealers.manage")

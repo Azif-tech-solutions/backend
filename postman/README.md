@@ -11,81 +11,123 @@ History, Menu, Process Guide, Showroom, and Electronic Invoicing's own
 generate/deliver/history endpoints) still return hardcoded mock data
 server-side with no real tables behind them, so they're intentionally left
 out of this collection. They'll get added here once each one is built out
-for real, the same way Factory and Inventory were.
+for real, the same way Factory, Inventory and Customers were.
 
 ## Setup
 
-1. Start Postgres and the app locally (see the main `README.md` /
-   `compose.yaml` at the repo root).
-2. Import both files into Postman:
+1. Import into Postman (File > Import):
    - `ZifIQ-API.postman_collection.json`
-   - `ZifIQ-Local.postman_environment.json`
-3. Select the **ZifIQ Local** environment (defaults `baseUrl` to
-   `http://localhost:8080`).
+   - `ZifIQ-Local.postman_environment.json` — `baseUrl` = `http://localhost:8080`
+   - `ZifIQ-Dev.postman_environment.json` — `baseUrl` = the dev server
+     (`http://16.192.105.205:8080`), which always runs the latest `main`
+2. Pick the environment in the top-right environment selector:
+   **ZifIQ Local** to test your own machine (start Postgres and the app first,
+   see the main `README.md` / `compose.yaml`), or **ZifIQ Dev (EC2)** to test
+   the deployed server with nothing running locally.
 
 ## Running it
 
 Run folders **01 through 12 in order**, either by hand or with the
 Collection Runner. Each request's Tests script captures tokens and
 created-entity IDs (tenant id, access token, factory id, stock item ids,
-recipe id, costing id, etc.) into collection variables that later requests
-reuse automatically — nothing needs to be copy-pasted between requests.
+recipe id, costing id, customer ids, etc.) into collection variables that
+later requests reuse automatically — nothing needs to be copy-pasted between
+requests.
 
-Two requests are deliberately order-sensitive and documented inline:
+Every run starts with **01 - Auth > Register Tenant**, which creates a brand
+new company with a unique admin e-mail, so each run works in its own empty
+tenant and never collides with earlier data.
+
+Some requests are deliberately order-sensitive and documented inline:
 - **08 - Inventory Operations > Post Quantity Adjustment (above threshold,
   OTP-gated)** needs the **03 - OTP** folder (request → issue → verify) run
   first, or it returns `403 OTP_REQUIRED`.
 - **10 - Factory Trading > Offer Trade** needs stock to actually exist at
   the *source* location, so run **07 - Inventory Stock** and
   **06 - Factory Setup > Create Second Factory** first.
-
-**04 - VAT Control > Select Tenant VAT Categories** needs to run before any
-**07 - Inventory Stock** registration request — a stock item's
-`vatCategoryId` must already be in the tenant's active set, or registration
-fails with `VAT_CATEGORY_NOT_ACTIVE`.
+- **04 - VAT Control > Select Tenant VAT Categories** needs to run before any
+  **07 - Inventory Stock** registration request — a stock item's
+  `vatCategoryId` must already be in the tenant's active set, or
+  registration fails with `VAT_CATEGORY_NOT_ACTIVE`.
 
 Every request also carries one saved example response showing the exact
-`ApiEnvelope<T>` / `ApiErrorEnvelope` wire shape it returns.
+`ApiEnvelope<T>` / `ApiErrorEnvelope` wire shape it returns, and a
+description of what it does, its permission, and the optional
+query/body fields it accepts.
 
-## Re-running without resetting the database
+## Testing the Customers module (folder 12)
 
-**Register Tenant** generates a unique admin email every send
-(`admin-{{$guid}}@apex.com`) and its Tests script captures whatever email
-actually got registered into the `registeredEmail`/`registeredPassword`
-collection variables. **Login**, **Forgot Password**, and **Change
-Password** all read those variables back instead of a hardcoded literal, so
-the whole 01 - Auth chain stays internally consistent run after run without
-needing to edit anything by hand or wipe Postgres between passes.
+Folder **12 - Customers** covers every Customers endpoint (64 requests). It
+only needs a logged-in admin, so the quickest way to test it is:
 
-Every request's Tests script only reads `response.data` inside an
-`if (pm.response.code is 2xx)` guard, so a single failed/conflicting request
-(e.g. hitting an endpoint a second time against data a previous run already
-created) fails that request's own tests cleanly instead of throwing an
-uncaught script error that aborts the rest of the Collection Runner.
+1. Run **01 - Auth > Register Tenant** (this logs you in as the new company's
+   Administrator, who holds every permission).
+2. Run the **12 - Customers** folder top to bottom: right-click the folder >
+   **Run folder**, or click through the requests in order.
 
-Requests past 01 - Auth are not similarly randomized (e.g. Register Factory,
-Register Supplier) — running the full collection twice in a row against the
-same database will hit real uniqueness constraints on those. For a clean
-repeat run, drop and recreate the local Postgres database (or
-`docker compose down -v` if you're using the root `compose.yaml`) before
-re-running past folder 01.
+The requests are lettered by area, and each one sets up what the next needs:
+
+| Section | What it shows |
+|---|---|
+| **A** Setup | Creates an ACTIVE home location and stores `{{today}}` |
+| **B** Dealer categories | The four defaults every company gets (Platinum, Gold, Silver, Bronze); create, edit, deactivate |
+| **C** Correspondents | Register and assign in one step, register unassigned, assign, reassign, edit, detail with history, list, picker |
+| **D** Customers | Register a dealer, ordinary, special and walk-in customer; get, edit, link a correspondent |
+| **E** Search | `q` with facets and highlighting, phone search in any format, simple filters, filter metadata, stats, the picker, global search |
+| **F** Wallet ledger | Admin adjustments, a deposit on a Special Customer, the ledger with opening/closing balances, search by ledger history, reversal |
+| **G** Reclassification | Promote today, schedule a future change, cancel it, history and search |
+| **H** Status | WATCH, SUSPENDED (blocks wallet movements), back to ACTIVE |
+| **I** Cross-record rules | A category in use can't be deactivated; a correspondent's customers; de-assigning a correspondent |
+| **J** Self-service | `/customers/me` and `/customers/me/ledger` for dealer logins |
+
+Requests named **"(error: …)"** deliberately break a business rule and
+assert the exact error code (for example `409 DUPLICATE_NAME`,
+`400 INSUFFICIENT_WALLET_BALANCE`, `409 DEPOSIT_MUST_BE_SETTLED`), so a full
+run is all green. The **Test Results** tab shows what each request checked.
+
+Things to try by hand after a run (all ids are already in the collection
+variables):
+- **E1 Search Customers**: change `q` to a misspelling such as `okafr`, a bare
+  code number such as `1`, a qualifier such as `type:special`, or
+  `"okafor & sons"` in quotes.
+- **E3 Filter Customers**: combine filters such as `status=ACTIVE`,
+  `hasCorrespondent=true`, `walletBalance.gt=0` or `period=THIS_MONTH`.
+  **E5 Customer Filter Metadata** lists every filter you can use.
+- **F5 Customer Ledger**: add `from`/`to` dates to see the opening and
+  closing balances change.
+- **G1 Reclassify Customer**: set `effectiveFrom` to a future date to
+  schedule instead of applying now.
+
+Not covered here, because they need another module or a second login:
+- **Temporary walk-in customers** are created automatically by Showroom
+  returns (not built yet); D12 shows the convert endpoint refusing a customer
+  that's already registered.
+- **What other roles can see** (a correspondent seeing only their own
+  customers, single-location staff seeing only their location, a dealer
+  seeing only their own record) needs extra users. Invite one in folder 02,
+  log in as them, and call the Customers list. These rules are also covered
+  by the backend's automated tests.
 
 ## Running it headless (Newman)
 
 The whole collection can also be run end-to-end from the command line with
 [Newman](https://www.npmjs.com/package/newman), Postman's CLI runner —
-useful for a quick self-check against a fresh backend without opening the
-Postman app:
+useful for a quick self-check without opening the Postman app:
 
 ```sh
-npx newman run ZifIQ-API.postman_collection.json -e ZifIQ-Local.postman_environment.json
+# everything, against your machine
+npx newman run postman/ZifIQ-API.postman_collection.json -e postman/ZifIQ-Local.postman_environment.json
+
+# just Customers (Auth first, for the token), against the dev server
+npx newman run postman/ZifIQ-API.postman_collection.json -e postman/ZifIQ-Dev.postman_environment.json \
+  --folder "01 - Auth" --folder "12 - Customers"
 ```
 
-A clean run reports `114/114` requests passing, `0` failures. Several requests are
-*deliberately* run against a state that makes them error — not bugs, but
-real error paths demonstrated on purpose — so each gets its own
-status+error-code assertion instead of the generic one every other request
-uses, documented inline on the request itself:
+A clean full run reports `147/147` requests and `168/168` assertions
+passing. Several requests are *deliberately* run against a state that makes
+them fail. These are not bugs: they demonstrate real error paths on purpose,
+so each gets its own status + error-code assertion instead of the generic
+one every other request uses, documented inline on the request itself:
 - **01 - Auth > Reset Password** — asserts `400 INVALID_RESET_TOKEN`, since
   the collection uses a placeholder token (`RST-482913`); the real one
   lives in `notification_outbox`.
@@ -93,23 +135,15 @@ uses, documented inline on the request itself:
   ALREADY_DECIDED`, since it deliberately runs against the same costing
   **Approve Costing** just approved, to demonstrate the mutual-exclusion
   check.
-- **12 - Customers** — *Register Correspondent (unknown region)* `400
-  INVALID_REGION`, *Register Dealer (duplicate name)* `409 DUPLICATE_NAME`,
-  *Wallet Adjustment (overdraw)* `400 INSUFFICIENT_WALLET_BALANCE`,
-  *Reverse Ledger Entry (again)* `409 ALREADY_REVERSED` and *Set Customer
-  Status (REMOVED)* `409 INVALID_STATUS_TRANSITION` each demonstrate a
-  business rule.
-
-**12 - Customers** creates its own ACTIVE home location first (folder 06
-deliberately leaves `{{factoryId}}` SUSPENDED) and captures `{{today}}` in
-the tenant's default timezone for the immediate reclassification.
+- **12 - Customers** — every request named "(error: …)".
 
 ## Editing the collection
 
 The collection is generated — don't hand-edit the JSON. Add or change
 requests in `generate_collection.py` (one `ep(...)` call per request: method,
 path, body, example response, capture scripts, and `expect_error` for
-deliberate error paths), then run:
+deliberate error paths; folder descriptions live in `FOLDER_DESCRIPTIONS`),
+then run:
 
 ```sh
 python postman/generate_collection.py
