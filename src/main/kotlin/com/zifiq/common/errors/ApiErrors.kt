@@ -108,4 +108,26 @@ object ApiErrors {
 
     // ---- Location Access ----
     fun locationAccessDenied() = ApiException(HttpStatus.FORBIDDEN, ErrorCode.LOCATION_ACCESS_DENIED, "You are not assigned to this location")
+
+    // ---- Search, filters, paging, saved views ----
+    fun invalidFilter(field: String, reason: String, allowed: Collection<String> = emptyList()) = ApiException(
+        HttpStatus.BAD_REQUEST,
+        ErrorCode.INVALID_FILTER,
+        "Invalid filter on '$field': $reason",
+        buildMap {
+            put("field", field)
+            put("reason", reason)
+            if (allowed.isNotEmpty()) put("allowed", allowed.sorted().joinToString(","))
+        },
+    )
+    fun filterTooComplex(limit: String) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.FILTER_TOO_COMPLEX, "The filter is too complex ($limit)")
+    fun invalidSortField(field: String, allowed: Collection<String>) = ApiException(
+        HttpStatus.BAD_REQUEST,
+        ErrorCode.INVALID_SORT_FIELD,
+        "Cannot sort by '$field'",
+        mapOf("field" to field, "allowed" to allowed.sorted().joinToString(",")),
+    )
+    fun pageSizeTooLarge(max: Int) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.PAGE_SIZE_TOO_LARGE, "Page size must be between 1 and $max")
+    fun searchTimeout() = ApiException(HttpStatus.REQUEST_TIMEOUT, ErrorCode.SEARCH_TIMEOUT, "The search took too long — narrow the filters or date range and try again")
+    fun viewNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.VIEW_NOT_FOUND, "Saved view not found")
 }

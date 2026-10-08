@@ -2,6 +2,7 @@ package com.zifiq.platform.api
 
 import com.zifiq.common.errors.ApiErrors
 import jakarta.validation.ConstraintViolationException
+import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.slf4j.LoggerFactory
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
@@ -56,6 +57,18 @@ class GlobalExceptionHandler {
     fun handleAccessDenied(exception: AccessDeniedException): ResponseEntity<ApiErrorEnvelope> =
         toResponse(ApiErrors.accessDenied())
 
+    /**
+     * SQLSTATE 57014 (query_canceled) is what PostgreSQL raises when a search exceeds the
+     * transaction-local statement_timeout set by `Paging.limitStatementTime` — a user-fixable
+     * "narrow your filters", not a server fault. Every other database error stays an internal error.
+     */
+    @ExceptionHandler(ExposedSQLException::class)
+    fun handleDatabaseError(exception: ExposedSQLException): ResponseEntity<ApiErrorEnvelope> {
+        if (exception.sqlState == QUERY_CANCELED_SQLSTATE) return toResponse(ApiErrors.searchTimeout())
+        logger.error("Unhandled database failure", exception)
+        return toResponse(ApiErrors.internalError())
+    }
+
     @ExceptionHandler(Exception::class)
     fun handleUnexpected(exception: Exception): ResponseEntity<ApiErrorEnvelope> {
         logger.error("Unhandled request failure", exception)
@@ -66,3 +79,5 @@ class GlobalExceptionHandler {
         ResponseEntity.status(exception.status)
             .body(ApiErrorEnvelope(error = ApiError(exception.code, exception.message, exception.details)))
 }
+
+private const val QUERY_CANCELED_SQLSTATE = "57014"

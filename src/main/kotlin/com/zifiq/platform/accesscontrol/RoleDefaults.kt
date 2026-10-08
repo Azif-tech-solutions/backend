@@ -28,6 +28,7 @@ object RoleDefaults {
             "showroom.stock.read",
             "accounting.read",
             "cashier.sales.read",
+            "settings.views.share",
         ),
         ACCOUNTS_PERSONNEL to setOf(
             "accounting.read",

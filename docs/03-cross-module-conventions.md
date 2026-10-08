@@ -330,7 +330,7 @@ Response:
             "nextCursor": "eyJ…", "facets": { … }, "summary": { … },
             "meta": { "appliedFilters": [ … ], "ignoredQualifiers": [], "suggestions": [], "matches": {} } } }
 ```
-`totalItems` is exact up to 10,000. Beyond that it is the planner's estimate with `totalIsEstimate: true`, so a count never becomes the slow part of a search. `common.paging.PageRequest` / `PageResult<T>` implement this once. Every paged endpoint is marked **[paged]** in its module doc.
+`totalItems` is exact up to 10,000. Beyond that the count stops at 10,000 and `totalIsEstimate: true` means "10,000 or more", so a count never becomes the slow part of a search. A capped `count(*)` is used instead of the planner's row estimate, which can be wildly off on filtered queries. `common.paging.PageRequest` / `PageResult<T>` implement this once. Every paged endpoint is marked **[paged]** in its module doc.
 
 Small, bounded reference lists (categories, units, bank accounts, expense categories, dealer categories, VAT categories, NRS reference data, locations) stay unpaged: `{"data": [...]}`, as today. Shipped endpoints keep their response shape. When the first paged endpoint ships, add a "Paged responses" section to `frontend-integration.md`.
 
