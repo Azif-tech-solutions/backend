@@ -10,3 +10,13 @@
 # any class references org.springframework.web.servlet.view.xslt.
 # Remove when Spring publishes a 6.2.x fix, or when the Spring Boot 4 upgrade lands.
 CVE-2026-47884 exp:2026-11-30
+
+# CVE-2026-47890 — spring-webmvc/webflux SSE stream corruption (CRLF) when rendering view
+# fragments (CRITICAL, CVSS 9.8). Affects OSS Spring Framework 6.2.0-6.2.19; 6.2.20 is
+# Enterprise-only, the open-source fix is 7.0.9 (Spring Boot 4).
+# Exploitable only when an application streams Server-Sent Events built from rendered view
+# fragments (FragmentsRendering) containing attacker data. This service is a JSON-only REST API:
+# no SSE endpoints, no view rendering. Enforced by NoSseFragmentsArchitectureTest, which fails the
+# build if any class references SseEmitter, ServerSentEvent or FragmentsRendering.
+# Remove when the Spring Boot 4 upgrade lands.
+CVE-2026-47890 exp:2026-11-30
