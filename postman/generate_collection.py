@@ -1185,6 +1185,8 @@ def pm_body(body):
         return None
     return {"mode": "raw", "raw": json.dumps(body, indent=2), "options": {"raw": {"language": "json"}}}
 
+BEARER_AUTH = {"type": "bearer", "bearer": [{"key": "token", "value": "{{accessToken}}", "type": "string"}]}
+
 def pm_request_item(e, with_examples=True):
     item = {
         "name": e["name"],
@@ -1198,8 +1200,12 @@ def pm_request_item(e, with_examples=True):
         item["request"]["description"] = e["desc"]
     if e["body"] is not None:
         item["request"]["body"] = pm_body(e["body"])
+    # Set explicitly on every request rather than inherited from the collection, so each request's
+    # Authorization tab shows Bearer {{accessToken}} and it still works when run, copied or exported on its own.
     if e["auth"] == "noauth":
         item["request"]["auth"] = {"type": "noauth"}
+    else:
+        item["request"]["auth"] = BEARER_AUTH
     custom_tests = e["tests"]
     if custom_tests:
         # Auto-guard every capture script against non-2xx responses so a single failed/conflicting
@@ -1289,10 +1295,7 @@ def build_collection():
             "description": "Local test collection for the ZifIQ Kotlin/Spring Boot backend -- covers only the modules with real persistence and business logic (Auth, Tenants & Members, OTP, VAT Control, Settings, Factory Setup, Factory Production, Factory Trading, Inventory Stock, Inventory Operations, NRS Reference Data, Customers). The remaining scaffolded modules (Account, AI, Barcode, Cashier, History, Invoicing, Menu, Process Guide, Showroom) still return hardcoded mock data server-side and are intentionally excluded until they're built out for real. Run folders top-to-bottom in order (01 through 12) -- each request's Tests script captures IDs/tokens into collection variables that later requests reuse, so the whole collection can be run end-to-end with Postman's Collection Runner with no manual edits. See docs/00-02 in the backend repo for the full design spec these endpoints implement.",
             "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
         },
-        "auth": {
-            "type": "bearer",
-            "bearer": [{"key": "token", "value": "{{accessToken}}", "type": "string"}],
-        },
+        "auth": BEARER_AUTH,
         "event": [],
         "variable": [{"key": v, "value": "", "type": "string"} for v in collection_vars],
         "item": items,

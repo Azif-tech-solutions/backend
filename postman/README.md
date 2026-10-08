@@ -25,6 +25,20 @@ for real, the same way Factory, Inventory and Customers were.
    see the main `README.md` / `compose.yaml`), or **ZifIQ Dev (EC2)** to test
    the deployed server with nothing running locally.
 
+## Authorization
+
+Every request except the five public ones in **01 - Auth** (Register
+Tenant, Login, Refresh Token, Forgot Password, Reset Password) has its
+Authorization tab set to **Bearer Token** = `{{accessToken}}`.
+
+`accessToken` is a collection variable (collection > **Variables** tab).
+**Register Tenant**, **Login** and **Refresh Token** fill it in
+automatically, so after running one of them every other request is signed
+in. To use a token you got some other way, paste it into the
+`accessToken` value on that Variables tab. Tokens expire after an hour; run
+**Login** or **Refresh Token** again to get a new one (a `401` response
+means it has expired).
+
 ## Running it
 
 Run folders **01 through 12 in order**, either by hand or with the
