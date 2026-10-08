@@ -1,15 +1,14 @@
-package com.zifiq.factory.model
+package com.zifiq.platform.tenancy.model
 
 import com.zifiq.platform.identity.model.AppUsersTable
-import com.zifiq.platform.tenancy.model.TenantsTable
 import java.math.BigDecimal
 import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.javatime.timestamp
 
 /**
- * Factory Setup > Factories (docs/02-factory.md). The `type` column is retained for future reuse
- * (e.g. if Showroom locations end up sharing this table once the Showroom module is built), but
- * this module's own service/DTOs only ever deal with type='FACTORY' rows.
+ * Every business location: factories and showrooms (V3__locations_and_rbac_expansion.sql). Owned by
+ * platform because every module needs it (docs/03 §11.1); Factory Setup manages FACTORY rows and
+ * Showroom manages SHOWROOM rows.
  */
 object LocationsTable : UUIDTable("locations") {
     val tenantId = reference("tenant_id", TenantsTable)

@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "ZifIQ Backend API",
-    "description": "Local test collection for the ZifIQ Kotlin/Spring Boot backend -- covers only the modules with real persistence and business logic (Auth, Tenants & Members, OTP, Settings, Factory Setup, Factory Production, Factory Trading, Inventory Stock, Inventory Operations). The remaining scaffolded modules (Account, AI, Barcode, Cashier, Customers, History, Invoicing, Menu, Process Guide, Showroom) still return hardcoded mock data server-side and are intentionally excluded until they're built out for real. Run folders top-to-bottom in order (01 through 09) -- each request's Tests script captures IDs/tokens into collection variables that later requests reuse, so the whole collection can be run end-to-end with Postman's Collection Runner with no manual edits. See docs/00-02 in the backend repo for the full design spec these endpoints implement.",
+    "description": "Local test collection for the ZifIQ Kotlin/Spring Boot backend -- covers only the modules with real persistence and business logic (Auth, Tenants & Members, OTP, VAT Control, Settings, Factory Setup, Factory Production, Factory Trading, Inventory Stock, Inventory Operations, NRS Reference Data, Customers). The remaining scaffolded modules (Account, AI, Barcode, Cashier, History, Invoicing, Menu, Process Guide, Showroom) still return hardcoded mock data server-side and are intentionally excluded until they're built out for real. Run folders top-to-bottom in order (01 through 12) -- each request's Tests script captures IDs/tokens into collection variables that later requests reuse, so the whole collection can be run end-to-end with Postman's Collection Runner with no manual edits. See docs/00-02 in the backend repo for the full design spec these endpoints implement.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -148,6 +148,61 @@
     },
     {
       "key": "tradeOfferId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customerLocationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "today",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "goldCategoryId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "diamondCategoryId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "correspondentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "dealerId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "dealerName",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "dealerCode",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customerId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adjustmentEntryId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "reclassificationId",
       "value": "",
       "type": "string"
     }
@@ -2000,7 +2055,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"08a216a4-6c90-430f-93d7-623163dc4281\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"4ad38ac7-1141-4cd9-ac52-b0087ae18cf8\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -2071,7 +2126,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"e80e4aa7-968b-41d2-b625-3da99a6d2947\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"4710a333-cca0-4916-9964-1fd4e4d80acb\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -7205,6 +7260,2712 @@
               ],
               "cookie": [],
               "body": "{\n  \"data\": [\n    {\n      \"code\": \"NG-AB-ANO\",\n      \"stateCode\": \"NG-AB\",\n      \"name\": \"Aba North\"\n    },\n    {\n      \"code\": \"NG-AB-UWE\",\n      \"stateCode\": \"NG-AB\",\n      \"name\": \"Ukwa West\"\n    }\n  ]\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "12 - Customers",
+      "item": [
+        {
+          "name": "Create Customer Home Location",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/factory/setup/factories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "factory",
+                "setup",
+                "factories"
+              ]
+            },
+            "description": "An ACTIVE location to home this folder's customers at (folder 06 leaves {{factoryId}} SUSPENDED on purpose). Also captures {{today}} in the tenant's default timezone (Africa/Lagos, UTC+1) for the immediate reclassification below.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": null,\n  \"name\": \"Customer Home Plant\",\n  \"address\": \"3 Allen Ave, Ikeja\",\n  \"state\": \"Lagos\",\n  \"phone\": \"+2348000000003\",\n  \"vatRate\": 7.5,\n  \"vatEnabled\": true,\n  \"vatRegistrationNumber\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('customerLocationId', json.data.id);",
+                  "    pm.collectionVariables.set('today', new Date(Date.now() + 3600 * 1000).toISOString().slice(0, 10));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Create Customer Home Location - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/factory/setup/factories",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "factory",
+                    "setup",
+                    "factories"
+                  ]
+                },
+                "description": "An ACTIVE location to home this folder's customers at (folder 06 leaves {{factoryId}} SUSPENDED on purpose). Also captures {{today}} in the tenant's default timezone (Africa/Lagos, UTC+1) for the immediate reclassification below.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"code\": null,\n  \"name\": \"Customer Home Plant\",\n  \"address\": \"3 Allen Ave, Ikeja\",\n  \"state\": \"Lagos\",\n  \"phone\": \"+2348000000003\",\n  \"vatRate\": 7.5,\n  \"vatEnabled\": true,\n  \"vatRegistrationNumber\": null\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{customerLocationId}}\",\n    \"code\": \"FAC-3\",\n    \"name\": \"Customer Home Plant\",\n    \"status\": \"ACTIVE\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "List Dealer Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/dealer-categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "dealer-categories"
+              ]
+            },
+            "description": "Platinum / Gold / Silver / Bronze are seeded for every new tenant. Query: status, q."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('new tenant has the 4 default categories', () => pm.expect(json.data.map(c => c.name).sort()).to.eql(['Bronze', 'Gold', 'Platinum', 'Silver']));",
+                  "    pm.collectionVariables.set('goldCategoryId', json.data.find(c => c.name === 'Gold').id);",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "List Dealer Categories - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/customers/dealer-categories",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "customers",
+                    "dealer-categories"
+                  ]
+                },
+                "description": "Platinum / Gold / Silver / Bronze are seeded for every new tenant. Query: status, q."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{goldCategoryId}}\",\n      \"name\": \"Gold\",\n      \"discountPct\": 3.5,\n      \"suggestedCreditLimit\": 1500000.0,\n      \"sortOrder\": 3,\n      \"status\": \"ACTIVE\",\n      \"dealerCount\": 0\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Dealer Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/dealer-categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "dealer-categories"
+              ]
+            },
+            "description": "Perm customers.categories.manage (Administrator).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Diamond\",\n  \"discountPct\": 7.5,\n  \"suggestedCreditLimit\": 5000000,\n  \"sortOrder\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('diamondCategoryId', json.data.id);",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Create Dealer Category - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/customers/dealer-categories",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "customers",
+                    "dealer-categories"
+                  ]
+                },
+                "description": "Perm customers.categories.manage (Administrator).",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Diamond\",\n  \"discountPct\": 7.5,\n  \"suggestedCreditLimit\": 5000000,\n  \"sortOrder\": 5\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{diamondCategoryId}}\",\n    \"name\": \"Diamond\",\n    \"discountPct\": 7.5,\n    \"suggestedCreditLimit\": 5000000.0,\n    \"sortOrder\": 5,\n    \"status\": \"ACTIVE\",\n    \"dealerCount\": 0\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Deactivate Dealer Category",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/dealer-categories/{{diamondCategoryId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "dealer-categories",
+                "{{diamondCategoryId}}",
+                "status"
+              ]
+            },
+            "description": "Blocked with 409 CATEGORY_IN_USE while dealers use the category.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"INACTIVE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Deactivate Dealer Category - 200 OK",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/customers/dealer-categories/{{diamondCategoryId}}/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "customers",
+                    "dealer-categories",
+                    "{{diamondCategoryId}}",
+                    "status"
+                  ]
+                },
+                "description": "Blocked with 409 CATEGORY_IN_USE while dealers use the category.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"INACTIVE\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{diamondCategoryId}}\",\n    \"name\": \"Diamond\",\n    \"discountPct\": 7.5,\n    \"suggestedCreditLimit\": 5000000.0,\n    \"sortOrder\": 5,\n    \"status\": \"INACTIVE\",\n    \"dealerCount\": 0\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Register Correspondent (and assign)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/correspondents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "correspondents"
+              ]
+            },
+            "description": "Code CR-n. With region + locationId it's registered and assigned at once. Regions come from the module setting customers.correspondent.regions.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Bisi Adeyemi\",\n  \"phone\": \"0802 123 4567\",\n  \"email\": null,\n  \"userId\": null,\n  \"region\": \"Lagos Mainland\",\n  \"locationId\": \"{{customerLocationId}}\",\n  \"responsibilities\": \"Lagos dealers\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('correspondentId', json.data.correspondent.id);",
+                  "    pm.test('assigned in one step', () => pm.expect(json.data.correspondent.status).to.eql('ASSIGNED'));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Register Correspondent (and assign) - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/customers/correspondents",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "customers",
+                    "correspondents"
+                  ]
+                },
+                "description": "Code CR-n. With region + locationId it's registered and assigned at once. Regions come from the module setting customers.correspondent.regions.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Bisi Adeyemi\",\n  \"phone\": \"0802 123 4567\",\n  \"email\": null,\n  \"userId\": null,\n  \"region\": \"Lagos Mainland\",\n  \"locationId\": \"{{customerLocationId}}\",\n  \"responsibilities\": \"Lagos dealers\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"correspondent\": {\n      \"id\": \"{{correspondentId}}\",\n      \"code\": \"CR-1\",\n      \"name\": \"Bisi Adeyemi\",\n      \"phone\": \"0802 123 4567\",\n      \"email\": null,\n      \"region\": \"Lagos Mainland\",\n      \"locationId\": \"{{customerLocationId}}\",\n      \"locationName\": \"Customer Home Plant\",\n      \"status\": \"ASSIGNED\",\n      \"assignedAt\": \"2026-10-08\",\n      \"customerCount\": 1,\n      \"dealerCount\": 1,\n      \"responsibilities\": \"Lagos dealers\",\n      \"userLinked\": false\n    },\n    \"history\": [\n      {\n        \"action\": \"ASSIGNED\",\n        \"region\": \"Lagos Mainland\",\n        \"locationId\": \"{{customerLocationId}}\",\n        \"locationName\": \"Customer Home Plant\",\n        \"effectiveFrom\": \"2026-10-08\",\n        \"note\": null,\n        \"performedByUserId\": \"{{userId}}\",\n        \"createdAt\": \"2026-10-01T10:15:30Z\"\n      }\n    ],\n    \"affectedCustomers\": null\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Register Correspondent (unknown region)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/correspondents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "correspondents"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nobody\",\n  \"phone\": \"08020000000\",\n  \"region\": \"Atlantis\",\n  \"locationId\": \"{{customerLocationId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 400 INVALID_REGION', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('INVALID_REGION');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Register Correspondent (unknown region) - 400 Bad Request",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/customers/correspondents",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "customers",
+                    "correspondents"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Nobody\",\n  \"phone\": \"08020000000\",\n  \"region\": \"Atlantis\",\n  \"locationId\": \"{{customerLocationId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"INVALID_REGION\",\n    \"message\": \"Unknown region\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Register Dealer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers"
+              ]
+            },
+            "description": "Perm customers.manage + customers.dealers.manage. Dealers need contactPerson, streetAddress, stateCode and an ACTIVE dealerCategoryId. Code DLR-n; phone stored as given and normalised to +234... for matching. Opening wallet funding is a separate Account call (doc 07).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"AUTHORISED_DEALER\",\n  \"name\": \"Okafor & Sons Distribution {{$randomInt}}\",\n  \"contactPerson\": \"Tunde Okafor\",\n  \"phone\": \"0803 412 7781\",\n  \"email\": \"orders@okaforsons.ng\",\n  \"stateCode\": \"NG-LA\",\n  \"streetAddress\": \"14 Ikorodu Rd\",\n  \"locationId\": \"{{customerLocationId}}\",\n  \"dealerCategoryId\": \"{{goldCategoryId}}\",\n  \"correspondentId\": \"{{correspondentId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('dealerId', json.data.id);",
+                  "    pm.collectionVariables.set('dealerName', json.data.name);",
+                  "    pm.collectionVariables.set('dealerCode', json.data.code);",
+                  "    pm.test('credit limit defaults to the category suggestion', () => pm.expect(json.data.creditLimit).to.eql(1500000));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Register Dealer - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/customers",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "customers"
+                  ]
+                },
+                "description": "Perm customers.manage + customers.dealers.manage. Dealers need contactPerson, streetAddress, stateCode and an ACTIVE dealerCategoryId. Code DLR-n; phone stored as given and normalised to +234... for matching. Opening wallet funding is a separate Account call (doc 07).",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"type\": \"AUTHORISED_DEALER\",\n  \"name\": \"Okafor & Sons Distribution {{$randomInt}}\",\n  \"contactPerson\": \"Tunde Okafor\",\n  \"phone\": \"0803 412 7781\",\n  \"email\": \"orders@okaforsons.ng\",\n  \"stateCode\": \"NG-LA\",\n  \"streetAddress\": \"14 Ikorodu Rd\",\n  \"locationId\": \"{{customerLocationId}}\",\n  \"dealerCategoryId\": \"{{goldCategoryId}}\",\n  \"correspondentId\": \"{{correspondentId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{dealerId}}\",\n    \"code\": \"DLR-1\",\n    \"type\": \"AUTHORISED_DEALER\",\n    \"isTemporary\": false,\n    \"name\": \"Okafor & Sons Distribution\",\n    \"contactPerson\": \"Tunde Okafor\",\n    \"phone\": \"0803 412 7781\",\n    \"alternatePhone\": null,\n    \"email\": \"chidi@example.com\",\n    \"tin\": null,\n    \"businessDescription\": null,\n    \"streetAddress\": \"14 Ikorodu Rd\",\n    \"city\": \"Lagos\",\n    \"stateCode\": \"NG-LA\",\n    \"stateName\": \"Lagos\",\n    \"lgaCode\": null,\n    \"lgaName\": null,\n    \"countryCode\": \"NG\",\n    \"location\": {\n      \"id\": \"{{customerLocationId}}\",\n      \"code\": \"FAC-3\",\n      \"name\": \"Customer Home Plant\"\n    },\n    \"correspondent\": {\n      \"id\": \"{{correspondentId}}\",\n      \"code\": \"CR-1\",\n      \"name\": \"Bisi Adeyemi\",\n      \"status\": \"ASSIGNED\"\n    },\n    \"dealerCategory\": {\n      \"id\": \"{{goldCategoryId}}\",\n      \"name\": \"Gold\",\n      \"discountPct\": 3.5\n    },\n    \"creditLimit\": 1500000.0,\n    \"walletBalance\": 0.0,\n    \"depositBalance\": 0.0,\n    \"lifetimeValue\": 0.0,\n    \"lastPurchaseAt\": null,\n    \"customerSince\": \"2026-10-08\",\n    \"status\": \"ACTIVE\",\n    \"statusReason\": null,\n    \"userId\": null,\n    \"customAttributes\": {},\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Register Dealer (duplicate name)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"AUTHORISED_DEALER\",\n  \"name\": \"{{dealerName}}\",\n  \"contactPerson\": \"Someone\",\n  \"phone\": \"08030000000\",\n  \"stateCode\": \"NG-LA\",\n  \"streetAddress\": \"1 Elsewhere\",\n  \"dealerCategoryId\": \"{{goldCategoryId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 409 DUPLICATE_NAME', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('DUPLICATE_NAME');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Register Dealer (duplicate name) - 409 Conflict",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/customers",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "customers"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"type\": \"AUTHORISED_DEALER\",\n  \"name\": \"{{dealerName}}\",\n  \"contactPerson\": \"Someone\",\n  \"phone\": \"08030000000\",\n  \"stateCode\": \"NG-LA\",\n  \"streetAddress\": \"1 Elsewhere\",\n  \"dealerCategoryId\": \"{{goldCategoryId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"DUPLICATE_NAME\",\n    \"message\": \"'Okafor & Sons Distribution' is already in use\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Register Ordinary Customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers"
+              ]
+            },
+            "description": "Code CU-n. Phone is required for every type except NO_CREDIT_WALKIN.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"ORDINARY_CUSTOMER\",\n  \"name\": \"Chidi Nwosu\",\n  \"phone\": \"0809 111 2222\",\n  \"email\": \"chidi@example.com\",\n  \"city\": \"Lagos\",\n  \"stateCode\": \"NG-LA\",\n  \"locationId\": \"{{customerLocationId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('customerId', json.data.id);",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Register Ordinary Customer - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/customers",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "customers"
+                  ]
+                },
+                "description": "Code CU-n. Phone is required for every type except NO_CREDIT_WALKIN.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"type\": \"ORDINARY_CUSTOMER\",\n  \"name\": \"Chidi Nwosu\",\n  \"phone\": \"0809 111 2222\",\n  \"email\": \"chidi@example.com\",\n  \"city\": \"Lagos\",\n  \"stateCode\": \"NG-LA\",\n  \"locationId\": \"{{customerLocationId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{customerId}}\",\n    \"code\": \"CU-1\",\n    \"type\": \"ORDINARY_CUSTOMER\",\n    \"isTemporary\": false,\n    \"name\": \"Chidi Nwosu\",\n    \"contactPerson\": null,\n    \"phone\": \"0809 111 2222\",\n    \"alternatePhone\": null,\n    \"email\": \"chidi@example.com\",\n    \"tin\": null,\n    \"businessDescription\": null,\n    \"streetAddress\": null,\n    \"city\": \"Lagos\",\n    \"stateCode\": \"NG-LA\",\n    \"stateName\": \"Lagos\",\n    \"lgaCode\": null,\n    \"lgaName\": null,\n    \"countryCode\": \"NG\",\n    \"location\": {\n      \"id\": \"{{customerLocationId}}\",\n      \"code\": \"FAC-3\",\n      \"name\": \"Customer Home Plant\"\n    },\n    \"correspondent\": null,\n    \"dealerCategory\": null,\n    \"creditLimit\": 0.0,\n    \"walletBalance\": 0.0,\n    \"depositBalance\": 0.0,\n    \"lifetimeValue\": 0.0,\n    \"lastPurchaseAt\": null,\n    \"customerSince\": \"2026-10-08\",\n    \"status\": \"ACTIVE\",\n    \"statusReason\": null,\n    \"userId\": null,\n    \"customAttributes\": {},\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "List / Search Customers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers?q=okafor&facets=type,status&highlight=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "okafor"
+                },
+                {
+                  "key": "facets",
+                  "value": "type,status"
+                },
+                {
+                  "key": "highlight",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "q searches code (DLR-42 or bare 42), phone (any format), e-mail, TIN, name/contact person (accent-insensitive, typo-tolerant) and address text; qualifiers like type:dealer status:watch state:NG-LA. Simple filters: type, status, isTemporary, locationId, correspondentId, dealerCategoryId, stateCode, lgaCode, walletBalanceMin/Max, creditLimit.gte, hasWalletBalance, customerSince.from, lastPurchaseAt.lt, attr.<customField>, ... (GET /customers/filters lists them all). REMOVED and temporary records are excluded unless filtered for."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('dealer ranks first', () => pm.expect(json.data.items[0].id).to.eql(pm.collectionVariables.get('dealerId')));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "List / Search Customers - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/customers?q=okafor&facets=type,status&highlight=true",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "customers"
+                  ],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": "okafor"
+                    },
+                    {
+                      "key": "facets",
+                      "value": "type,status"
+                    },
+                    {
+                      "key": "highlight",
+                      "value": "true"
+                    }
+                  ]
+                },
+                "description": "q searches code (DLR-42 or bare 42), phone (any format), e-mail, TIN, name/contact person (accent-insensitive, typo-tolerant) and address text; qualifiers like type:dealer status:watch state:NG-LA. Simple filters: type, status, isTemporary, locationId, correspondentId, dealerCategoryId, stateCode, lgaCode, walletBalanceMin/Max, creditLimit.gte, hasWalletBalance, customerSince.from, lastPurchaseAt.lt, attr.<customField>, ... (GET /customers/filters lists them all). REMOVED and temporary records are excluded unless filtered for."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": \"{{dealerId}}\",\n        \"code\": \"DLR-1\",\n        \"type\": \"AUTHORISED_DEALER\",\n        \"isTemporary\": false,\n        \"name\": \"Okafor & Sons Distribution\",\n        \"contactPerson\": \"Tunde Okafor\",\n        \"phone\": \"0803 412 7781\",\n        \"stateCode\": \"NG-LA\",\n        \"stateName\": \"Lagos\",\n        \"creditLimit\": 1500000.0,\n        \"walletBalance\": 0.0,\n        \"depositBalance\": 0.0,\n        \"lifetimeValue\": 0.0,\n        \"lastPurchaseAt\": null,\n        \"customerSince\": \"2026-10-08\",\n        \"status\": \"ACTIVE\",\n        \"locationId\": \"{{customerLocationId}}\",\n        \"locationName\": \"Customer Home Plant\",\n        \"correspondentId\": \"{{correspondentId}}\",\n        \"correspondentName\": \"Bisi Adeyemi\",\n        \"dealerCategoryName\": \"Gold\"\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": {\n      \"type\": [\n        {\n          \"value\": \"AUTHORISED_DEALER\",\n          \"label\": \"Authorised Dealer\",\n          \"count\": 1\n        }\n      ]\n    },\n    \"summary\": {\n      \"count\": 1,\n      \"walletBalanceTotal\": 0.0,\n      \"depositBalanceTotal\": 0.0,\n      \"lifetimeValueTotal\": 0.0\n    },\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Search Customers (advanced filter)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/search",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "search"
+              ]
+            },
+            "description": "Same result shape as GET; the filter tree supports all/any/not and the ledger collection, e.g. {\"ledger\": {\"all\": [{\"field\": \"entryType\", \"op\": \"eq\", \"value\": \"WITHDRAWAL_DEBIT\"}, {\"field\": \"amount\", \"op\": \"gt\", \"value\": 100000}]}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filter\": {\n    \"all\": [\n      {\n        \"field\": \"type\",\n        \"op\": \"in\",\n        \"value\": [\n          \"AUTHORISED_DEALER\",\n          \"SPECIAL_CUSTOMER\"\n        ]\n      },\n      {\n        \"field\": \"creditLimit\",\n        \"op\": \"gte\",\n        \"value\": 1000000\n      }\n    ]\n  },\n  \"sort\": [\n    {\n      \"field\": \"name\",\n      \"dir\": \"asc\"\n    }\n  ],\n  \"page\": 0,\n  \"size\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Search Customers (advanced filter) - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/customers/search",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "customers",
+                    "search"
+                  ]
+                },
+                "description": "Same result shape as GET; the filter tree supports all/any/not and the ledger collection, e.g. {\"ledger\": {\"all\": [{\"field\": \"entryType\", \"op\": \"eq\", \"value\": \"WITHDRAWAL_DEBIT\"}, {\"field\": \"amount\", \"op\": \"gt\", \"value\": 100000}]}}.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"filter\": {\n    \"all\": [\n      {\n        \"field\": \"type\",\n        \"op\": \"in\",\n        \"value\": [\n          \"AUTHORISED_DEALER\",\n          \"SPECIAL_CUSTOMER\"\n        ]\n      },\n      {\n        \"field\": \"creditLimit\",\n        \"op\": \"gte\",\n        \"value\": 1000000\n      }\n    ]\n  },\n  \"sort\": [\n    {\n      \"field\": \"name\",\n      \"dir\": \"asc\"\n    }\n  ],\n  \"page\": 0,\n  \"size\": 20\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": \"{{dealerId}}\",\n        \"code\": \"DLR-1\",\n        \"type\": \"AUTHORISED_DEALER\",\n        \"isTemporary\": false,\n        \"name\": \"Okafor & Sons Distribution\",\n        \"contactPerson\": \"Tunde Okafor\",\n        \"phone\": \"0803 412 7781\",\n        \"stateCode\": \"NG-LA\",\n        \"stateName\": \"Lagos\",\n        \"creditLimit\": 1500000.0,\n        \"walletBalance\": 0.0,\n        \"depositBalance\": 0.0,\n        \"lifetimeValue\": 0.0,\n        \"lastPurchaseAt\": null,\n        \"customerSince\": \"2026-10-08\",\n        \"status\": \"ACTIVE\",\n        \"locationId\": \"{{customerLocationId}}\",\n        \"locationName\": \"Customer Home Plant\",\n        \"correspondentId\": \"{{correspondentId}}\",\n        \"correspondentName\": \"Bisi Adeyemi\",\n        \"dealerCategoryName\": \"Gold\"\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": null,\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Customer Filter Metadata",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/filters",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "filters"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Customer Filter Metadata - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/customers/filters",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "customers",
+                    "filters"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"fields\": [\n      {\n        \"key\": \"type\",\n        \"label\": \"Customer type\",\n        \"type\": \"ENUM\",\n        \"operators\": [\n          \"eq\",\n          \"ne\",\n          \"in\",\n          \"not_in\",\n          \"is_null\",\n          \"is_not_null\"\n        ],\n        \"options\": [\n          {\n            \"value\": \"AUTHORISED_DEALER\",\n            \"label\": \"Authorised Dealer\"\n          }\n        ],\n        \"lookup\": null,\n        \"facetable\": true,\n        \"sortable\": false,\n        \"qualifierAliases\": []\n      }\n    ],\n    \"collections\": [\n      {\n        \"key\": \"ledger\",\n        \"label\": \"Wallet/deposit history\"\n      }\n    ],\n    \"primaryDate\": \"customerSince\",\n    \"defaultSort\": [\n      {\n        \"field\": \"name\",\n        \"dir\": \"asc\"\n      }\n    ],\n    \"periodPresets\": [\n      \"TODAY\",\n      \"THIS_MONTH\"\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Customer Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "stats"
+              ]
+            },
+            "description": "Register header tiles. Query: type, locationId."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Customer Stats - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/customers/stats",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "customers",
+                    "stats"
+                  ]
+                },
+                "description": "Register header tiles. Query: type, locationId."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"total\": 2,\n    \"active\": 2,\n    \"watch\": 0,\n    \"suspended\": 0,\n    \"dealers\": 1,\n    \"special\": 0,\n    \"ordinary\": 1,\n    \"noCredit\": 0,\n    \"walletsHeld\": 0,\n    \"walletBalanceTotal\": 0.0,\n    \"depositBalanceTotal\": 0.0\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Customer Lookup (picker)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/lookup?q=chidi&forSale=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "lookup"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "chidi"
+                },
+                {
+                  "key": "forSale",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "POS / pro-forma / returns picker. Not location-restricted. forSale=true shows suspended customers disabled with the reason."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Customer Lookup (picker) - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/customers/lookup?q=chidi&forSale=true",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "customers",
+                    "lookup"
+                  ],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": "chidi"
+                    },
+                    {
+                      "key": "forSale",
+                      "value": "true"
+                    }
+                  ]
+                },
+                "description": "POS / pro-forma / returns picker. Not location-restricted. forSale=true shows suspended customers disabled with the reason."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{customerId}}\",\n      \"code\": \"CU-1\",\n      \"label\": \"Chidi Nwosu\",\n      \"sublabel\": \"CU-1 \\u00b7 Ordinary Customer \\u00b7 \\u20262222\",\n      \"type\": \"ORDINARY_CUSTOMER\",\n      \"status\": \"ACTIVE\",\n      \"disabled\": false,\n      \"disabledReason\": null,\n      \"walletBalance\": 0.0,\n      \"depositBalance\": 0.0,\n      \"creditLimit\": 0.0\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Customer",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/{{dealerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "{{dealerId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Get Customer - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/customers/{{dealerId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "customers",
+                    "{{dealerId}}"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{dealerId}}\",\n    \"code\": \"DLR-1\",\n    \"type\": \"AUTHORISED_DEALER\",\n    \"isTemporary\": false,\n    \"name\": \"Okafor & Sons Distribution\",\n    \"contactPerson\": \"Tunde Okafor\",\n    \"phone\": \"0803 412 7781\",\n    \"alternatePhone\": null,\n    \"email\": \"chidi@example.com\",\n    \"tin\": null,\n    \"businessDescription\": null,\n    \"streetAddress\": \"14 Ikorodu Rd\",\n    \"city\": \"Lagos\",\n    \"stateCode\": \"NG-LA\",\n    \"stateName\": \"Lagos\",\n    \"lgaCode\": null,\n    \"lgaName\": null,\n    \"countryCode\": \"NG\",\n    \"location\": {\n      \"id\": \"{{customerLocationId}}\",\n      \"code\": \"FAC-3\",\n      \"name\": \"Customer Home Plant\"\n    },\n    \"correspondent\": {\n      \"id\": \"{{correspondentId}}\",\n      \"code\": \"CR-1\",\n      \"name\": \"Bisi Adeyemi\",\n      \"status\": \"ASSIGNED\"\n    },\n    \"dealerCategory\": {\n      \"id\": \"{{goldCategoryId}}\",\n      \"name\": \"Gold\",\n      \"discountPct\": 3.5\n    },\n    \"creditLimit\": 1500000.0,\n    \"walletBalance\": 0.0,\n    \"depositBalance\": 0.0,\n    \"lifetimeValue\": 0.0,\n    \"lastPurchaseAt\": null,\n    \"customerSince\": \"2026-10-08\",\n    \"status\": \"ACTIVE\",\n    \"statusReason\": null,\n    \"userId\": null,\n    \"customAttributes\": {},\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Customer",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/{{customerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "{{customerId}}"
+              ]
+            },
+            "description": "Type and dealer category change only through reclassification; customerSince is immutable. Changing creditLimit needs customers.dealers.manage.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Chidi Nwosu\",\n  \"phone\": \"0809 111 2222\",\n  \"alternatePhone\": \"0812 000 0000\",\n  \"email\": \"chidi@example.com\",\n  \"city\": \"Ikeja\",\n  \"stateCode\": \"NG-LA\",\n  \"locationId\": \"{{customerLocationId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Update Customer - 200 OK",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/customers/{{customerId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "customers",
+                    "{{customerId}}"
+                  ]
+                },
+                "description": "Type and dealer category change only through reclassification; customerSince is immutable. Changing creditLimit needs customers.dealers.manage.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Chidi Nwosu\",\n  \"phone\": \"0809 111 2222\",\n  \"alternatePhone\": \"0812 000 0000\",\n  \"email\": \"chidi@example.com\",\n  \"city\": \"Ikeja\",\n  \"stateCode\": \"NG-LA\",\n  \"locationId\": \"{{customerLocationId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{customerId}}\",\n    \"code\": \"CU-1\",\n    \"type\": \"ORDINARY_CUSTOMER\",\n    \"isTemporary\": false,\n    \"name\": \"Chidi Nwosu\",\n    \"contactPerson\": null,\n    \"phone\": \"0809 111 2222\",\n    \"alternatePhone\": \"0812 000 0000\",\n    \"email\": \"chidi@example.com\",\n    \"tin\": null,\n    \"businessDescription\": null,\n    \"streetAddress\": null,\n    \"city\": \"Ikeja\",\n    \"stateCode\": \"NG-LA\",\n    \"stateName\": \"Lagos\",\n    \"lgaCode\": null,\n    \"lgaName\": null,\n    \"countryCode\": \"NG\",\n    \"location\": {\n      \"id\": \"{{customerLocationId}}\",\n      \"code\": \"FAC-3\",\n      \"name\": \"Customer Home Plant\"\n    },\n    \"correspondent\": null,\n    \"dealerCategory\": null,\n    \"creditLimit\": 0.0,\n    \"walletBalance\": 0.0,\n    \"depositBalance\": 0.0,\n    \"lifetimeValue\": 0.0,\n    \"lastPurchaseAt\": null,\n    \"customerSince\": \"2026-10-08\",\n    \"status\": \"ACTIVE\",\n    \"statusReason\": null,\n    \"userId\": null,\n    \"customAttributes\": {},\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Wallet Adjustment (credit)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/{{dealerId}}/wallet-adjustments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "{{dealerId}}",
+                "wallet-adjustments"
+              ]
+            },
+            "description": "Perm customers.wallet.adjust (Administrator). Deposit adjustments only on Special Customers.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"balanceType\": \"WALLET\",\n  \"direction\": \"CREDIT\",\n  \"amount\": 2500,\n  \"reason\": \"Opening balance migration\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('adjustmentEntryId', json.data.id);",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Wallet Adjustment (credit) - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/customers/{{dealerId}}/wallet-adjustments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "customers",
+                    "{{dealerId}}",
+                    "wallet-adjustments"
+                  ]
+                },
+                "description": "Perm customers.wallet.adjust (Administrator). Deposit adjustments only on Special Customers.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"balanceType\": \"WALLET\",\n  \"direction\": \"CREDIT\",\n  \"amount\": 2500,\n  \"reason\": \"Opening balance migration\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{adjustmentEntryId}}\",\n    \"customerId\": \"{{dealerId}}\",\n    \"balanceType\": \"WALLET\",\n    \"entryType\": \"ADJUSTMENT_CREDIT\",\n    \"amount\": 2500.0,\n    \"balanceAfter\": 2500.0,\n    \"reference\": \"WLT-1\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Wallet Adjustment (overdraw)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/{{dealerId}}/wallet-adjustments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "{{dealerId}}",
+                "wallet-adjustments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"balanceType\": \"WALLET\",\n  \"direction\": \"DEBIT\",\n  \"amount\": 999999,\n  \"reason\": \"More than the balance\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 400 INSUFFICIENT_WALLET_BALANCE', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('INSUFFICIENT_WALLET_BALANCE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Wallet Adjustment (overdraw) - 400 Bad Request",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/customers/{{dealerId}}/wallet-adjustments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "customers",
+                    "{{dealerId}}",
+                    "wallet-adjustments"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"balanceType\": \"WALLET\",\n  \"direction\": \"DEBIT\",\n  \"amount\": 999999,\n  \"reason\": \"More than the balance\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"INSUFFICIENT_WALLET_BALANCE\",\n    \"message\": \"Insufficient wallet balance\",\n    \"details\": {\n      \"available\": \"2500.00\",\n      \"requested\": \"999999.00\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Customer Ledger",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/{{dealerId}}/ledger?balanceType=WALLET",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "{{dealerId}}",
+                "ledger"
+              ],
+              "query": [
+                {
+                  "key": "balanceType",
+                  "value": "WALLET"
+                }
+              ]
+            },
+            "description": "Customer History, oldest first so running balances read top-down. Query: balanceType, entryType, direction, from/to/period, q (reference, description, amount)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Customer Ledger - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/customers/{{dealerId}}/ledger?balanceType=WALLET",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "customers",
+                    "{{dealerId}}",
+                    "ledger"
+                  ],
+                  "query": [
+                    {
+                      "key": "balanceType",
+                      "value": "WALLET"
+                    }
+                  ]
+                },
+                "description": "Customer History, oldest first so running balances read top-down. Query: balanceType, entryType, direction, from/to/period, q (reference, description, amount)."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"customer\": {\n      \"id\": \"{{dealerId}}\",\n      \"code\": \"DLR-1\",\n      \"type\": \"AUTHORISED_DEALER\",\n      \"isTemporary\": false,\n      \"name\": \"Okafor & Sons Distribution\",\n      \"contactPerson\": \"Tunde Okafor\",\n      \"phone\": \"0803 412 7781\",\n      \"stateCode\": \"NG-LA\",\n      \"stateName\": \"Lagos\",\n      \"creditLimit\": 1500000.0,\n      \"walletBalance\": 0.0,\n      \"depositBalance\": 0.0,\n      \"lifetimeValue\": 0.0,\n      \"lastPurchaseAt\": null,\n      \"customerSince\": \"2026-10-08\",\n      \"status\": \"ACTIVE\",\n      \"locationId\": \"{{customerLocationId}}\",\n      \"locationName\": \"Customer Home Plant\",\n      \"correspondentId\": \"{{correspondentId}}\",\n      \"correspondentName\": \"Bisi Adeyemi\",\n      \"dealerCategoryName\": \"Gold\"\n    },\n    \"balanceType\": \"WALLET\",\n    \"openingBalance\": 0.0,\n    \"closingBalance\": 2500.0,\n    \"totalCredits\": 2500.0,\n    \"totalDebits\": 0.0,\n    \"items\": [\n      {\n        \"id\": \"{{adjustmentEntryId}}\",\n        \"entryDate\": \"2026-10-08\",\n        \"reference\": \"WLT-1\",\n        \"entryType\": \"ADJUSTMENT_CREDIT\",\n        \"displayType\": \"Adjustment\",\n        \"direction\": \"CREDIT\",\n        \"description\": \"Adjustment: Opening balance migration\",\n        \"paymentMethod\": \"Wallet adjustment\",\n        \"amount\": 2500.0,\n        \"balanceAfter\": 2500.0,\n        \"locationId\": \"{{customerLocationId}}\",\n        \"sourceModule\": \"customers\",\n        \"performedByUserId\": \"{{userId}}\",\n        \"reversible\": true,\n        \"reversedByEntryId\": null,\n        \"createdAt\": \"2026-10-01T10:15:30Z\"\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Reverse Ledger Entry",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/ledger-entries/{{adjustmentEntryId}}/reverse",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "ledger-entries",
+                "{{adjustmentEntryId}}",
+                "reverse"
+              ]
+            },
+            "description": "Only this module's own adjustments; sales/withdrawals are reversed by voiding their source document (409 REVERSE_IN_SOURCE_MODULE).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Entered twice\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Reverse Ledger Entry - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/customers/ledger-entries/{{adjustmentEntryId}}/reverse",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "customers",
+                    "ledger-entries",
+                    "{{adjustmentEntryId}}",
+                    "reverse"
+                  ]
+                },
+                "description": "Only this module's own adjustments; sales/withdrawals are reversed by voiding their source document (409 REVERSE_IN_SOURCE_MODULE).",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Entered twice\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"6b0f0e1e-1111-4c4c-9a9a-000000000001\",\n    \"customerId\": \"{{dealerId}}\",\n    \"balanceType\": \"WALLET\",\n    \"entryType\": \"REVERSAL_DEBIT\",\n    \"amount\": 2500.0,\n    \"balanceAfter\": 0.0,\n    \"reference\": \"WLT-1\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Reverse Ledger Entry (again)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/ledger-entries/{{adjustmentEntryId}}/reverse",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "ledger-entries",
+                "{{adjustmentEntryId}}",
+                "reverse"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Twice\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 409 ALREADY_REVERSED', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('ALREADY_REVERSED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Reverse Ledger Entry (again) - 409 Conflict",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/customers/ledger-entries/{{adjustmentEntryId}}/reverse",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "customers",
+                    "ledger-entries",
+                    "{{adjustmentEntryId}}",
+                    "reverse"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Twice\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"ALREADY_REVERSED\",\n    \"message\": \"This entry has already been reversed\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Reclassify Customer (today)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/{{customerId}}/reclassifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "{{customerId}}",
+                "reclassifications"
+              ]
+            },
+            "description": "Perm customers.reclassify. effectiveFrom today applies now; a future date schedules it (applied by the hourly job once due). Wallet always carries over.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"toType\": \"SPECIAL_CUSTOMER\",\n  \"reason\": \"MET_PURCHASE_VOLUME\",\n  \"note\": \"Crossed 5m in 90 days\",\n  \"effectiveFrom\": \"{{today}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('applied immediately', () => pm.expect(json.data.status).to.eql('APPLIED'));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Reclassify Customer (today) - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/customers/{{customerId}}/reclassifications",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "customers",
+                    "{{customerId}}",
+                    "reclassifications"
+                  ]
+                },
+                "description": "Perm customers.reclassify. effectiveFrom today applies now; a future date schedules it (applied by the hourly job once due). Wallet always carries over.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"toType\": \"SPECIAL_CUSTOMER\",\n  \"reason\": \"MET_PURCHASE_VOLUME\",\n  \"note\": \"Crossed 5m in 90 days\",\n  \"effectiveFrom\": \"{{today}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{reclassificationId}}\",\n    \"customerId\": \"{{customerId}}\",\n    \"customerCode\": \"CU-1\",\n    \"customerName\": \"Chidi Nwosu\",\n    \"fromType\": \"ORDINARY_CUSTOMER\",\n    \"toType\": \"SPECIAL_CUSTOMER\",\n    \"direction\": \"PROMOTION\",\n    \"reason\": \"MET_PURCHASE_VOLUME\",\n    \"note\": \"Crossed 5m in 90 days\",\n    \"effectiveFrom\": \"2026-10-08\",\n    \"status\": \"APPLIED\",\n    \"fromCreditLimit\": 0.0,\n    \"toCreditLimit\": 0.0,\n    \"toDealerCategoryName\": null,\n    \"walletBalanceCarriedOver\": 0.0,\n    \"authorisedByUserId\": \"{{userId}}\",\n    \"appliedAt\": \"2026-10-01T10:15:30Z\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Schedule Reclassification",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/{{customerId}}/reclassifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "{{customerId}}",
+                "reclassifications"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"toType\": \"ORDINARY_CUSTOMER\",\n  \"reason\": \"PROLONGED_INACTIVITY\",\n  \"effectiveFrom\": \"2099-01-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('reclassificationId', json.data.id);",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Schedule Reclassification - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/customers/{{customerId}}/reclassifications",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "customers",
+                    "{{customerId}}",
+                    "reclassifications"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"toType\": \"ORDINARY_CUSTOMER\",\n  \"reason\": \"PROLONGED_INACTIVITY\",\n  \"effectiveFrom\": \"2099-01-01\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{reclassificationId}}\",\n    \"status\": \"SCHEDULED\",\n    \"fromType\": \"SPECIAL_CUSTOMER\",\n    \"toType\": \"ORDINARY_CUSTOMER\",\n    \"direction\": \"DEMOTION\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Cancel Scheduled Reclassification",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/{{customerId}}/reclassifications/{{reclassificationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "{{customerId}}",
+                "reclassifications",
+                "{{reclassificationId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Cancel Scheduled Reclassification - 200 OK",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/customers/{{customerId}}/reclassifications/{{reclassificationId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "customers",
+                    "{{customerId}}",
+                    "reclassifications",
+                    "{{reclassificationId}}"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{reclassificationId}}\",\n    \"status\": \"CANCELLED\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "List Reclassifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/reclassifications?customerId={{customerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "reclassifications"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{customerId}}"
+                }
+              ]
+            },
+            "description": "History. Filters: customerId, direction, fromType, toType, reason, status, effectiveFrom range; q = customer code/name, note."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "List Reclassifications - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/customers/reclassifications?customerId={{customerId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "customers",
+                    "reclassifications"
+                  ],
+                  "query": [
+                    {
+                      "key": "customerId",
+                      "value": "{{customerId}}"
+                    }
+                  ]
+                },
+                "description": "History. Filters: customerId, direction, fromType, toType, reason, status, effectiveFrom range; q = customer code/name, note."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": \"{{reclassificationId}}\",\n        \"status\": \"CANCELLED\"\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": null,\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Set Customer Status (WATCH)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/{{customerId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "{{customerId}}",
+                "status"
+              ]
+            },
+            "description": "WATCH <-> ACTIVE needs customers.manage; anything involving SUSPENDED needs customers.dealers.manage; REMOVED can't be set by hand.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"WATCH\",\n  \"reason\": \"Two late payments\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Set Customer Status (WATCH) - 200 OK",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/customers/{{customerId}}/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "customers",
+                    "{{customerId}}",
+                    "status"
+                  ]
+                },
+                "description": "WATCH <-> ACTIVE needs customers.manage; anything involving SUSPENDED needs customers.dealers.manage; REMOVED can't be set by hand.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"WATCH\",\n  \"reason\": \"Two late payments\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{customerId}}\",\n    \"code\": \"CU-1\",\n    \"type\": \"SPECIAL_CUSTOMER\",\n    \"isTemporary\": false,\n    \"name\": \"Chidi Nwosu\",\n    \"contactPerson\": null,\n    \"phone\": \"0809 111 2222\",\n    \"alternatePhone\": null,\n    \"email\": \"chidi@example.com\",\n    \"tin\": null,\n    \"businessDescription\": null,\n    \"streetAddress\": null,\n    \"city\": \"Lagos\",\n    \"stateCode\": \"NG-LA\",\n    \"stateName\": \"Lagos\",\n    \"lgaCode\": null,\n    \"lgaName\": null,\n    \"countryCode\": \"NG\",\n    \"location\": {\n      \"id\": \"{{customerLocationId}}\",\n      \"code\": \"FAC-3\",\n      \"name\": \"Customer Home Plant\"\n    },\n    \"correspondent\": null,\n    \"dealerCategory\": null,\n    \"creditLimit\": 0.0,\n    \"walletBalance\": 0.0,\n    \"depositBalance\": 0.0,\n    \"lifetimeValue\": 0.0,\n    \"lastPurchaseAt\": null,\n    \"customerSince\": \"2026-10-08\",\n    \"status\": \"WATCH\",\n    \"statusReason\": \"Two late payments\",\n    \"userId\": null,\n    \"customAttributes\": {},\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Set Customer Status (REMOVED)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/{{customerId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "{{customerId}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"REMOVED\",\n  \"reason\": \"Not allowed\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 409 INVALID_STATUS_TRANSITION', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('INVALID_STATUS_TRANSITION');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Set Customer Status (REMOVED) - 409 Conflict",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/customers/{{customerId}}/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "customers",
+                    "{{customerId}}",
+                    "status"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"REMOVED\",\n  \"reason\": \"Not allowed\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"INVALID_STATUS_TRANSITION\",\n    \"message\": \"Cannot change status from WATCH to REMOVED\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "List Correspondents",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/correspondents?status=ASSIGNED",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "correspondents"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "ASSIGNED"
+                }
+              ]
+            },
+            "description": "Unpaged. Query: q, status, region, locationId, userLinked, hasCustomers, sort (name, customerCount, dealerCount, assignedAt)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "List Correspondents - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/customers/correspondents?status=ASSIGNED",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "customers",
+                    "correspondents"
+                  ],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "ASSIGNED"
+                    }
+                  ]
+                },
+                "description": "Unpaged. Query: q, status, region, locationId, userLinked, hasCustomers, sort (name, customerCount, dealerCount, assignedAt)."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{correspondentId}}\",\n      \"code\": \"CR-1\",\n      \"name\": \"Bisi Adeyemi\",\n      \"phone\": \"0802 123 4567\",\n      \"email\": null,\n      \"region\": \"Lagos Mainland\",\n      \"locationId\": \"{{customerLocationId}}\",\n      \"locationName\": \"Customer Home Plant\",\n      \"status\": \"ASSIGNED\",\n      \"assignedAt\": \"2026-10-08\",\n      \"customerCount\": 1,\n      \"dealerCount\": 1,\n      \"responsibilities\": \"Lagos dealers\",\n      \"userLinked\": false\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Correspondent's Customers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/correspondents/{{correspondentId}}/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "correspondents",
+                "{{correspondentId}}",
+                "customers"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Correspondent's Customers - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/customers/correspondents/{{correspondentId}}/customers",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "customers",
+                    "correspondents",
+                    "{{correspondentId}}",
+                    "customers"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": \"{{dealerId}}\",\n        \"code\": \"DLR-1\",\n        \"type\": \"AUTHORISED_DEALER\",\n        \"isTemporary\": false,\n        \"name\": \"Okafor & Sons Distribution\",\n        \"contactPerson\": \"Tunde Okafor\",\n        \"phone\": \"0803 412 7781\",\n        \"stateCode\": \"NG-LA\",\n        \"stateName\": \"Lagos\",\n        \"creditLimit\": 1500000.0,\n        \"walletBalance\": 0.0,\n        \"depositBalance\": 0.0,\n        \"lifetimeValue\": 0.0,\n        \"lastPurchaseAt\": null,\n        \"customerSince\": \"2026-10-08\",\n        \"status\": \"ACTIVE\",\n        \"locationId\": \"{{customerLocationId}}\",\n        \"locationName\": \"Customer Home Plant\",\n        \"correspondentId\": \"{{correspondentId}}\",\n        \"correspondentName\": \"Bisi Adeyemi\",\n        \"dealerCategoryName\": \"Gold\"\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": null,\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "De-assign Correspondent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/correspondents/{{correspondentId}}/de-assign",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "correspondents",
+                "{{correspondentId}}",
+                "de-assign"
+              ]
+            },
+            "description": "Linked customers keep the link (history stays attributable) but the correspondent earns no new sales credit.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Left the company\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('reports linked customers', () => pm.expect(json.data.affectedCustomers).to.eql(1));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "De-assign Correspondent - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/customers/correspondents/{{correspondentId}}/de-assign",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "customers",
+                    "correspondents",
+                    "{{correspondentId}}",
+                    "de-assign"
+                  ]
+                },
+                "description": "Linked customers keep the link (history stays attributable) but the correspondent earns no new sales credit.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"note\": \"Left the company\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"correspondent\": {\n      \"id\": \"{{correspondentId}}\",\n      \"code\": \"CR-1\",\n      \"name\": \"Bisi Adeyemi\",\n      \"phone\": \"0802 123 4567\",\n      \"email\": null,\n      \"region\": null,\n      \"locationId\": null,\n      \"locationName\": null,\n      \"status\": \"DE_ASSIGNED\",\n      \"assignedAt\": null,\n      \"customerCount\": 1,\n      \"dealerCount\": 1,\n      \"responsibilities\": \"Lagos dealers\",\n      \"userLinked\": false\n    },\n    \"history\": [],\n    \"affectedCustomers\": 1\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Global Search",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/search?q={{dealerCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{dealerCode}}"
+                }
+              ]
+            },
+            "description": "Header search box across every module the caller can access (docs/03 section 4.7). An exact reference jumps straight to that record."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('exact reference is the single hit', () => pm.expect(json.data.groups[0].hits[0].id).to.eql(pm.collectionVariables.get('dealerId')));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Global Search - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/search?q={{dealerCode}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "search"
+                  ],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": "{{dealerCode}}"
+                    }
+                  ]
+                },
+                "description": "Header search box across every module the caller can access (docs/03 section 4.7). An exact reference jumps straight to that record."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"groups\": [\n      {\n        \"type\": \"customer\",\n        \"label\": \"Customers\",\n        \"hits\": [\n          {\n            \"type\": \"customer\",\n            \"id\": \"{{dealerId}}\",\n            \"title\": \"Okafor & Sons Distribution\",\n            \"subtitle\": \"DLR-1 \\u00b7 Gold \\u00b7 \\u20267781\",\n            \"ref\": \"DLR-1\",\n            \"route\": \"/customers/{{dealerId}}\"\n          }\n        ],\n        \"more\": false,\n        \"moreRoute\": \"/customers?q=DLR-1\"\n      }\n    ],\n    \"timedOut\": []\n  }\n}"
             }
           ]
         }

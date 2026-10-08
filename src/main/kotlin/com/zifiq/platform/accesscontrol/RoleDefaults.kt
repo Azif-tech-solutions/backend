@@ -30,12 +30,20 @@ object RoleDefaults {
             "cashier.sales.read",
             "settings.views.share",
             "platform.activity.read",
+            "customers.read",
+            "customers.reclassify",
+            "customers.correspondents.manage",
+            "customers.ledger.read",
         ),
         ACCOUNTS_PERSONNEL to setOf(
             "accounting.read",
             "accounting.manage",
             "accounting.vat.manage",
             "cashier.sales.read",
+            "customers.read",
+            "customers.manage",
+            "customers.dealers.manage",
+            "customers.ledger.read",
         ),
         STOCK_KEEPER to setOf(
             "inventory.stock.read",
@@ -53,10 +61,11 @@ object RoleDefaults {
         CASHIER to setOf(
             "cashier.sales.read",
             "cashier.sales.manage",
+            "customers.read",
+            "customers.manage",
         ),
-        // Correspondent and Dealer default to no platform-level permission codes yet — their
-        // read-only, self-service capabilities land with the Customers module.
-        CORRESPONDENT to emptySet(),
-        DEALER to emptySet(),
+        // Correspondents see only their own customers; dealers only their own account (PRD §7).
+        CORRESPONDENT to setOf("customers.read.own"),
+        DEALER to setOf("customers.self.read"),
     )
 }

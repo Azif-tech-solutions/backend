@@ -2,7 +2,7 @@ package com.zifiq.factory.service
 
 import com.zifiq.factory.dto.*
 import com.zifiq.factory.model.CategoriesTable
-import com.zifiq.factory.model.LocationsTable
+import com.zifiq.platform.tenancy.model.LocationsTable
 import com.zifiq.factory.model.ManufacturersTable
 import com.zifiq.factory.model.SuppliersTable
 import com.zifiq.factory.model.UnitsOfMeasureTable

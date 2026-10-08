@@ -237,7 +237,7 @@ Every list endpoint that searches takes **`q`** (optional, trimmed, max 200 char
 | a bare number | matches references by numeric suffix (`4031` finds `INV-4031`) **and** amount fields declared `AMOUNT` (`52890` finds the ₦52,890.00 invoice) | `4031` |
 | a phone-like value (≥ 7 digits, `+`, spaces) | normalised with `PhoneNumbers.normalise` (doc 04 §4.8) and matched against `PHONE` fields | `0803 123 4567` |
 
-Qualifier names are the endpoint's filter keys and their aliases (`cust:` = `customer:`). Unknown qualifiers are treated as plain words, never as an error, so a typo still searches. A qualifier on a field the caller may not filter (cost fields, §5.6) is ignored and reported in `meta.ignoredQualifiers`.
+Qualifier names are the endpoint's filter keys and their aliases (`cust:` = `customer:`). Unknown qualifiers are treated as plain words, never as an error, so a typo still searches. An ENUM value (in a qualifier or a simple filter) matches an option's code or label case-insensitively, or a single word of either when that word picks out exactly one option: `type:dealer` → `AUTHORISED_DEALER`, `type:walkin` → `NO_CREDIT_WALKIN`; an ambiguous word (`type:customer`) is `400 INVALID_FILTER` listing the allowed values. A qualifier on a field the caller may not filter (cost fields, §5.6) is ignored and reported in `meta.ignoredQualifiers`.
 
 **Matching per term**, implemented once in `SearchSpec`. A term matches when **any** configured field matches:
 - `CODE` fields: case-insensitive exact, or prefix when the term is ≥ 2 chars, or numeric-suffix match for reference fields.

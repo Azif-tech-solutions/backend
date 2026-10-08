@@ -57,6 +57,27 @@ class FilterSpecUnitTest {
     }
 
     @Test
+    fun `an enum word matches only when it picks out one option`() {
+        val types = FilterSpec(
+            fields = listOf(
+                FilterField(
+                    "type", "Type", FilterType.ENUM, Items.status,
+                    options = listOf(
+                        FilterOption("AUTHORISED_DEALER", "Authorised Dealer"),
+                        FilterOption("SPECIAL_CUSTOMER", "Special Customer"),
+                        FilterOption("ORDINARY_CUSTOMER", "Ordinary Customer"),
+                        FilterOption("NO_CREDIT_WALKIN", "No Credit / Walk-in"),
+                    ),
+                ),
+            ),
+            tiebreaker = Items.id,
+        )
+        assertThat(types.fromParams(mapOf("type" to listOf("dealer")), withCost)).isNotNull()
+        assertThat(types.fromParams(mapOf("type" to listOf("walk-in")), withCost)).isNotNull()
+        code { types.fromParams(mapOf("type" to listOf("customer")), withCost) }.isEqualTo(ErrorCode.INVALID_FILTER)
+    }
+
+    @Test
     fun `bad numbers, operators and ranges are rejected`() {
         code { spec.fromParams(mapOf("total.gte" to listOf("lots")), withCost) }.isEqualTo(ErrorCode.INVALID_FILTER)
         code { spec.fromParams(mapOf("total.contains" to listOf("5")), withCost) }.isEqualTo(ErrorCode.INVALID_FILTER)

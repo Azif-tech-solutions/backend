@@ -1,0 +1,1052 @@
+# -*- coding: utf-8 -*-
+"""Generates the ZifIQ Postman collection + Local environment from a declarative endpoint list.
+
+Run `python postman/generate_collection.py`: it rewrites ZifIQ-API.postman_collection.json and
+ZifIQ-Local.postman_environment.json next to this script (the Dev environment is hand-maintained).
+CI runs the collection with Newman against the Local environment, so every request must stay green.
+"""
+import json
+import os
+import uuid
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+
+def uid():
+    return str(uuid.uuid4())
+
+ENDPOINTS = []
+
+def ep(folder, name, method, path, auth=None, body=None, resp=None, status=200, status_text="OK", tests=None, query=None, desc="", expect_error=None):
+    # expect_error: {"status": int, "code": "ERROR_CODE"} for requests that are DELIBERATELY run
+    # against a state that makes them fail (demonstrating a real error path), so the generic
+    # "response has data envelope" assertion every other request gets would always fail here --
+    # these get a status+error-code assertion instead, so a full collection run is genuinely
+    # all-green rather than relying on two hardcoded "expected failures" the CI step has to know
+    # to ignore.
+    ENDPOINTS.append(dict(
+        folder=folder, name=name, method=method, path=path, auth=auth, body=body,
+        resp=resp, status=status, status_text=status_text, tests=tests or [], query=query or [], desc=desc,
+        expect_error=expect_error,
+    ))
+
+NOW = "2026-10-01T10:15:30Z"
+
+# ============================== AUTH ==============================
+ep("01 - Auth", "Register Tenant", "POST", "/api/v1/auth/register-tenant", auth="noauth",
+   body={"companyName": "Apex Industries", "adminEmail": "admin-{{$guid}}@apex.com", "adminDisplayName": "Alice Admin", "password": "password123"},
+   resp={"data": {"tenantId": "{{tenantId}}", "userId": "{{userId}}", "companyName": "Apex Industries", "adminEmail": "admin-3f9c2e10@apex.com",
+                  "tokenResponse": {"accessToken": "{{accessToken}}", "refreshToken": "{{refreshToken}}", "tokenType": "Bearer",
+                                     "expiresInSeconds": 3600, "activeTenantId": "{{tenantId}}", "userId": "{{userId}}"}}},
+   tests=[
+       "pm.test('status is 200', () => pm.response.to.have.status(200));",
+       "const json = pm.response.json();",
+       "pm.collectionVariables.set('tenantId', json.data.tenantId);",
+       "pm.collectionVariables.set('userId', json.data.userId);",
+       "pm.collectionVariables.set('registeredEmail', json.data.adminEmail);",
+       "pm.collectionVariables.set('registeredPassword', 'password123');",
+       "pm.collectionVariables.set('accessToken', json.data.tokenResponse.accessToken);",
+       "pm.collectionVariables.set('refreshToken', json.data.tokenResponse.refreshToken);",
+   ],
+   desc="Self-service root-tenant bootstrap. Run this first -- every other request depends on the token/tenant/credentials it creates. "
+        "The email uses Postman's {{$guid}} dynamic variable so re-running this request never collides with a previous run's account -- "
+        "no need to reset the database between test passes. Every later request that needs these credentials (Login, Forgot Password) "
+        "reads them back from the registeredEmail/registeredPassword variables this sets, instead of a hardcoded literal, so they never drift out of sync.")
+
+ep("01 - Auth", "Login", "POST", "/api/v1/auth/login", auth="noauth",
+   body={"email": "{{registeredEmail}}", "password": "{{registeredPassword}}"},
+   resp={"data": {"accessToken": "{{accessToken}}", "refreshToken": "{{refreshToken}}", "tokenType": "Bearer",
+                  "expiresInSeconds": 3600, "activeTenantId": "{{tenantId}}", "userId": "{{userId}}"}},
+   tests=[
+       "if (pm.response.code === 200) {",
+       "    const json = pm.response.json();",
+       "    pm.collectionVariables.set('accessToken', json.data.accessToken);",
+       "    pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+       "}",
+   ],
+   desc="Uses the credentials Register Tenant just captured -- run that first in the same session, or this will 401.")
+
+ep("01 - Auth", "Refresh Token", "POST", "/api/v1/auth/refresh", auth="noauth",
+   body={"refreshToken": "{{refreshToken}}"},
+   resp={"data": {"accessToken": "{{accessToken}}", "refreshToken": "{{refreshToken}}", "tokenType": "Bearer",
+                  "expiresInSeconds": 3600, "activeTenantId": "{{tenantId}}", "userId": "{{userId}}"}},
+   tests=[
+       "if (pm.response.code === 200) {",
+       "    const json = pm.response.json();",
+       "    pm.collectionVariables.set('accessToken', json.data.accessToken);",
+       "    pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+       "}",
+   ],
+   desc="Refresh tokens are single-use -- the old one is revoked as soon as this succeeds.")
+
+ep("01 - Auth", "Get Current Actor (/me)", "GET", "/api/v1/me",
+   resp={"data": {"userId": "{{userId}}", "tenantId": "{{tenantId}}", "email": "admin-3f9c2e10@apex.com", "displayName": "Alice Admin"}})
+
+ep("01 - Auth", "Switch Tenant", "POST", "/api/v1/auth/switch-tenant",
+   body={"targetTenantId": "{{tenantId}}"},
+   resp={"data": {"accessToken": "{{accessToken}}", "refreshToken": "{{refreshToken}}", "tokenType": "Bearer",
+                  "expiresInSeconds": 3600, "activeTenantId": "{{tenantId}}", "userId": "{{userId}}"}})
+
+ep("01 - Auth", "Change Password", "POST", "/api/v1/auth/change-password",
+   body={"currentPassword": "{{registeredPassword}}", "newPassword": "newPassword456"},
+   resp={"data": None},
+   tests=[
+       "if (pm.response.code === 200) {",
+       "    pm.collectionVariables.set('registeredPassword', 'newPassword456');",
+       "}",
+   ],
+   desc="Returns an empty data payload on success. Updates registeredPassword so a later Login in the same run still works.")
+
+ep("01 - Auth", "Forgot Password", "POST", "/api/v1/auth/forgot-password", auth="noauth",
+   body={"email": "{{registeredEmail}}"},
+   resp={"data": {"message": "If an account exists with that email address, password reset instructions have been sent.", "status": "PENDING_VERIFICATION"}})
+
+ep("01 - Auth", "Reset Password", "POST", "/api/v1/auth/reset-password", auth="noauth",
+   body={"resetToken": "RST-482913", "newPassword": "newPassword456"},
+   resp={"data": {"message": "Password has been successfully reset. You can now log in with your new password.", "status": "SUCCESS"}},
+   expect_error={"status": 400, "code": "INVALID_RESET_TOKEN"},
+   desc="resetToken comes from the EMAIL notification queued by Forgot Password (check notification_outbox while testing locally) -- "
+        "this collection uses a placeholder token, so a full run is expected to get 400 INVALID_RESET_TOKEN here, asserted below rather "
+        "than just tolerated.")
+
+# ============================== TENANTS & MEMBERS ==============================
+ep("02 - Tenants & Members", "List Child Tenants", "GET", "/api/v1/tenants",
+   resp={"data": []})
+
+ep("02 - Tenants & Members", "Create Child Tenant", "POST", "/api/v1/tenants",
+   body={"name": "Apex Industries - Lagos Branch"},
+   resp={"data": {"id": "{{childTenantId}}", "parentTenantId": "{{tenantId}}", "name": "Apex Industries - Lagos Branch"}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('childTenantId', json.data.id);"])
+
+ep("02 - Tenants & Members", "List Tenant Roles", "GET", "/api/v1/tenants/roles",
+   resp={"data": [
+       {"id": "{{adminRoleId}}", "name": "Administrator", "description": "System-seeded Administrator role", "permissions": ["accounting.manage", "accounting.read", "cashier.sales.manage", "cashier.sales.read", "factory.costing.approve", "factory.costing.read", "factory.production.manage", "factory.recipes.manage", "factory.setup.manage", "factory.trade.manage", "iam.roles.manage", "iam.users.assign", "iam.users.manage", "inventory.adjustments.manage", "inventory.stock.manage", "inventory.stock.read", "inventory.transfers.manage", "otp.issue", "settings.manage", "showroom.stock.manage", "showroom.stock.read", "tenants.create_child"]},
+       {"id": "{{stockKeeperRoleId}}", "name": "Stock Keeper", "description": "System-seeded Stock Keeper role", "permissions": ["inventory.adjustments.manage", "inventory.stock.manage", "inventory.stock.read", "inventory.transfers.manage", "showroom.stock.manage", "showroom.stock.read"]},
+   ]},
+   tests=[
+       "const json = pm.response.json();",
+       "const admin = json.data.find(r => r.name === 'Administrator');",
+       "const stockKeeper = json.data.find(r => r.name === 'Stock Keeper');",
+       "if (admin) pm.collectionVariables.set('adminRoleId', admin.id);",
+       "if (stockKeeper) pm.collectionVariables.set('stockKeeperRoleId', stockKeeper.id);",
+   ],
+   desc="Run after Register Tenant to capture the seeded role IDs used by Invite Member below.")
+
+ep("02 - Tenants & Members", "Create Custom Role", "POST", "/api/v1/tenants/roles",
+   body={"name": "Showroom Supervisor", "description": "Custom role for showroom floor supervisors", "permissions": ["showroom.stock.read", "showroom.stock.manage"]},
+   resp={"data": {"id": "{{customRoleId}}", "name": "Showroom Supervisor", "description": "Custom role for showroom floor supervisors", "permissions": ["showroom.stock.manage", "showroom.stock.read"]}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('customRoleId', json.data.id);"])
+
+ep("02 - Tenants & Members", "Invite Member", "POST", "/api/v1/tenants/members",
+   body={"email": "keeper@apex.com", "displayName": "Kelvin Keeper", "phone": "+2348000000000", "roleId": "{{stockKeeperRoleId}}", "locationId": "{{factoryId}}"},
+   resp={"data": {"userId": "{{memberUserId}}", "email": "keeper@apex.com", "displayName": "Kelvin Keeper", "phone": "+2348000000000",
+                  "status": "ACTIVE", "role": {"id": "{{stockKeeperRoleId}}", "name": "Stock Keeper"}, "locationId": "{{factoryId}}",
+                  "accessScope": "SINGLE_LOCATION", "invitedAt": NOW}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('memberUserId', json.data.userId);"],
+   desc="Run Factory Setup > Create Factory first so {{factoryId}} is populated, or leave locationId null for ALL_LOCATIONS.")
+
+ep("02 - Tenants & Members", "List Members", "GET", "/api/v1/tenants/members",
+   resp={"data": [
+       {"userId": "{{userId}}", "email": "admin@apex.com", "displayName": "Alice Admin", "phone": None, "status": "ACTIVE",
+        "role": {"id": "{{adminRoleId}}", "name": "Administrator"}, "locationId": None, "accessScope": "ALL_LOCATIONS", "invitedAt": NOW},
+       {"userId": "{{memberUserId}}", "email": "keeper@apex.com", "displayName": "Kelvin Keeper", "phone": "+2348000000000", "status": "ACTIVE",
+        "role": {"id": "{{stockKeeperRoleId}}", "name": "Stock Keeper"}, "locationId": "{{factoryId}}", "accessScope": "SINGLE_LOCATION", "invitedAt": NOW},
+   ]})
+
+ep("02 - Tenants & Members", "Update Member Status", "PUT", "/api/v1/tenants/members/{{memberUserId}}/status",
+   body={"status": "SUSPENDED"},
+   resp={"data": {"userId": "{{memberUserId}}", "email": "keeper@apex.com", "displayName": "Kelvin Keeper", "phone": None, "status": "SUSPENDED",
+                  "role": {"id": "{{stockKeeperRoleId}}", "name": "Stock Keeper"}, "locationId": "{{factoryId}}", "accessScope": "SINGLE_LOCATION", "invitedAt": NOW}})
+
+ep("02 - Tenants & Members", "Update Member Location", "PUT", "/api/v1/tenants/members/{{memberUserId}}/location",
+   body={"locationId": None},
+   resp={"data": {"userId": "{{memberUserId}}", "email": "keeper@apex.com", "displayName": "Kelvin Keeper", "phone": None, "status": "ACTIVE",
+                  "role": {"id": "{{stockKeeperRoleId}}", "name": "Stock Keeper"}, "locationId": None, "accessScope": "ALL_LOCATIONS", "invitedAt": NOW}},
+   desc="null locationId grants ALL_LOCATIONS access scope.")
+
+# ============================== OTP ==============================
+ep("03 - OTP", "Request OTP Challenge", "POST", "/api/v1/otp/challenges",
+   body={"purpose": "QUANTITY_ADJUSTMENT", "targetReference": "cocoa-writeoff"},
+   resp={"data": {"challengeId": "{{otpChallengeId}}", "status": "AWAITING", "expiresAt": None}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('otpChallengeId', json.data.challengeId);"],
+   desc="purpose is QUANTITY_ADJUSTMENT or WALLET_WITHDRAWAL. targetReference is any string you choose to describe the action.")
+
+ep("03 - OTP", "Issue OTP Code (Admin)", "POST", "/api/v1/otp/challenges/{{otpChallengeId}}/issue",
+   resp={"data": {"challengeId": "{{otpChallengeId}}", "code": "{{otpCode}}", "expiresAt": "2026-10-01T10:30:30Z"}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('otpCode', json.data.code);"],
+   desc="Only a user holding otp.issue (Administrator by default) can call this. The plaintext code is returned exactly once.")
+
+ep("03 - OTP", "Verify OTP Code", "POST", "/api/v1/otp/challenges/{{otpChallengeId}}/verify",
+   body={"code": "{{otpCode}}"},
+   resp={"data": {"verified": True}},
+   desc="Must be called by the same user who requested the challenge.")
+
+# ============================== VAT CONTROL ==============================
+ep("04 - VAT Control", "List VAT Categories", "GET", "/api/v1/account/vat-control/vat-categories",
+   resp={"data": [
+       {"id": "{{standardRateVatCategoryId}}", "code": "STANDARD_RATE", "name": "Standard Rate", "rate": 7.50, "inputVatRecoverable": True,
+        "description": "Standard-rated supplies under the Nigeria Tax Act 2025: manufactured goods, professional/consulting services, digital services, retail sales, and most B2B transactions. VAT charged at 7.5%, fully recoverable as input VAT.",
+        "nrsTaxCategoryCode": "STANDARD_VAT"},
+       {"id": "{{zeroRatedVatCategoryId}}", "code": "ZERO_RATED", "name": "Zero-Rated", "rate": 0.00, "inputVatRecoverable": True,
+        "description": "Zero-rated supplies under the Nigeria Tax Act 2025: no VAT charged on the final sale (0%), but input VAT on related purchases remains fully recoverable. Includes exports, basic staples, textbooks and school supplies, and tuition fees.",
+        "nrsTaxCategoryCode": "ZERO_VAT"},
+       {"id": "{{exemptVatCategoryId}}", "code": "EXEMPT", "name": "Exempt", "rate": 0.00, "inputVatRecoverable": False,
+        "description": "Exempt supplies under the Nigeria Tax Act 2025: no VAT charged, and input VAT on related costs is NOT recoverable. Includes most financial services, residential rent, certain land/building sales, and specified government services.",
+        "nrsTaxCategoryCode": "EXEMPTED"},
+   ]},
+   tests=[
+       "const json = pm.response.json();",
+       "const standard = json.data.find(c => c.code === 'STANDARD_RATE');",
+       "const zero = json.data.find(c => c.code === 'ZERO_RATED');",
+       "const exempt = json.data.find(c => c.code === 'EXEMPT');",
+       "if (standard) pm.collectionVariables.set('standardRateVatCategoryId', standard.id);",
+       "if (zero) pm.collectionVariables.set('zeroRatedVatCategoryId', zero.id);",
+       "if (exempt) pm.collectionVariables.set('exemptVatCategoryId', exempt.id);",
+   ],
+   desc="System-seeded, global, never tenant-created -- see V5__tax_classification.sql. Always exactly these 3 rows (NRS / Nigeria Tax Act 2025, effective 1 Jan 2026).")
+
+ep("04 - VAT Control", "List HSN Sections", "GET", "/api/v1/account/vat-control/hsn-sections",
+   resp={"data": [
+       {"id": "{{hsnSectionId}}", "code": "VI", "chapterRange": "28-38", "name": "Products of the chemical or allied industries"},
+       {"id": uid(), "code": "IV", "chapterRange": "16-24", "name": "Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes"},
+   ]},
+   tests=[
+       "const json = pm.response.json();",
+       "const chemicals = json.data.find(s => s.code === 'VI');",
+       "if (chemicals) pm.collectionVariables.set('hsnSectionId', chemicals.id);",
+   ],
+   desc="WCO Harmonized System, 21 sections (chapter-level detail is out of scope until an authoritative Nigeria Customs tariff dataset is supplied -- see the migration's scope note). Captures Section VI (chemicals) to match this collection's Cocoa Powder/chemicals sample data.")
+
+ep("04 - VAT Control", "List ISIC Sections", "GET", "/api/v1/account/vat-control/isic-sections",
+   resp={"data": [
+       {"id": "{{isicSectionId}}", "code": "C", "name": "Manufacturing"},
+       {"id": uid(), "code": "A", "name": "Agriculture, forestry and fishing"},
+   ]},
+   tests=[
+       "const json = pm.response.json();",
+       "const manufacturing = json.data.find(s => s.code === 'C');",
+       "if (manufacturing) pm.collectionVariables.set('isicSectionId', manufacturing.id);",
+   ],
+   desc="UN Statistics Division, ISIC Rev.4, 21 sections. Captures Section C (Manufacturing) to match this factory-floor sample data.")
+
+ep("04 - VAT Control", "Get Tenant VAT Categories", "GET", "/api/v1/account/vat-control/tenant-vat-categories",
+   resp={"data": [
+       {"vatCategoryId": "{{standardRateVatCategoryId}}", "code": "STANDARD_RATE", "name": "Standard Rate", "rate": 7.50, "isActive": False, "activatedAt": "1970-01-01T00:00:00Z"},
+       {"vatCategoryId": "{{zeroRatedVatCategoryId}}", "code": "ZERO_RATED", "name": "Zero-Rated", "rate": 0.00, "isActive": False, "activatedAt": "1970-01-01T00:00:00Z"},
+       {"vatCategoryId": "{{exemptVatCategoryId}}", "code": "EXEMPT", "name": "Exempt", "rate": 0.00, "isActive": False, "activatedAt": "1970-01-01T00:00:00Z"},
+   ]},
+   desc="Every tenant starts with none of the 3 categories activated -- run Select Tenant VAT Categories below before registering any stock item, which requires an active vatCategoryId.")
+
+ep("04 - VAT Control", "Select Tenant VAT Categories", "PUT", "/api/v1/account/vat-control/tenant-vat-categories",
+   body={"vatCategoryCodes": ["STANDARD_RATE", "ZERO_RATED", "EXEMPT"]},
+   resp={"data": [
+       {"vatCategoryId": "{{standardRateVatCategoryId}}", "code": "STANDARD_RATE", "name": "Standard Rate", "rate": 7.50, "isActive": True, "activatedAt": NOW},
+       {"vatCategoryId": "{{zeroRatedVatCategoryId}}", "code": "ZERO_RATED", "name": "Zero-Rated", "rate": 0.00, "isActive": True, "activatedAt": NOW},
+       {"vatCategoryId": "{{exemptVatCategoryId}}", "code": "EXEMPT", "name": "Exempt", "rate": 0.00, "isActive": True, "activatedAt": NOW},
+   ]},
+   desc="Replaces the tenant's active VAT category set with exactly the codes given -- this call activates all 3. A stock item's vatCategoryId must be one the tenant has activated here, or registration fails with VAT_CATEGORY_NOT_ACTIVE.")
+
+# ============================== SETTINGS ==============================
+ep("05 - Settings", "Get Company Settings", "GET", "/api/v1/settings/company",
+   resp={"data": {"tenantId": "{{tenantId}}", "companyName": "ZifIQ Operations Ltd", "primaryEmail": "info@zifiq.com",
+                  "primaryPhone": "+1-800-555-ZIF", "taxRegistrationNumber": "TAX-9948120",
+                  "headOfficeAddress": "Suite 400, Innovation Tower, Central District", "updatedAt": NOW}})
+
+ep("05 - Settings", "Update Company Settings", "PUT", "/api/v1/settings/company",
+   body={"companyName": "Apex Industries Ltd", "primaryEmail": "info@apex.com", "primaryPhone": "+1-800-555-0100",
+         "taxRegistrationNumber": "TAX-1122334", "headOfficeAddress": "12 Industrial Way, Lagos"},
+   resp={"data": {"tenantId": "{{tenantId}}", "companyName": "Apex Industries Ltd", "primaryEmail": "info@apex.com",
+                  "primaryPhone": "+1-800-555-0100", "taxRegistrationNumber": "TAX-1122334",
+                  "headOfficeAddress": "12 Industrial Way, Lagos", "updatedAt": NOW}})
+
+# ============================== FACTORY SETUP ==============================
+ep("06 - Factory Setup", "Create Factory", "POST", "/api/v1/factory/setup/factories",
+   body={"name": "Apex Plant A", "address": "12 Industrial Way, Lagos", "state": "Lagos", "phone": "+234-800-100-0001",
+         "vatRate": 7.5, "vatEnabled": True, "vatRegistrationNumber": "VAT-APEX-001"},
+   resp={"data": {"id": "{{factoryId}}", "code": "FAC-1", "name": "Apex Plant A", "address": "12 Industrial Way, Lagos", "state": "Lagos",
+                  "phone": "+234-800-100-0001", "managerUserId": None, "vatRate": 7.5, "vatEnabled": True,
+                  "vatRegistrationNumber": "VAT-APEX-001", "status": "ACTIVE"}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('factoryId', json.data.id);"],
+   desc="code auto-generates (FAC-1, FAC-2, ...) when omitted.")
+
+ep("06 - Factory Setup", "Create Second Factory (for Transfers/Trade)", "POST", "/api/v1/factory/setup/factories",
+   body={"name": "Apex Plant B", "address": "4 Coastal Road, Port Harcourt", "state": "Rivers"},
+   resp={"data": {"id": "{{factoryId2}}", "code": "FAC-2", "name": "Apex Plant B", "address": "4 Coastal Road, Port Harcourt",
+                  "state": "Rivers", "phone": None, "managerUserId": None, "vatRate": 7.5, "vatEnabled": True,
+                  "vatRegistrationNumber": None, "status": "ACTIVE"}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('factoryId2', json.data.id);"])
+
+ep("06 - Factory Setup", "List Factories", "GET", "/api/v1/factory/setup/factories",
+   resp={"data": [{"id": "{{factoryId}}", "code": "FAC-1", "name": "Apex Plant A", "address": "12 Industrial Way, Lagos", "state": "Lagos",
+                   "phone": "+234-800-100-0001", "managerUserId": None, "vatRate": 7.5, "vatEnabled": True,
+                   "vatRegistrationNumber": "VAT-APEX-001", "status": "ACTIVE"}]})
+
+ep("06 - Factory Setup", "Update Factory", "PUT", "/api/v1/factory/setup/factories/{{factoryId}}",
+   body={"name": "Apex Plant A (Updated)", "address": "12 Industrial Way, Lagos", "state": "Lagos", "phone": "+234-800-100-0099",
+         "vatRate": 7.5, "vatEnabled": True, "vatRegistrationNumber": "VAT-APEX-001"},
+   resp={"data": {"id": "{{factoryId}}", "code": "FAC-1", "name": "Apex Plant A (Updated)", "address": "12 Industrial Way, Lagos",
+                  "state": "Lagos", "phone": "+234-800-100-0099", "managerUserId": None, "vatRate": 7.5, "vatEnabled": True,
+                  "vatRegistrationNumber": "VAT-APEX-001", "status": "ACTIVE"}})
+
+ep("06 - Factory Setup", "Update Factory Status", "PUT", "/api/v1/factory/setup/factories/{{factoryId}}/status",
+   body={"status": "SUSPENDED"},
+   resp={"data": {"id": "{{factoryId}}", "code": "FAC-1", "name": "Apex Plant A (Updated)", "address": "12 Industrial Way, Lagos",
+                  "state": "Lagos", "phone": "+234-800-100-0099", "managerUserId": None, "vatRate": 7.5, "vatEnabled": True,
+                  "vatRegistrationNumber": "VAT-APEX-001", "status": "SUSPENDED"}})
+
+ep("06 - Factory Setup", "Register Unit of Measure", "POST", "/api/v1/factory/setup/units",
+   body={"unitCode": "kg", "unitName": "Kilogram", "symbol": "kg"},
+   resp={"data": {"id": "{{unitId}}", "unitCode": "kg", "unitName": "Kilogram", "symbol": "kg"}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('unitId', json.data.id);"])
+
+ep("06 - Factory Setup", "List Units of Measure", "GET", "/api/v1/factory/setup/units",
+   resp={"data": [{"id": "{{unitId}}", "unitCode": "kg", "unitName": "Kilogram", "symbol": "kg"}]})
+
+ep("06 - Factory Setup", "Register Category", "POST", "/api/v1/factory/setup/categories",
+   body={"name": "Chemicals", "type": "RAW_MATERIAL", "description": "Raw chemical inputs"},
+   resp={"data": {"id": "{{categoryId}}", "name": "Chemicals", "type": "RAW_MATERIAL", "description": "Raw chemical inputs"}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('categoryId', json.data.id);"],
+   desc="type is one of FINISHED_PRODUCT, RAW_MATERIAL, PACKAGING.")
+
+ep("06 - Factory Setup", "List Categories", "GET", "/api/v1/factory/setup/categories",
+   resp={"data": [{"id": "{{categoryId}}", "name": "Chemicals", "type": "RAW_MATERIAL", "description": "Raw chemical inputs"}]})
+
+ep("06 - Factory Setup", "Register Supplier", "POST", "/api/v1/factory/setup/suppliers",
+   body={"supplierCode": None, "companyName": "Beta Chemical Supplies", "contactEmail": "sales@betachem.com", "phone": "+234-800-200-0002"},
+   resp={"data": {"id": "{{supplierId}}", "supplierCode": "SUP-1", "companyName": "Beta Chemical Supplies",
+                  "contactEmail": "sales@betachem.com", "phone": "+234-800-200-0002"}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('supplierId', json.data.id);"])
+
+ep("06 - Factory Setup", "List Suppliers", "GET", "/api/v1/factory/setup/suppliers",
+   resp={"data": [{"id": "{{supplierId}}", "supplierCode": "SUP-1", "companyName": "Beta Chemical Supplies",
+                   "contactEmail": "sales@betachem.com", "phone": "+234-800-200-0002"}]})
+
+ep("06 - Factory Setup", "Register Manufacturer", "POST", "/api/v1/factory/setup/manufacturers",
+   body={"manufacturerCode": None, "name": "Gamma Manufacturing Co", "country": "Nigeria", "contactEmail": "info@gammamfg.com",
+         "phone": "+234-800-300-0003", "produces": "Emulsifiers, preservatives"},
+   resp={"data": {"id": "{{manufacturerId}}", "manufacturerCode": "MFR-1", "name": "Gamma Manufacturing Co", "country": "Nigeria",
+                  "contactEmail": "info@gammamfg.com", "phone": "+234-800-300-0003", "produces": "Emulsifiers, preservatives", "status": "ACTIVE"}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('manufacturerId', json.data.id);"])
+
+ep("06 - Factory Setup", "List Manufacturers", "GET", "/api/v1/factory/setup/manufacturers",
+   resp={"data": [{"id": "{{manufacturerId}}", "manufacturerCode": "MFR-1", "name": "Gamma Manufacturing Co", "country": "Nigeria",
+                   "contactEmail": "info@gammamfg.com", "phone": "+234-800-300-0003", "produces": "Emulsifiers, preservatives", "status": "ACTIVE"}]})
+
+# ============================== INVENTORY STOCK ==============================
+ep("07 - Inventory Stock", "Register Raw Material", "POST", "/api/v1/inventory/stock-items",
+   body={"locationId": "{{factoryId}}", "itemType": "RAW_MATERIAL", "code": None, "name": "Cocoa Powder",
+         "categoryId": "{{categoryId}}", "brand": None, "unitOfMeasureId": "{{unitId}}", "reorderLevel": 10,
+         "barcode": None, "landingCost": 5.00, "markupCost": None,
+         "vatCategoryId": "{{standardRateVatCategoryId}}", "hsnSectionId": "{{hsnSectionId}}", "isicSectionId": "{{isicSectionId}}"},
+   resp={"data": {"id": "{{rawMaterialId}}", "locationId": "{{factoryId}}", "itemType": "RAW_MATERIAL", "code": "ITM-1",
+                  "name": "Cocoa Powder", "categoryId": "{{categoryId}}", "brand": None, "unitOfMeasureId": "{{unitId}}",
+                  "reorderLevel": 10.000, "barcode": None, "landingCost": 5.00, "markupCost": None,
+                  "vatCategoryId": "{{standardRateVatCategoryId}}", "hsnSectionId": "{{hsnSectionId}}", "isicSectionId": "{{isicSectionId}}",
+                  "status": "ACTIVE", "createdAt": NOW}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('rawMaterialId', json.data.id);"],
+   desc="itemType is one of FINISHED_PRODUCT, RAW_MATERIAL, IN_HOUSE_RECIPE, OUTSOURCED. vatCategoryId/hsnSectionId/isicSectionId are required on every product -- run 04 - VAT Control first (List VAT Categories, List HSN Sections, List ISIC Sections, Select Tenant VAT Categories) to populate these variables. vatCategoryId must be one the active tenant has activated, or this returns 400 VAT_CATEGORY_NOT_ACTIVE.")
+
+ep("07 - Inventory Stock", "Register Finished Product", "POST", "/api/v1/inventory/stock-items",
+   body={"locationId": "{{factoryId}}", "itemType": "FINISHED_PRODUCT", "code": None, "name": "Premium Blend",
+         "categoryId": None, "brand": None, "unitOfMeasureId": "{{unitId}}", "reorderLevel": 5, "barcode": None,
+         "landingCost": None, "markupCost": None,
+         "vatCategoryId": "{{standardRateVatCategoryId}}", "hsnSectionId": "{{hsnSectionId}}", "isicSectionId": "{{isicSectionId}}"},
+   resp={"data": {"id": "{{finishedProductId}}", "locationId": "{{factoryId}}", "itemType": "FINISHED_PRODUCT", "code": "ITM-2",
+                  "name": "Premium Blend", "categoryId": None, "brand": None, "unitOfMeasureId": "{{unitId}}",
+                  "reorderLevel": 5.000, "barcode": None, "landingCost": None, "markupCost": None,
+                  "vatCategoryId": "{{standardRateVatCategoryId}}", "hsnSectionId": "{{hsnSectionId}}", "isicSectionId": "{{isicSectionId}}",
+                  "status": "ACTIVE", "createdAt": NOW}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('finishedProductId', json.data.id);"])
+
+ep("07 - Inventory Stock", "List Stock Items", "GET", "/api/v1/inventory/stock-items",
+   query=[{"key": "locationId", "value": "{{factoryId}}"}],
+   resp={"data": [{"id": "{{rawMaterialId}}", "locationId": "{{factoryId}}", "itemType": "RAW_MATERIAL", "code": "ITM-1",
+                   "name": "Cocoa Powder", "categoryId": "{{categoryId}}", "brand": None, "unitOfMeasureId": "{{unitId}}",
+                   "reorderLevel": 10.000, "barcode": None, "landingCost": 5.00, "markupCost": None,
+                   "vatCategoryId": "{{standardRateVatCategoryId}}", "hsnSectionId": "{{hsnSectionId}}", "isicSectionId": "{{isicSectionId}}",
+                   "status": "ACTIVE", "createdAt": NOW}]})
+
+ep("07 - Inventory Stock", "Update Stock Item Status", "PUT", "/api/v1/inventory/stock-items/{{rawMaterialId}}/status",
+   body={"status": "SUSPENDED"},
+   resp={"data": {"id": "{{rawMaterialId}}", "locationId": "{{factoryId}}", "itemType": "RAW_MATERIAL", "code": "ITM-1",
+                  "name": "Cocoa Powder", "categoryId": "{{categoryId}}", "brand": None, "unitOfMeasureId": "{{unitId}}",
+                  "reorderLevel": 10.000, "barcode": None, "landingCost": 5.00, "markupCost": None,
+                  "vatCategoryId": "{{standardRateVatCategoryId}}", "hsnSectionId": "{{hsnSectionId}}", "isicSectionId": "{{isicSectionId}}",
+                  "status": "SUSPENDED", "createdAt": NOW}})
+
+ep("07 - Inventory Stock", "Reactivate Stock Item", "PUT", "/api/v1/inventory/stock-items/{{rawMaterialId}}/status",
+   body={"status": "ACTIVE"},
+   resp={"data": {"id": "{{rawMaterialId}}", "locationId": "{{factoryId}}", "itemType": "RAW_MATERIAL", "code": "ITM-1",
+                  "name": "Cocoa Powder", "categoryId": "{{categoryId}}", "brand": None, "unitOfMeasureId": "{{unitId}}",
+                  "reorderLevel": 10.000, "barcode": None, "landingCost": 5.00, "markupCost": None,
+                  "vatCategoryId": "{{standardRateVatCategoryId}}", "hsnSectionId": "{{hsnSectionId}}", "isicSectionId": "{{isicSectionId}}",
+                  "status": "ACTIVE", "createdAt": NOW}},
+   desc="Reverses the previous request -- everything from here on (Refill, Transfers, Production, Trade) needs this item ACTIVE.")
+
+ep("07 - Inventory Stock", "Refill Finished Product", "POST", "/api/v1/inventory/stock/refill/finished-product",
+   body={"locationId": "{{factoryId}}", "stockItemId": "{{finishedProductId}}", "quantity": 50, "note": "Initial stocking"},
+   resp={"data": {"ref": "RF-1", "stockItemId": "{{finishedProductId}}", "quantity": 50, "performedBy": "{{userId}}", "at": NOW}})
+
+ep("07 - Inventory Stock", "Refill Raw Material (Receive)", "POST", "/api/v1/inventory/stock/refill/raw-material",
+   body={"locationId": "{{factoryId}}", "stockItemId": "{{rawMaterialId}}", "supplierId": "{{supplierId}}",
+         "manufacturerId": "{{manufacturerId}}", "quantity": 100, "unitCost": 5.00,
+         "manufacturedDate": "2026-09-01", "expiryDate": "2027-09-01"},
+   resp={"data": {"id": "{{stockReceiptId}}", "ref": "DL-1", "stockItemId": "{{rawMaterialId}}", "supplierId": "{{supplierId}}",
+                  "manufacturerId": "{{manufacturerId}}", "quantity": 100.000, "unitCost": 5.00, "manufacturedDate": "2026-09-01",
+                  "expiryDate": "2027-09-01", "verifiedByUserId": None, "offloadedAt": None, "condition": "PENDING_VERIFICATION"}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('stockReceiptId', json.data.id);"],
+   desc="This is also the Material/Recipe Receive Report's data source (same table, see List Stock Receipts).")
+
+ep("07 - Inventory Stock", "List Stock Receipts (Material Receive Report)", "GET", "/api/v1/inventory/stock/receipts",
+   query=[{"key": "locationId", "value": "{{factoryId}}"}],
+   resp={"data": [{"id": "{{stockReceiptId}}", "ref": "DL-1", "stockItemId": "{{rawMaterialId}}", "supplierId": "{{supplierId}}",
+                   "manufacturerId": "{{manufacturerId}}", "quantity": 100.000, "unitCost": 5.00, "manufacturedDate": "2026-09-01",
+                   "expiryDate": "2027-09-01", "verifiedByUserId": None, "offloadedAt": None, "condition": "PENDING_VERIFICATION"}]})
+
+ep("07 - Inventory Stock", "Verify Stock Receipt", "POST", "/api/v1/inventory/stock/receipts/{{stockReceiptId}}/verify",
+   body={"condition": "ACCEPTED"},
+   resp={"data": {"id": "{{stockReceiptId}}", "ref": "DL-1", "stockItemId": "{{rawMaterialId}}", "supplierId": "{{supplierId}}",
+                  "manufacturerId": "{{manufacturerId}}", "quantity": 100.000, "unitCost": 5.00, "manufacturedDate": "2026-09-01",
+                  "expiryDate": "2027-09-01", "verifiedByUserId": "{{userId}}", "offloadedAt": NOW, "condition": "ACCEPTED"}})
+
+ep("07 - Inventory Stock", "Stock Card (per-transaction)", "GET", "/api/v1/inventory/stock/card/{{rawMaterialId}}",
+   query=[{"key": "locationId", "value": "{{factoryId}}"}],
+   resp={"data": [{"sn": 1, "date": "2026-10-01", "remark": "DL-1", "qtyIn": 100.000, "qtyOut": 0.000, "runningBalance": 100.000}]})
+
+ep("07 - Inventory Stock", "Bin Card (daily totals)", "GET", "/api/v1/inventory/stock/bin-card/{{rawMaterialId}}",
+   query=[{"key": "locationId", "value": "{{factoryId}}"}],
+   resp={"data": [{"sn": 1, "date": "2026-10-01", "qtyIn": 100.000, "qtyOut": 0.000, "balance": 100.000}]})
+
+ep("07 - Inventory Stock", "Comprehensive Stock Report", "GET", "/api/v1/inventory/stock/comprehensive-report",
+   query=[{"key": "locationId", "value": "{{factoryId}}"}, {"key": "view", "value": "CATEGORY"}],
+   resp={"data": [{"lineNumber": 1, "groupingLabel": "Chemicals", "stockDetail": "Cocoa Powder", "unitCost": 5.00,
+                   "quantityLeft": 100.000, "totalCost": 500.00}]},
+   desc="unitCost/totalCost show as 0 for callers without factory.costing.read.")
+
+ep("07 - Inventory Stock", "Stock Movement Report", "GET", "/api/v1/inventory/stock/movement-report",
+   query=[{"key": "locationId", "value": "{{factoryId}}"}],
+   resp={"data": [
+       {"sn": 1, "date": "2026-10-01", "locationId": "{{factoryId}}", "stockItemId": "{{rawMaterialId}}", "itemCode": "ITM-1",
+        "itemName": "Cocoa Powder", "sourceType": "RECEIVE", "sourceReference": "DL-1", "qtyIn": 100.000, "qtyOut": 0.000},
+       {"sn": 2, "date": "2026-10-01", "locationId": "{{factoryId}}", "stockItemId": "{{rawMaterialId}}", "itemCode": "ITM-1",
+        "itemName": "Cocoa Powder", "sourceType": "TRANSFER_OUT", "sourceReference": "WB-1", "qtyIn": 0.000, "qtyOut": 10.000},
+   ]},
+   desc="Cross-item, cross-movement-type ledger view (unlike Stock Card, which is scoped to a single item) -- every stock-affecting action across every module writes to the same ledger this reads from. All filters (locationId, stockItemId, sourceType, from, to) are optional. sourceType is one of REFILL, RECEIVE, PRODUCTION_RUN, TRANSFER_OUT, TRANSFER_IN, QUANTITY_ADJUSTMENT, TRADE_OUT, TRADE_IN.")
+
+ep("07 - Inventory Stock", "Re-Order Report", "GET", "/api/v1/inventory/stock/re-order-report",
+   query=[{"key": "locationId", "value": "{{factoryId}}"}],
+   resp={"data": []},
+   desc="Returns items at or below their reorderLevel. Empty here since the sample data stays above threshold.")
+
+# ============================== INVENTORY OPERATIONS ==============================
+ep("08 - Inventory Operations", "Dispatch Stock Transfer", "POST", "/api/v1/inventory/stock/transfers",
+   body={"sourceLocationId": "{{factoryId}}", "destinationLocationId": "{{factoryId2}}", "driverName": "John Driver",
+         "driverVehicle": "LAG-123-XY", "lines": [{"stockItemId": "{{rawMaterialId}}", "quantity": 10, "unitPrice": None}]},
+   resp={"data": {"id": "{{transferId}}", "waybillRef": "WB-1", "sourceLocationId": "{{factoryId}}", "destinationLocationId": "{{factoryId2}}",
+                  "status": "DISPATCHED", "dispatchedAt": NOW, "receivedAt": None,
+                  "lines": [{"id": "{{transferLineId}}", "stockItemId": "{{rawMaterialId}}", "qtySent": 10.000, "qtyReceived": None, "qtyRejected": None}]}},
+   tests=[
+       "const json = pm.response.json();",
+       "pm.collectionVariables.set('transferId', json.data.id);",
+       "pm.collectionVariables.set('transferLineId', json.data.lines[0].id);",
+   ],
+   desc="Run Create Second Factory first so {{factoryId2}} is populated.")
+
+ep("08 - Inventory Operations", "Receive Stock Transfer", "POST", "/api/v1/inventory/stock/transfers/{{transferId}}/receive",
+   body={"lines": [{"stockTransferLineId": "{{transferLineId}}", "qtyReceived": 10, "qtyRejected": None}]},
+   resp={"data": {"id": "{{transferId}}", "waybillRef": "WB-1", "sourceLocationId": "{{factoryId}}", "destinationLocationId": "{{factoryId2}}",
+                  "status": "RECEIVED", "dispatchedAt": NOW, "receivedAt": NOW,
+                  "lines": [{"id": "{{transferLineId}}", "stockItemId": "{{rawMaterialId}}", "qtySent": 10.000, "qtyReceived": 10.000, "qtyRejected": None}]}})
+
+ep("08 - Inventory Operations", "List Stock Transfers", "GET", "/api/v1/inventory/stock/transfers",
+   query=[{"key": "locationId", "value": "{{factoryId}}"}],
+   resp={"data": [{"id": "{{transferId}}", "waybillRef": "WB-1", "sourceLocationId": "{{factoryId}}", "destinationLocationId": "{{factoryId2}}",
+                   "status": "RECEIVED", "dispatchedAt": NOW, "receivedAt": NOW,
+                   "lines": [{"id": "{{transferLineId}}", "stockItemId": "{{rawMaterialId}}", "qtySent": 10.000, "qtyReceived": 10.000, "qtyRejected": None}]}]})
+
+ep("08 - Inventory Operations", "Post Quantity Adjustment (below OTP threshold)", "POST", "/api/v1/inventory/quantity-adjustments",
+   body={"locationId": "{{factoryId}}", "stockItemId": "{{rawMaterialId}}", "direction": "NEGATIVE", "quantity": 3,
+         "reason": "DAMAGED_BROKEN", "note": "Bag torn in storage", "otpChallengeId": None},
+   resp={"data": {"ref": "QA-1", "stockItemId": "{{rawMaterialId}}", "direction": "NEGATIVE", "quantity": 3, "reason": "DAMAGED_BROKEN",
+                  "note": "Bag torn in storage", "performedBy": "{{userId}}", "at": NOW}},
+   desc="Adjustments at or below the 50-unit threshold (FactoryOperationsService.ADJUSTMENT_OTP_THRESHOLD) need no OTP.")
+
+ep("08 - Inventory Operations", "Post Quantity Adjustment (above threshold, OTP-gated)", "POST", "/api/v1/inventory/quantity-adjustments",
+   body={"locationId": "{{factoryId}}", "stockItemId": "{{rawMaterialId}}", "direction": "NEGATIVE", "quantity": 60,
+         "reason": "STOCKTAKE_VARIANCE", "note": "Annual stocktake correction", "otpChallengeId": "{{otpChallengeId}}"},
+   resp={"data": {"ref": "QA-2", "stockItemId": "{{rawMaterialId}}", "direction": "NEGATIVE", "quantity": 60, "reason": "STOCKTAKE_VARIANCE",
+                  "note": "Annual stocktake correction", "performedBy": "{{userId}}", "at": NOW}},
+   desc="Run the OTP folder's three requests first (request -> issue -> verify) so otpChallengeId is USED, or this returns 403 OTP_REQUIRED.")
+
+ep("08 - Inventory Operations", "List Quantity Adjustments", "GET", "/api/v1/inventory/quantity-adjustments",
+   query=[{"key": "locationId", "value": "{{factoryId}}"}],
+   resp={"data": [{"ref": "QA-1", "stockItemId": "{{rawMaterialId}}", "direction": "NEGATIVE", "quantity": 3, "reason": "DAMAGED_BROKEN",
+                   "note": "Bag torn in storage", "performedBy": "{{userId}}", "at": NOW}]})
+
+# ============================== FACTORY PRODUCTION ==============================
+ep("09 - Factory Production", "Register Recipe", "POST", "/api/v1/factory/recipes",
+   body={"locationId": "{{factoryId}}", "code": None, "name": "Premium Blend Base", "description": "Base recipe for Premium Blend",
+         "sourcing": "IN_HOUSE_PRODUCTION", "yieldQty": 100, "yieldUnitId": "{{unitId}}", "shelfLifeDays": 365,
+         "reorderLevel": 20, "ingredients": [{"rawMaterialStockItemId": "{{rawMaterialId}}", "quantity": 10, "unitId": "{{unitId}}"}]},
+   resp={"data": {"id": "{{recipeId}}", "code": "RCP-1", "name": "Premium Blend Base", "sourcing": "IN_HOUSE_PRODUCTION",
+                  "yieldQty": 100, "status": "ACTIVE",
+                  "ingredients": [{"rawMaterialStockItemId": "{{rawMaterialId}}", "quantity": 10, "unitId": "{{unitId}}"}]}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('recipeId', json.data.id);"],
+   desc="sourcing is IN_HOUSE_PRODUCTION or DIRECT_IMPORTATION.")
+
+ep("09 - Factory Production", "List Recipes", "GET", "/api/v1/factory/recipes",
+   query=[{"key": "locationId", "value": "{{factoryId}}"}],
+   resp={"data": [{"id": "{{recipeId}}", "code": "RCP-1", "name": "Premium Blend Base", "sourcing": "IN_HOUSE_PRODUCTION",
+                   "yieldQty": 100, "status": "ACTIVE",
+                   "ingredients": [{"rawMaterialStockItemId": "{{rawMaterialId}}", "quantity": 10, "unitId": "{{unitId}}"}]}]})
+
+ep("09 - Factory Production", "Run Cost Calculator (QC - blind)", "POST", "/api/v1/factory/production/cost-calculator",
+   body={"locationId": "{{factoryId}}", "targetStockItemId": "{{finishedProductId}}", "recipeId": None, "batchSizeQty": 50,
+         "materials": [{"stockItemId": "{{rawMaterialId}}", "quantity": 20}], "overheads": [{"label": "Labour", "amount": 30}]},
+   resp={"data": {"id": "{{costingId}}", "targetStockItemId": "{{finishedProductId}}", "batchSizeQty": 50, "status": "PENDING",
+                  "computedByUserId": "{{userId}}", "createdAt": NOW}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('costingId', json.data.id);"],
+   desc="Deliberately omits computedUnitCost/computedTotalCost -- QC (the typical caller) completes costing blind per the PRD. Pass either materials[] or recipeId.")
+
+ep("09 - Factory Production", "Get Costing Detail (Management/Admin only)", "GET", "/api/v1/factory/production/cost-calculator/{{costingId}}",
+   resp={"data": {"id": "{{costingId}}", "targetStockItemId": "{{finishedProductId}}", "recipeId": None, "batchSizeQty": 50.000,
+                  "materialsSnapshot": [{"stockItemId": "{{rawMaterialId}}", "name": "Cocoa Powder", "quantity": 20, "unitCost": 5.0}],
+                  "overheadSnapshot": [{"label": "Labour", "amount": 30}], "computedUnitCost": 2.60, "computedTotalCost": 130.00,
+                  "status": "PENDING", "computedByUserId": "{{userId}}", "approvedByUserId": None, "approvedAt": None, "rejectionReason": None}},
+   desc="Requires factory.costing.read -- this is the one endpoint that reveals the figure QC's own calculator just produced.")
+
+ep("09 - Factory Production", "Approve Costing", "POST", "/api/v1/factory/production/cost-calculator/{{costingId}}/approve",
+   resp={"data": {"id": "{{costingId}}", "targetStockItemId": "{{finishedProductId}}", "recipeId": None, "batchSizeQty": 50.000,
+                  "materialsSnapshot": [{"stockItemId": "{{rawMaterialId}}", "name": "Cocoa Powder", "quantity": 20, "unitCost": 5.0}],
+                  "overheadSnapshot": [{"label": "Labour", "amount": 30}], "computedUnitCost": 2.60, "computedTotalCost": 130.00,
+                  "status": "APPROVED", "computedByUserId": "{{userId}}", "approvedByUserId": "{{userId}}", "approvedAt": NOW, "rejectionReason": None}})
+
+ep("09 - Factory Production", "Reject Costing (alternative to Approve)", "POST", "/api/v1/factory/production/cost-calculator/{{costingId}}/reject",
+   body={"rejectionReason": "Material substitution needed -- cost too high"},
+   resp={"data": {"id": "{{costingId}}", "targetStockItemId": "{{finishedProductId}}", "recipeId": None, "batchSizeQty": 50.000,
+                  "materialsSnapshot": [{"stockItemId": "{{rawMaterialId}}", "name": "Cocoa Powder", "quantity": 20, "unitCost": 5.0}],
+                  "overheadSnapshot": [{"label": "Labour", "amount": 30}], "computedUnitCost": 2.60, "computedTotalCost": 130.00,
+                  "status": "REJECTED", "computedByUserId": "{{userId}}", "approvedByUserId": None, "approvedAt": None,
+                  "rejectionReason": "Material substitution needed -- cost too high"}},
+   expect_error={"status": 409, "code": "ALREADY_DECIDED"},
+   desc="Mutually exclusive with Approve -- in a full sequential run, Approve Costing (just above) already decided this same costing, "
+        "so this is expected to get 409 ALREADY_DECIDED, asserted below. Run this in isolation against a fresh costing instead if you "
+        "want to see the actual rejection path succeed.")
+
+ep("09 - Factory Production", "Commit Production Run", "POST", "/api/v1/factory/production/runs",
+   body={"productionCostingId": "{{costingId}}"},
+   resp={"data": {"batchRef": "PB-1", "targetStockItemId": "{{finishedProductId}}", "quantityProduced": 50.000,
+                  "unitLandingCost": 2.60, "totalLandingCost": 130.00, "runAt": NOW}},
+   desc="productionCostingId must reference an APPROVED costing. Consumes the raw materials and credits the finished product in the same transaction.")
+
+ep("09 - Factory Production", "List Production Runs", "GET", "/api/v1/factory/production/runs",
+   query=[{"key": "locationId", "value": "{{factoryId}}"}],
+   resp={"data": [{"batchRef": "PB-1", "targetStockItemId": "{{finishedProductId}}", "quantityProduced": 50.000,
+                   "unitLandingCost": 2.60, "totalLandingCost": 130.00, "runAt": NOW}]})
+
+ep("09 - Factory Production", "Total Cost for Selected Recipes", "GET", "/api/v1/factory/production/total-cost",
+   query=[{"key": "recipeIds", "value": "{{recipeId}}"}],
+   resp={"data": [{"recipeId": "{{recipeId}}", "recipeName": "Premium Blend Base", "qtyUsed": 50.000, "totalCost": 130.00}]})
+
+ep("09 - Factory Production", "Register Special-Production Client", "POST", "/api/v1/factory/special-production/clients",
+   body={"name": "Acme Contractors Ltd", "terms": "Net 30"},
+   resp={"data": {"id": "{{specialClientId}}", "name": "Acme Contractors Ltd", "terms": "Net 30"}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('specialClientId', json.data.id);"])
+
+ep("09 - Factory Production", "Create Special Production Run", "POST", "/api/v1/factory/special-production/runs",
+   body={"locationId": "{{factoryId}}", "clientId": "{{specialClientId}}", "targetStockItemId": None,
+         "productDescription": "Custom emulsion batch for Acme", "quantity": 25, "unitId": "{{unitId}}",
+         "unitCost": 4.00, "price": 7.50, "materials": [{"stockItemId": "{{rawMaterialId}}", "quantity": 5}]},
+   resp={"data": {"id": "{{specialRunId}}", "orderRef": "SO-1", "batchRef": "SB-1", "clientId": "{{specialClientId}}",
+                  "quantity": 25.000, "price": 7.50, "status": "IN_PRODUCTION"}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('specialRunId', json.data.id);"])
+
+ep("09 - Factory Production", "Update Special Production Status", "PUT", "/api/v1/factory/special-production/runs/{{specialRunId}}/status",
+   body={"status": "AWAITING_DISPATCH"},
+   resp={"data": {"id": "{{specialRunId}}", "orderRef": "SO-1", "batchRef": "SB-1", "clientId": "{{specialClientId}}",
+                  "quantity": 25.000, "price": 7.50, "status": "AWAITING_DISPATCH"}},
+   desc="status is one of IN_PRODUCTION, AWAITING_DISPATCH, DELIVERED.")
+
+ep("09 - Factory Production", "List Special Production Runs", "GET", "/api/v1/factory/special-production/runs",
+   query=[{"key": "locationId", "value": "{{factoryId}}"}],
+   resp={"data": [{"id": "{{specialRunId}}", "orderRef": "SO-1", "batchRef": "SB-1", "clientId": "{{specialClientId}}",
+                   "quantity": 25.000, "price": 7.50, "status": "AWAITING_DISPATCH"}]})
+
+# ============================== FACTORY TRADING ==============================
+ep("10 - Factory Trading", "Offer Trade", "POST", "/api/v1/factory/trades/offer",
+   body={"fromLocationId": "{{factoryId2}}", "toLocationId": "{{factoryId}}", "stockItemId": "{{rawMaterialId}}",
+         "quantity": 5, "reason": "SURPLUS", "expiresAt": "2026-12-31T00:00:00Z"},
+   resp={"data": {"id": "{{tradeOfferId}}", "ref": "FT-1", "fromLocationId": "{{factoryId2}}", "toLocationId": "{{factoryId}}",
+                  "stockItemId": "{{rawMaterialId}}", "quantity": 5.000, "reason": "SURPLUS", "status": "PENDING",
+                  "offeredAt": NOW, "expiresAt": "2026-12-31T00:00:00Z"}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('tradeOfferId', json.data.id);"],
+   desc="reason is one of SURPLUS, EXPIRY, CHANGEOVER, SCHEDULE, DISCONTINUED. Requires the receiving factory (fromLocationId) to actually hold the stock.")
+
+ep("10 - Factory Trading", "Respond to Trade (Accept)", "POST", "/api/v1/factory/trades/{{tradeOfferId}}/respond",
+   body={"decision": "ACCEPTED"},
+   resp={"data": {"id": "{{tradeOfferId}}", "ref": "FT-1", "fromLocationId": "{{factoryId2}}", "toLocationId": "{{factoryId}}",
+                  "stockItemId": "{{rawMaterialId}}", "quantity": 5.000, "reason": "SURPLUS", "status": "ACCEPTED",
+                  "offeredAt": NOW, "expiresAt": "2026-12-31T00:00:00Z"}})
+
+ep("10 - Factory Trading", "List Trade Offers", "GET", "/api/v1/factory/trades",
+   query=[{"key": "locationId", "value": "{{factoryId}}"}],
+   resp={"data": [{"id": "{{tradeOfferId}}", "ref": "FT-1", "fromLocationId": "{{factoryId2}}", "toLocationId": "{{factoryId}}",
+                   "stockItemId": "{{rawMaterialId}}", "quantity": 5.000, "reason": "SURPLUS", "status": "ACCEPTED",
+                   "offeredAt": NOW, "expiresAt": "2026-12-31T00:00:00Z"}]})
+
+# ============================== NRS REFERENCE DATA ==============================
+ep("11 - NRS Reference Data", "List NRS Tax Categories", "GET", "/api/v1/invoicing/reference/tax-categories",
+   resp={"data": [
+       {"code": "STANDARD_VAT", "name": "Standard Value-Added Tax"},
+       {"code": "ZERO_VAT", "name": "Zero Value-Added Tax"},
+       {"code": "EXEMPTED", "name": "Tax Exemption"},
+       {"code": "IMPORT_DUTY", "name": "Import Duty"},
+       {"code": "WITHHOLDING_TAX", "name": "Withholding Tax"},
+   ]},
+   desc="System-seeded, global -- see V6__nrs_reference_data.sql. The full 25-code enum NRS's real invoice schema accepts for tax_total[].tax_subtotal[].tax_category.id. ZifIQ's own vat_categories (see VAT Control) each map to one of these via nrsTaxCategoryCode.")
+
+ep("11 - NRS Reference Data", "List NRS Invoice Type Codes", "GET", "/api/v1/invoicing/reference/invoice-type-codes",
+   resp={"data": [
+       {"code": "380", "name": "Credit Note", "description": "Credit Note"},
+       {"code": "381", "name": "Commercial Invoice", "description": "Commercial Invoice"},
+       {"code": "384", "name": "Debit Note", "description": "Debit Note"},
+       {"code": "385", "name": "Self Billed Invoice", "description": "Self Billed Invoice"},
+       {"code": "388", "name": "Factored Invoice", "description": "Factored Invoice"},
+       {"code": "389", "name": "Statement of Account", "description": "Statement of Account"},
+   ]},
+   desc="NRS invoice_type_code (field 1.6 of the real Invoice Schema).")
+
+ep("11 - NRS Reference Data", "List NRS Payment Means Codes", "GET", "/api/v1/invoicing/reference/payment-means-codes",
+   resp={"data": [
+       {"code": "10", "name": "Cash", "description": "Cash"},
+       {"code": "20", "name": "Cheque", "description": "Cheque"},
+       {"code": "30", "name": "Credit Transfer", "description": "Credit Transfer"},
+       {"code": "31", "name": "Debit Transfer", "description": "Debit Transfer"},
+       {"code": "42", "name": "ACH Credit", "description": "ACH Credit"},
+       {"code": "43", "name": "ACH Debit", "description": "ACH Debit"},
+   ]},
+   desc="NRS payment_means_code (field 1.30 of the real Invoice Schema).")
+
+ep("11 - NRS Reference Data", "List NRS Unit-of-Measure Codes", "GET", "/api/v1/invoicing/reference/unit-of-measure-codes",
+   resp={"data": [
+       {"code": "10", "name": "group", "description": "A unit of count defining the number of groups (group: set of items classified together)."},
+       {"code": "20", "name": "twenty foot container", "description": "A unit of count defining the number of shipping containers that measure 20 foot in length."},
+       {"code": "21", "name": "forty foot container", "description": "A unit of count defining the number of shipping containers that measure 40 foot in length."},
+   ]},
+   desc="UN/CEFACT Rec 20 style codes for invoice_line.price.price_unit. Distinct from a tenant's own Units of Measure (Factory Setup) -- this is NRS's fixed compliance code list. Sample only; see migration scope note.")
+
+ep("11 - NRS Reference Data", "List HSN Codes (subheading level)", "GET", "/api/v1/invoicing/reference/hsn-codes",
+   query=[{"key": "sectionCode", "value": "I"}],
+   resp={"data": [
+       {"code": "0101.21", "sectionCode": "I", "description": "Horses; live, pure-bred breeding animals"},
+       {"code": "0102.90", "sectionCode": "I", "description": "Bovine animals; live, other than cattle and buffalo"},
+       {"code": "1006.30", "sectionCode": "I", "description": "Cereals; rice, semi-milled or wholly milled, whether or not polished or glazed"},
+   ]},
+   desc="True dotted HS subheading codes (invoice_line.hsn_code for goods line items), optionally filtered by hsnSections code (see VAT Control). Sample only (WCO Chapter 01); see migration scope note.")
+
+ep("11 - NRS Reference Data", "List ISIC Classes (4-digit level)", "GET", "/api/v1/invoicing/reference/isic-classes",
+   query=[{"key": "sectionCode", "value": "A"}],
+   resp={"data": [
+       {"code": "0111", "sectionCode": "A", "description": "Growing of cereals (except rice), leguminous crops and oil seeds"},
+       {"code": "0112", "sectionCode": "A", "description": "Growing of rice"},
+       {"code": "0124", "sectionCode": "A", "description": "Growing of pome fruits and stone fruits"},
+   ]},
+   desc="True 4-digit ISIC Rev.4 class codes (invoice_line.isic_code for service line items), optionally filtered by isicSections code (see VAT Control). Sample only (Section A); see migration scope note.")
+
+ep("11 - NRS Reference Data", "List Nigeria States", "GET", "/api/v1/invoicing/reference/states",
+   resp={"data": [
+       {"code": "NG-AB", "name": "Abia"},
+       {"code": "NG-FC", "name": "Federal Capital Territory"},
+       {"code": "NG-LA", "name": "Lagos"},
+   ]},
+   desc="postal_address.state. Seeded in full -- all 36 states + FCT (ISO 3166-2:NG).")
+
+ep("11 - NRS Reference Data", "List Nigeria LGAs", "GET", "/api/v1/invoicing/reference/lgas",
+   query=[{"key": "stateCode", "value": "NG-AB"}],
+   resp={"data": [
+       {"code": "NG-AB-ANO", "stateCode": "NG-AB", "name": "Aba North"},
+       {"code": "NG-AB-UWE", "stateCode": "NG-AB", "name": "Ukwa West"},
+   ]},
+   desc="postal_address.lga, filtered by Nigeria state code. Only Abia state seeded so far (sample as supplied from the real NRS docs) -- Nigeria has 774 LGAs total; extend state-by-state as confirmed.")
+
+
+# ============================== CUSTOMERS (docs/04) ==============================
+C = "12 - Customers"
+CUST = {"id": "{{customerId}}", "code": "CU-1", "type": "ORDINARY_CUSTOMER", "isTemporary": False, "name": "Chidi Nwosu",
+        "contactPerson": None, "phone": "0809 111 2222", "alternatePhone": None, "email": "chidi@example.com", "tin": None,
+        "businessDescription": None, "streetAddress": None, "city": "Lagos", "stateCode": "NG-LA", "stateName": "Lagos",
+        "lgaCode": None, "lgaName": None, "countryCode": "NG",
+        "location": {"id": "{{customerLocationId}}", "code": "FAC-3", "name": "Customer Home Plant"},
+        "correspondent": None, "dealerCategory": None, "creditLimit": 0.00, "walletBalance": 0.00, "depositBalance": 0.00,
+        "lifetimeValue": 0.00, "lastPurchaseAt": None, "customerSince": "2026-10-08", "status": "ACTIVE", "statusReason": None,
+        "userId": None, "customAttributes": {}, "createdAt": NOW}
+DEALER = dict(CUST, id="{{dealerId}}", code="DLR-1", type="AUTHORISED_DEALER", name="Okafor & Sons Distribution",
+              contactPerson="Tunde Okafor", phone="0803 412 7781", streetAddress="14 Ikorodu Rd",
+              correspondent={"id": "{{correspondentId}}", "code": "CR-1", "name": "Bisi Adeyemi", "status": "ASSIGNED"},
+              dealerCategory={"id": "{{goldCategoryId}}", "name": "Gold", "discountPct": 3.50}, creditLimit=1500000.00)
+SUMMARY = {k: DEALER[k] for k in ("id", "code", "type", "isTemporary", "name", "contactPerson", "phone", "stateCode", "stateName",
+                                   "creditLimit", "walletBalance", "depositBalance", "lifetimeValue", "lastPurchaseAt", "customerSince", "status")}
+SUMMARY.update({"locationId": "{{customerLocationId}}", "locationName": "Customer Home Plant", "correspondentId": "{{correspondentId}}",
+                "correspondentName": "Bisi Adeyemi", "dealerCategoryName": "Gold"})
+
+
+def PAGE(items, **extra):
+    return {"data": dict({"items": items, "page": 0, "size": 50, "totalItems": len(items), "totalPages": 1,
+                          "totalIsEstimate": False, "facets": None, "summary": None,
+                          "meta": {"appliedFilters": {}, "ignoredQualifiers": [], "suggestions": [], "matches": {}}}, **extra)}
+
+
+CORR = {"id": "{{correspondentId}}", "code": "CR-1", "name": "Bisi Adeyemi", "phone": "0802 123 4567", "email": None,
+        "region": "Lagos Mainland", "locationId": "{{customerLocationId}}", "locationName": "Customer Home Plant", "status": "ASSIGNED",
+        "assignedAt": "2026-10-08", "customerCount": 1, "dealerCount": 1, "responsibilities": "Lagos dealers", "userLinked": False}
+
+ep(C, "Create Customer Home Location", "POST", "/api/v1/factory/setup/factories",
+   body={"code": None, "name": "Customer Home Plant", "address": "3 Allen Ave, Ikeja", "state": "Lagos", "phone": "+2348000000003",
+         "vatRate": 7.5, "vatEnabled": True, "vatRegistrationNumber": None},
+   resp={"data": {"id": "{{customerLocationId}}", "code": "FAC-3", "name": "Customer Home Plant", "status": "ACTIVE"}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('customerLocationId', json.data.id);",
+          "pm.collectionVariables.set('today', new Date(Date.now() + 3600 * 1000).toISOString().slice(0, 10));"],
+   desc="An ACTIVE location to home this folder's customers at (folder 06 leaves {{factoryId}} SUSPENDED on purpose). Also captures {{today}} in the "
+        "tenant's default timezone (Africa/Lagos, UTC+1) for the immediate reclassification below.")
+
+ep(C, "List Dealer Categories", "GET", "/api/v1/customers/dealer-categories",
+   resp={"data": [{"id": "{{goldCategoryId}}", "name": "Gold", "discountPct": 3.50, "suggestedCreditLimit": 1500000.00, "sortOrder": 3, "status": "ACTIVE", "dealerCount": 0}]},
+   tests=["const json = pm.response.json();",
+          "pm.test('new tenant has the 4 default categories', () => pm.expect(json.data.map(c => c.name).sort()).to.eql(['Bronze', 'Gold', 'Platinum', 'Silver']));",
+          "pm.collectionVariables.set('goldCategoryId', json.data.find(c => c.name === 'Gold').id);"],
+   desc="Platinum / Gold / Silver / Bronze are seeded for every new tenant. Query: status, q.")
+
+ep(C, "Create Dealer Category", "POST", "/api/v1/customers/dealer-categories",
+   body={"name": "Diamond", "discountPct": 7.5, "suggestedCreditLimit": 5000000, "sortOrder": 5},
+   resp={"data": {"id": "{{diamondCategoryId}}", "name": "Diamond", "discountPct": 7.50, "suggestedCreditLimit": 5000000.00, "sortOrder": 5, "status": "ACTIVE", "dealerCount": 0}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('diamondCategoryId', json.data.id);"],
+   desc="Perm customers.categories.manage (Administrator).")
+
+ep(C, "Deactivate Dealer Category", "PUT", "/api/v1/customers/dealer-categories/{{diamondCategoryId}}/status",
+   body={"status": "INACTIVE"},
+   resp={"data": {"id": "{{diamondCategoryId}}", "name": "Diamond", "discountPct": 7.50, "suggestedCreditLimit": 5000000.00, "sortOrder": 5, "status": "INACTIVE", "dealerCount": 0}},
+   desc="Blocked with 409 CATEGORY_IN_USE while dealers use the category.")
+
+ep(C, "Register Correspondent (and assign)", "POST", "/api/v1/customers/correspondents",
+   body={"name": "Bisi Adeyemi", "phone": "0802 123 4567", "email": None, "userId": None, "region": "Lagos Mainland",
+         "locationId": "{{customerLocationId}}", "responsibilities": "Lagos dealers"},
+   resp={"data": {"correspondent": CORR, "history": [{"action": "ASSIGNED", "region": "Lagos Mainland", "locationId": "{{customerLocationId}}",
+                                                      "locationName": "Customer Home Plant", "effectiveFrom": "2026-10-08", "note": None,
+                                                      "performedByUserId": "{{userId}}", "createdAt": NOW}], "affectedCustomers": None}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('correspondentId', json.data.correspondent.id);",
+          "pm.test('assigned in one step', () => pm.expect(json.data.correspondent.status).to.eql('ASSIGNED'));"],
+   desc="Code CR-n. With region + locationId it's registered and assigned at once. Regions come from the module setting customers.correspondent.regions.")
+
+ep(C, "Register Correspondent (unknown region)", "POST", "/api/v1/customers/correspondents",
+   body={"name": "Nobody", "phone": "08020000000", "region": "Atlantis", "locationId": "{{customerLocationId}}"},
+   status=400, status_text="Bad Request",
+   resp={"error": {"code": "INVALID_REGION", "message": "Unknown region"}},
+   expect_error={"status": 400, "code": "INVALID_REGION"})
+
+ep(C, "Register Dealer", "POST", "/api/v1/customers",
+   body={"type": "AUTHORISED_DEALER", "name": "Okafor & Sons Distribution {{$randomInt}}", "contactPerson": "Tunde Okafor",
+         "phone": "0803 412 7781", "email": "orders@okaforsons.ng", "stateCode": "NG-LA", "streetAddress": "14 Ikorodu Rd",
+         "locationId": "{{customerLocationId}}", "dealerCategoryId": "{{goldCategoryId}}", "correspondentId": "{{correspondentId}}"},
+   resp={"data": DEALER},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('dealerId', json.data.id);",
+          "pm.collectionVariables.set('dealerName', json.data.name);", "pm.collectionVariables.set('dealerCode', json.data.code);",
+          "pm.test('credit limit defaults to the category suggestion', () => pm.expect(json.data.creditLimit).to.eql(1500000));"],
+   desc="Perm customers.manage + customers.dealers.manage. Dealers need contactPerson, streetAddress, stateCode and an ACTIVE dealerCategoryId. "
+        "Code DLR-n; phone stored as given and normalised to +234... for matching. Opening wallet funding is a separate Account call (doc 07).")
+
+ep(C, "Register Dealer (duplicate name)", "POST", "/api/v1/customers",
+   body={"type": "AUTHORISED_DEALER", "name": "{{dealerName}}", "contactPerson": "Someone", "phone": "08030000000",
+         "stateCode": "NG-LA", "streetAddress": "1 Elsewhere", "dealerCategoryId": "{{goldCategoryId}}"},
+   status=409, status_text="Conflict", resp={"error": {"code": "DUPLICATE_NAME", "message": "'Okafor & Sons Distribution' is already in use"}},
+   expect_error={"status": 409, "code": "DUPLICATE_NAME"})
+
+ep(C, "Register Ordinary Customer", "POST", "/api/v1/customers",
+   body={"type": "ORDINARY_CUSTOMER", "name": "Chidi Nwosu", "phone": "0809 111 2222", "email": "chidi@example.com", "city": "Lagos",
+         "stateCode": "NG-LA", "locationId": "{{customerLocationId}}"},
+   resp={"data": CUST},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('customerId', json.data.id);"],
+   desc="Code CU-n. Phone is required for every type except NO_CREDIT_WALKIN.")
+
+ep(C, "List / Search Customers", "GET", "/api/v1/customers",
+   query=[{"key": "q", "value": "okafor"}, {"key": "facets", "value": "type,status"}, {"key": "highlight", "value": "true"}],
+   resp=PAGE([SUMMARY], facets={"type": [{"value": "AUTHORISED_DEALER", "label": "Authorised Dealer", "count": 1}]},
+             summary={"count": 1, "walletBalanceTotal": 0.00, "depositBalanceTotal": 0.00, "lifetimeValueTotal": 0.00}),
+   tests=["const json = pm.response.json();",
+          "pm.test('dealer ranks first', () => pm.expect(json.data.items[0].id).to.eql(pm.collectionVariables.get('dealerId')));"],
+   desc="q searches code (DLR-42 or bare 42), phone (any format), e-mail, TIN, name/contact person (accent-insensitive, typo-tolerant) and address text; "
+        "qualifiers like type:dealer status:watch state:NG-LA. Simple filters: type, status, isTemporary, locationId, correspondentId, dealerCategoryId, "
+        "stateCode, lgaCode, walletBalanceMin/Max, creditLimit.gte, hasWalletBalance, customerSince.from, lastPurchaseAt.lt, attr.<customField>, ... "
+        "(GET /customers/filters lists them all). REMOVED and temporary records are excluded unless filtered for.")
+
+ep(C, "Search Customers (advanced filter)", "POST", "/api/v1/customers/search",
+   body={"filter": {"all": [{"field": "type", "op": "in", "value": ["AUTHORISED_DEALER", "SPECIAL_CUSTOMER"]},
+                            {"field": "creditLimit", "op": "gte", "value": 1000000}]},
+         "sort": [{"field": "name", "dir": "asc"}], "page": 0, "size": 20},
+   resp=PAGE([SUMMARY]),
+   desc="Same result shape as GET; the filter tree supports all/any/not and the ledger collection, e.g. "
+        "{\"ledger\": {\"all\": [{\"field\": \"entryType\", \"op\": \"eq\", \"value\": \"WITHDRAWAL_DEBIT\"}, {\"field\": \"amount\", \"op\": \"gt\", \"value\": 100000}]}}.")
+
+ep(C, "Customer Filter Metadata", "GET", "/api/v1/customers/filters",
+   resp={"data": {"fields": [{"key": "type", "label": "Customer type", "type": "ENUM", "operators": ["eq", "ne", "in", "not_in", "is_null", "is_not_null"],
+                              "options": [{"value": "AUTHORISED_DEALER", "label": "Authorised Dealer"}], "lookup": None, "facetable": True,
+                              "sortable": False, "qualifierAliases": []}],
+                  "collections": [{"key": "ledger", "label": "Wallet/deposit history"}], "primaryDate": "customerSince",
+                  "defaultSort": [{"field": "name", "dir": "asc"}], "periodPresets": ["TODAY", "THIS_MONTH"]}})
+
+ep(C, "Customer Stats", "GET", "/api/v1/customers/stats",
+   resp={"data": {"total": 2, "active": 2, "watch": 0, "suspended": 0, "dealers": 1, "special": 0, "ordinary": 1, "noCredit": 0,
+                  "walletsHeld": 0, "walletBalanceTotal": 0.00, "depositBalanceTotal": 0.00}},
+   desc="Register header tiles. Query: type, locationId.")
+
+ep(C, "Customer Lookup (picker)", "GET", "/api/v1/customers/lookup",
+   query=[{"key": "q", "value": "chidi"}, {"key": "forSale", "value": "true"}],
+   resp={"data": [{"id": "{{customerId}}", "code": "CU-1", "label": "Chidi Nwosu", "sublabel": "CU-1 · Ordinary Customer · …2222",
+                   "type": "ORDINARY_CUSTOMER", "status": "ACTIVE", "disabled": False, "disabledReason": None,
+                   "walletBalance": 0.00, "depositBalance": 0.00, "creditLimit": 0.00}]},
+   desc="POS / pro-forma / returns picker. Not location-restricted. forSale=true shows suspended customers disabled with the reason.")
+
+ep(C, "Get Customer", "GET", "/api/v1/customers/{{dealerId}}", resp={"data": DEALER})
+
+ep(C, "Update Customer", "PUT", "/api/v1/customers/{{customerId}}",
+   body={"name": "Chidi Nwosu", "phone": "0809 111 2222", "alternatePhone": "0812 000 0000", "email": "chidi@example.com",
+         "city": "Ikeja", "stateCode": "NG-LA", "locationId": "{{customerLocationId}}"},
+   resp={"data": dict(CUST, alternatePhone="0812 000 0000", city="Ikeja")},
+   desc="Type and dealer category change only through reclassification; customerSince is immutable. Changing creditLimit needs customers.dealers.manage.")
+
+ep(C, "Wallet Adjustment (credit)", "POST", "/api/v1/customers/{{dealerId}}/wallet-adjustments",
+   body={"balanceType": "WALLET", "direction": "CREDIT", "amount": 2500, "reason": "Opening balance migration"},
+   resp={"data": {"id": "{{adjustmentEntryId}}", "customerId": "{{dealerId}}", "balanceType": "WALLET", "entryType": "ADJUSTMENT_CREDIT",
+                  "amount": 2500.00, "balanceAfter": 2500.00, "reference": "WLT-1"}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('adjustmentEntryId', json.data.id);"],
+   desc="Perm customers.wallet.adjust (Administrator). Deposit adjustments only on Special Customers.")
+
+ep(C, "Wallet Adjustment (overdraw)", "POST", "/api/v1/customers/{{dealerId}}/wallet-adjustments",
+   body={"balanceType": "WALLET", "direction": "DEBIT", "amount": 999999, "reason": "More than the balance"},
+   status=400, status_text="Bad Request",
+   resp={"error": {"code": "INSUFFICIENT_WALLET_BALANCE", "message": "Insufficient wallet balance", "details": {"available": "2500.00", "requested": "999999.00"}}},
+   expect_error={"status": 400, "code": "INSUFFICIENT_WALLET_BALANCE"})
+
+ep(C, "Customer Ledger", "GET", "/api/v1/customers/{{dealerId}}/ledger",
+   query=[{"key": "balanceType", "value": "WALLET"}],
+   resp={"data": {"customer": SUMMARY, "balanceType": "WALLET", "openingBalance": 0.00, "closingBalance": 2500.00, "totalCredits": 2500.00,
+                  "totalDebits": 0.00, "items": [{"id": "{{adjustmentEntryId}}", "entryDate": "2026-10-08", "reference": "WLT-1",
+                  "entryType": "ADJUSTMENT_CREDIT", "displayType": "Adjustment", "direction": "CREDIT",
+                  "description": "Adjustment: Opening balance migration", "paymentMethod": "Wallet adjustment", "amount": 2500.00,
+                  "balanceAfter": 2500.00, "locationId": "{{customerLocationId}}", "sourceModule": "customers", "performedByUserId": "{{userId}}",
+                  "reversible": True, "reversedByEntryId": None, "createdAt": NOW}],
+                  "page": 0, "size": 50, "totalItems": 1, "totalPages": 1}},
+   desc="Customer History, oldest first so running balances read top-down. Query: balanceType, entryType, direction, from/to/period, q (reference, description, amount).")
+
+ep(C, "Reverse Ledger Entry", "POST", "/api/v1/customers/ledger-entries/{{adjustmentEntryId}}/reverse",
+   body={"reason": "Entered twice"},
+   resp={"data": {"id": "6b0f0e1e-1111-4c4c-9a9a-000000000001", "customerId": "{{dealerId}}", "balanceType": "WALLET", "entryType": "REVERSAL_DEBIT",
+                  "amount": 2500.00, "balanceAfter": 0.00, "reference": "WLT-1"}},
+   desc="Only this module's own adjustments; sales/withdrawals are reversed by voiding their source document (409 REVERSE_IN_SOURCE_MODULE).")
+
+ep(C, "Reverse Ledger Entry (again)", "POST", "/api/v1/customers/ledger-entries/{{adjustmentEntryId}}/reverse",
+   body={"reason": "Twice"}, status=409, status_text="Conflict",
+   resp={"error": {"code": "ALREADY_REVERSED", "message": "This entry has already been reversed"}},
+   expect_error={"status": 409, "code": "ALREADY_REVERSED"})
+
+ep(C, "Reclassify Customer (today)", "POST", "/api/v1/customers/{{customerId}}/reclassifications",
+   body={"toType": "SPECIAL_CUSTOMER", "reason": "MET_PURCHASE_VOLUME", "note": "Crossed 5m in 90 days", "effectiveFrom": "{{today}}"},
+   resp={"data": {"id": "{{reclassificationId}}", "customerId": "{{customerId}}", "customerCode": "CU-1", "customerName": "Chidi Nwosu",
+                  "fromType": "ORDINARY_CUSTOMER", "toType": "SPECIAL_CUSTOMER", "direction": "PROMOTION", "reason": "MET_PURCHASE_VOLUME",
+                  "note": "Crossed 5m in 90 days", "effectiveFrom": "2026-10-08", "status": "APPLIED", "fromCreditLimit": 0.00,
+                  "toCreditLimit": 0.00, "toDealerCategoryName": None, "walletBalanceCarriedOver": 0.00, "authorisedByUserId": "{{userId}}",
+                  "appliedAt": NOW, "createdAt": NOW}},
+   tests=["const json = pm.response.json();", "pm.test('applied immediately', () => pm.expect(json.data.status).to.eql('APPLIED'));"],
+   desc="Perm customers.reclassify. effectiveFrom today applies now; a future date schedules it (applied by the hourly job once due). Wallet always carries over.")
+
+ep(C, "Schedule Reclassification", "POST", "/api/v1/customers/{{customerId}}/reclassifications",
+   body={"toType": "ORDINARY_CUSTOMER", "reason": "PROLONGED_INACTIVITY", "effectiveFrom": "2099-01-01"},
+   resp={"data": {"id": "{{reclassificationId}}", "status": "SCHEDULED", "fromType": "SPECIAL_CUSTOMER", "toType": "ORDINARY_CUSTOMER", "direction": "DEMOTION"}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('reclassificationId', json.data.id);"])
+
+ep(C, "Cancel Scheduled Reclassification", "DELETE", "/api/v1/customers/{{customerId}}/reclassifications/{{reclassificationId}}",
+   resp={"data": {"id": "{{reclassificationId}}", "status": "CANCELLED"}})
+
+ep(C, "List Reclassifications", "GET", "/api/v1/customers/reclassifications",
+   query=[{"key": "customerId", "value": "{{customerId}}"}],
+   resp=PAGE([{"id": "{{reclassificationId}}", "status": "CANCELLED"}]),
+   desc="History. Filters: customerId, direction, fromType, toType, reason, status, effectiveFrom range; q = customer code/name, note.")
+
+ep(C, "Set Customer Status (WATCH)", "PUT", "/api/v1/customers/{{customerId}}/status",
+   body={"status": "WATCH", "reason": "Two late payments"},
+   resp={"data": dict(CUST, type="SPECIAL_CUSTOMER", status="WATCH", statusReason="Two late payments")},
+   desc="WATCH <-> ACTIVE needs customers.manage; anything involving SUSPENDED needs customers.dealers.manage; REMOVED can't be set by hand.")
+
+ep(C, "Set Customer Status (REMOVED)", "PUT", "/api/v1/customers/{{customerId}}/status",
+   body={"status": "REMOVED", "reason": "Not allowed"}, status=409, status_text="Conflict",
+   resp={"error": {"code": "INVALID_STATUS_TRANSITION", "message": "Cannot change status from WATCH to REMOVED"}},
+   expect_error={"status": 409, "code": "INVALID_STATUS_TRANSITION"})
+
+ep(C, "List Correspondents", "GET", "/api/v1/customers/correspondents",
+   query=[{"key": "status", "value": "ASSIGNED"}],
+   resp={"data": [CORR]},
+   desc="Unpaged. Query: q, status, region, locationId, userLinked, hasCustomers, sort (name, customerCount, dealerCount, assignedAt).")
+
+ep(C, "Correspondent's Customers", "GET", "/api/v1/customers/correspondents/{{correspondentId}}/customers",
+   resp=PAGE([SUMMARY]))
+
+ep(C, "De-assign Correspondent", "POST", "/api/v1/customers/correspondents/{{correspondentId}}/de-assign",
+   body={"note": "Left the company"},
+   resp={"data": {"correspondent": dict(CORR, status="DE_ASSIGNED", region=None, locationId=None, locationName=None, assignedAt=None),
+                  "history": [], "affectedCustomers": 1}},
+   tests=["const json = pm.response.json();", "pm.test('reports linked customers', () => pm.expect(json.data.affectedCustomers).to.eql(1));"],
+   desc="Linked customers keep the link (history stays attributable) but the correspondent earns no new sales credit.")
+
+ep(C, "Global Search", "GET", "/api/v1/search",
+   query=[{"key": "q", "value": "{{dealerCode}}"}],
+   resp={"data": {"groups": [{"type": "customer", "label": "Customers", "hits": [{"type": "customer", "id": "{{dealerId}}",
+                  "title": "Okafor & Sons Distribution", "subtitle": "DLR-1 · Gold · …7781", "ref": "DLR-1", "route": "/customers/{{dealerId}}"}],
+                  "more": False, "moreRoute": "/customers?q=DLR-1"}], "timedOut": []}},
+   tests=["const json = pm.response.json();",
+          "pm.test('exact reference is the single hit', () => pm.expect(json.data.groups[0].hits[0].id).to.eql(pm.collectionVariables.get('dealerId')));"],
+   desc="Header search box across every module the caller can access (docs/03 section 4.7). An exact reference jumps straight to that record.")
+
+print(f"TOTAL ENDPOINTS: {len(ENDPOINTS)}")
+
+# =====================================================================================
+# ---------------------------- Collection / Environment builders ---------------------
+# =====================================================================================
+
+def pm_url(path, query):
+    full = "{{baseUrl}}" + path
+    parts = [p for p in path.split("/") if p]
+    url = {"raw": full + ("?" + "&".join(f"{q['key']}={q['value']}" for q in query) if query else ""),
+           "host": ["{{baseUrl}}"], "path": parts}
+    if query:
+        url["query"] = [{"key": q["key"], "value": q["value"]} for q in query]
+    return url
+
+def pm_body(body):
+    if body is None:
+        return None
+    return {"mode": "raw", "raw": json.dumps(body, indent=2), "options": {"raw": {"language": "json"}}}
+
+def pm_request_item(e, with_examples=True):
+    item = {
+        "name": e["name"],
+        "request": {
+            "method": e["method"],
+            "header": ([{"key": "Content-Type", "value": "application/json"}] if e["body"] is not None else []),
+            "url": pm_url(e["path"], e["query"]),
+        },
+    }
+    if e["desc"]:
+        item["request"]["description"] = e["desc"]
+    if e["body"] is not None:
+        item["request"]["body"] = pm_body(e["body"])
+    if e["auth"] == "noauth":
+        item["request"]["auth"] = {"type": "noauth"}
+    custom_tests = e["tests"]
+    if custom_tests:
+        # Auto-guard every capture script against non-2xx responses so a single failed/conflicting
+        # request (e.g. a 409 from re-running Register Tenant against existing data) never throws an
+        # uncaught TypeError reading `.data` off an error envelope -- which otherwise aborts the whole
+        # Collection Runner instead of just failing that one request's tests cleanly.
+        already_guarded = custom_tests[0].strip().startswith("if (pm.response.code")
+        if already_guarded:
+            custom_tests = custom_tests
+        else:
+            custom_tests = ["if (pm.response.code >= 200 && pm.response.code < 300) {"] + \
+                ["    " + line for line in custom_tests] + ["}"]
+    if e.get("expect_error"):
+        err = e["expect_error"]
+        full_tests = custom_tests + [
+            f"pm.test('fails as expected with {err['status']} {err['code']}', () => {{",
+            f"    pm.response.to.have.status({err['status']});",
+            "    const j = pm.response.json();",
+            "    pm.expect(j).to.have.property('error');",
+            f"    pm.expect(j.error.code).to.eql('{err['code']}');",
+            "});",
+        ]
+    else:
+        full_tests = custom_tests + [
+            "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });",
+        ]
+    item["event"] = [{"listen": "test", "script": {"type": "text/javascript", "exec": full_tests}}]
+
+    if with_examples:
+        req_copy = json.loads(json.dumps(item["request"]))
+        example = {
+            "name": f"{e['name']} - {e['status']} {e['status_text']}",
+            "originalRequest": req_copy,
+            "status": e["status_text"],
+            "code": e["status"],
+            "_postman_previewlanguage": "json",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "cookie": [],
+            "body": json.dumps(e["resp"], indent=2) if e["resp"] is not None else "",
+        }
+        item["response"] = [example]
+    return item
+
+def build_collection():
+    folders = {}
+    order = []
+    for e in ENDPOINTS:
+        if e["folder"] not in folders:
+            folders[e["folder"]] = []
+            order.append(e["folder"])
+        folders[e["folder"]].append(pm_request_item(e))
+
+    items = [{"name": f, "item": folders[f]} for f in order]
+
+    collection_vars = [
+        "tenantId", "userId", "accessToken", "refreshToken", "childTenantId",
+        "adminRoleId", "stockKeeperRoleId", "customRoleId", "memberUserId",
+        "otpChallengeId", "otpCode",
+        "factoryId", "factoryId2", "unitId", "categoryId", "supplierId", "manufacturerId",
+        "rawMaterialId", "finishedProductId", "stockReceiptId",
+        "transferId", "transferLineId",
+        "recipeId", "costingId", "specialClientId", "specialRunId",
+        "tradeOfferId",
+        "customerLocationId", "today", "goldCategoryId", "diamondCategoryId", "correspondentId",
+        "dealerId", "dealerName", "dealerCode", "customerId", "adjustmentEntryId", "reclassificationId",
+    ]
+
+    collection = {
+        "info": {
+            "name": "ZifIQ Backend API",
+            "description": "Local test collection for the ZifIQ Kotlin/Spring Boot backend -- covers only the modules with real persistence and business logic (Auth, Tenants & Members, OTP, VAT Control, Settings, Factory Setup, Factory Production, Factory Trading, Inventory Stock, Inventory Operations, NRS Reference Data, Customers). The remaining scaffolded modules (Account, AI, Barcode, Cashier, History, Invoicing, Menu, Process Guide, Showroom) still return hardcoded mock data server-side and are intentionally excluded until they're built out for real. Run folders top-to-bottom in order (01 through 12) -- each request's Tests script captures IDs/tokens into collection variables that later requests reuse, so the whole collection can be run end-to-end with Postman's Collection Runner with no manual edits. See docs/00-02 in the backend repo for the full design spec these endpoints implement.",
+            "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+        },
+        "auth": {
+            "type": "bearer",
+            "bearer": [{"key": "token", "value": "{{accessToken}}", "type": "string"}],
+        },
+        "event": [],
+        "variable": [{"key": v, "value": "", "type": "string"} for v in collection_vars],
+        "item": items,
+    }
+    return collection
+
+def existing_environment_id():
+    """Keeps the environment's id stable across regenerations, so the file only changes when its values do."""
+    path = os.path.join(HERE, "ZifIQ-Local.postman_environment.json")
+    if not os.path.exists(path):
+        return None
+    with open(path, encoding="utf-8") as f:
+        return json.load(f).get("id")
+
+def build_environment():
+    values = [{"key": "baseUrl", "value": "http://localhost:8080", "type": "default", "enabled": True}]
+    return {
+        "id": existing_environment_id() or str(uuid.uuid4()),
+        "name": "ZifIQ Local",
+        "values": values,
+        "_postman_variable_scope": "environment",
+    }
+
+collection = build_collection()
+environment = build_environment()
+
+with open(os.path.join(HERE, "ZifIQ-API.postman_collection.json"), "w", encoding="utf-8") as f:
+    json.dump(collection, f, indent=2, ensure_ascii=False)
+
+with open(os.path.join(HERE, "ZifIQ-Local.postman_environment.json"), "w", encoding="utf-8") as f:
+    json.dump(environment, f, indent=2, ensure_ascii=False)
+
+print("Wrote ZifIQ-API.postman_collection.json and ZifIQ-Local.postman_environment.json")
+print(f"Folders: {len(set(e['folder'] for e in ENDPOINTS))}, Requests: {len(ENDPOINTS)}")

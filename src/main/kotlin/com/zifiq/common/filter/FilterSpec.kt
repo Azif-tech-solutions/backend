@@ -467,10 +467,20 @@ class FilterSpec(
         throw ApiErrors.invalidFilter(field.key, "'$raw' is not a valid date (yyyy-MM-dd)")
     }
 
-    /** Matches an enum by code or label, case-insensitively; with no declared options any value is accepted. */
+    /**
+     * Matches an enum by code or label, case-insensitively, or by one word of either when that word
+     * picks out a single option (`type:dealer` → AUTHORISED_DEALER; `customer` is ambiguous and
+     * rejected). With no declared options any value is accepted.
+     */
     private fun resolveEnum(field: FilterField, raw: String): String {
         if (field.options.isEmpty()) return raw
-        return field.options.firstOrNull { it.value.equals(raw, ignoreCase = true) || it.label.equals(raw, ignoreCase = true) }?.value
+        field.options.firstOrNull { it.value.equals(raw, ignoreCase = true) || it.label.equals(raw, ignoreCase = true) }?.let { return it.value }
+        val word = raw.lowercase().replace(Regex("[^\\p{L}\\p{N}]"), "")
+        val byWord = field.options.filter { option ->
+            (option.value.split('_') + option.label.split(Regex("[^\\p{L}\\p{N}]+")))
+                .any { it.isNotEmpty() && it.lowercase().replace("-", "") == word }
+        }
+        return byWord.singleOrNull()?.value
             ?: throw ApiErrors.invalidFilter(field.key, "Unknown value '$raw'", field.options.map { it.value })
     }
 

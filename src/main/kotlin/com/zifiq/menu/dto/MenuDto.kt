@@ -8,21 +8,6 @@ import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
 
-data class DealerRegistrationRequest(
-    @field:NotBlank val companyName: String,
-    @field:NotBlank val contactName: String,
-    @field:NotBlank @field:Email val email: String,
-    @field:NotBlank val phone: String,
-    @field:NotNull @field:Positive val initialCreditLimit: BigDecimal,
-)
-
-data class DealerRegistrationSummary(
-    val id: UUID,
-    val dealerCode: String,
-    val companyName: String,
-    val registeredAt: Instant,
-)
-
 data class DebtorItem(
     val id: UUID,
     val debtorName: String,

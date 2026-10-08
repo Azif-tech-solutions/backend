@@ -8,12 +8,9 @@ import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 
-@Tag(name = "Menu Button & User Management", description = "Dealer Registration, POS Terminals, Debtors List & User Registration")
+@Tag(name = "Menu Button & User Management", description = "Debtors List & User Registration (dealer registration moved to POST /api/v1/customers)")
 @SecurityRequirement(name = "bearerAuth")
 interface MenuApi {
-    @Operation(summary = "Register a dealer or distributor")
-    fun registerDealer(request: DealerRegistrationRequest): ApiEnvelope<DealerRegistrationSummary>
-
     @Operation(summary = "List outstanding customer and dealer debt balances")
     fun getDebtorsList(): ApiEnvelope<List<DebtorItem>>
 

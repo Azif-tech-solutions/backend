@@ -30,6 +30,8 @@ data class PageMeta(
     val appliedFilters: Map<String, String> = emptyMap(),
     val ignoredQualifiers: List<String> = emptyList(),
     val suggestions: List<String> = emptyList(),
+    /** With `highlight=true`: row id -> matched fields with `<mark>`ed, HTML-escaped snippets. */
+    val matches: Map<String, List<com.zifiq.common.search.Match>> = emptyMap(),
 )
 
 data class PageResult<T>(

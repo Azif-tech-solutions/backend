@@ -9,10 +9,7 @@ import com.zifiq.barcode.service.BarcodeQrService
 import com.zifiq.cashier.dto.ProFormaInvoiceRequest
 import com.zifiq.cashier.dto.SaleLineItem
 import com.zifiq.cashier.service.CashierService
-import com.zifiq.customers.service.CustomerService
 import com.zifiq.history.service.HistoryService
-import com.zifiq.menu.dto.DealerRegistrationRequest
-import com.zifiq.menu.service.MenuService
 import com.zifiq.platform.accesscontrol.RoleAssignmentService
 import com.zifiq.platform.identity.UserDirectory
 import com.zifiq.platform.notifications.EmailNotificationAdapter
@@ -100,31 +97,6 @@ class ModuleCoverageTest {
         val service = HistoryService()
         assertFalse(service.getWaybillHistory().isEmpty())
         assertFalse(service.getFraudViolations().isEmpty())
-    }
-
-    @Test
-    fun `customer service exposes price list and distributor directory`() {
-        val service = CustomerService()
-        assertFalse(service.getPriceList().isEmpty())
-        assertFalse(service.getDistributors(null).isEmpty())
-    }
-
-    @Test
-    fun `menu service handles dealer registrations`() {
-        val userDirectory = mock(UserDirectory::class.java)
-        val service = MenuService(userDirectory)
-
-        val result = service.registerDealer(
-            DealerRegistrationRequest(
-                companyName = "Metro Outlets",
-                contactName = "Jane Smith",
-                email = "jane@metro.com",
-                phone = "+1-555-9081",
-                initialCreditLimit = BigDecimal("10000.00")
-            )
-        )
-
-        assertEquals("Metro Outlets", result.companyName)
     }
 
     @Test

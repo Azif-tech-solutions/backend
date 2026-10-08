@@ -16,13 +16,6 @@ class MenuController(
     private val menuService: MenuService,
     private val memberService: MemberService,
 ) : MenuApi {
-    @PostMapping("/dealers/register")
-    @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'cashier.sales.manage')")
-    override fun registerDealer(
-        @Valid @RequestBody request: DealerRegistrationRequest,
-    ): ApiEnvelope<DealerRegistrationSummary> =
-        ApiEnvelope(menuService.registerDealer(request))
-
     @GetMapping("/debtors")
     @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'accounting.read')")
     override fun getDebtorsList(): ApiEnvelope<List<DebtorItem>> =

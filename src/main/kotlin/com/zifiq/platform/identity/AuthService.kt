@@ -12,6 +12,7 @@ import com.zifiq.platform.notifications.NotificationChannelType
 import com.zifiq.platform.notifications.model.NotificationOutboxTable
 import com.zifiq.platform.security.CurrentActorProvider
 import com.zifiq.platform.security.JwtTokenProvider
+import com.zifiq.platform.tenancy.TenantProvisioner
 import com.zifiq.platform.tenancy.TenantService
 import com.zifiq.platform.tenancy.model.TenantMembershipsTable
 import com.zifiq.platform.tenancy.model.TenantsTable
@@ -47,6 +48,7 @@ class AuthService(
     private val passwordEncoder: PasswordEncoder,
     private val jwtTokenProvider: JwtTokenProvider,
     private val currentActorProvider: CurrentActorProvider,
+    private val tenantProvisioners: List<TenantProvisioner> = emptyList(),
 ) {
     private val secureRandom = SecureRandom()
 
@@ -94,6 +96,7 @@ class AuthService(
 
         // 4. Seed the eight PRD-defined roles (docs/01 §2), assign Administrator to the creator
         TenantService.seedDefaultRoles(tenantId, userId)
+        tenantProvisioners.forEach { it.provision(tenantId, userId) }
 
         val adminRoleId = TenantRolesTable
             .select(TenantRolesTable.id)

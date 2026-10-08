@@ -34,6 +34,7 @@ class TenantService(
     private val currentActorProvider: CurrentActorProvider,
     private val tenantScopedTransaction: TenantScopedTransaction,
     private val permissionAuthorizer: PermissionAuthorizer,
+    private val tenantProvisioners: List<TenantProvisioner> = emptyList(),
 ) {
     fun listChildren(): List<TenantSummary> = tenantScopedTransaction.execute {
         val parentTenantId = currentActorProvider.current().tenantId
@@ -75,6 +76,7 @@ class TenantService(
         }
 
         seedDefaultRoles(childId, actor.userId)
+        tenantProvisioners.forEach { it.provision(childId, actor.userId) }
 
         val adminRoleId = TenantRolesTable
             .select(TenantRolesTable.id)

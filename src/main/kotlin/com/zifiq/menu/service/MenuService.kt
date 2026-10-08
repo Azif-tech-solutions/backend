@@ -11,15 +11,6 @@ import java.util.UUID
 class MenuService(
     private val userDirectory: UserDirectory,
 ) {
-    fun registerDealer(request: DealerRegistrationRequest): DealerRegistrationSummary {
-        return DealerRegistrationSummary(
-            id = UUID.randomUUID(),
-            dealerCode = "DLR-" + UUID.randomUUID().toString().take(6).uppercase(),
-            companyName = request.companyName,
-            registeredAt = Instant.now(),
-        )
-    }
-
     fun getDebtorsList(): List<DebtorItem> {
         return listOf(
             DebtorItem(

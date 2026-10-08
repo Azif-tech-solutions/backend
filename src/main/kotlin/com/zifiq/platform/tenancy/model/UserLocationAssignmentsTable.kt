@@ -5,10 +5,9 @@ import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.javatime.timestamp
 
 /**
- * Deliberately does NOT Exposed-`reference()` factory.model.LocationsTable — that would create a
- * platform -> business-module Kotlin import, inverting the intended dependency direction (business
- * modules depend on platform, not the reverse). location_id mirrors the SQL foreign key declared in
- * V3__locations_and_rbac_expansion.sql; referential integrity is enforced by Postgres, not Exposed.
+ * Which locations a member may access (V3__locations_and_rbac_expansion.sql): SINGLE_LOCATION with
+ * a location_id, or ALL_LOCATIONS. location_id is a plain uuid mirroring the SQL foreign key to
+ * [LocationsTable].
  */
 object UserLocationAssignmentsTable : Table("user_location_assignments") {
     val tenantId = reference("tenant_id", TenantsTable)

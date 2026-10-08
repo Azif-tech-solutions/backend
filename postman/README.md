@@ -2,11 +2,11 @@
 
 Covers only the modules that have real persistence and business logic today:
 Auth, Tenants & Members, OTP, VAT Control, Settings, Factory Setup, Factory
-Production, Factory Trading, Inventory Stock, Inventory Operations, and the
+Production, Factory Trading, Inventory Stock, Inventory Operations, the
 NRS Reference Data lookups that lay the foundation for the Electronic
-Invoicing module.
+Invoicing module, and Customers & Distributors.
 
-The remaining scaffolded modules (Account, AI, Barcode, Cashier, Customers,
+The remaining scaffolded modules (Account, AI, Barcode, Cashier,
 History, Menu, Process Guide, Showroom, and Electronic Invoicing's own
 generate/deliver/history endpoints) still return hardcoded mock data
 server-side with no real tables behind them, so they're intentionally left
@@ -25,7 +25,7 @@ for real, the same way Factory and Inventory were.
 
 ## Running it
 
-Run folders **01 through 11 in order**, either by hand or with the
+Run folders **01 through 12 in order**, either by hand or with the
 Collection Runner. Each request's Tests script captures tokens and
 created-entity IDs (tenant id, access token, factory id, stock item ids,
 recipe id, costing id, etc.) into collection variables that later requests
@@ -81,7 +81,7 @@ Postman app:
 npx newman run ZifIQ-API.postman_collection.json -e ZifIQ-Local.postman_environment.json
 ```
 
-A clean run reports `83/83` requests passing, `0` failures. Two requests are
+A clean run reports `114/114` requests passing, `0` failures. Several requests are
 *deliberately* run against a state that makes them error — not bugs, but
 real error paths demonstrated on purpose — so each gets its own
 status+error-code assertion instead of the generic one every other request
@@ -93,3 +93,30 @@ uses, documented inline on the request itself:
   ALREADY_DECIDED`, since it deliberately runs against the same costing
   **Approve Costing** just approved, to demonstrate the mutual-exclusion
   check.
+- **12 - Customers** — *Register Correspondent (unknown region)* `400
+  INVALID_REGION`, *Register Dealer (duplicate name)* `409 DUPLICATE_NAME`,
+  *Wallet Adjustment (overdraw)* `400 INSUFFICIENT_WALLET_BALANCE`,
+  *Reverse Ledger Entry (again)* `409 ALREADY_REVERSED` and *Set Customer
+  Status (REMOVED)* `409 INVALID_STATUS_TRANSITION` each demonstrate a
+  business rule.
+
+**12 - Customers** creates its own ACTIVE home location first (folder 06
+deliberately leaves `{{factoryId}}` SUSPENDED) and captures `{{today}}` in
+the tenant's default timezone for the immediate reclassification.
+
+## Editing the collection
+
+The collection is generated — don't hand-edit the JSON. Add or change
+requests in `generate_collection.py` (one `ep(...)` call per request: method,
+path, body, example response, capture scripts, and `expect_error` for
+deliberate error paths), then run:
+
+```sh
+python postman/generate_collection.py
+```
+
+It rewrites `ZifIQ-API.postman_collection.json` and
+`ZifIQ-Local.postman_environment.json`. The Dev environment
+(`ZifIQ-Dev.postman_environment.json`, pointing at the dev server) is
+maintained by hand. CI runs the collection with Newman against the Local
+environment on every push, so run Newman locally before committing.

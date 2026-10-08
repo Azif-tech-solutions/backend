@@ -104,6 +104,19 @@ For list endpoints, `data` is an array directly (`{ "data": [...] }`), not a nes
 
 `code` is a fixed enum value (e.g. `INVALID_CREDENTIALS`, `VALIDATION_FAILED`, `STOCK_ITEM_NOT_FOUND`) — safe to switch/match on in frontend error handling, it will never change wording under you. `details` is sometimes empty, sometimes carries extra structured context (e.g. which fields failed validation).
 
+## Lists, search and filters (Customers is the first module using them)
+
+Every paged list takes `q`, simple filters as query parameters, `page` (0-based), `size` (≤ 200), `sort=field,asc|desc`, `facets=a,b`, `highlight=true`. The response `data` is `{ items, page, size, totalItems, totalPages, totalIsEstimate, facets, summary, meta: { ignoredQualifiers, suggestions, matches } }`.
+
+- `GET <list>/filters` describes every filter (type, operators, options, lookup endpoint, sortable, facetable) — build filter UIs from it instead of hard-coding.
+- `POST <list>/search` takes `{ q, filter: { all|any|not: [...] }, params, sort: [{field, dir}], page, size, facets, highlight }` for advanced filters.
+- `q` understands `"exact phrase"`, `-exclude`, `OR`, `field:value` qualifiers (`type:dealer status:watch`), references (`DLR-42` or bare `42`) and phone numbers in any format.
+- An unknown filter name or value is a `400 INVALID_FILTER` with the allowed values in `details` — never a silently unfiltered list.
+- With `highlight=true`, `meta.matches[rowId]` holds HTML-escaped snippets with `<mark>` around the matched words, safe to render as HTML.
+- Header search box: `GET /api/v1/search?q=` returns hits grouped by type with a `route` for each; an exact reference returns just that record.
+
+Customers endpoints live under `/api/v1/customers` (register, list/search, stats, lookup picker, ledger, wallet adjustments, reclassifications, dealer categories, correspondents, `/me` self-service) — see Swagger tags "Customers*" and the Postman folder "12 - Customers".
+
 ## Notes
 
 - CORS: ask backend to confirm the frontend's dev origin is allowed before you start making cross-origin requests from a local dev server — not yet confirmed configured for arbitrary origins.

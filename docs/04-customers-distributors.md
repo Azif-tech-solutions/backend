@@ -298,7 +298,7 @@ create unique index reclass_one_scheduled on customer_reclassifications (custome
 
 Administrator holds all (`*`). `RoleDefaults` is extended with the defaults above.
 
-**Location scope.** All list endpoints pass `locationId` through `LocationAccessService.resolveFilterSet` (doc 03 §11.3) against the customer's **home** showroom; a single-location user only lists customers homed at their location. Lookups made by other modules through the `spi` (e.g. POS at showroom B serving a customer homed at A) are deliberately *not* location-restricted — a customer can buy anywhere.
+**Location scope.** All list endpoints and single-record reads pass through `LocationAccessService.resolveFilter` against the customer's **home** location (an out-of-scope id reads as `404 CUSTOMER_NOT_FOUND`, so ids can't be probed); a single-location user only lists customers homed at their location. Lookups made by other modules through the `spi` (e.g. POS at showroom B serving a customer homed at A) are deliberately *not* location-restricted — a customer can buy anywhere.
 
 ---
 
@@ -325,7 +325,7 @@ Request `CustomerRequest`:
 | `city` | string? | ≤120 |
 | `stateCode` | string? | must exist in `nigeria_states` → else `400 INVALID_STATE_CODE`; required for `AUTHORISED_DEALER` |
 | `lgaCode` | string? | must exist in `nigeria_lgas` **and** belong to `stateCode` → else `400 INVALID_LGA_CODE` |
-| `locationId` | uuid? | home showroom; must be an ACTIVE `SHOWROOM` location → else `400 INVALID_LOCATION`; `LocationAccessService.assertAccess` |
+| `locationId` | uuid? | home location; must be an ACTIVE `SHOWROOM` or `FACTORY` location of the tenant (factories sell to dealers directly, and the Showroom module isn't built yet) → else `400 INVALID_LOCATION`; `LocationAccessService.assertAccess` |
 | `correspondentId` | uuid? | must exist and be `ASSIGNED` → else `409 CORRESPONDENT_NOT_ASSIGNED` |
 | `dealerCategoryId` | uuid? | required iff `AUTHORISED_DEALER` → `400 CATEGORY_REQUIRED_FOR_DEALER`; must be ACTIVE |
 | `creditLimit` | decimal? | ≥0; dealer default = category's `suggested_credit_limit`; must be 0 for `NO_CREDIT_WALKIN` → `400 CREDIT_LIMIT_NOT_ALLOWED` |
@@ -382,7 +382,7 @@ Rules (from `DealersUpdate.jsx`):
 - Credit limit: `toCreditLimit` if given; else promotion to dealer → category's suggested limit; demotion to `NO_CREDIT_WALKIN` → 0 (allowed even with debt outstanding — it only stops *new* credit); otherwise unchanged.
 - Dealer category cleared when leaving `AUTHORISED_DEALER`.
 - Commission eligibility follows type: only `AUTHORISED_DEALER` earns commission (doc 12).
-- `effectiveFrom == today` → applied immediately (status `APPLIED`); future → `SCHEDULED`; a daily job (`ReclassificationScheduler`, 00:05 tenant time) applies due ones. Only one `SCHEDULED` per customer (`409 RECLASSIFICATION_PENDING`); `DELETE /api/v1/customers/{id}/reclassifications/{reclassId}` cancels a `SCHEDULED` one (status `CANCELLED`, row kept).
+- `effectiveFrom == today` → applied immediately (status `APPLIED`); future → `SCHEDULED`; a job (`ReclassificationService.applyDue`, hourly at :05 so every tenant timezone is covered, cron `zifiq.customers.reclassification-cron`) applies due ones, each in its own transaction; one that can't be applied yet (e.g. a deposit was taken after scheduling → `DEPOSIT_MUST_BE_SETTLED`) stays `SCHEDULED`, is logged and retried next run. Only one `SCHEDULED` per customer (`409 RECLASSIFICATION_PENDING`); `DELETE /api/v1/customers/{id}/reclassifications/{reclassId}` cancels a `SCHEDULED` one (status `CANCELLED`, row kept).
 Response: `ReclassificationSummary { id, customerId, customerCode, fromType, toType, direction, reason, effectiveFrom, status, fromCreditLimit, toCreditLimit, toDealerCategoryName, walletBalanceCarriedOver, authorisedBy, createdAt }`.
 Events: `customers.customer.reclassified` (on apply), `customers.reclassification.scheduled`, `customers.reclassification.cancelled`.
 `GET /api/v1/customers/reclassifications?customerId=&direction=&from=&to=` [paged] — history.
@@ -543,7 +543,7 @@ Implements doc 03 §4–§5. Every paged list below also accepts `POST <list>/se
 | Aspect | Definition |
 |---|---|
 | `q` fields | `code` REFERENCE (`DLR-42`, bare `42`); `phone_e164` PHONE; `email` CODE; `tin` CODE; `name`, `contact_person` TRIGRAM (accent-insensitive, typo-tolerant); `search_vector` FULLTEXT over name + contact person + street address + city + notes |
-| Filters / qualifiers | `type` ENUM multi (`type:dealer` alias) · `status` ENUM multi (default excludes `REMOVED`) · `isTemporary` BOOLEAN · `locationId` LOCATION · `correspondentId` UUID (`rep:`) · `dealerCategoryId` UUID (`category:gold`) · `stateCode`, `lgaCode` ENUM · `walletBalance`, `depositBalance`, `creditLimit`, `lifetimeValue` MONEY ranges · `hasWalletBalance`, `hasEmail`, `hasPhone`, `hasTin`, `hasCorrespondent` BOOLEAN · `customerSince`, `lastPurchaseAt`, `createdAt` DATE ranges (`lastPurchaseAt.lt=<date>` = "dormant since") · `createdBy` UUID · **custom fields** `attr.<field_key>` typed from `custom_field_definitions` (entity `CUSTOMER`, doc 03 §12.2), e.g. `attr.trade_sector=HARDWARE` |
+| Filters / qualifiers | `type` ENUM multi (`type:dealer`, `type:special`, `type:walkin` via unambiguous word match, doc 03 §4.3) · `status` ENUM multi (default excludes `REMOVED`) · `isTemporary` BOOLEAN · `locationId` LOCATION · `correspondentId` UUID (`rep:`) · `dealerCategoryId` UUID (pick from `GET /customers/dealer-categories`; a `category:gold` name qualifier is not implemented — filter by id) · `stateCode`, `lgaCode` ENUM · `walletBalance`, `depositBalance`, `creditLimit`, `lifetimeValue` MONEY ranges · `hasWalletBalance`, `hasEmail`, `hasPhone`, `hasTin`, `hasCorrespondent` BOOLEAN · `customerSince`, `lastPurchaseAt`, `createdAt` DATE ranges (`lastPurchaseAt.lt=<date>` = "dormant since") · `createdBy` UUID · **custom fields** `attr.<field_key>` typed from `custom_field_definitions` (entity `CUSTOMER`, doc 03 §12.2), e.g. `attr.trade_sector=HARDWARE` |
 | Advanced-only fields | `ledger` collection (`EXISTS` on `customer_ledger_entries`: `ledger.entryType`, `ledger.amount`, `ledger.entryDate`), e.g. "dealers with a withdrawal over ₦100,000 this month" |
 | Facets | `type`, `status`, `location`, `dealerCategory`, `correspondent`, `state` |
 | Sort | `name,asc` (default); `code`, `customerSince`, `walletBalance`, `depositBalance`, `lifetimeValue`, `lastPurchaseAt`, `createdAt` |
