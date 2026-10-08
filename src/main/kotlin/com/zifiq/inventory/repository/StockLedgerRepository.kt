@@ -1,10 +1,12 @@
 package com.zifiq.inventory.repository
 
+import com.zifiq.common.errors.ApiErrors
 import com.zifiq.inventory.model.StockBalancesTable
 import com.zifiq.inventory.model.StockItemsTable
 import com.zifiq.inventory.model.StockLedgerEntriesTable
 import com.zifiq.platform.notifications.NotificationCategory
 import com.zifiq.platform.notifications.Notify
+import com.zifiq.platform.tenancy.LocationHierarchy
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -21,7 +23,7 @@ import org.springframework.stereotype.Component
 /**
  * Writes a stock_ledger_entries row and updates stock_balances in the same call — the only
  * sanctioned way any module (Factory, Showroom) touches either table, so quantity_on_hand can
- * never drift from the ledger's sum. See docs/03-inventory.md §2-3. Public API other modules
+ * never drift from the ledger's sum. See docs/02-factory.md and docs/05-showroom.md §1.3. Public API other modules
  * depend on (Factory's Production/Trade services post entries here) — Inventory is the shared
  * stock substrate, analogous to how every module depends on `platform`.
  *
@@ -32,6 +34,7 @@ import org.springframework.stereotype.Component
 @Component
 class StockLedgerRepository(
     private val notify: Notify,
+    private val hierarchy: LocationHierarchy = LocationHierarchy(),
 ) {
     fun postEntry(
         tenantId: UUID,
@@ -46,6 +49,7 @@ class StockLedgerRepository(
         performedByUserId: UUID,
         entryDate: LocalDate = LocalDate.now(),
     ) {
+        requireItemAllowedAt(stockItemId, locationId)
         StockLedgerEntriesTable.insert {
             it[StockLedgerEntriesTable.tenantId] = tenantId
             it[StockLedgerEntriesTable.locationId] = locationId
@@ -123,6 +127,36 @@ class StockLedgerRepository(
         )
     }
 
+    /** Direct-entry items are held only at the showroom that entered them (or its areas) — docs/05 §2.2. */
+    private fun requireItemAllowedAt(stockItemId: UUID, locationId: UUID) {
+        val item = StockItemsTable.select(StockItemsTable.itemType, StockItemsTable.locationId)
+            .andWhere { StockItemsTable.id eq stockItemId }
+            .firstOrNull() ?: return
+        if (item[StockItemsTable.itemType] == "DIRECT_ENTRY" && hierarchy.rootOf(locationId) != item[StockItemsTable.locationId]) {
+            throw ApiErrors.itemLocationRestricted()
+        }
+    }
+
+    /**
+     * Balance at one exact location, locked FOR UPDATE until the caller's transaction ends — for
+     * decisions that must not race another posting (a counted adjustment against a concurrent sale).
+     */
+    fun lockedBalance(tenantId: UUID, locationId: UUID, stockItemId: UUID): BigDecimal {
+        StockBalancesTable.insertIgnore {
+            it[StockBalancesTable.tenantId] = tenantId
+            it[StockBalancesTable.locationId] = locationId
+            it[StockBalancesTable.stockItemId] = stockItemId
+            it[StockBalancesTable.quantityOnHand] = BigDecimal.ZERO
+            it[StockBalancesTable.updatedAt] = Instant.now()
+        }
+        return StockBalancesTable.select(StockBalancesTable.quantityOnHand)
+            .andWhere { StockBalancesTable.locationId eq locationId }
+            .andWhere { StockBalancesTable.stockItemId eq stockItemId }
+            .forUpdate()
+            .single()[StockBalancesTable.quantityOnHand]
+    }
+
+    /** Balance at one exact location (an area is separate from its showroom). */
     fun currentBalance(locationId: UUID, stockItemId: UUID): BigDecimal =
         StockBalancesTable.select(StockBalancesTable.quantityOnHand)
             .andWhere { StockBalancesTable.locationId eq locationId }

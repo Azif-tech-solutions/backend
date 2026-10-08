@@ -18,4 +18,7 @@ object QuantityAdjustmentsTable : UUIDTable("quantity_adjustments") {
     val otpChallengeId = reference("otp_challenge_id", OtpChallengesTable).nullable()
     val performedByUserId = reference("performed_by_user_id", AppUsersTable)
     val createdAt = timestamp("created_at")
+    val mode = varchar("mode", 10)
+    val recordedQuantity = decimal("recorded_quantity", 14, 3).nullable()
+    val newQuantity = decimal("new_quantity", 14, 3).nullable()
 }

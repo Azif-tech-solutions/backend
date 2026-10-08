@@ -136,6 +136,36 @@ object ApiErrors {
     fun fileTooLarge(maxBytes: Long) = ApiException(HttpStatus.PAYLOAD_TOO_LARGE, ErrorCode.FILE_TOO_LARGE, "The file is larger than ${maxBytes / (1024 * 1024)} MB", mapOf("maxBytes" to maxBytes.toString()))
     fun fileTypeNotAllowed(detected: String, allowed: Collection<String>) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.FILE_TYPE_NOT_ALLOWED, "This kind of file ($detected) can't be uploaded here", mapOf("detected" to detected, "allowed" to allowed.joinToString(",")))
     fun unknownFilePurpose(purpose: String, allowed: Collection<String>) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.UNKNOWN_FILE_PURPOSE, "Unknown file purpose '$purpose'", mapOf("allowed" to allowed.joinToString(",")))
+
+    // ---- Showroom + inventory extensions (docs/05 §7) ----
+    fun receiptExceedsSent(line: Int, outstanding: java.math.BigDecimal, attempted: java.math.BigDecimal) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.RECEIPT_EXCEEDS_SENT,
+        "Line $line: accepted plus rejected (${attempted.stripTrailingZeros().toPlainString()}) exceeds the ${outstanding.stripTrailingZeros().toPlainString()} still outstanding",
+        mapOf("line" to line.toString(), "outstanding" to outstanding.toPlainString(), "attempted" to attempted.toPlainString()))
+    fun receiptNotReconciled(line: Int, outstanding: java.math.BigDecimal, attempted: java.math.BigDecimal) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.RECEIPT_NOT_RECONCILED,
+        "Line $line: ${(outstanding - attempted).stripTrailingZeros().toPlainString()} of the ${outstanding.stripTrailingZeros().toPlainString()} dispatched is unaccounted for",
+        mapOf("line" to line.toString(), "outstanding" to outstanding.toPlainString(), "attempted" to attempted.toPlainString()))
+    fun sameLocation(reason: String = "Source and destination are the same location; move stock between its areas with an area move") =
+        ApiException(HttpStatus.BAD_REQUEST, ErrorCode.SAME_LOCATION, reason)
+    fun notSameLocation() = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.NOT_SAME_LOCATION, "Both areas must belong to the same showroom or factory")
+    fun locationNotTrading(name: String) = ApiException(HttpStatus.CONFLICT, ErrorCode.LOCATION_NOT_TRADING, "$name is pending opening: it can receive stock but cannot trade, dispatch or take returns yet")
+    fun locationSuspended(name: String) = ApiException(HttpStatus.CONFLICT, ErrorCode.LOCATION_SUSPENDED, "$name is suspended: no stock can move in or out")
+    fun areaHasStock(units: java.math.BigDecimal) = ApiException(HttpStatus.CONFLICT, ErrorCode.AREA_HAS_STOCK, "This area still holds ${units.stripTrailingZeros().toPlainString()} units; move them first", mapOf("units" to units.toPlainString()))
+    fun itemLocationRestricted() = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.ITEM_LOCATION_RESTRICTED, "This direct-entry item is held only at the showroom that entered it")
+    fun itemNotOutsourced() = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.ITEM_NOT_OUTSOURCED, "Only registered outsourced products can be received here; for third-party goods not in the register use Stock Entry (Direct)")
+    fun outsourceCostNotSet() = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.OUTSOURCE_COST_NOT_SET, "Set this outsourced product's landing cost before receiving it")
+    fun invalidExpiry() = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_EXPIRY, "The expiry date must be after the received date")
+    fun noAdjustmentNeeded() = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.NO_ADJUSTMENT_NEEDED, "The counted quantity equals the quantity on hand; nothing to adjust")
+    fun notADealer() = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.NOT_A_DEALER, "A dealer return needs an Authorised Dealer")
+    fun useDealerReturn() = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.USE_DEALER_RETURN, "This customer is an Authorised Dealer; record a dealer return instead")
+    fun priceNotSet(item: String) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.PRICE_NOT_SET, "$item has no selling price on that date; publish one in the price list first", mapOf("item" to item))
+    fun returnNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.RETURN_NOT_FOUND, "Return not found")
+    fun returnAlreadyReversed() = ApiException(HttpStatus.CONFLICT, ErrorCode.RETURN_ALREADY_REVERSED, "This return has already been reversed")
+    fun groupMixedUnits(units: Collection<String>) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.GROUP_MIXED_UNITS, "The group's items use different units (${units.joinToString()}), so their quantities can't be added together", mapOf("units" to units.joinToString(",")))
+    fun dealerPriceAboveRetail(item: String) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.DEALER_PRICE_ABOVE_RETAIL, "$item: the dealer price can't be above the retail price", mapOf("item" to item))
+    fun priceAlreadySetForDate(item: String, date: java.time.LocalDate) = ApiException(HttpStatus.CONFLICT, ErrorCode.PRICE_ALREADY_SET_FOR_DATE, "$item already has a price effective $date", mapOf("item" to item, "effectiveFrom" to date.toString()))
+    fun priceAlreadyEffective() = ApiException(HttpStatus.CONFLICT, ErrorCode.PRICE_ALREADY_EFFECTIVE, "This price is already in effect and can't be changed; publish a new price instead")
+    fun showroomNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.SHOWROOM_NOT_FOUND, "Showroom not found")
+    fun driverNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.DRIVER_NOT_FOUND, "Driver not found")
     fun duplicateViewName() = ApiException(HttpStatus.CONFLICT, ErrorCode.DUPLICATE_VIEW_NAME, "You already have a view with this name for this list")
 
     // ---- Module settings, custom fields, notifications ----

@@ -70,8 +70,9 @@ class InventoryStockController(
         @RequestParam locationId: UUID,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate?,
+        @RequestParam(defaultValue = "true") includeAreas: Boolean,
     ): ApiEnvelope<List<StockCardRow>> =
-        ApiEnvelope(inventoryStockService.stockCard(stockItemId, locationId, from, to))
+        ApiEnvelope(inventoryStockService.stockCard(stockItemId, locationId, from, to, includeAreas))
 
     @GetMapping("/stock/bin-card/{stockItemId}")
     @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'inventory.stock.read')")
@@ -80,8 +81,9 @@ class InventoryStockController(
         @RequestParam locationId: UUID,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate?,
+        @RequestParam(defaultValue = "true") includeAreas: Boolean,
     ): ApiEnvelope<List<BinCardRow>> =
-        ApiEnvelope(inventoryStockService.binCard(stockItemId, locationId, from, to))
+        ApiEnvelope(inventoryStockService.binCard(stockItemId, locationId, from, to, includeAreas))
 
     @GetMapping("/stock/comprehensive-report")
     @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'inventory.stock.read')")

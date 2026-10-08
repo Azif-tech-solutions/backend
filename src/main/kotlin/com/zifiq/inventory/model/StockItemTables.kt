@@ -32,8 +32,9 @@ object StockItemsTable : UUIDTable("stock_items") {
     // com.zifiq.account's global tax-classification catalogs (V5__tax_classification.sql), and
     // Inventory must not import account's Kotlin types. Every product carries all three.
     val vatCategoryId = uuid("vat_category_id")
-    val hsnSectionId = uuid("hsn_section_id")
-    val isicSectionId = uuid("isic_section_id")
+    // Null only for DIRECT_ENTRY items (third-party goods entered at a showroom; docs/05 §2.2).
+    val hsnSectionId = uuid("hsn_section_id").nullable()
+    val isicSectionId = uuid("isic_section_id").nullable()
     val status = varchar("status", 20).default("ACTIVE")
     val createdByUserId = reference("created_by_user_id", AppUsersTable)
     val createdAt = timestamp("created_at")

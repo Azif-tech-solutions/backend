@@ -32,11 +32,11 @@ interface InventoryStockApi {
     @Operation(summary = "Stock Keeper verifies/offloads a raw material receipt")
     fun verifyReceipt(id: UUID, request: StockReceiptVerifyRequest): ApiEnvelope<StockReceiptSummary>
 
-    @Operation(summary = "Stock Card — per-transaction ledger with running balance")
-    fun stockCard(stockItemId: UUID, locationId: UUID, from: LocalDate?, to: LocalDate?): ApiEnvelope<List<StockCardRow>>
+    @Operation(summary = "Stock Card — per-transaction ledger with running balance (a showroom/factory includes its storage areas unless includeAreas=false)")
+    fun stockCard(stockItemId: UUID, locationId: UUID, from: LocalDate?, to: LocalDate?, includeAreas: Boolean): ApiEnvelope<List<StockCardRow>>
 
-    @Operation(summary = "Bin Card — daily-total ledger with running balance")
-    fun binCard(stockItemId: UUID, locationId: UUID, from: LocalDate?, to: LocalDate?): ApiEnvelope<List<BinCardRow>>
+    @Operation(summary = "Bin Card — daily-total ledger with running balance (includes storage areas unless includeAreas=false)")
+    fun binCard(stockItemId: UUID, locationId: UUID, from: LocalDate?, to: LocalDate?, includeAreas: Boolean): ApiEnvelope<List<BinCardRow>>
 
     @Operation(summary = "Comprehensive Stock Report (by Category or, for finished goods, by Group)")
     fun comprehensiveStockReport(locationId: UUID?, view: String): ApiEnvelope<List<ComprehensiveStockRow>>

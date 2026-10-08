@@ -16,7 +16,7 @@ def uid():
 
 ENDPOINTS = []
 
-def ep(folder, name, method, path, auth=None, body=None, resp=None, status=200, status_text="OK", tests=None, query=None, desc="", expect_error=None, form=None):
+def ep(folder, name, method, path, auth=None, body=None, resp=None, status=200, status_text="OK", tests=None, query=None, desc="", expect_error=None, form=None, pdf=False):
     # expect_error: {"status": int, "code": "ERROR_CODE"} for requests that are DELIBERATELY run
     # against a state that makes them fail (demonstrating a real error path), so the generic
     # "response has data envelope" assertion every other request gets would always fail here --
@@ -26,7 +26,7 @@ def ep(folder, name, method, path, auth=None, body=None, resp=None, status=200, 
     ENDPOINTS.append(dict(
         folder=folder, name=name, method=method, path=path, auth=auth, body=body,
         resp=resp, status=status, status_text=status_text, tests=tests or [], query=query or [], desc=desc,
-        expect_error=expect_error, form=form,
+        expect_error=expect_error, form=form, pdf=pdf,
     ))
 
 NOW = "2026-10-01T10:15:30Z"
@@ -292,6 +292,13 @@ ep("06 - Factory Setup", "Update Factory Status", "PUT", "/api/v1/factory/setup/
    resp={"data": {"id": "{{factoryId}}", "code": "FAC-1", "name": "Apex Plant A (Updated)", "address": "12 Industrial Way, Lagos",
                   "state": "Lagos", "phone": "+234-800-100-0099", "managerUserId": None, "vatRate": 7.5, "vatEnabled": True,
                   "vatRegistrationNumber": "VAT-APEX-001", "status": "SUSPENDED"}})
+
+ep("06 - Factory Setup", "Reactivate Factory", "PUT", "/api/v1/factory/setup/factories/{{factoryId}}/status",
+   body={"status": "ACTIVE"},
+   resp={"data": {"id": "{{factoryId}}", "code": "FAC-1", "name": "Apex Plant A (Updated)", "address": "12 Industrial Way, Lagos",
+                  "state": "Lagos", "phone": "+234-800-100-0099", "managerUserId": None, "vatRate": 7.5, "vatEnabled": True,
+                  "vatRegistrationNumber": "VAT-APEX-001", "status": "ACTIVE"}},
+   desc="Back to ACTIVE: a SUSPENDED location can't move stock (transfers, adjustments), and the following folders use this factory.")
 
 ep("06 - Factory Setup", "Register Unit of Measure", "POST", "/api/v1/factory/setup/units",
    body={"unitCode": "kg", "unitName": "Kilogram", "symbol": "kg"},
@@ -728,7 +735,7 @@ ep(C, "A1 Create Customer Home Location", "POST", "/api/v1/factory/setup/factori
    resp={"data": {"id": "{{customerLocationId}}", "code": "FAC-3", "name": "Customer Home Plant", "status": "ACTIVE"}},
    tests=["const json = pm.response.json();", "pm.collectionVariables.set('customerLocationId', json.data.id);",
           "pm.collectionVariables.set('today', new Date(Date.now() + 3600 * 1000).toISOString().slice(0, 10));"],
-   desc="Creates an ACTIVE location to home this folder's customers and correspondents at (folder 06 leaves {{factoryId}} SUSPENDED on purpose). "
+   desc="Creates an ACTIVE location to home this folder's customers and correspondents at, so the folder can run on its own. "
         "Customers can be homed at an ACTIVE showroom or factory. Also stores today's date in the tenant's default timezone (Africa/Lagos) as {{today}}, "
         "used by A-today reclassification below.")
 
@@ -1245,6 +1252,170 @@ ep(F, "Get Download Link (error: deleted)", "GET", "/api/v1/files/{{fileId}}/dow
    status=404, status_text="Not Found", resp={"error": {"code": "FILE_NOT_FOUND", "message": "File not found", "details": {}}},
    expect_error={"status": 404, "code": "FILE_NOT_FOUND"})
 
+# ============================== INVENTORY EXTENSIONS (docs/05 §4.2–§4.13) ==============================
+I = "15 - Inventory Extensions"
+DRIVER = {"id": "{{driverId}}", "name": "Musa Bello", "phone": "0803 000 1111", "vehicleNumber": "KN-482-ABC", "licenceNumber": "KAN-77821",
+          "status": "ACTIVE", "createdAt": NOW}
+TRANSFER2 = {"id": "{{transfer2Id}}", "waybillRef": "WB-2", "sourceLocationId": "{{factoryId}}", "sourceLocationName": "Apex Plant A (Updated)",
+             "sourceLocationType": "FACTORY", "destinationLocationId": "{{factoryId2}}", "destinationLocationName": "Apex Plant B",
+             "destinationLocationType": "FACTORY", "status": "DISPATCHED", "driverId": "{{driverId}}", "driverName": "Musa Bello",
+             "driverVehicle": "KN-482-ABC", "transferDate": "2026-10-08", "dispatchedAt": NOW, "receivedDate": None, "receivedAt": None,
+             "receiptNote": None, "totalSent": 5.000, "totalRejected": 0, "waybillUrl": "/api/v1/inventory/stock/transfers/{{transfer2Id}}/waybill.pdf",
+             "lines": [{"id": "{{transfer2LineId}}", "stockItemId": "{{finishedProductId}}", "stockItemCode": "ITM-2", "stockItemName": "Premium Blend",
+                        "unit": "Kilogram", "qtySent": 5.000, "qtyReceived": None, "qtyRejected": None, "outstanding": 5.000, "fromLocationId": None,
+                        "fromLocationName": None, "receivedIntoLocationId": None, "receivedIntoLocationName": None, "batchNo": "B-2026-10-01",
+                        "rejectionNote": None}]}
+
+ep(I, "Register Driver", "POST", "/api/v1/inventory/drivers",
+   body={"name": "Musa Bello", "phone": "0803 000 1111", "vehicleNumber": "kn-482-abc", "licenceNumber": "KAN-77821"},
+   resp={"data": DRIVER},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('driverId', json.data.id);",
+          "pm.collectionVariables.set('today', new Date(Date.now() + 3600 * 1000).toISOString().slice(0, 10));",
+          "pm.test('vehicle number normalised', () => pm.expect(json.data.vehicleNumber).to.eql('KN-482-ABC'));"],
+   desc="Perm inventory.drivers.manage. The same name + vehicle is the same driver (409 DUPLICATE_NAME).")
+
+ep(I, "Register Driver (error: duplicate)", "POST", "/api/v1/inventory/drivers",
+   body={"name": "musa bello", "vehicleNumber": "KN-482-ABC"},
+   status=409, status_text="Conflict", resp={"error": {"code": "DUPLICATE_NAME", "message": "'musa bello / KN-482-ABC' is already in use"}},
+   expect_error={"status": 409, "code": "DUPLICATE_NAME"})
+
+ep(I, "Update Driver", "PUT", "/api/v1/inventory/drivers/{{driverId}}",
+   body={"name": "Musa Bello", "phone": "0803 000 1111", "vehicleNumber": "KN-482-ABC", "licenceNumber": "KAN-77821-B"},
+   resp={"data": dict(DRIVER, licenceNumber="KAN-77821-B")})
+
+ep(I, "List Drivers", "GET", "/api/v1/inventory/drivers", query=[{"key": "q", "value": "musa"}], resp={"data": [DRIVER]},
+   desc="Perm inventory.drivers.read. q: name, vehicle number, phone, licence. status=ACTIVE|INACTIVE. GET /drivers/lookup is the picker (active only).")
+
+ep(I, "Dispatch Transfer (with driver and batch)", "POST", "/api/v1/inventory/stock/transfers",
+   body={"sourceLocationId": "{{factoryId}}", "destinationLocationId": "{{factoryId2}}", "driverId": "{{driverId}}", "driverName": None,
+         "driverVehicle": None, "transferDate": None,
+         "lines": [{"stockItemId": "{{finishedProductId}}", "quantity": 5, "unitPrice": None, "fromLocationId": None, "batchNo": "B-2026-10-01"}]},
+   resp={"data": TRANSFER2},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('transfer2Id', json.data.id);",
+          "pm.collectionVariables.set('transfer2LineId', json.data.lines[0].id);",
+          "pm.test('driver taken from the register', () => pm.expect(json.data.driverName).to.eql('Musa Bello'));"],
+   desc="With driverId the driver's name and vehicle are filled in. Per line, fromLocationId picks the area the goods leave from (default the "
+        "source) and availability is checked there. Rules: source must be ACTIVE (409 LOCATION_NOT_TRADING when pending opening), destination "
+        "not SUSPENDED (409 LOCATION_SUSPENDED), and not the same location (400 SAME_LOCATION — use an area move). The waybill is registered "
+        "in Transaction Receipts.")
+
+ep(I, "List Incoming Consignments", "GET", "/api/v1/inventory/stock/transfers",
+   query=[{"key": "locationId", "value": "{{factoryId2}}"}, {"key": "direction", "value": "INTO"}, {"key": "status", "value": "DISPATCHED,PARTIALLY_RECEIVED"}],
+   resp={"data": [TRANSFER2]},
+   tests=["const json = pm.response.json();",
+          "pm.test('the new transfer is awaiting receipt', () => pm.expect(json.data.map(t => t.id)).to.include(pm.collectionVariables.get('transfer2Id')));"],
+   desc="Query: locationId, direction (INTO | OUT_OF), status (repeatable or comma-separated), q (waybill), from/to (transfer date).")
+
+ep(I, "Receive Transfer (error: not reconciled)", "POST", "/api/v1/inventory/stock/transfers/{{transfer2Id}}/receive",
+   body={"lines": [{"stockTransferLineId": "{{transfer2LineId}}", "qtyReceived": 3, "qtyRejected": 1, "rejectionNote": "Torn bag"}]},
+   status=400, status_text="Bad Request",
+   resp={"error": {"code": "RECEIPT_NOT_RECONCILED", "message": "Line 1: 1 of the 5 dispatched is unaccounted for",
+                   "details": {"line": "1", "outstanding": "5.000", "attempted": "4"}}},
+   expect_error={"status": 400, "code": "RECEIPT_NOT_RECONCILED"},
+   desc="Accepted + rejected must equal what is outstanding (module setting inventory.receive.requireFullReconciliation, on by default).")
+
+ep(I, "Receive Transfer (with a rejection)", "POST", "/api/v1/inventory/stock/transfers/{{transfer2Id}}/receive",
+   body={"receivedDate": None, "note": "One bag torn",
+         "lines": [{"stockTransferLineId": "{{transfer2LineId}}", "qtyReceived": 4, "qtyRejected": 1, "rejectionNote": "Torn bag", "receivedIntoLocationId": None}]},
+   resp={"data": dict(TRANSFER2, status="RECEIVED", receivedDate="2026-10-08", receivedAt=NOW, receiptNote="One bag torn", totalRejected=1.000)},
+   tests=["const json = pm.response.json();", "pm.test('received with one rejected', () => { pm.expect(json.data.status).to.eql('RECEIVED'); pm.expect(json.data.totalRejected).to.eql(1); });"],
+   desc="Accepted goods enter the destination (or receivedIntoLocationId: one of its areas). Rejected goods go straight back to where they were "
+        "sent from (ledger entry TRANSFER_REJECTED_IN), and the source's stock staff get an in-app alert. rejectionNote is required for rejections.")
+
+ep(I, "Get Transfer", "GET", "/api/v1/inventory/stock/transfers/{{transfer2Id}}",
+   resp={"data": dict(TRANSFER2, status="RECEIVED", totalRejected=1.000)})
+
+ep(I, "Transfer Waybill PDF", "GET", "/api/v1/inventory/stock/transfers/{{transfer2Id}}/waybill.pdf", pdf=True,
+   resp=None, desc="The printable waybill (Send and Download in Postman to save it). After a reprint is recorded (folder 13), copies are marked DUPLICATE COPY.")
+
+ep(I, "Counted Adjustment", "POST", "/api/v1/inventory/quantity-adjustments",
+   body={"locationId": "{{factoryId2}}", "stockItemId": "{{finishedProductId}}", "mode": "COUNTED", "countedQuantity": 2,
+         "reason": "STOCKTAKE_VARIANCE", "note": "Monthly count", "otpChallengeId": None},
+   resp={"data": {"id": "5c1d2e3f-4444-4c4c-9a9a-000000000004", "ref": "QA-3", "locationId": "{{factoryId2}}", "locationName": "Apex Plant B",
+                  "rootLocationName": "Apex Plant B", "stockItemId": "{{finishedProductId}}", "productCode": "ITM-2", "productName": "Premium Blend",
+                  "unit": "Kilogram", "mode": "COUNTED", "direction": "NEGATIVE", "quantity": 2.000, "recordedQuantity": 4.000, "newQuantity": 2.000,
+                  "reason": "STOCKTAKE_VARIANCE", "note": "Monthly count", "otpVerified": False, "performedBy": "{{userId}}",
+                  "performedByName": "Alice Admin", "at": NOW}},
+   tests=["const json = pm.response.json();", "pm.test('difference worked out from what was on hand', () => pm.expect(json.data.newQuantity).to.eql(2));"],
+   desc="mode COUNTED: send what was counted; the server locks the balance and posts the difference (here 4 on hand → 2 counted = −2). "
+        "mode DELTA (default) takes direction + quantity. Above the OTP threshold an Admin-issued OTP is needed either way.")
+
+ep(I, "Counted Adjustment (error: no difference)", "POST", "/api/v1/inventory/quantity-adjustments",
+   body={"locationId": "{{factoryId2}}", "stockItemId": "{{finishedProductId}}", "mode": "COUNTED", "countedQuantity": 2, "reason": "STOCKTAKE_VARIANCE"},
+   status=400, status_text="Bad Request",
+   resp={"error": {"code": "NO_ADJUSTMENT_NEEDED", "message": "The counted quantity equals the quantity on hand; nothing to adjust"}},
+   expect_error={"status": 400, "code": "NO_ADJUSTMENT_NEEDED"})
+
+ep(I, "Adjustments Report", "GET", "/api/v1/inventory/quantity-adjustments",
+   query=[{"key": "reason", "value": "STOCKTAKE_VARIANCE"}],
+   resp=PAGE([], summary={"count": 2, "qtyAdded": 0, "qtyRemoved": 62, "netEffect": -62}),
+   tests=["const json = pm.response.json();", "pm.test('has totals', () => pm.expect(json.data.summary).to.have.property('netEffect'));"],
+   desc="Paged. A showroom/factory locationId includes its storage areas; no locationId = every location you can see. Filters: locationId, "
+        "direction, reason, mode, stockItemId, performedBy, otpVerified, quantity range, createdAt / from / to / period. q: reference, product, note. "
+        "Summary: count, qtyAdded, qtyRemoved, netEffect. POST /quantity-adjustments/search and GET /quantity-adjustments/filters as usual.")
+
+ep(I, "Publish Prices (error: dealer above retail)", "POST", "/api/v1/inventory/price-list/publish",
+   body={"effectiveFrom": "{{today}}", "entries": [{"stockItemId": "{{finishedProductId}}", "retailPrice": 5000, "dealerPrice": 5200}]},
+   status=400, status_text="Bad Request",
+   resp={"error": {"code": "DEALER_PRICE_ABOVE_RETAIL", "message": "ITM-2 Premium Blend: the dealer price can't be above the retail price"}},
+   expect_error={"status": 400, "code": "DEALER_PRICE_ABOVE_RETAIL"})
+
+ep(I, "Publish Prices", "POST", "/api/v1/inventory/price-list/publish",
+   body={"effectiveFrom": "{{today}}", "note": "October list",
+         "entries": [{"stockItemId": "{{finishedProductId}}", "retailPrice": 5000, "dealerPrice": 4500}]},
+   resp={"data": {"batchRef": "PL-1", "effectiveFrom": "2026-10-08", "count": 1, "belowCostCount": 0, "costVisible": True}},
+   desc="Perm inventory.pricing.manage. effectiveFrom today or later; one PL-n reference per publication; up to 1000 items. A price in force "
+        "is never edited — publish a new one. Price-list readers get an in-app notice.")
+
+ep(I, "Publish Prices (error: same date again)", "POST", "/api/v1/inventory/price-list/publish",
+   body={"effectiveFrom": "{{today}}", "entries": [{"stockItemId": "{{finishedProductId}}", "retailPrice": 5100, "dealerPrice": 4600}]},
+   status=409, status_text="Conflict",
+   resp={"error": {"code": "PRICE_ALREADY_SET_FOR_DATE", "message": "ITM-2 Premium Blend already has a price effective 2026-10-08"}},
+   expect_error={"status": 409, "code": "PRICE_ALREADY_SET_FOR_DATE"})
+
+ep(I, "Schedule a Price Change", "POST", "/api/v1/inventory/price-list/publish",
+   body={"effectiveFrom": "2099-01-01", "note": "Long-term test price",
+         "entries": [{"stockItemId": "{{finishedProductId}}", "retailPrice": 5500, "dealerPrice": 5000}]},
+   resp={"data": {"batchRef": "PL-2", "effectiveFrom": "2099-01-01", "count": 1, "belowCostCount": 0, "costVisible": True}})
+
+ep(I, "Price List", "GET", "/api/v1/inventory/price-list", query=[{"key": "q", "value": "premium"}],
+   resp=PAGE([{"stockItemId": "{{finishedProductId}}", "code": "ITM-2", "product": "Premium Blend", "itemType": "FINISHED_PRODUCT", "categoryId": None,
+               "group": "Ungrouped", "unit": "Kilogram", "status": "ACTIVE", "priceId": "9e0f1a2b-5555-4c4c-9a9a-000000000005", "retailPrice": 5000.00,
+               "dealerPrice": 4500.00, "effectiveFrom": "2026-10-08", "batchRef": "PL-1",
+               "nextChange": {"priceId": "{{scheduledPriceId}}", "effectiveFrom": "2099-01-01", "retailPrice": 5500.00, "dealerPrice": 5000.00},
+               "landingCost": 0.00, "margin": 5000.00, "marginPct": 100.00, "dealerMargin": 4500.00, "belowCost": False}],
+             summary={"items": 1, "priced": 1, "unpriced": 0, "belowCost": 0, "costVisible": True, "asAt": "2026-10-08"}),
+   tests=["const json = pm.response.json();", "const row = json.data.items[0];",
+          "pm.test('current price and next change', () => { pm.expect(row.retailPrice).to.eql(5000); pm.expect(row.nextChange.retailPrice).to.eql(5500); });"],
+   desc="Perm inventory.pricing.read. Prices in force on asAt (default today) plus the next scheduled change. landingCost/margin/marginPct/"
+        "dealerMargin/belowCost are cost fields: 0/false without factory.costing.read. Filters: itemType, categoryId, status, retailPrice, "
+        "dealerPrice, effectiveFrom, hasPrice, hasNextChange, batchRef, belowCost and marginPct (cost), locationId (direct-entry items).")
+
+ep(I, "Product Price History", "GET", "/api/v1/inventory/stock-items/{{finishedProductId}}/prices",
+   resp={"data": [{"priceId": "{{scheduledPriceId}}", "retailPrice": 5500.00, "dealerPrice": 5000.00, "effectiveFrom": "2099-01-01", "batchRef": "PL-2",
+                   "note": "Long-term test price", "setByUserId": "{{userId}}", "createdAt": NOW, "state": "SCHEDULED"}]},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('scheduledPriceId', json.data[0].id || json.data[0].priceId);",
+          "pm.test('newest first: scheduled, then current', () => pm.expect(json.data.map(p => p.state)).to.eql(['SCHEDULED', 'CURRENT']));"])
+
+ep(I, "Change Scheduled Price", "PUT", "/api/v1/inventory/price-list/entries/{{scheduledPriceId}}",
+   body={"retailPrice": 5600, "dealerPrice": 5100, "note": "Revised"},
+   resp={"data": {"priceId": "{{scheduledPriceId}}", "retailPrice": 5600.00, "dealerPrice": 5100.00, "effectiveFrom": "2099-01-01", "batchRef": "PL-2",
+                  "note": "Revised", "setByUserId": "{{userId}}", "createdAt": NOW, "state": "SCHEDULED"}},
+   desc="Only a price not yet in force can change (409 PRICE_ALREADY_EFFECTIVE otherwise).")
+
+ep(I, "Group Stock Card", "GET", "/api/v1/inventory/stock/group-card",
+   query=[{"key": "groupBy", "value": "CATEGORY"}, {"key": "groupId", "value": "{{categoryId}}"}, {"key": "locationId", "value": "{{factoryId}}"}],
+   resp={"data": {"header": {"groupType": "CATEGORY", "groupId": "{{categoryId}}", "groupName": "Beverages", "members": [], "openingBalance": 0,
+                             "totalReceived": 0, "totalIssued": 0, "closingBalance": 0}, "rows": []}},
+   desc="Every movement of every product in the category, one running total. A showroom/factory includes its storage areas; from/to optional. "
+        "Products with different units can't be added up (400 GROUP_MIXED_UNITS). groupBy=PARENT_PRODUCT needs product variants (not built yet).")
+
+ep(I, "Group Bin Card", "GET", "/api/v1/inventory/stock/group-bin-card",
+   query=[{"key": "groupBy", "value": "CATEGORY"}, {"key": "groupId", "value": "{{categoryId}}"}, {"key": "locationId", "value": "{{factoryId}}"}],
+   resp={"data": {"header": {"groupType": "CATEGORY", "groupId": "{{categoryId}}", "groupName": "Beverages", "members": [], "openingBalance": 0,
+                             "totalReceived": 0, "totalIssued": 0, "closingBalance": 0}, "rows": []}},
+   desc="Daily totals for the group.")
+
 print(f"TOTAL ENDPOINTS: {len(ENDPOINTS)}")
 
 # =====================================================================================
@@ -1314,6 +1485,11 @@ def pm_request_item(e, with_examples=True):
             f"    pm.expect(j.error.code).to.eql('{err['code']}');",
             "});",
         ]
+    elif e.get("pdf"):
+        full_tests = custom_tests + [
+            "pm.test('status is 200', () => pm.response.to.have.status(200));",
+            "pm.test('response is a PDF', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/pdf'));",
+        ]
     else:
         full_tests = custom_tests + [
             "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });",
@@ -1330,7 +1506,7 @@ def pm_request_item(e, with_examples=True):
             "_postman_previewlanguage": "json",
             "header": [{"key": "Content-Type", "value": "application/json"}],
             "cookie": [],
-            "body": json.dumps(e["resp"], indent=2) if e["resp"] is not None else "",
+            "body": ("%PDF-1.7 ... (binary PDF)" if e.get("pdf") else json.dumps(e["resp"], indent=2) if e["resp"] is not None else ""),
         }
         item["response"] = [example]
     return item
@@ -1373,6 +1549,7 @@ def build_collection():
         "customerLocationId", "today", "goldCategoryId", "diamondCategoryId", "correspondentId",
         "dealerId", "dealerName", "dealerCode", "customerId", "adjustmentEntryId", "reclassificationId",
         "correspondent2Id", "specialId", "walkinId", "waybillRef", "fileId",
+        "driverId", "transfer2Id", "transfer2LineId", "scheduledPriceId",
     ]
 
     collection = {

@@ -121,6 +121,12 @@ Customers endpoints live under `/api/v1/customers` (register, list/search, stats
 
 `POST /api/v1/files` as `multipart/form-data` with `file` and `purpose` (`GET /api/v1/files/purposes` lists purposes with accepted types and size limits). The response is the file record; keep its `id`. To download, call `GET /api/v1/files/{id}/download` and open the returned `url` (valid for a few minutes) — the browser fetches it straight from storage. Errors: `FILE_TYPE_NOT_ALLOWED` (checked from the file's content, not its name), `FILE_TOO_LARGE`, `STORAGE_NOT_CONFIGURED` (server has no storage yet).
 
+## Recent API changes
+
+- `GET /api/v1/inventory/quantity-adjustments` is now **paged** (`data.items`, `data.summary` with `qtyAdded`/`qtyRemoved`/`netEffect`) and searchable, like the other lists. Rows carry product code/name, location names, mode and before/after quantities.
+- Stock transfers: dispatch accepts `driverId`, `transferDate` and per-line `fromLocationId`/`batchNo`; receiving needs accepted + rejected to equal what's outstanding, `rejectionNote` for rejections, and returns rejected goods to the source. Transfer rows now include location names, driver, dates, per-line outstanding quantities and `waybillUrl` (a PDF).
+- New: drivers (`/api/v1/inventory/drivers`), price list (`/api/v1/inventory/price-list`), group stock/bin cards (`/api/v1/inventory/stock/group-card`, `group-bin-card`), documents registry (`/api/v1/documents`), file uploads (`/api/v1/files`).
+
 ## Notes
 
 - CORS: ask backend to confirm the frontend's dev origin is allowed before you start making cross-origin requests from a local dev server — not yet confirmed configured for arbitrary origins.

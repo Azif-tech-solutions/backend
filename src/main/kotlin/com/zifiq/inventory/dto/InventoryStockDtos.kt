@@ -49,8 +49,9 @@ data class StockItemSummary(
     val landingCost: BigDecimal?,
     val markupCost: BigDecimal?,
     val vatCategoryId: UUID,
-    val hsnSectionId: UUID,
-    val isicSectionId: UUID,
+    /** Null only for DIRECT_ENTRY items (docs/05 §2.2). */
+    val hsnSectionId: UUID?,
+    val isicSectionId: UUID?,
     val status: String,
     val createdAt: Instant,
 )

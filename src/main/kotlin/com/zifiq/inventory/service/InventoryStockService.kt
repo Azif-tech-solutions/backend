@@ -19,6 +19,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
 import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.insertAndGetId
@@ -56,6 +57,8 @@ class InventoryStockService(
     private val costVisibility: CostVisibility,
     private val taxClassificationRepository: TaxClassificationRepository,
     private val locationAccessService: LocationAccessService,
+    private val locationHierarchy: com.zifiq.platform.tenancy.LocationHierarchy,
+    private val domainEvents: com.zifiq.platform.events.DomainEvents,
 ) {
     fun listStockItems(locationId: UUID?, itemType: String?, status: String?): List<StockItemSummary> =
         tenantScopedTransaction.execute {
@@ -104,6 +107,10 @@ class InventoryStockService(
             it[StockItemsTable.createdAt] = Instant.now()
         }.value
 
+        domainEvents.record(
+            type = "inventory.stock-item.registered", aggregateType = "stock-item", aggregateId = id, aggregateRef = code,
+            summary = "Stock item $code registered — ${request.name.trim()}", payload = mapOf("itemType" to request.itemType), locationId = request.locationId,
+        )
         StockItemsTable.selectAll().andWhere { StockItemsTable.id eq id }.single().let(::rowToStockItemSummary)
     }
 
@@ -117,6 +124,10 @@ class InventoryStockService(
         StockItemsTable.update({ (StockItemsTable.id eq id) and (StockItemsTable.tenantId eq tenantId) }) {
             it[StockItemsTable.status] = status
         }
+        domainEvents.record(
+            type = "inventory.stock-item.status-changed", aggregateType = "stock-item", aggregateId = id, aggregateRef = existing[StockItemsTable.code],
+            summary = "Stock item ${existing[StockItemsTable.code]} ${status.lowercase()}", payload = mapOf("status" to status), locationId = existing[StockItemsTable.locationId],
+        )
         StockItemsTable.selectAll().andWhere { StockItemsTable.id eq id }.single().let(::rowToStockItemSummary)
     }
 
@@ -146,6 +157,11 @@ class InventoryStockService(
             performedByUserId = actor.userId,
         )
 
+        domainEvents.record(
+            type = "inventory.refill.posted", aggregateType = "stock-refill", aggregateId = request.stockItemId, aggregateRef = ref,
+            summary = "$ref: ${request.quantity.stripTrailingZeros().toPlainString()} finished product received into stock",
+            payload = mapOf("quantity" to request.quantity), locationId = request.locationId,
+        )
         RefillSummary(ref, request.stockItemId, request.quantity, actor.userId, Instant.now())
     }
 
@@ -182,6 +198,11 @@ class InventoryStockService(
             performedByUserId = actor.userId,
         )
 
+        domainEvents.record(
+            type = "inventory.receipt.posted", aggregateType = "stock-receipt", aggregateId = id, aggregateRef = ref,
+            summary = "$ref: ${request.quantity.stripTrailingZeros().toPlainString()} raw material received, pending verification",
+            payload = mapOf("quantity" to request.quantity), locationId = request.locationId,
+        )
         rowToReceiptSummary(StockReceiptsTable.selectAll().andWhere { StockReceiptsTable.id eq id }.single())
     }
 
@@ -209,6 +230,11 @@ class InventoryStockService(
             it[StockReceiptsTable.offloadedAt] = Instant.now()
         }
         if (updated == 0) throw ApiErrors.stockReceiptNotFound()
+        domainEvents.record(
+            type = "inventory.receipt.verified", aggregateType = "stock-receipt", aggregateId = id, aggregateRef = existing[StockReceiptsTable.ref],
+            summary = "${existing[StockReceiptsTable.ref]} verified: ${condition.lowercase().replace('_', ' ')}",
+            payload = mapOf("condition" to condition), locationId = existing[StockReceiptsTable.locationId],
+        )
         rowToReceiptSummary(StockReceiptsTable.selectAll().andWhere { StockReceiptsTable.id eq id }.single())
     }
 
@@ -227,14 +253,19 @@ class InventoryStockService(
         condition = row[StockReceiptsTable.condition],
     )
 
-    fun stockCard(stockItemId: UUID, locationId: UUID, from: LocalDate?, to: LocalDate?): List<StockCardRow> =
+    /**
+     * Stock Card: every movement of one item with a running balance. A factory or showroom
+     * includes its storage areas unless [includeAreas] is false; an area is just itself.
+     */
+    fun stockCard(stockItemId: UUID, locationId: UUID, from: LocalDate?, to: LocalDate?, includeAreas: Boolean = true): List<StockCardRow> =
         tenantScopedTransaction.execute {
             val tenantId = currentActorProvider.current().tenantId
             locationAccessService.assertAccess(locationId)
+            val locations = if (includeAreas) locationHierarchy.withAreas(locationId) else setOf(locationId)
             val openingBalance = if (from != null) {
                 StockLedgerEntriesTable.selectAll()
                     .andWhere { StockLedgerEntriesTable.tenantId eq tenantId }
-                    .andWhere { StockLedgerEntriesTable.locationId eq locationId }
+                    .andWhere { StockLedgerEntriesTable.locationId inList locations }
                     .andWhere { StockLedgerEntriesTable.stockItemId eq stockItemId }
                     .andWhere { StockLedgerEntriesTable.entryDate less from }
                     .fold(BigDecimal.ZERO) { acc, row -> acc + row[StockLedgerEntriesTable.qtyIn] - row[StockLedgerEntriesTable.qtyOut] }
@@ -246,12 +277,12 @@ class InventoryStockService(
             var sn = 0
             val query = StockLedgerEntriesTable.selectAll()
                 .andWhere { StockLedgerEntriesTable.tenantId eq tenantId }
-                .andWhere { StockLedgerEntriesTable.locationId eq locationId }
+                .andWhere { StockLedgerEntriesTable.locationId inList locations }
                 .andWhere { StockLedgerEntriesTable.stockItemId eq stockItemId }
             if (from != null) query.andWhere { StockLedgerEntriesTable.entryDate greaterEq from }
             if (to != null) query.andWhere { StockLedgerEntriesTable.entryDate lessEq to }
 
-            query.orderBy(StockLedgerEntriesTable.entryDate).orderBy(StockLedgerEntriesTable.createdAt).map { row ->
+            query.orderBy(StockLedgerEntriesTable.entryDate to SortOrder.ASC, StockLedgerEntriesTable.createdAt to SortOrder.ASC).map { row ->
                 sn += 1
                 running += row[StockLedgerEntriesTable.qtyIn] - row[StockLedgerEntriesTable.qtyOut]
                 StockCardRow(
@@ -265,8 +296,8 @@ class InventoryStockService(
             }
         }
 
-    fun binCard(stockItemId: UUID, locationId: UUID, from: LocalDate?, to: LocalDate?): List<BinCardRow> {
-        val transactions = stockCard(stockItemId, locationId, from, to)
+    fun binCard(stockItemId: UUID, locationId: UUID, from: LocalDate?, to: LocalDate?, includeAreas: Boolean = true): List<BinCardRow> {
+        val transactions = stockCard(stockItemId, locationId, from, to, includeAreas)
         val byDay = transactions.groupBy { it.date }.toSortedMap()
         var running = transactions.firstOrNull()?.let { it.runningBalance - it.qtyIn + it.qtyOut } ?: BigDecimal.ZERO
         var sn = 0

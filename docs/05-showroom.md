@@ -1,6 +1,17 @@
 # 05 — Showroom Module
 
-Status: **design finalized, not yet implemented**
+Status: **in progress** — slice 1 (storage areas, document registry, PDF rendering; V9) and slice 2 (inventory extensions; V9_2) are shipped; slice 3 (the Showroom module itself) is next.
+
+**Implementation notes (slices 1–2), where the build differs from or adds to the design below:**
+- Migrations: V9 (storage areas + document registry, the docs/03 §8/§11 items the V7 pass didn't ship), V9_1 (file storage, docs/03 §8.4), V9_2 (§2.2–§2.6 here plus counted-adjustment columns). §2.7–§2.10 (showroom entries, returns, area moves, location detail columns, showroom permissions) come with slice 3 as V9_3.
+- Receipt (§4.2): until slice 3 adds `default_receiving_location_id`, accepted goods default to the destination itself. Receipt also fixes three shipped defects: a line from another transfer was accepted, a second receipt overwrote instead of accumulating, and receiving a fully received transfer was allowed (now `409 INVALID_STATUS_TRANSITION`).
+- Location status (§4.1 "status meaning") is enforced for transfers and adjustments now: dispatch needs an ACTIVE source (`409 LOCATION_NOT_TRADING` when pending), stock can't arrive at or be adjusted at a SUSPENDED location (`409 LOCATION_SUSPENDED`); an area follows its showroom's status. Destinations must be a factory/showroom (the receiver picks the area).
+- Transfers list stays unpaged (≤500, newest first) to keep the shipped response shape; filters: `locationId`, `direction` (`INTO`|`OUT_OF`), `status` (repeatable/comma-separated), `q` (waybill), `from`/`to` (transfer date). `GET /stock/transfers/{id}` added.
+- Adjustments report is now paged with filters/search/summary (§4.6, §9) — a breaking change from the shipped list response.
+- Group cards (§4.10): `groupBy=CATEGORY` only. `PARENT_PRODUCT` returns `400 INVALID_FILTER` until product variants (docs/03 §12.2) are built.
+- Price list (§4.12): extra filters `status`, `batchRef`, `marginPct` (cost); `GET /stock-items/{id}/prices` rows carry `state` (`CURRENT`|`SUPERSEDED`|`SCHEDULED`). `inventory.price-list.entry-changed` event added.
+- Drivers (§4.13): vehicle numbers stored upper-case; `GET /drivers/lookup` picker (active only).
+- Inventory write paths now emit the docs/03 §7.4 events (`inventory.stock-item.registered|status-changed`, `inventory.refill.posted`, `inventory.receipt.posted|verified`, `inventory.transfer.dispatched|received`, `inventory.adjustment.posted`, `inventory.driver.*`, `inventory.price-list.*`). Factory's events are still to do.
 Owner package: `com.zifiq.showroom` (consumer module; exposes a read-only `com.zifiq.showroom.spi` for reports)
 Also changes the OPEN `com.zifiq.inventory` module (price list, drivers, group stock cards, transfer-receipt reconciliation, new ledger source types) — Showroom is the first consumer of all of these, the same way Factory added Settings' reference tables in doc 02.
 Depends on: `platform`, `common`, `inventory` (OPEN), `customers :: spi` (doc 04)

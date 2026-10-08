@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title th:text="${transfer.waybillRef}">WB-1</title>
+    <style>
+        @page { size: A4; margin: 18mm 15mm 20mm 15mm;
+                @bottom-center { content: "Page " counter(page) " of " counter(pages); font-family: 'Noto Sans'; font-size: 8pt; color: #666; } }
+        body { font-family: 'Noto Sans'; font-size: 9.5pt; color: #1a1a1a; }
+        .header { display: table; width: 100%; border-bottom: 2px solid #1a1a1a; padding-bottom: 6pt; }
+        .header .left, .header .right { display: table-cell; vertical-align: top; }
+        .header .right { text-align: right; }
+        .company { font-size: 14pt; font-weight: 700; }
+        .doc-title { font-size: 12pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5pt; }
+        .ref { font-size: 13pt; font-weight: 700; }
+        .muted { color: #555; }
+        .parties { display: table; width: 100%; margin-top: 10pt; }
+        .party { display: table-cell; width: 50%; vertical-align: top; padding-right: 10pt; }
+        .label { font-size: 7.5pt; text-transform: uppercase; color: #666; letter-spacing: 0.4pt; }
+        .party-name { font-weight: 700; font-size: 10.5pt; }
+        table.meta { width: 100%; margin-top: 10pt; border-collapse: collapse; }
+        table.meta td { border: 1px solid #ccc; padding: 4pt 6pt; width: 25%; }
+        table.lines { width: 100%; margin-top: 12pt; border-collapse: collapse; }
+        table.lines th { background: #efefef; border: 1px solid #bbb; padding: 4pt; text-align: left; font-size: 8.5pt; }
+        table.lines td { border: 1px solid #ccc; padding: 4pt; }
+        td.num, th.num { text-align: right; }
+        .totals { margin-top: 6pt; text-align: right; font-weight: 700; }
+        .stamp { display: inline-block; margin-top: 10pt; padding: 3pt 10pt; border: 2px solid #1a6b2a; color: #1a6b2a; font-weight: 700; text-transform: uppercase; }
+        .stamp.transit { border-color: #9a6400; color: #9a6400; }
+        .duplicate { position: fixed; top: 105mm; left: 0; width: 100%; text-align: center; font-size: 44pt; font-weight: 700;
+                     color: #d23c3c; opacity: 0.18; transform: rotate(-28deg); }
+        .signatures { display: table; width: 100%; margin-top: 28pt; }
+        .signature { display: table-cell; width: 33%; padding-right: 12pt; }
+        .line { border-top: 1px solid #333; margin-top: 26pt; padding-top: 3pt; font-size: 8pt; color: #444; }
+        .note { margin-top: 8pt; font-size: 8.5pt; }
+    </style>
+</head>
+<body>
+<div class="duplicate" th:if="${duplicate}">DUPLICATE COPY</div>
+
+<div class="header">
+    <div class="left">
+        <div class="company" th:text="${company}">Company</div>
+        <div class="muted" th:text="${source.name}">Source</div>
+        <div class="muted" th:if="${source.address != null}" th:text="${source.address}">Address</div>
+        <div class="muted" th:if="${source.phone != null}" th:text="${'Tel: ' + source.phone}">Phone</div>
+        <div class="muted" th:if="${source.vat != null}" th:text="${'VAT reg.: ' + source.vat}">VAT</div>
+    </div>
+    <div class="right">
+        <div class="doc-title" th:text="${title}">Stock Transfer Waybill</div>
+        <div class="ref" th:text="${transfer.waybillRef}">WB-1</div>
+        <div class="muted" th:text="${'Printed ' + printedAt}">Printed</div>
+    </div>
+</div>
+
+<div class="parties">
+    <div class="party">
+        <div class="label">From</div>
+        <div class="party-name" th:text="${transfer.sourceLocationName}">Source</div>
+    </div>
+    <div class="party">
+        <div class="label">To</div>
+        <div class="party-name" th:text="${destination.name}">Destination</div>
+        <div th:if="${destination.address != null}" th:text="${destination.address}">Address</div>
+        <div th:if="${destination.phone != null}" th:text="${'Tel: ' + destination.phone}">Phone</div>
+    </div>
+</div>
+
+<table class="meta">
+    <tr>
+        <td><div class="label">Driver</div><span th:text="${transfer.driverName != null ? transfer.driverName : '—'}">—</span></td>
+        <td><div class="label">Vehicle no.</div><span th:text="${transfer.driverVehicle != null ? transfer.driverVehicle : '—'}">—</span></td>
+        <td><div class="label">Dispatch date</div><span th:text="${dispatchDate}">date</span></td>
+        <td><div class="label">Status</div><span th:text="${stamp}">In transit</span></td>
+    </tr>
+</table>
+
+<table class="lines">
+    <thead>
+    <tr>
+        <th>#</th><th>Code</th><th>Product</th><th>From area</th><th>Batch</th>
+        <th class="num">Qty sent</th><th class="num">Received</th><th class="num">Rejected</th><th>Unit</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="line, stat : ${transfer.lines}">
+        <td th:text="${stat.count}">1</td>
+        <td th:text="${line.stockItemCode}">ITM-1</td>
+        <td th:text="${line.stockItemName}">Product</td>
+        <td th:text="${line.fromLocationName != null ? line.fromLocationName : '—'}">—</td>
+        <td th:text="${line.batchNo != null ? line.batchNo : '—'}">—</td>
+        <td class="num" th:text="${line.qtySent.stripTrailingZeros().toPlainString()}">0</td>
+        <td class="num" th:text="${line.qtyReceived != null ? line.qtyReceived.stripTrailingZeros().toPlainString() : '—'}">—</td>
+        <td class="num" th:text="${line.qtyRejected != null ? line.qtyRejected.stripTrailingZeros().toPlainString() : '—'}">—</td>
+        <td th:text="${line.unit != null ? line.unit : ''}">Unit</td>
+    </tr>
+    </tbody>
+</table>
+<div class="totals">
+    Total lines: <span th:text="${totalLines}">1</span> &#160;·&#160; Total quantity: <span th:text="${totalQuantity}">0</span>
+</div>
+
+<div th:class="${stamp == 'In transit' ? 'stamp transit' : 'stamp'}" th:text="${stamp}">In transit</div>
+<div class="note" th:if="${transfer.receiptNote != null}" th:text="${'Receipt note: ' + transfer.receiptNote}">Note</div>
+
+<div class="signatures">
+    <div class="signature"><div class="line">Dispatched by (name, signature, date)</div></div>
+    <div class="signature"><div class="line">Driver (name, signature)</div></div>
+    <div class="signature"><div class="line">Received by (name, signature, date)</div></div>
+</div>
+</body>
+</html>

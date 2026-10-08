@@ -19,9 +19,17 @@ class InventorySettings : ModuleSettingProvider {
             min = BigDecimal.ONE,
             max = BigDecimal("1000000"),
         ),
+        SettingDefinition(
+            key = RECEIVE_REQUIRE_FULL_RECONCILIATION,
+            module = "inventory",
+            label = "On receipt, accepted plus rejected must equal what is outstanding on every line confirmed",
+            type = SettingType.BOOLEAN,
+            default = true,
+        ),
     )
 
     companion object {
         const val ADJUSTMENT_OTP_THRESHOLD_QTY = "inventory.adjustment.otpThresholdQty"
+        const val RECEIVE_REQUIRE_FULL_RECONCILIATION = "inventory.receive.requireFullReconciliation"
     }
 }

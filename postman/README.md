@@ -41,7 +41,7 @@ means it has expired).
 
 ## Running it
 
-Run folders **01 through 14 in order**, either by hand or with the
+Run folders **01 through 15 in order**, either by hand or with the
 Collection Runner. Each request's Tests script captures tokens and
 created-entity IDs (tenant id, access token, factory id, stock item ids,
 recipe id, costing id, customer ids, etc.) into collection variables that
@@ -138,6 +138,19 @@ root. **Upload File (error: disguised type)** sends a ZIP archive renamed to
 Download Link** returns a short-lived signed link; against S3Mock it points at
 a Docker-internal host name, so open links only against the dev server.
 
+## Inventory extensions (folder 15)
+
+Drivers, the transfer receipt rules, waybill PDFs, counted adjustments, the
+paged adjustments report, the price list and group stock cards (backend
+`docs/05-showroom.md` §4.2–§4.13). It uses the factories, products and
+category created in folders 06–07, so run it after them. Highlights:
+**Receive Transfer (with a rejection)** accepts 4 and rejects 1 — the
+rejected unit goes straight back to the sending factory; **Transfer Waybill
+PDF** returns the printable waybill (use *Send and Download* to save it);
+**Counted Adjustment** sends the counted quantity and the server posts the
+difference. Folder 06 now reactivates the factory after testing the
+suspension, because a suspended location can't move stock.
+
 ## Running it headless (Newman)
 
 The whole collection can also be run end-to-end from the command line with
@@ -153,7 +166,7 @@ npx newman run postman/ZifIQ-API.postman_collection.json -e postman/ZifIQ-Dev.po
   --folder "01 - Auth" --folder "12 - Customers"
 ```
 
-A clean full run reports `159/159` requests and `184/184` assertions
+A clean full run reports `182/182` requests and `216/216` assertions
 passing. Several requests are *deliberately* run against a state that makes
 them fail. These are not bugs: they demonstrate real error paths on purpose,
 so each gets its own status + error-code assertion instead of the generic
