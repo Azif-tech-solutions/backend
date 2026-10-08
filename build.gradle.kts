@@ -30,6 +30,10 @@ extra["awsSdkVersion"] = "2.55.13"
 extra["jackson-bom.version"] = "2.21.7"
 extra["tomcat.version"] = "10.1.60"
 extra["postgresql.version"] = "42.7.13"
+// The AWS SDK is built against these; Spring Boot's managed versions are older and carry
+// CVE-2026-54399 / CVE-2026-54428 (httpcore5 < 5.4.3).
+extra["httpclient5.version"] = "5.6.4"
+extra["httpcore5.version"] = "5.4.3"
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
