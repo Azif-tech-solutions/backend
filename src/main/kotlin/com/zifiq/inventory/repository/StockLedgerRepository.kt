@@ -3,8 +3,8 @@ package com.zifiq.inventory.repository
 import com.zifiq.inventory.model.StockBalancesTable
 import com.zifiq.inventory.model.StockItemsTable
 import com.zifiq.inventory.model.StockLedgerEntriesTable
-import com.zifiq.platform.notifications.NotificationChannelType
-import com.zifiq.platform.notifications.model.NotificationOutboxTable
+import com.zifiq.platform.notifications.NotificationCategory
+import com.zifiq.platform.notifications.Notify
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -30,7 +30,9 @@ import org.springframework.stereotype.Component
  * (location, stock_item) serialize correctly.
  */
 @Component
-class StockLedgerRepository {
+class StockLedgerRepository(
+    private val notify: Notify,
+) {
     fun postEntry(
         tenantId: UUID,
         locationId: UUID,
@@ -107,22 +109,18 @@ class StockLedgerRepository {
         if (reorderLevel <= BigDecimal.ZERO) return
         if (!(previousBalance > reorderLevel && newBalance <= reorderLevel)) return
 
-        NotificationOutboxTable.insert {
-            it[NotificationOutboxTable.tenantId] = tenantId
-            it[NotificationOutboxTable.channel] = NotificationChannelType.PUSH.name
-            it[NotificationOutboxTable.recipient] = "stock-managers"
-            it[NotificationOutboxTable.subject] = "Re-order level reached"
-            it[NotificationOutboxTable.body] =
-                "${item[StockItemsTable.name]} (${item[StockItemsTable.code]}) has reached its re-order level " +
-                    "($newBalance on hand, threshold $reorderLevel) at this location."
-            it[NotificationOutboxTable.metadata] = mapOf(
-                "stockItemId" to stockItemId.toString(),
-                "locationId" to locationId.toString(),
-            )
-            it[NotificationOutboxTable.status] = "PENDING"
-            it[NotificationOutboxTable.attempts] = 0
-            it[NotificationOutboxTable.createdAt] = Instant.now()
-        }
+        // Holders of inventory.stock.manage at this location (PRD §8: "Stock Personnel / Admin",
+        // in-app alert). This used to address a literal "stock-managers" recipient that matched no one.
+        notify.holdersOf(
+            permission = "inventory.stock.manage",
+            locationId = locationId,
+            category = NotificationCategory.ALERT,
+            title = "Re-order level reached",
+            body = "${item[StockItemsTable.name]} (${item[StockItemsTable.code]}) has reached its re-order level " +
+                "($newBalance on hand, threshold $reorderLevel) at this location.",
+            linkType = "inventory.stock-item",
+            linkRef = stockItemId.toString(),
+        )
     }
 
     fun currentBalance(locationId: UUID, stockItemId: UUID): BigDecimal =

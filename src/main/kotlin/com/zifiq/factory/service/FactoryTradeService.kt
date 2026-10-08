@@ -5,8 +5,8 @@ import com.zifiq.factory.dto.FactoryTradeOfferSummary
 import com.zifiq.factory.model.FactoryTradeOffersTable
 import com.zifiq.inventory.repository.StockLedgerRepository
 import com.zifiq.common.errors.ApiErrors
-import com.zifiq.platform.notifications.NotificationChannelType
-import com.zifiq.platform.notifications.model.NotificationOutboxTable
+import com.zifiq.platform.notifications.NotificationCategory
+import com.zifiq.platform.notifications.Notify
 import com.zifiq.platform.numbering.DocumentSequenceService
 import com.zifiq.platform.security.CurrentActorProvider
 import com.zifiq.platform.security.LocationAccessService
@@ -35,6 +35,7 @@ class FactoryTradeService(
     private val documentSequenceService: DocumentSequenceService,
     private val stockLedgerRepository: StockLedgerRepository,
     private val locationAccessService: LocationAccessService,
+    private val notify: Notify,
 ) {
     fun offerTrade(request: FactoryTradeOfferRequest): FactoryTradeOfferSummary = tenantScopedTransaction.execute {
         val actor = currentActorProvider.current()
@@ -55,17 +56,18 @@ class FactoryTradeService(
             it[FactoryTradeOffersTable.status] = "PENDING"
         }.value
 
-        NotificationOutboxTable.insert {
-            it[NotificationOutboxTable.tenantId] = actor.tenantId
-            it[NotificationOutboxTable.channel] = NotificationChannelType.PUSH.name
-            it[NotificationOutboxTable.recipient] = "factory-trade-managers"
-            it[NotificationOutboxTable.subject] = "Factory trade offer received"
-            it[NotificationOutboxTable.body] = "A trade offer ($ref) for ${request.quantity} units has been offered to your factory."
-            it[NotificationOutboxTable.metadata] = mapOf("tradeOfferId" to id.toString())
-            it[NotificationOutboxTable.status] = "PENDING"
-            it[NotificationOutboxTable.attempts] = 0
-            it[NotificationOutboxTable.createdAt] = Instant.now()
-        }
+        // Holders of factory.trade.manage at the receiving factory. This used to address a literal
+        // "factory-trade-managers" recipient that matched no one.
+        notify.holdersOf(
+            permission = "factory.trade.manage",
+            locationId = request.toLocationId,
+            category = NotificationCategory.APPROVAL_REQUIRED,
+            title = "Factory trade offer received",
+            body = "Trade offer $ref for ${request.quantity} units has been offered to your factory.",
+            linkType = "factory.trade-offer",
+            linkRef = id.toString(),
+            exclude = actor.userId,
+        )
 
         rowToTradeOfferSummary(FactoryTradeOffersTable.selectAll().andWhere { FactoryTradeOffersTable.id eq id }.single())
     }

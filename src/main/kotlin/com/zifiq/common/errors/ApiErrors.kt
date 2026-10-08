@@ -130,4 +130,11 @@ object ApiErrors {
     fun pageSizeTooLarge(max: Int) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.PAGE_SIZE_TOO_LARGE, "Page size must be between 1 and $max")
     fun searchTimeout() = ApiException(HttpStatus.REQUEST_TIMEOUT, ErrorCode.SEARCH_TIMEOUT, "The search took too long — narrow the filters or date range and try again")
     fun viewNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.VIEW_NOT_FOUND, "Saved view not found")
+    fun duplicateViewName() = ApiException(HttpStatus.CONFLICT, ErrorCode.DUPLICATE_VIEW_NAME, "You already have a view with this name for this list")
+
+    // ---- Module settings, custom fields, notifications ----
+    fun settingKeyUnknown(key: String) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.SETTING_KEY_UNKNOWN, "Unknown setting '$key'", mapOf("key" to key))
+    fun settingValueInvalid(key: String, reason: String) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.SETTING_VALUE_INVALID, "Invalid value for '$key': $reason", mapOf("key" to key, "reason" to reason))
+    fun invalidCustomField(field: String, reason: String) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_CUSTOM_FIELD, "Custom field '$field': $reason", mapOf("field" to field, "reason" to reason))
+    fun notificationNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.NOTIFICATION_NOT_FOUND, "Notification not found")
 }

@@ -10,6 +10,7 @@ import com.zifiq.platform.numbering.DocumentSequenceService
 import com.zifiq.platform.security.CurrentActorProvider
 import com.zifiq.platform.security.LocationAccessService
 import com.zifiq.platform.security.otp.OtpChallengeService
+import com.zifiq.platform.settings.ModuleSettings
 import com.zifiq.platform.tenancy.TenantScopedTransaction
 import java.math.BigDecimal
 import java.time.Instant
@@ -22,8 +23,6 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
 import org.springframework.stereotype.Service
 
-private val ADJUSTMENT_OTP_THRESHOLD: BigDecimal = BigDecimal("50")
-
 @Service
 class InventoryOperationsService(
     private val currentActorProvider: CurrentActorProvider,
@@ -32,6 +31,7 @@ class InventoryOperationsService(
     private val stockLedgerRepository: StockLedgerRepository,
     private val otpChallengeService: OtpChallengeService,
     private val locationAccessService: LocationAccessService,
+    private val moduleSettings: ModuleSettings,
 ) {
     // ---- Stock Transfer ----
 
@@ -163,7 +163,7 @@ class InventoryOperationsService(
         val actor = currentActorProvider.current()
         locationAccessService.assertAccess(request.locationId)
 
-        if (request.quantity > ADJUSTMENT_OTP_THRESHOLD) {
+        if (request.quantity > moduleSettings.decimal(InventorySettings.ADJUSTMENT_OTP_THRESHOLD_QTY)) {
             val challengeId = request.otpChallengeId
                 ?: throw ApiErrors.otpRequiredForAdjustment()
             if (!otpChallengeService.isVerified(challengeId, "QUANTITY_ADJUSTMENT")) {

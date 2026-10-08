@@ -590,13 +590,22 @@ Some modules must react to something an *earlier* module did, where the earlier 
 
 ```sql
 create table event_consumer_checkpoints (
-    consumer varchar(60) primary key,          -- 'invoicing.receipt-reconciler', 'workflow.dispatcher', 'ai.anomaly-scorer'
+    consumer varchar(60) not null,             -- 'invoicing.receipt-reconciler', 'workflow.dispatcher', 'ai.anomaly-scorer'
+    tenant_id uuid not null references tenants(id),
+    last_txid bigint not null default 0,
     last_seq bigint not null default 0,
-    updated_at timestamptz not null default now()
-);
+    updated_at timestamptz not null default now(),
+    primary key (consumer, tenant_id)
+);   -- + standard RLS
 ```
 
-`platform.events.EventConsumerRunner` runs each registered `EventConsumer` (an interface with `consumer: String`, `eventTypes: Set<String>`, `handle(event)`) on a `@Scheduled` fixed delay (default 15 s): it reads `domain_events` with `seq > last_seq` and `event_type in eventTypes` across all tenants (system-level read, same pattern as `NotificationOutboxDispatcher`'s documented tenant iteration), calls `handle` for each inside a `TenantScopedTransaction` for that event's tenant, and advances `last_seq` after each successful event. Handlers must be idempotent (an event can be delivered again after a crash between handling and checkpointing). This table has no `tenant_id` (it's system bookkeeping) and no RLS. Latency is seconds, not milliseconds — consumers are for derived state and notifications, never for enforcing an invariant (invariants are enforced synchronously in the owning transaction).
+Each `domain_events` row also stores the writing transaction's id (`txid bigint default pg_current_xact_id()`).
+
+`platform.events.EventConsumerRunner` runs each registered `EventConsumer` (`name`, `eventTypes`, `handle(event)`) on a `@Scheduled` fixed delay (default 15 s), **tenant by tenant** under RLS. Each consumer has its own checkpoint per tenant.
+
+**Why not "seq greater than the last seq":** transactions commit out of seq order. Transaction A takes seq 9, transaction B takes seq 10 and commits first; a consumer that processed 10 would never see 9. The runner instead reads only events whose transaction is older than every transaction still in progress (`txid < pg_snapshot_xmin(pg_current_snapshot())`), ordered by `(txid, seq)`, after the checkpoint `(last_txid, last_seq)`. Once the snapshot's xmin has passed a txid, no new event with that txid can appear, so nothing is ever skipped. This is verified by `PlatformFoundationIntegrationTest` with a deliberately long-running transaction.
+
+`handle` runs in the same tenant-scoped transaction as the checkpoint update, so its database effects happen exactly once. A failing event is retried on the next round, and later events for that consumer and tenant wait, so order holds. Anything a handler does *outside* the database must still be idempotent. Latency is seconds, not milliseconds: consumers are for derived state and notifications, never for enforcing an invariant (invariants are enforced synchronously in the owning transaction).
 
 ---
 
@@ -682,7 +691,7 @@ create index user_notifications_user_idx on user_notifications (tenant_id, user_
 -- + standard RLS
 ```
 
-`NotificationChannelType` gains `IN_APP`. The outbox dispatcher delivers `IN_APP` rows by inserting `user_notifications` (one per recipient) and marking the outbox row SENT. Endpoints (platform, perm: authenticated, only ever the caller's own rows):
+In-app notifications are written straight into `user_notifications` (one row per recipient) in the caller's transaction. No outbox hop is needed, because there is no external system to retry against. Endpoints (platform, perm: authenticated, only ever the caller's own rows):
 - `GET /api/v1/me/notifications?unreadOnly=&category=` **[paged]**
 - `GET /api/v1/me/notifications/unread-count` → `{ count }`
 - `POST /api/v1/me/notifications/{id}/read`, `POST /api/v1/me/notifications/read-all`, `POST /api/v1/me/notifications/{id}/dismiss`
@@ -693,7 +702,7 @@ Shipped Inventory/Factory write `recipient = "stock-managers"` / `"factory-trade
 
 ### 9.3 Notification helper
 
-`platform.notifications.Notify.inApp(recipients, category, title, body, linkType, linkRef)` and `.email(...)` both write `notification_outbox` rows in the caller's transaction (so a rolled-back action never notifies). Email is sent only where a module doc says so; everything else is in-app only.
+`platform.notifications.Notify.inApp(userIds, category, title, body, linkType, linkRef)` and `.holdersOf(permission, locationId, …)` insert `user_notifications` rows in the caller's transaction, so a rolled-back action never notifies. E-mail (when a module doc asks for it) goes through `notification_outbox`, so the dispatcher can retry it. Email is sent only where a module doc says so; everything else is in-app only.
 
 ### 9.4 OTP console endpoints (Administration, platform)
 

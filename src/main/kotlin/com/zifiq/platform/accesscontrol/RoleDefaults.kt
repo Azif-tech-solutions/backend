@@ -29,6 +29,7 @@ object RoleDefaults {
             "accounting.read",
             "cashier.sales.read",
             "settings.views.share",
+            "platform.activity.read",
         ),
         ACCOUNTS_PERSONNEL to setOf(
             "accounting.read",

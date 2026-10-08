@@ -92,4 +92,11 @@ enum class ErrorCode {
     PAGE_SIZE_TOO_LARGE,
     SEARCH_TIMEOUT,
     VIEW_NOT_FOUND,
+    DUPLICATE_VIEW_NAME,
+
+    // ---- Module settings, custom fields, notifications (docs/03 §9, §10, §12.2) ----
+    SETTING_KEY_UNKNOWN,
+    SETTING_VALUE_INVALID,
+    INVALID_CUSTOM_FIELD,
+    NOTIFICATION_NOT_FOUND,
 }
