@@ -53,6 +53,15 @@ class GlobalExceptionHandler {
     fun handleMalformedBody(exception: HttpMessageNotReadableException): ResponseEntity<ApiErrorEnvelope> =
         toResponse(ApiErrors.validationFailed(mapOf("body" to "Request body is missing or malformed")))
 
+    /** The servlet's hard ceiling (spring.servlet.multipart.max-file-size); each purpose's own limit is checked in FileService. */
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException::class)
+    fun handleUploadTooLarge(exception: org.springframework.web.multipart.MaxUploadSizeExceededException): ResponseEntity<ApiErrorEnvelope> =
+        toResponse(ApiErrors.fileTooLarge(25L * 1024 * 1024))
+
+    @ExceptionHandler(org.springframework.web.multipart.support.MissingServletRequestPartException::class)
+    fun handleMissingPart(exception: org.springframework.web.multipart.support.MissingServletRequestPartException): ResponseEntity<ApiErrorEnvelope> =
+        toResponse(ApiErrors.validationFailed(mapOf(exception.requestPartName to "This part is required")))
+
     @ExceptionHandler(AccessDeniedException::class)
     fun handleAccessDenied(exception: AccessDeniedException): ResponseEntity<ApiErrorEnvelope> =
         toResponse(ApiErrors.accessDenied())

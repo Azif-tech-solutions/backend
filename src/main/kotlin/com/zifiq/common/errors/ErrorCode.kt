@@ -93,6 +93,11 @@ enum class ErrorCode {
     SEARCH_TIMEOUT,
     VIEW_NOT_FOUND,
     DOCUMENT_NOT_FOUND,
+    STORAGE_NOT_CONFIGURED,
+    FILE_NOT_FOUND,
+    FILE_TOO_LARGE,
+    FILE_TYPE_NOT_ALLOWED,
+    UNKNOWN_FILE_PURPOSE,
     DUPLICATE_VIEW_NAME,
 
     // ---- Module settings, custom fields, notifications (docs/03 §9, §10, §12.2) ----

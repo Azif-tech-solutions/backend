@@ -147,7 +147,8 @@ jobs:
           node-version: "20"
 
       - name: Start stack
-        run: docker compose up --build -d
+        # compose.local-storage.yaml adds S3Mock so file uploads work without AWS credentials.
+        run: docker compose -f compose.yaml -f compose.local-storage.yaml up --build -d
 
       - name: Wait for app health
         run: |
@@ -159,13 +160,13 @@ jobs:
             sleep 3
           done
           echo "App did not become healthy in time"
-          docker compose logs
+          docker compose -f compose.yaml -f compose.local-storage.yaml logs
           exit 1
 
       - name: Confirm Flyway migrations applied
         run: |
-          docker compose logs backend | grep -q "Successfully applied .* migrations" \
-            || (echo "Flyway did not report a successful migration" && docker compose logs backend && exit 1)
+          docker compose -f compose.yaml -f compose.local-storage.yaml logs backend | grep -q "Successfully applied .* migrations" \
+            || (echo "Flyway did not report a successful migration" && docker compose -f compose.yaml -f compose.local-storage.yaml logs backend && exit 1)
 
       - name: Run Postman collection (Newman)
         run: |
@@ -175,11 +176,11 @@ jobs:
 
       - name: Stack logs (on failure)
         if: failure()
-        run: docker compose logs
+        run: docker compose -f compose.yaml -f compose.local-storage.yaml logs
 
       - name: Tear down
         if: always()
-        run: docker compose down -v
+        run: docker compose -f compose.yaml -f compose.local-storage.yaml down -v
 
   # ---------------------------------------------------------------------------
   # Flags newly-introduced vulnerable dependencies on pull requests, by
@@ -243,7 +244,8 @@ jobs:
       - name: Sync repo to EC2
         uses: burnett01/rsync-deployments@7.0.1
         with:
-          switches: -avz --delete --exclude=.git
+          # .env holds the server's own settings (storage bucket, secrets) and must survive deploys.
+          switches: -avz --delete --exclude=.git --exclude=.env
           path: ./
           remote_path: ~/backend/
           remote_host: ${{ secrets.EC2_HOST }}

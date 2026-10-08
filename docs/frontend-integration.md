@@ -117,6 +117,10 @@ Every paged list takes `q`, simple filters as query parameters, `page` (0-based)
 
 Customers endpoints live under `/api/v1/customers` (register, list/search, stats, lookup picker, ledger, wallet adjustments, reclassifications, dealer categories, correspondents, `/me` self-service) — see Swagger tags "Customers*" and the Postman folder "12 - Customers".
 
+## File uploads
+
+`POST /api/v1/files` as `multipart/form-data` with `file` and `purpose` (`GET /api/v1/files/purposes` lists purposes with accepted types and size limits). The response is the file record; keep its `id`. To download, call `GET /api/v1/files/{id}/download` and open the returned `url` (valid for a few minutes) — the browser fetches it straight from storage. Errors: `FILE_TYPE_NOT_ALLOWED` (checked from the file's content, not its name), `FILE_TOO_LARGE`, `STORAGE_NOT_CONFIGURED` (server has no storage yet).
+
 ## Notes
 
 - CORS: ask backend to confirm the frontend's dev origin is allowed before you start making cross-origin requests from a local dev server — not yet confirmed configured for arbitrary origins.

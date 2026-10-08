@@ -664,6 +664,22 @@ create table document_reprints (
 - `platform.documents.PdfRenderer.render(templateName, model): ByteArray` is the single entry point. Fonts (Noto Sans regular + bold, SIL OFL, licence alongside; it has the ₦ glyph the PDF base fonts lack) are bundled in `resources/fonts` so output doesn't depend on the host OS. Company branding (name, address, logo) comes from Settings (`settings::spi.CompanyProfileProvider`) — modules pass it in the model; platform does not depend on settings.
 - PDFs are rendered on demand and streamed (`application/pdf`), not stored, because the source data is immutable once issued. Bulk exports (invoices ZIP, labels) are produced by the report-export job runner (doc 13) to avoid request timeouts.
 
+### 8.4 File storage (S3)
+
+Uploaded files (company logo, receipt and statement attachments, OCR inputs, report exports) are stored in **Amazon S3**; PDFs of issued documents are still rendered on demand (§8.3), not stored.
+
+- **Where:** one bucket per environment (or a shared bucket with `ZIFIQ_STORAGE_KEY_PREFIX`, e.g. `dev/`), region `eu-north-1` (same as the dev EC2 instance). Bucket: public access blocked, SSE-S3 default encryption; every object is also written with `x-amz-server-side-encryption: AES256`.
+- **Keys:** `<prefix>tenants/<tenantId>/<purpose>/<yyyy>/<mm>/<fileId>` — never derived from the uploaded file name, so names can't collide, traverse paths or leak into URLs' paths.
+- **Credentials:** the AWS SDK v2 default chain only — the EC2 instance's IAM role in deployed environments (instance metadata hop limit 2 for Docker), never keys in config or the repo. The role needs only `s3:PutObject` and `s3:GetObject` on the prefix: nothing deletes objects.
+- **Metadata:** `stored_files` (V9_1, RLS): purpose, storage key, original name (display only), detected content type, size, SHA-256, status `ACTIVE|DELETED`, optional `linked_type`/`linked_id`, uploader. Deleting marks the row `DELETED` (§13); the object stays for audit until a bucket lifecycle rule expires it.
+- **Purposes:** each module registers `FilePurpose`s through a `FilePurposeProvider` bean (like module settings, §10): accepted kinds, size limit, optional upload and read permissions (null = any member of the tenant). Platform registers `general.attachment` (PDF/PNG/JPEG/WebP/CSV/text, 10 MB). Uploading for an unregistered purpose → `400 UNKNOWN_FILE_PURPOSE`.
+- **Type check:** the kind is detected from the file's first bytes (`FileTypeDetector`: PDF, PNG, JPEG, WebP, UTF-8 text/CSV), not from the name or the client's Content-Type → `400 FILE_TYPE_NOT_ALLOWED` (details `detected`, `allowed`). Size over the purpose's limit → `413 FILE_TOO_LARGE`; the servlet's hard ceiling is 25 MB.
+- **Downloads:** `GET /api/v1/files/{id}/download` returns a pre-signed S3 URL (default 5 minutes, `ZIFIQ_STORAGE_DOWNLOAD_URL_TTL`) with the original name in `Content-Disposition`; the API never streams file bytes. Read access: the uploader, or anyone holding the purpose's read permission (any member if none); otherwise `404 FILE_NOT_FOUND`, so ids can't be probed.
+- **Endpoints (`/api/v1/files`):** `POST` (multipart `file` + `purpose`), `GET /purposes`, `GET /{id}`, `GET /{id}/download`, `DELETE /{id}` (uploader, or a holder of the purpose's upload permission). Modules with their own upload endpoints call `FileService.store(purpose, name, bytes, linkedType, linkedId)`.
+- **Not configured:** with no `ZIFIQ_STORAGE_BUCKET` the app starts normally and file operations return `503 STORAGE_NOT_CONFIGURED`.
+- **Local and CI:** `compose.local-storage.yaml` adds Adobe S3Mock (S3-compatible, `adobe/s3mock`) with bucket `zifiq-local`; integration tests run against an S3Mock container. (MinIO no longer publishes community images.)
+- **Events:** `platform.file.uploaded`, `platform.file.deleted` (payload: purpose, content type, size — never the content).
+
 ---
 
 ## 9. Notifications

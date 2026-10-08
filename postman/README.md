@@ -41,7 +41,7 @@ means it has expired).
 
 ## Running it
 
-Run folders **01 through 12 in order**, either by hand or with the
+Run folders **01 through 14 in order**, either by hand or with the
 Collection Runner. Each request's Tests script captures tokens and
 created-entity IDs (tenant id, access token, factory id, stock item ids,
 recipe id, costing id, customer ids, etc.) into collection variables that
@@ -122,6 +122,22 @@ Not covered here, because they need another module or a second login:
   log in as them, and call the Customers list. These rules are also covered
   by the backend's automated tests.
 
+## Documents and files (folders 13 and 14)
+
+**13 - Documents** lists the waybill that folder 08 dispatched in the
+Transaction Receipts registry, records a reprint, and searches/filters the
+registry.
+
+**14 - Files** uploads to S3 storage. The server needs storage configured:
+locally start S3Mock (see the main `README.md`, "Run locally" step 3) or the
+uploads answer `503 STORAGE_NOT_CONFIGURED`. In the Postman app, choose any
+PDF, image or CSV in **Upload File**'s `file` field (Body > form-data); Newman
+uses `postman/fixtures/sample-attachment.pdf` and runs from the repository
+root. **Upload File (error: disguised type)** sends a ZIP archive renamed to
+`.pdf` to show that the type is checked from the file's content. **Get
+Download Link** returns a short-lived signed link; against S3Mock it points at
+a Docker-internal host name, so open links only against the dev server.
+
 ## Running it headless (Newman)
 
 The whole collection can also be run end-to-end from the command line with
@@ -137,7 +153,7 @@ npx newman run postman/ZifIQ-API.postman_collection.json -e postman/ZifIQ-Dev.po
   --folder "01 - Auth" --folder "12 - Customers"
 ```
 
-A clean full run reports `147/147` requests and `168/168` assertions
+A clean full run reports `159/159` requests and `184/184` assertions
 passing. Several requests are *deliberately* run against a state that makes
 them fail. These are not bugs: they demonstrate real error paths on purpose,
 so each gets its own status + error-code assertion instead of the generic

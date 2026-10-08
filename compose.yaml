@@ -24,6 +24,12 @@ services:
       DATABASE_URL: jdbc:postgresql://postgres:5432/zifiq
       DATABASE_USERNAME: zifiq_app
       DATABASE_PASSWORD: zifiq-local
+      # File storage (docs/03 §8.4). Set these in a .env file next to this one (never committed; the
+      # deploy keeps the server's own copy). On EC2 the AWS credentials come from the instance's IAM
+      # role. Locally/CI, compose.local-storage.yaml points these at S3Mock instead.
+      ZIFIQ_STORAGE_BUCKET: ${ZIFIQ_STORAGE_BUCKET:-}
+      ZIFIQ_STORAGE_REGION: ${ZIFIQ_STORAGE_REGION:-eu-north-1}
+      ZIFIQ_STORAGE_KEY_PREFIX: ${ZIFIQ_STORAGE_KEY_PREFIX:-}
     ports:
       - "8080:8080"
     depends_on:

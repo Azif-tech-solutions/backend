@@ -131,6 +131,11 @@ object ApiErrors {
     fun searchTimeout() = ApiException(HttpStatus.REQUEST_TIMEOUT, ErrorCode.SEARCH_TIMEOUT, "The search took too long — narrow the filters or date range and try again")
     fun viewNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.VIEW_NOT_FOUND, "Saved view not found")
     fun documentNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.DOCUMENT_NOT_FOUND, "Document not found")
+    fun storageNotConfigured() = ApiException(HttpStatus.SERVICE_UNAVAILABLE, ErrorCode.STORAGE_NOT_CONFIGURED, "File storage is not configured on this server")
+    fun fileNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.FILE_NOT_FOUND, "File not found")
+    fun fileTooLarge(maxBytes: Long) = ApiException(HttpStatus.PAYLOAD_TOO_LARGE, ErrorCode.FILE_TOO_LARGE, "The file is larger than ${maxBytes / (1024 * 1024)} MB", mapOf("maxBytes" to maxBytes.toString()))
+    fun fileTypeNotAllowed(detected: String, allowed: Collection<String>) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.FILE_TYPE_NOT_ALLOWED, "This kind of file ($detected) can't be uploaded here", mapOf("detected" to detected, "allowed" to allowed.joinToString(",")))
+    fun unknownFilePurpose(purpose: String, allowed: Collection<String>) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.UNKNOWN_FILE_PURPOSE, "Unknown file purpose '$purpose'", mapOf("allowed" to allowed.joinToString(",")))
     fun duplicateViewName() = ApiException(HttpStatus.CONFLICT, ErrorCode.DUPLICATE_VIEW_NAME, "You already have a view with this name for this list")
 
     // ---- Module settings, custom fields, notifications ----

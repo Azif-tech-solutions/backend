@@ -7,3 +7,7 @@ out/
 .env
 bin/
 zifiq-dev-deploy.pem
+# Local environment files with secrets (AWS keys, JWT secret, ...). Never commit these.
+.env.*
+*.env
+!*.env.example

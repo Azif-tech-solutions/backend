@@ -22,6 +22,7 @@ extra["springModulithVersion"] = "1.4.13"
 extra["exposedVersion"] = "0.61.0"
 extra["testcontainersVersion"] = "1.21.4"
 extra["openhtmltopdfVersion"] = "1.1.94"
+extra["awsSdkVersion"] = "2.55.13"
 
 // Spring Boot 3.5.16's own BOM still pins these three below the patched
 // version needed to clear known CVEs (see Trivy's image scan) -- override
@@ -51,6 +52,12 @@ dependencies {
     // view integration, so the API still renders no server-side views (see .trivyignore) — and OpenHTMLtoPDF.
     implementation("org.thymeleaf:thymeleaf")
     implementation("io.github.openhtmltopdf:openhtmltopdf-pdfbox:${property("openhtmltopdfVersion")}")
+    // File storage (docs/03 §8.4): S3 with the synchronous Apache HTTP client only; the async Netty
+    // client is excluded because nothing uses it (smaller dependency and CVE surface).
+    implementation(platform("software.amazon.awssdk:bom:${property("awsSdkVersion")}"))
+    implementation("software.amazon.awssdk:s3") {
+        exclude(group = "software.amazon.awssdk", module = "netty-nio-client")
+    }
     runtimeOnly("org.postgresql:postgresql")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")

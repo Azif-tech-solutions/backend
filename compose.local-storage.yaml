@@ -1,0 +1,24 @@
+# Local / CI file storage: S3Mock, an S3-compatible server, instead of AWS S3 (docs/03 §8.4).
+#   docker compose -f compose.yaml -f compose.local-storage.yaml up --build -d
+# Running the app with ./gradlew bootRun instead? Start only S3Mock:
+#   docker compose -f compose.yaml -f compose.local-storage.yaml up -d s3mock
+# and set ZIFIQ_STORAGE_BUCKET=zifiq-local ZIFIQ_STORAGE_ENDPOINT=http://localhost:9090
+#         AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=local (S3Mock accepts any keys).
+services:
+  s3mock:
+    image: adobe/s3mock:5.2
+    environment:
+      COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS: zifiq-local
+    ports:
+      - "9090:9090"
+
+  backend:
+    environment:
+      ZIFIQ_STORAGE_BUCKET: zifiq-local
+      ZIFIQ_STORAGE_ENDPOINT: http://s3mock:9090
+      # Not real credentials: S3Mock accepts any keys. AWS itself uses the EC2 instance's IAM role.
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+    depends_on:
+      s3mock:
+        condition: service_started

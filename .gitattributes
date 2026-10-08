@@ -1,0 +1,3 @@
+# Test fixtures and fonts are byte-exact; never convert their line endings.
+postman/fixtures/* binary
+*.ttf binary

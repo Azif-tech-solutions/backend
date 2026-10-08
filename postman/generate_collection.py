@@ -16,7 +16,7 @@ def uid():
 
 ENDPOINTS = []
 
-def ep(folder, name, method, path, auth=None, body=None, resp=None, status=200, status_text="OK", tests=None, query=None, desc="", expect_error=None):
+def ep(folder, name, method, path, auth=None, body=None, resp=None, status=200, status_text="OK", tests=None, query=None, desc="", expect_error=None, form=None):
     # expect_error: {"status": int, "code": "ERROR_CODE"} for requests that are DELIBERATELY run
     # against a state that makes them fail (demonstrating a real error path), so the generic
     # "response has data envelope" assertion every other request gets would always fail here --
@@ -26,7 +26,7 @@ def ep(folder, name, method, path, auth=None, body=None, resp=None, status=200, 
     ENDPOINTS.append(dict(
         folder=folder, name=name, method=method, path=path, auth=auth, body=body,
         resp=resp, status=status, status_text=status_text, tests=tests or [], query=query or [], desc=desc,
-        expect_error=expect_error,
+        expect_error=expect_error, form=form,
     ))
 
 NOW = "2026-10-01T10:15:30Z"
@@ -1199,6 +1199,52 @@ ep(D, "Search Documents (advanced)", "POST", "/api/v1/documents/search",
 ep(D, "Document Filter Metadata", "GET", "/api/v1/documents/filters",
    resp={"data": {"fields": [], "collections": [], "primaryDate": "issuedAt", "defaultSort": [{"field": "issuedAt", "dir": "desc"}], "periodPresets": []}})
 
+# ============================== FILES (docs/03 §8.4) ==============================
+F = "14 - Files"
+FILE = {"id": "{{fileId}}", "purpose": "general.attachment", "originalName": "sample-attachment.pdf", "contentType": "application/pdf",
+        "sizeBytes": 160, "sha256": "9f2b5c0e7a1d4b3c8e6f2a9d0c1b7e4f3a2d5c8b9e0f1a2b3c4d5e6f7a8b9c0d1", "status": "ACTIVE",
+        "linkedType": None, "linkedId": None, "uploadedByUserId": "{{userId}}", "uploadedAt": NOW}
+
+ep(F, "List Upload Purposes", "GET", "/api/v1/files/purposes",
+   resp={"data": [{"code": "general.attachment", "label": "Attachment (PDF, image or CSV, up to 10 MB)",
+                   "contentTypes": ["application/pdf", "image/jpeg", "image/png", "image/webp", "text/csv", "text/plain"], "maxBytes": 10485760}]},
+   desc="What can be uploaded where: each module registers its purposes (accepted types, size limit, who may upload and read).")
+
+ep(F, "Upload File", "POST", "/api/v1/files",
+   form=[{"key": "file", "src": "postman/fixtures/sample-attachment.pdf"}, {"key": "purpose", "value": "general.attachment"}],
+   resp={"data": FILE},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('fileId', json.data.id);",
+          "pm.test('type detected from the content', () => pm.expect(json.data.contentType).to.eql('application/pdf'));"],
+   desc="multipart/form-data with `file` and `purpose`. The type is detected from the file's content (not its name or the browser's claim) and must be one "
+        "the purpose accepts; files go to S3 under a tenant-scoped key with server-side encryption. In the Postman app, pick any PDF/image/CSV for `file` "
+        "(Newman uses postman/fixtures/sample-attachment.pdf). 503 STORAGE_NOT_CONFIGURED if the server has no bucket.")
+
+ep(F, "Upload File (error: disguised type)", "POST", "/api/v1/files",
+   form=[{"key": "file", "src": "postman/fixtures/disguised-archive.pdf"}, {"key": "purpose", "value": "general.attachment"}],
+   status=400, status_text="Bad Request",
+   resp={"error": {"code": "FILE_TYPE_NOT_ALLOWED", "message": "This kind of file (unrecognised) can't be uploaded here",
+                   "details": {"detected": "unrecognised", "allowed": "application/pdf,image/jpeg,image/png,image/webp,text/csv,text/plain"}}},
+   expect_error={"status": 400, "code": "FILE_TYPE_NOT_ALLOWED"},
+   desc="A ZIP archive renamed to .pdf is refused: the name and declared type are ignored.")
+
+ep(F, "Get File", "GET", "/api/v1/files/{{fileId}}", resp={"data": FILE},
+   desc="404 FILE_NOT_FOUND also when the caller may not read it (another company's file, or a purpose with a read permission they lack).")
+
+ep(F, "Get Download Link", "GET", "/api/v1/files/{{fileId}}/download",
+   resp={"data": {"file": FILE, "url": "https://zifiq-files.s3.eu-north-1.amazonaws.com/tenants/.../general.attachment/2026/10/...?X-Amz-Signature=...",
+                  "expiresAt": NOW}},
+   tests=["const json = pm.response.json();", "pm.test('a signed link is returned', () => pm.expect(json.data.url).to.include('X-Amz-Signature'));"],
+   desc="A pre-signed link valid for a few minutes (expiresAt); open it in the browser to download - the file comes straight from storage with its "
+        "original name. Locally/CI the link points at S3Mock's internal host name, so it only opens from inside Docker.")
+
+ep(F, "Delete File", "DELETE", "/api/v1/files/{{fileId}}",
+   resp={"data": dict(FILE, status="DELETED")},
+   desc="Marks the file deleted (records are never hard-deleted). Allowed for the uploader, or a holder of the purpose's upload permission.")
+
+ep(F, "Get Download Link (error: deleted)", "GET", "/api/v1/files/{{fileId}}/download",
+   status=404, status_text="Not Found", resp={"error": {"code": "FILE_NOT_FOUND", "message": "File not found", "details": {}}},
+   expect_error={"status": 404, "code": "FILE_NOT_FOUND"})
+
 print(f"TOTAL ENDPOINTS: {len(ENDPOINTS)}")
 
 # =====================================================================================
@@ -1234,6 +1280,12 @@ def pm_request_item(e, with_examples=True):
         item["request"]["description"] = e["desc"]
     if e["body"] is not None:
         item["request"]["body"] = pm_body(e["body"])
+    if e.get("form"):
+        # Postman sets the multipart Content-Type (with its boundary) itself.
+        item["request"]["body"] = {"mode": "formdata", "formdata": [
+            {"key": f["key"], "type": "file", "src": f["src"]} if "src" in f else {"key": f["key"], "value": f["value"], "type": "text"}
+            for f in e["form"]
+        ]}
     # Set explicitly on every request rather than inherited from the collection, so each request's
     # Authorization tab shows Bearer {{accessToken}} and it still works when run, copied or exported on its own.
     if e["auth"] == "noauth":
@@ -1320,7 +1372,7 @@ def build_collection():
         "tradeOfferId",
         "customerLocationId", "today", "goldCategoryId", "diamondCategoryId", "correspondentId",
         "dealerId", "dealerName", "dealerCode", "customerId", "adjustmentEntryId", "reclassificationId",
-        "correspondent2Id", "specialId", "walkinId", "waybillRef",
+        "correspondent2Id", "specialId", "walkinId", "waybillRef", "fileId",
     ]
 
     collection = {
