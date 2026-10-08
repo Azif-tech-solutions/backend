@@ -5,3 +5,5 @@ out/
 .idea/
 *.iml
 .env
+bin/
+zifiq-dev-deploy.pem
