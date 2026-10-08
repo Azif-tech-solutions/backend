@@ -72,7 +72,7 @@ class FactorySetupService(
             it[LocationsTable.vatRate] = request.vatRate ?: java.math.BigDecimal("7.50")
             it[LocationsTable.vatEnabled] = request.vatEnabled ?: true
             it[LocationsTable.vatRegistrationNumber] = request.vatRegistrationNumber?.trim()?.takeIf(String::isNotEmpty)
-            it[LocationsTable.status] = "ACTIVE"
+            it[LocationsTable.status] = request.status ?: "ACTIVE"
             it[LocationsTable.createdByUserId] = actor.userId
             it[LocationsTable.createdAt] = Instant.now()
         }.value
@@ -92,6 +92,7 @@ class FactorySetupService(
             request.vatRate?.let { rate -> it[LocationsTable.vatRate] = rate }
             request.vatEnabled?.let { enabled -> it[LocationsTable.vatEnabled] = enabled }
             it[LocationsTable.vatRegistrationNumber] = request.vatRegistrationNumber?.trim()?.takeIf(String::isNotEmpty)
+            request.status?.let { status -> it[LocationsTable.status] = status }
         }
         if (updated == 0) throw ApiErrors.factoryNotFound()
 

@@ -16,6 +16,12 @@ data class FactoryRequest(
     val vatRate: BigDecimal?,
     val vatEnabled: Boolean?,
     val vatRegistrationNumber: String?,
+    /**
+     * Optional on create (default ACTIVE) and on update (absent = unchanged). Without this field a
+     * client saving the whole edit form with `"status": "SUSPENDED"` got a 200 while Jackson
+     * silently dropped the unknown property, so the factory stayed ACTIVE.
+     */
+    @field:Pattern(regexp = "ACTIVE|PENDING|SUSPENDED") val status: String? = null,
 )
 
 data class FactoryStatusRequest(
