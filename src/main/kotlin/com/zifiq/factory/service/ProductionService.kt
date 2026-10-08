@@ -70,9 +70,9 @@ class ProductionService(
 
     fun listRecipes(locationId: UUID?, status: String?): List<RecipeSummary> = tenantScopedTransaction.execute {
         val tenantId = currentActorProvider.current().tenantId
-        val effectiveLocationId = locationAccessService.resolveFilter(locationId)
+        val effectiveLocationId = locationAccessService.resolveFilterSet(locationId)
         val query = RecipesTable.selectAll().andWhere { RecipesTable.tenantId eq tenantId }
-        if (effectiveLocationId != null) query.andWhere { RecipesTable.locationId eq effectiveLocationId }
+        if (effectiveLocationId != null) query.andWhere { RecipesTable.locationId inList effectiveLocationId }
         if (status != null) query.andWhere { RecipesTable.status eq status }
         query.orderBy(RecipesTable.name).map { row ->
             val ingredients = RecipeIngredientsTable.selectAll()
@@ -282,9 +282,9 @@ class ProductionService(
         tenantScopedTransaction.execute {
             val actor = currentActorProvider.current()
             val canSeeCost = permissionAuthorizer.hasPermission(actor.userId, "factory.costing.read")
-            val effectiveLocationId = locationAccessService.resolveFilter(locationId)
+            val effectiveLocationId = locationAccessService.resolveFilterSet(locationId)
             val query = ProductionRunsTable.selectAll().andWhere { ProductionRunsTable.tenantId eq actor.tenantId }
-            if (effectiveLocationId != null) query.andWhere { ProductionRunsTable.locationId eq effectiveLocationId }
+            if (effectiveLocationId != null) query.andWhere { ProductionRunsTable.locationId inList effectiveLocationId }
             query.map { row ->
                 ProductionRunSummary(
                     batchRef = row[ProductionRunsTable.batchRef],
@@ -400,9 +400,9 @@ class ProductionService(
 
     fun listSpecialProductionRuns(locationId: UUID?, clientId: UUID?): List<SpecialProductionRunSummary> = tenantScopedTransaction.execute {
         val tenantId = currentActorProvider.current().tenantId
-        val effectiveLocationId = locationAccessService.resolveFilter(locationId)
+        val effectiveLocationId = locationAccessService.resolveFilterSet(locationId)
         val query = SpecialProductionRunsTable.selectAll().andWhere { SpecialProductionRunsTable.tenantId eq tenantId }
-        if (effectiveLocationId != null) query.andWhere { SpecialProductionRunsTable.locationId eq effectiveLocationId }
+        if (effectiveLocationId != null) query.andWhere { SpecialProductionRunsTable.locationId inList effectiveLocationId }
         if (clientId != null) query.andWhere { SpecialProductionRunsTable.clientId eq clientId }
         query.map { row ->
             SpecialProductionRunSummary(

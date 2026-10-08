@@ -115,10 +115,10 @@ class FactoryTradeService(
 
     fun listTrades(locationId: UUID?, status: String?): List<FactoryTradeOfferSummary> = tenantScopedTransaction.execute {
         val tenantId = currentActorProvider.current().tenantId
-        val effectiveLocationId = locationAccessService.resolveFilter(locationId)
+        val effectiveLocationId = locationAccessService.resolveFilterSet(locationId)
         val query = FactoryTradeOffersTable.selectAll().andWhere { FactoryTradeOffersTable.tenantId eq tenantId }
         if (effectiveLocationId != null) {
-            query.andWhere { (FactoryTradeOffersTable.fromLocationId eq effectiveLocationId) or (FactoryTradeOffersTable.toLocationId eq effectiveLocationId) }
+            query.andWhere { (FactoryTradeOffersTable.fromLocationId inList effectiveLocationId) or (FactoryTradeOffersTable.toLocationId inList effectiveLocationId) }
         }
         if (status != null) query.andWhere { FactoryTradeOffersTable.status eq status }
         query.orderBy(FactoryTradeOffersTable.offeredAt).map(::rowToTradeOfferSummary)

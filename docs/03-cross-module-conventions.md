@@ -649,7 +649,7 @@ create table document_reprints (
 -- + standard RLS on both
 ```
 
-`platform.documents.DocumentRegistry.register(...)` / `.markVoided(ref)` run in the caller's transaction. Shipped Inventory's `dispatchTransfer` gets a `register(doc_type=WAYBILL, source_module='inventory')` call in the V7 code change.
+`platform.documents.DocumentRegistry.register(...)` / `.markVoided(ref)` / `.recordReprint(ref, reason)` run in the caller's transaction. Shipped in V9 (not V7): Inventory's `dispatchTransfer` registers each waybill, and V9 back-fills waybills issued before the registry existed. Each issuing module implements `DocumentLinkProvider` so registry rows carry a `pdfUrl`. `platform.documents.read` is granted to Administrator, Management, Accounts Personnel, Cashier and Stock Keeper.
 
 ### 8.2 Endpoints (platform)
 
@@ -658,10 +658,10 @@ create table document_reprints (
 
 ### 8.3 PDF rendering (one stack for invoices, waybills, receipts, pro-formas, labels, report exports)
 
-- Templates: **Thymeleaf** (`spring-boot-starter-thymeleaf`, version managed by the Spring Boot BOM) rendering XHTML.
+- Templates: **Thymeleaf** core (`org.thymeleaf:thymeleaf`, version managed by the Spring Boot BOM) as a standalone engine in XML mode rendering XHTML under `resources/templates/pdf/`. Deliberately **not** `spring-boot-starter-thymeleaf`: that registers Spring MVC view resolvers, and the API renders no MVC views (the basis of two `.trivyignore` exceptions).
 - HTML→PDF: **OpenHTMLtoPDF**, the maintained `io.github.openhtmltopdf:openhtmltopdf-pdfbox` fork (Apache PDFBox underneath). Pin the latest release at implementation time and run Trivy on it like every other dependency.
 - Barcodes/QR inside documents: **ZXing** `com.google.zxing:core` (Apache 2.0, the de-facto JVM barcode library) rendered to PNG and embedded as a data URI.
-- `platform.documents.PdfRenderer.render(templateName, model): ByteArray` is the single entry point. Fonts (Inter + a mono face) are bundled in `resources/fonts` so output doesn't depend on the host OS. Company branding (name, address, logo) comes from Settings (`settings::spi.CompanyProfileProvider`) — modules pass it in the model; platform does not depend on settings.
+- `platform.documents.PdfRenderer.render(templateName, model): ByteArray` is the single entry point. Fonts (Noto Sans regular + bold, SIL OFL, licence alongside; it has the ₦ glyph the PDF base fonts lack) are bundled in `resources/fonts` so output doesn't depend on the host OS. Company branding (name, address, logo) comes from Settings (`settings::spi.CompanyProfileProvider`) — modules pass it in the model; platform does not depend on settings.
 - PDFs are rendered on demand and streamed (`application/pdf`), not stored, because the source data is immutable once issued. Bulk exports (invoices ZIP, labels) are produced by the report-export job runner (doc 13) to avoid request timeouts.
 
 ---
@@ -772,7 +772,7 @@ Rules: a `STORAGE_AREA` always has a `FACTORY`/`SHOWROOM` parent; areas never ne
 
 ### 11.3 `LocationAccessService` change
 
-A user assigned to location P may access P **and all `STORAGE_AREA` children of P**. `restriction()` returns the assigned id; `assertAccess(x)` passes if `x == assigned` or `x.parent == assigned`; `resolveFilter(requested)` returns a *set* (`assigned` + its children) and list queries use `location_id in (...)`. The signature change (`resolveFilter` → `resolveFilterSet: Set<UUID>?`) is applied to every shipped caller in the V7 code change.
+A user assigned to location P may access P **and all `STORAGE_AREA` children of P**. `restriction()` returns the assigned id; `assertAccess(x)` passes if `x == assigned` or `x.parent == assigned`; `resolveFilter(requested)` returns a *set* (`assigned` + its children) and list queries use `location_id in (...)`. Implemented in V9 (the V7 pass didn't ship it): `resolveFilterSet(requested): Set<UUID>?` (a factory/showroom expands to itself + its areas; an area is just itself) is used by every stock-bearing list, `allowedLocationIds()` gives the caller's whole scope, and `assertAccess` accepts the assigned location or any of its areas. `resolveFilter` stays for records that only ever sit on a factory/showroom (customers' home location, correspondents). The database refuses nested areas, orphan areas and assigning a user to an area (triggers in V9); helper `platform.tenancy.LocationHierarchy` (`withAreas`, `parentOf`, `rootOf`).
 
 ---
 

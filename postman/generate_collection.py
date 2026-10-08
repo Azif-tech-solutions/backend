@@ -448,6 +448,7 @@ ep("08 - Inventory Operations", "Dispatch Stock Transfer", "POST", "/api/v1/inve
        "const json = pm.response.json();",
        "pm.collectionVariables.set('transferId', json.data.id);",
        "pm.collectionVariables.set('transferLineId', json.data.lines[0].id);",
+       "pm.collectionVariables.set('waybillRef', json.data.waybillRef);",
    ],
    desc="Run Create Second Factory first so {{factoryId2}} is populated.")
 
@@ -1165,6 +1166,39 @@ ep(C, "J2 My Ledger (self-service)", "GET", "/api/v1/customers/me/ledger",
    expect_error={"status": 404, "code": "CUSTOMER_NOT_FOUND"},
    desc="The caller's own wallet/deposit history; same shape and query as F5.")
 
+# ============================== DOCUMENTS (docs/03 §8) ==============================
+D = "13 - Documents"
+DOC = {"id": "8d2c1f0e-3333-4c4c-9a9a-000000000003", "ref": "WB-1", "docType": "WAYBILL", "sourceModule": "inventory",
+       "sourceId": "{{transferId}}", "locationId": "{{factoryId}}", "locationName": "Apex Plant A (Updated)",
+       "partyName": "Apex Plant B", "partyCustomerId": None, "valueAmount": None, "issuedByUserId": "{{userId}}",
+       "issuedByName": "Alice Admin", "issuedAt": NOW, "status": "ISSUED", "reprintCount": 0, "pdfUrl": None}
+
+ep(D, "List Issued Documents", "GET", "/api/v1/documents",
+   query=[{"key": "type", "value": "WAYBILL"}],
+   resp=PAGE([DOC]),
+   tests=["const json = pm.response.json();",
+          "pm.test('the dispatched waybill is registered', () => pm.expect(json.data.items.map(d => d.ref)).to.include(pm.collectionVariables.get('waybillRef')));"],
+   desc="Transaction Receipts: every issued invoice, waybill, receipt and pro-forma, newest first. Perm platform.documents.read, and each "
+        "document type also needs its own read permission (waybills: inventory.stock.read). Single-location users see only documents issued "
+        "at their location. Query: q (reference, party name, value), type, status (ISSUED|VOIDED), locationId, sourceModule, partyCustomerId, "
+        "valueAmount range, reprinted, issuedBy, issuedAt range / from / to / period, sort, page, size.")
+
+ep(D, "Get Document", "GET", "/api/v1/documents/{{waybillRef}}", resp={"data": DOC},
+   desc="404 DOCUMENT_NOT_FOUND also when the caller may not see the document.")
+
+ep(D, "Reprint Document", "POST", "/api/v1/documents/{{waybillRef}}/reprints",
+   body={"reason": "Driver lost the original"},
+   resp={"data": {"ref": "WB-1", "reprintCount": 1, "pdfUrl": None}},
+   tests=["const json = pm.response.json();", "pm.test('reprint counted', () => pm.expect(json.data.reprintCount).to.eql(1));"],
+   desc="Records a reprint; the next PDF of this document is marked DUPLICATE COPY. pdfUrl points at the issuing module's PDF.")
+
+ep(D, "Search Documents (advanced)", "POST", "/api/v1/documents/search",
+   body={"filter": {"all": [{"field": "type", "op": "eq", "value": "WAYBILL"}, {"field": "reprinted", "op": "eq", "value": True}]}},
+   resp=PAGE([dict(DOC, reprintCount=1)]))
+
+ep(D, "Document Filter Metadata", "GET", "/api/v1/documents/filters",
+   resp={"data": {"fields": [], "collections": [], "primaryDate": "issuedAt", "defaultSort": [{"field": "issuedAt", "dir": "desc"}], "periodPresets": []}})
+
 print(f"TOTAL ENDPOINTS: {len(ENDPOINTS)}")
 
 # =====================================================================================
@@ -1286,7 +1320,7 @@ def build_collection():
         "tradeOfferId",
         "customerLocationId", "today", "goldCategoryId", "diamondCategoryId", "correspondentId",
         "dealerId", "dealerName", "dealerCode", "customerId", "adjustmentEntryId", "reclassificationId",
-        "correspondent2Id", "specialId", "walkinId",
+        "correspondent2Id", "specialId", "walkinId", "waybillRef",
     ]
 
     collection = {

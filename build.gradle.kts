@@ -21,6 +21,7 @@ repositories {
 extra["springModulithVersion"] = "1.4.13"
 extra["exposedVersion"] = "0.61.0"
 extra["testcontainersVersion"] = "1.21.4"
+extra["openhtmltopdfVersion"] = "1.1.94"
 
 // Spring Boot 3.5.16's own BOM still pins these three below the patched
 // version needed to clear known CVEs (see Trivy's image scan) -- override
@@ -46,6 +47,10 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-jdbc:${property("exposedVersion")}")
     implementation("org.jetbrains.exposed:exposed-java-time:${property("exposedVersion")}")
     implementation("org.jetbrains.exposed:exposed-json:${property("exposedVersion")}")
+    // PDF documents (waybills, invoices, receipts): Thymeleaf's template engine only — not the Spring MVC
+    // view integration, so the API still renders no server-side views (see .trivyignore) — and OpenHTMLtoPDF.
+    implementation("org.thymeleaf:thymeleaf")
+    implementation("io.github.openhtmltopdf:openhtmltopdf-pdfbox:${property("openhtmltopdfVersion")}")
     runtimeOnly("org.postgresql:postgresql")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")

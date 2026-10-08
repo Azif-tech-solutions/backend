@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <style>body { font-family: 'Noto Sans'; font-size: 11pt; } h1 { font-weight: 700; }</style>
+</head>
+<body>
+    <h1 th:text="${title}">Title</h1>
+    <p>Total: <span th:text="${total}">0</span></p>
+    <p th:if="${duplicate}">DUPLICATE COPY</p>
+</body>
+</html>

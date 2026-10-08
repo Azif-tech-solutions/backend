@@ -23,6 +23,10 @@ object LocationsTable : UUIDTable("locations") {
     val vatEnabled = bool("vat_enabled").default(true)
     val vatRegistrationNumber = varchar("vat_registration_number", 60).nullable()
     val status = varchar("status", 20).default("ACTIVE")
+    /** Set only on STORAGE_AREA rows: the factory or showroom the area belongs to (docs/03 §11.2). */
+    val parentLocationId = uuid("parent_location_id").nullable()
+    /** STORAGE_AREA only: SHOP_FLOOR, WAREHOUSE, RECEIVING, QUARANTINE, OTHER. */
+    val areaKind = varchar("area_kind", 20).nullable()
     val createdByUserId = reference("created_by_user_id", AppUsersTable)
     val createdAt = timestamp("created_at")
 }

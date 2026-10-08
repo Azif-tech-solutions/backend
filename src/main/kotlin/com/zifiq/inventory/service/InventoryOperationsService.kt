@@ -6,6 +6,9 @@ import com.zifiq.inventory.model.StockTransferLinesTable
 import com.zifiq.inventory.model.StockTransfersTable
 import com.zifiq.inventory.repository.StockLedgerRepository
 import com.zifiq.common.errors.ApiErrors
+import com.zifiq.platform.documents.DocumentRegistry
+import com.zifiq.platform.documents.DocumentType
+import com.zifiq.platform.tenancy.model.LocationsTable
 import com.zifiq.platform.numbering.DocumentSequenceService
 import com.zifiq.platform.security.CurrentActorProvider
 import com.zifiq.platform.security.LocationAccessService
@@ -32,6 +35,7 @@ class InventoryOperationsService(
     private val otpChallengeService: OtpChallengeService,
     private val locationAccessService: LocationAccessService,
     private val moduleSettings: ModuleSettings,
+    private val documentRegistry: DocumentRegistry,
 ) {
     // ---- Stock Transfer ----
 
@@ -76,6 +80,17 @@ class InventoryOperationsService(
                 performedByUserId = actor.userId,
             )
         }
+
+        val destinationName = LocationsTable.select(LocationsTable.name)
+            .where { LocationsTable.id eq request.destinationLocationId }.firstOrNull()?.get(LocationsTable.name)
+        documentRegistry.register(
+            ref = ref,
+            docType = DocumentType.WAYBILL,
+            sourceModule = "inventory",
+            sourceId = transferId,
+            locationId = request.sourceLocationId,
+            partyName = destinationName,
+        )
 
         loadTransferSummary(transferId)
     }
@@ -125,10 +140,10 @@ class InventoryOperationsService(
 
     fun listTransfers(locationId: UUID?, status: String?): List<StockTransferSummary> = tenantScopedTransaction.execute {
         val tenantId = currentActorProvider.current().tenantId
-        val effectiveLocationId = locationAccessService.resolveFilter(locationId)
+        val effectiveLocationId = locationAccessService.resolveFilterSet(locationId)
         val query = StockTransfersTable.selectAll().andWhere { StockTransfersTable.tenantId eq tenantId }
         if (effectiveLocationId != null) {
-            query.andWhere { (StockTransfersTable.sourceLocationId eq effectiveLocationId) or (StockTransfersTable.destinationLocationId eq effectiveLocationId) }
+            query.andWhere { (StockTransfersTable.sourceLocationId inList effectiveLocationId) or (StockTransfersTable.destinationLocationId inList effectiveLocationId) }
         }
         if (status != null) query.andWhere { StockTransfersTable.status eq status }
         query.map { row -> loadTransferSummary(row[StockTransfersTable.id].value) }
@@ -211,9 +226,9 @@ class InventoryOperationsService(
 
     fun listAdjustments(locationId: UUID?): List<QuantityAdjustmentSummary> = tenantScopedTransaction.execute {
         val tenantId = currentActorProvider.current().tenantId
-        val effectiveLocationId = locationAccessService.resolveFilter(locationId)
+        val effectiveLocationId = locationAccessService.resolveFilterSet(locationId)
         val query = QuantityAdjustmentsTable.selectAll().andWhere { QuantityAdjustmentsTable.tenantId eq tenantId }
-        if (effectiveLocationId != null) query.andWhere { QuantityAdjustmentsTable.locationId eq effectiveLocationId }
+        if (effectiveLocationId != null) query.andWhere { QuantityAdjustmentsTable.locationId inList effectiveLocationId }
         query.orderBy(QuantityAdjustmentsTable.createdAt).map { row ->
             QuantityAdjustmentSummary(
                 ref = row[QuantityAdjustmentsTable.ref],

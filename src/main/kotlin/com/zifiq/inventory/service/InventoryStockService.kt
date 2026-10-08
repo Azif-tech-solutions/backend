@@ -60,9 +60,9 @@ class InventoryStockService(
     fun listStockItems(locationId: UUID?, itemType: String?, status: String?): List<StockItemSummary> =
         tenantScopedTransaction.execute {
             val tenantId = currentActorProvider.current().tenantId
-            val effectiveLocationId = locationAccessService.resolveFilter(locationId)
+            val effectiveLocationId = locationAccessService.resolveFilterSet(locationId)
             val query = StockItemsTable.selectAll().andWhere { StockItemsTable.tenantId eq tenantId }
-            if (effectiveLocationId != null) query.andWhere { StockItemsTable.locationId eq effectiveLocationId }
+            if (effectiveLocationId != null) query.andWhere { StockItemsTable.locationId inList effectiveLocationId }
             if (itemType != null) query.andWhere { StockItemsTable.itemType eq itemType }
             if (status != null) query.andWhere { StockItemsTable.status eq status }
             query.orderBy(StockItemsTable.name).map(::rowToStockItemSummary)
@@ -187,9 +187,9 @@ class InventoryStockService(
 
     fun listReceipts(locationId: UUID?, condition: String?): List<StockReceiptSummary> = tenantScopedTransaction.execute {
         val tenantId = currentActorProvider.current().tenantId
-        val effectiveLocationId = locationAccessService.resolveFilter(locationId)
+        val effectiveLocationId = locationAccessService.resolveFilterSet(locationId)
         val query = StockReceiptsTable.selectAll().andWhere { StockReceiptsTable.tenantId eq tenantId }
-        if (effectiveLocationId != null) query.andWhere { StockReceiptsTable.locationId eq effectiveLocationId }
+        if (effectiveLocationId != null) query.andWhere { StockReceiptsTable.locationId inList effectiveLocationId }
         if (condition != null) query.andWhere { StockReceiptsTable.condition eq condition }
         query.orderBy(StockReceiptsTable.createdAt).map(::rowToReceiptSummary)
     }
@@ -281,7 +281,7 @@ class InventoryStockService(
 
     fun comprehensiveStockReport(locationId: UUID?, view: String): List<ComprehensiveStockRow> = tenantScopedTransaction.execute {
         val tenantId = currentActorProvider.current().tenantId
-        val effectiveLocationId = locationAccessService.resolveFilter(locationId)
+        val effectiveLocationId = locationAccessService.resolveFilterSet(locationId)
         // factory.costing.read (not an Inventory-owned code) deliberately gates cost visibility
         // here too: cost figures ultimately derive from Factory's production costing, so Inventory
         // reuses that permission string rather than minting a parallel inventory.costing.read.
@@ -297,7 +297,7 @@ class InventoryStockService(
             .join(StockBalancesTable, joinType) { StockItemsTable.id eq StockBalancesTable.stockItemId }
             .selectAll()
             .andWhere { StockItemsTable.tenantId eq tenantId }
-        if (effectiveLocationId != null) itemsQuery.andWhere { StockBalancesTable.locationId eq effectiveLocationId }
+        if (effectiveLocationId != null) itemsQuery.andWhere { StockBalancesTable.locationId inList effectiveLocationId }
         if (view == "GROUP") itemsQuery.andWhere { StockItemsTable.itemType eq "FINISHED_PRODUCT" }
 
         itemsQuery.orderBy(StockItemsTable.name).mapIndexed { index, row ->
@@ -329,12 +329,12 @@ class InventoryStockService(
         to: LocalDate?,
     ): List<StockMovementRow> = tenantScopedTransaction.execute {
         val tenantId = currentActorProvider.current().tenantId
-        val effectiveLocationId = locationAccessService.resolveFilter(locationId)
+        val effectiveLocationId = locationAccessService.resolveFilterSet(locationId)
         val query = StockLedgerEntriesTable
             .join(StockItemsTable, org.jetbrains.exposed.sql.JoinType.INNER) { StockLedgerEntriesTable.stockItemId eq StockItemsTable.id }
             .selectAll()
             .andWhere { StockLedgerEntriesTable.tenantId eq tenantId }
-        if (effectiveLocationId != null) query.andWhere { StockLedgerEntriesTable.locationId eq effectiveLocationId }
+        if (effectiveLocationId != null) query.andWhere { StockLedgerEntriesTable.locationId inList effectiveLocationId }
         if (stockItemId != null) query.andWhere { StockLedgerEntriesTable.stockItemId eq stockItemId }
         if (sourceType != null) query.andWhere { StockLedgerEntriesTable.sourceType eq sourceType }
         if (from != null) query.andWhere { StockLedgerEntriesTable.entryDate greaterEq from }
@@ -359,13 +359,13 @@ class InventoryStockService(
 
     fun reOrderReport(locationId: UUID?): List<ReOrderRow> = tenantScopedTransaction.execute {
         val tenantId = currentActorProvider.current().tenantId
-        val effectiveLocationId = locationAccessService.resolveFilter(locationId)
+        val effectiveLocationId = locationAccessService.resolveFilterSet(locationId)
         val query = StockItemsTable
             .join(StockBalancesTable, org.jetbrains.exposed.sql.JoinType.INNER) { StockItemsTable.id eq StockBalancesTable.stockItemId }
             .selectAll()
             .andWhere { StockItemsTable.tenantId eq tenantId }
             .andWhere { StockBalancesTable.quantityOnHand lessEq StockItemsTable.reorderLevel }
-        if (effectiveLocationId != null) query.andWhere { StockBalancesTable.locationId eq effectiveLocationId }
+        if (effectiveLocationId != null) query.andWhere { StockBalancesTable.locationId inList effectiveLocationId }
 
         query.map { row ->
             ReOrderRow(

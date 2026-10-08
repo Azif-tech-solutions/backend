@@ -130,6 +130,7 @@ object ApiErrors {
     fun pageSizeTooLarge(max: Int) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.PAGE_SIZE_TOO_LARGE, "Page size must be between 1 and $max")
     fun searchTimeout() = ApiException(HttpStatus.REQUEST_TIMEOUT, ErrorCode.SEARCH_TIMEOUT, "The search took too long — narrow the filters or date range and try again")
     fun viewNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.VIEW_NOT_FOUND, "Saved view not found")
+    fun documentNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.DOCUMENT_NOT_FOUND, "Document not found")
     fun duplicateViewName() = ApiException(HttpStatus.CONFLICT, ErrorCode.DUPLICATE_VIEW_NAME, "You already have a view with this name for this list")
 
     // ---- Module settings, custom fields, notifications ----
