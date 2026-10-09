@@ -88,3 +88,21 @@ instance metadata service; locally S3Mock accepts any keys.
    ZIFIQ_STORAGE_KEY_PREFIX=dev/
    ```
    `cd ~/backend && docker compose up -d`
+
+## Deployment (dev server)
+
+Every push to `main` runs `.github/workflows/ci.yml`. The `docker-build-and-scan` job builds the image once,
+scans it with Trivy, and publishes it to GitHub Container Registry as
+`ghcr.io/azif-tech-solutions/backend:<commit sha>`. Once every check is green, the `deploy` job:
+
+1. rsyncs the repo to `~/backend` on the server (the server's own `.env` is never overwritten);
+2. logs in to ghcr.io with the run's short-lived `GITHUB_TOKEN`, pulls that image, and logs out;
+3. writes `ZIFIQ_IMAGE=<image>` into `~/backend/.env` and runs `docker compose up -d --no-build`;
+4. fails the run unless `/actuator/health` reports `UP` within 5 minutes;
+5. removes images older than a week and any build cache.
+
+The server never compiles anything. **Rolling back** means re-running the `deploy` job of an earlier
+successful run, or, on the server, setting `ZIFIQ_IMAGE` in `.env` to an earlier tag and running
+`docker compose up -d --no-build`.
+
+Repo secrets used: `EC2_HOST`, `EC2_USER`, `EC2_SSH_PRIVATE_KEY`. No registry credential is stored on the server.

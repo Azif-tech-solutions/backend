@@ -106,28 +106,60 @@ jobs:
           trivyignores: .trivyignore
 
   # ---------------------------------------------------------------------------
-  # Builds the production Docker image and scans it for OS + application
-  # vulnerabilities before it's ever allowed near a registry.
+  # Builds the production Docker image once, scans it for OS + application
+  # vulnerabilities, and (pushes to main only) publishes that exact image to
+  # GitHub Container Registry tagged with the commit SHA. The deploy job pulls
+  # it, so the server never compiles anything. An image that fails the scan is
+  # never pushed; one whose other checks fail is pushed but never deployed.
   # ---------------------------------------------------------------------------
   docker-build-and-scan:
     name: Docker build + image scan (trivy)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ghcr.io/azif-tech-solutions/backend
     steps:
       - uses: actions/checkout@v4
 
+      - uses: docker/setup-buildx-action@v3
+
       - name: Build image
-        run: docker build -t zifiq-backend:${{ github.sha }} .
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: ${{ env.IMAGE }}:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          # Layer cache in GitHub Actions' cache, so Gradle dependencies aren't downloaded every run.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Trivy image scan
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: image
-          image-ref: zifiq-backend:${{ github.sha }}
+          image-ref: ${{ env.IMAGE }}:${{ github.sha }}
           scanners: vuln
           severity: HIGH,CRITICAL
           exit-code: "1"
           ignore-unfixed: true
           trivyignores: .trivyignore
+
+      - name: Log in to GitHub Container Registry
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish image
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: docker push ${{ env.IMAGE }}:${{ github.sha }}
 
   # ---------------------------------------------------------------------------
   # Boots the real stack (Postgres + the built image) via the project's own
@@ -152,7 +184,7 @@ jobs:
 
       - name: Wait for app health
         run: |
-          for i in $(seq 1 60); do
+          for _ in $(seq 1 60); do
             if curl -sf http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then
               echo "App is healthy"
               exit 0
@@ -222,29 +254,36 @@ jobs:
           echo "All required checks passed. Ready to deploy."
 
   # ---------------------------------------------------------------------------
-  # Deploys to the dev EC2 box. The runner already has the repo checked out
-  # (every job does, via actions/checkout), so it rsyncs those files straight
-  # to the box over SSH instead of having the box itself authenticate to
-  # GitHub -- the org disabled deploy keys, and a PAT on the server is both
-  # more setup and a worse security posture than just reusing the SSH
-  # connection we already have. Only runs after every check above has passed,
-  # and only for pushes to main (never on pull_request).
+  # Deploys to the dev EC2 box by pulling the image CI built, scanned and
+  # published (docker-build-and-scan): the box itself never compiles, so a
+  # deploy takes about a minute instead of a 10-minute Gradle build on a 1 GB
+  # machine. The repo files (compose.yaml etc.) are still rsynced; the box's own
+  # .env (bucket, secrets, the deployed image tag) is never overwritten.
+  #
+  # The box logs in to ghcr.io with this run's short-lived GITHUB_TOKEN
+  # (packages: read) and logs out again: no long-lived registry credential is
+  # stored there. The deploy fails unless the new container reports healthy.
+  # Roll back = re-run the deploy job of an earlier successful run.
   #
   # Needs three repo secrets: EC2_SSH_PRIVATE_KEY (the full .pem contents),
-  # EC2_HOST, EC2_USER.
+  # EC2_HOST, EC2_USER. Only runs after every check above has passed, and only
+  # for pushes to main (never on pull_request).
   # ---------------------------------------------------------------------------
   deploy:
     name: Deploy to dev EC2
     needs: ready-to-deploy
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     steps:
       - uses: actions/checkout@v4
 
       - name: Sync repo to EC2
         uses: burnett01/rsync-deployments@7.0.1
         with:
-          # .env holds the server's own settings (storage bucket, secrets) and must survive deploys.
+          # .env holds the server's own settings (storage bucket, secrets, image tag) and must survive deploys.
           switches: -avz --delete --exclude=.git --exclude=.env
           path: ./
           remote_path: ~/backend/
@@ -252,23 +291,35 @@ jobs:
           remote_user: ${{ secrets.EC2_USER }}
           remote_key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
 
-      - name: Rebuild and restart stack
+      - name: Pull the new image and restart
         uses: appleboy/ssh-action@v1
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+          ZIFIQ_IMAGE: ghcr.io/azif-tech-solutions/backend:${{ github.sha }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-          # Default command_timeout (10m) isn't enough for a Gradle/Kotlin compile on a
-          # memory-constrained dev box -- give it real headroom rather than guessing lower.
-          command_timeout: 30m
-          # The dev box has a 30 GB disk and builds the image itself, so Docker's build cache grows
-          # with every deploy until the disk fills ("No space left on device"). Keep it under 2 GB
-          # (recent layers, e.g. downloaded Gradle dependencies, stay cached) before and after the build.
+          envs: GHCR_TOKEN,GHCR_USER,ZIFIQ_IMAGE
+          command_timeout: 15m
           script: |
             set -e
             cd ~/backend
-            docker builder prune -f --max-used-space 2gb
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+            docker pull "$ZIFIQ_IMAGE"
+            docker logout ghcr.io
+            # Record the deployed image in the box's .env, so a manual `docker compose up -d` there runs it too.
+            touch .env
+            if grep -q '^ZIFIQ_IMAGE=' .env; then sed -i "s|^ZIFIQ_IMAGE=.*|ZIFIQ_IMAGE=$ZIFIQ_IMAGE|" .env; else echo "ZIFIQ_IMAGE=$ZIFIQ_IMAGE" >> .env; fi
+            docker compose up -d --no-build
+            echo "Waiting for the new container to report healthy..."
+            for _ in $(seq 1 60); do
+              if curl -sf http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then echo "Healthy: $ZIFIQ_IMAGE"; break; fi
+              sleep 5
+            done
+            curl -sf http://localhost:8080/actuator/health | grep -q '"status":"UP"' || { echo "Not healthy after 5 minutes"; docker compose logs --tail 150 backend; exit 1; }
+            # Keep a week of images for rollbacks; nothing is built here any more, so drop any build cache.
+            docker image prune -af --filter "until=168h"
+            docker builder prune -af
             df -h /
-            docker compose up --build -d
-            docker image prune -f
-            docker builder prune -f --max-used-space 2gb

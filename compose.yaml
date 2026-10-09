@@ -19,6 +19,9 @@ services:
       retries: 10
 
   backend:
+    # The dev server runs the image CI built and published (ZIFIQ_IMAGE in its .env, set by the deploy);
+    # locally and in CI's smoke test `docker compose up --build` builds it from source instead.
+    image: ${ZIFIQ_IMAGE:-zifiq-backend:local}
     build: .
     environment:
       DATABASE_URL: jdbc:postgresql://postgres:5432/zifiq
