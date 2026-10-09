@@ -261,8 +261,14 @@ jobs:
           # Default command_timeout (10m) isn't enough for a Gradle/Kotlin compile on a
           # memory-constrained dev box -- give it real headroom rather than guessing lower.
           command_timeout: 30m
+          # The dev box has a 30 GB disk and builds the image itself, so Docker's build cache grows
+          # with every deploy until the disk fills ("No space left on device"). Keep it under 2 GB
+          # (recent layers, e.g. downloaded Gradle dependencies, stay cached) before and after the build.
           script: |
             set -e
             cd ~/backend
+            docker builder prune -f --max-used-space 2gb
+            df -h /
             docker compose up --build -d
             docker image prune -f
+            docker builder prune -f --max-used-space 2gb
