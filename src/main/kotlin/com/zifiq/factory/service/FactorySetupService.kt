@@ -16,6 +16,7 @@ import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.insertAndGetId
+import org.jetbrains.exposed.sql.lowerCase
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
 import org.springframework.stereotype.Service
@@ -59,7 +60,10 @@ class FactorySetupService(
 
     fun createFactory(request: FactoryRequest): FactorySummary = tenantScopedTransaction.execute {
         val actor = currentActorProvider.current()
-        val code = request.code?.trim()?.takeIf(String::isNotEmpty) ?: documentSequenceService.next("FAC")
+        // Location codes are unique across factories, showrooms and areas.
+        val code = uniqueCode(request.code, "FAC") { candidate ->
+            LocationsTable.selectAll().where { (LocationsTable.tenantId eq actor.tenantId) and (LocationsTable.code eq candidate) }.empty().not()
+        }
 
         val id = LocationsTable.insertAndGetId {
             it[LocationsTable.tenantId] = actor.tenantId
@@ -130,7 +134,9 @@ class FactorySetupService(
 
     fun registerSupplier(request: SupplierRegistrationRequest): SupplierSummary = tenantScopedTransaction.execute {
         val actor = currentActorProvider.current()
-        val code = request.supplierCode?.trim()?.takeIf(String::isNotEmpty) ?: documentSequenceService.next("SUP")
+        val code = uniqueCode(request.supplierCode, "SUP") { candidate ->
+            SuppliersTable.selectAll().where { (SuppliersTable.tenantId eq actor.tenantId) and (SuppliersTable.code eq candidate) }.empty().not()
+        }
         val id = SuppliersTable.insertAndGetId {
             it[SuppliersTable.tenantId] = actor.tenantId
             it[SuppliersTable.code] = code
@@ -165,7 +171,9 @@ class FactorySetupService(
 
     fun registerManufacturer(request: ManufacturerRequest): ManufacturerSummary = tenantScopedTransaction.execute {
         val actor = currentActorProvider.current()
-        val code = request.manufacturerCode?.trim()?.takeIf(String::isNotEmpty) ?: documentSequenceService.next("MFR")
+        val code = uniqueCode(request.manufacturerCode, "MFR") { candidate ->
+            ManufacturersTable.selectAll().where { (ManufacturersTable.tenantId eq actor.tenantId) and (ManufacturersTable.code eq candidate) }.empty().not()
+        }
         val id = ManufacturersTable.insertAndGetId {
             it[ManufacturersTable.tenantId] = actor.tenantId
             it[ManufacturersTable.code] = code
@@ -198,6 +206,10 @@ class FactorySetupService(
 
     fun addUnitOfMeasure(request: UnitOfMeasureRequest): UnitOfMeasureSummary = tenantScopedTransaction.execute {
         val tenantId = currentActorProvider.current().tenantId
+        val unitCode = request.unitCode.trim()
+        val taken = UnitsOfMeasureTable.selectAll()
+            .where { (UnitsOfMeasureTable.tenantId eq tenantId) and (UnitsOfMeasureTable.code.lowerCase() eq unitCode.lowercase()) }.empty().not()
+        if (taken) throw ApiErrors.duplicateCode(unitCode)
         val id = UnitsOfMeasureTable.insertAndGetId {
             it[UnitsOfMeasureTable.tenantId] = tenantId
             it[UnitsOfMeasureTable.code] = request.unitCode.trim()
@@ -226,13 +238,33 @@ class FactorySetupService(
 
     fun addCategory(request: CategoryRegistrationRequest): CategorySummary = tenantScopedTransaction.execute {
         val tenantId = currentActorProvider.current().tenantId
+        val name = request.name.trim()
+        val type = request.type.trim().uppercase()
+        // Names are unique per company regardless of case ("Beverages" and "beverages" are the same group).
+        val taken = CategoriesTable.selectAll()
+            .where { (CategoriesTable.tenantId eq tenantId) and (CategoriesTable.name.lowerCase() eq name.lowercase()) }.empty().not()
+        if (taken) throw ApiErrors.duplicateName(name)
+        val description = request.description?.trim()?.takeIf(String::isNotEmpty)
         val id = CategoriesTable.insertAndGetId {
             it[CategoriesTable.tenantId] = tenantId
-            it[CategoriesTable.name] = request.name.trim()
-            it[CategoriesTable.type] = request.type
-            it[CategoriesTable.description] = request.description?.trim()?.takeIf(String::isNotEmpty)
+            it[CategoriesTable.name] = name
+            it[CategoriesTable.type] = type
+            it[CategoriesTable.description] = description
             it[CategoriesTable.createdAt] = Instant.now()
         }.value
-        CategorySummary(id, request.name.trim(), request.type, request.description)
+        CategorySummary(id, name, type, description)
+    }
+
+    /**
+     * A code typed by the user must be free (409 DUPLICATE_CODE); a generated one skips any code a
+     * user already typed by hand (e.g. "FAC-3"), so the sequence never collides.
+     */
+    private fun uniqueCode(requested: String?, prefix: String, taken: (String) -> Boolean): String {
+        val typed = requested?.trim()?.takeIf(String::isNotEmpty)
+        if (typed != null) {
+            if (taken(typed)) throw ApiErrors.duplicateCode(typed)
+            return typed
+        }
+        return generateSequence { documentSequenceService.next(prefix) }.first { !taken(it) }
     }
 }

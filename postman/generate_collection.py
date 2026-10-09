@@ -312,7 +312,19 @@ ep("06 - Factory Setup", "Register Category", "POST", "/api/v1/factory/setup/cat
    body={"name": "Chemicals", "type": "RAW_MATERIAL", "description": "Raw chemical inputs"},
    resp={"data": {"id": "{{categoryId}}", "name": "Chemicals", "type": "RAW_MATERIAL", "description": "Raw chemical inputs"}},
    tests=["const json = pm.response.json();", "pm.collectionVariables.set('categoryId', json.data.id);"],
-   desc="type is one of FINISHED_PRODUCT, RAW_MATERIAL, PACKAGING.")
+   desc="type is one of FINISHED_PRODUCT, RAW_MATERIAL, PACKAGING (case-insensitive). Names are unique per company, ignoring case (409 DUPLICATE_NAME).")
+
+ep("06 - Factory Setup", "Register Category (error: duplicate name)", "POST", "/api/v1/factory/setup/categories",
+   body={"name": "chemicals", "type": "RAW_MATERIAL"},
+   status=409, status_text="Conflict", resp={"error": {"code": "DUPLICATE_NAME", "message": "'chemicals' is already in use", "details": {"name": "chemicals"}}},
+   expect_error={"status": 409, "code": "DUPLICATE_NAME"},
+   desc="'Chemicals' already exists; names are compared ignoring case.")
+
+ep("06 - Factory Setup", "Register Category (error: unknown type)", "POST", "/api/v1/factory/setup/categories",
+   body={"name": "Bottles", "type": "PACKAGING_MATERIAL"},
+   status=400, status_text="Bad Request",
+   resp={"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"type": "must be FINISHED_PRODUCT, RAW_MATERIAL or PACKAGING"}}},
+   expect_error={"status": 400, "code": "VALIDATION_FAILED"})
 
 ep("06 - Factory Setup", "List Categories", "GET", "/api/v1/factory/setup/categories",
    resp={"data": [{"id": "{{categoryId}}", "name": "Chemicals", "type": "RAW_MATERIAL", "description": "Raw chemical inputs"}]})

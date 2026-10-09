@@ -69,11 +69,24 @@ class GlobalExceptionHandler {
     /**
      * SQLSTATE 57014 (query_canceled) is what PostgreSQL raises when a search exceeds the
      * transaction-local statement_timeout set by `Paging.limitStatementTime` — a user-fixable
-     * "narrow your filters", not a server fault. Every other database error stays an internal error.
+     * "narrow your filters", not a server fault. Constraint violations become 409/400; every other
+     * database error stays an internal error.
      */
     @ExceptionHandler(ExposedSQLException::class)
     fun handleDatabaseError(exception: ExposedSQLException): ResponseEntity<ApiErrorEnvelope> {
         if (exception.sqlState == QUERY_CANCELED_SQLSTATE) return toResponse(ApiErrors.searchTimeout())
+        // Constraint violations are client errors that slipped past service-level checks: report
+        // them as such (and log them, since each one is a missing validation worth adding).
+        val mapped = when (exception.sqlState) {
+            "23505" -> ApiErrors.duplicateRecord()             // unique_violation
+            "23514", "22001", "22003" -> ApiErrors.valueNotAllowed() // check_violation, string too long, numeric overflow
+            "23503" -> ApiErrors.referencedRecordMissing()     // foreign_key_violation
+            else -> null
+        }
+        if (mapped != null) {
+            logger.warn("Database constraint {} rejected a request: {}", exception.sqlState, exception.cause?.message?.lineSequence()?.firstOrNull())
+            return toResponse(mapped)
+        }
         logger.error("Unhandled database failure", exception)
         return toResponse(ApiErrors.internalError())
     }

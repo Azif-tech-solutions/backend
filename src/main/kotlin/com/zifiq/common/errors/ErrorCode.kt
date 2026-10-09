@@ -133,6 +133,8 @@ enum class ErrorCode {
 
     // ---- Generic, reused by later modules ----
     DUPLICATE_NAME,
+    DUPLICATE_CODE,
+    DUPLICATE_RECORD,
     INVALID_STATUS_TRANSITION,
     INVALID_LOCATION,
 

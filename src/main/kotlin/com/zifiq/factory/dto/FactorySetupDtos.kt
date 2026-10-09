@@ -1,21 +1,23 @@
 package com.zifiq.factory.dto
 
+import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Pattern
+import jakarta.validation.constraints.Size
 import java.math.BigDecimal
 import java.util.UUID
 
 // ---- Factory Setup: Factories ----
 
 data class FactoryRequest(
-    val code: String?,
-    @field:NotBlank val name: String,
-    val address: String?,
-    val state: String?,
-    val phone: String?,
-    val vatRate: BigDecimal?,
+    @field:Size(max = 40) val code: String?,
+    @field:NotBlank @field:Size(max = 160) val name: String,
+    @field:Size(max = 300) val address: String?,
+    @field:Size(max = 80) val state: String?,
+    @field:Size(max = 40) val phone: String?,
+    @field:jakarta.validation.constraints.DecimalMin("0") @field:jakarta.validation.constraints.DecimalMax("100") val vatRate: BigDecimal?,
     val vatEnabled: Boolean?,
-    val vatRegistrationNumber: String?,
+    @field:Size(max = 60) val vatRegistrationNumber: String?,
     /**
      * Optional on create (default ACTIVE) and on update (absent = unchanged). Without this field a
      * client saving the whole edit form with `"status": "SUSPENDED"` got a 200 while Jackson
@@ -45,10 +47,10 @@ data class FactorySummary(
 // ---- Factory Setup: Suppliers ----
 
 data class SupplierRegistrationRequest(
-    val supplierCode: String?,
-    @field:NotBlank val companyName: String,
-    @field:NotBlank val contactEmail: String,
-    val phone: String?,
+    @field:Size(max = 40) val supplierCode: String?,
+    @field:NotBlank @field:Size(max = 160) val companyName: String,
+    @field:NotBlank @field:Email @field:Size(max = 320) val contactEmail: String,
+    @field:Size(max = 40) val phone: String?,
 )
 
 data class SupplierSummary(
@@ -62,12 +64,12 @@ data class SupplierSummary(
 // ---- Factory Setup: Manufacturers ----
 
 data class ManufacturerRequest(
-    val manufacturerCode: String?,
-    @field:NotBlank val name: String,
-    val country: String?,
-    val contactEmail: String?,
-    val phone: String?,
-    val produces: String?,
+    @field:Size(max = 40) val manufacturerCode: String?,
+    @field:NotBlank @field:Size(max = 160) val name: String,
+    @field:Size(max = 80) val country: String?,
+    @field:Email @field:Size(max = 320) val contactEmail: String?,
+    @field:Size(max = 40) val phone: String?,
+    @field:Size(max = 300) val produces: String?,
 )
 
 data class ManufacturerSummary(
@@ -84,9 +86,9 @@ data class ManufacturerSummary(
 // ---- Factory Setup: Units of Measure ----
 
 data class UnitOfMeasureRequest(
-    @field:NotBlank val unitCode: String,
-    @field:NotBlank val unitName: String,
-    val symbol: String?,
+    @field:NotBlank @field:Size(max = 20) val unitCode: String,
+    @field:NotBlank @field:Size(max = 80) val unitName: String,
+    @field:Size(max = 10) val symbol: String?,
 )
 
 data class UnitOfMeasureSummary(
@@ -99,9 +101,10 @@ data class UnitOfMeasureSummary(
 // ---- Factory Setup: Categories ----
 
 data class CategoryRegistrationRequest(
-    @field:NotBlank val name: String,
-    val type: String = "FINISHED_PRODUCT", // FINISHED_PRODUCT, RAW_MATERIAL, PACKAGING
-    val description: String?,
+    @field:NotBlank @field:Size(max = 120) val name: String,
+    @field:Pattern(regexp = "(?i)FINISHED_PRODUCT|RAW_MATERIAL|PACKAGING", message = "must be FINISHED_PRODUCT, RAW_MATERIAL or PACKAGING")
+    val type: String = "FINISHED_PRODUCT",
+    @field:Size(max = 300) val description: String?,
 )
 
 data class CategorySummary(

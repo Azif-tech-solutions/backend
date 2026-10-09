@@ -180,7 +180,7 @@ npx newman run postman/ZifIQ-API.postman_collection.json -e postman/ZifIQ-Dev.po
   --folder "01 - Auth" --folder "12 - Customers"
 ```
 
-A clean full run reports `214/214` requests and `259/259` assertions
+A clean full run reports `216/216` requests and `261/261` assertions
 passing. Several requests are *deliberately* run against a state that makes
 them fail. These are not bugs: they demonstrate real error paths on purpose,
 so each gets its own status + error-code assertion instead of the generic
