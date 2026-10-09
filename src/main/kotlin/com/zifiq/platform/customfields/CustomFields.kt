@@ -30,6 +30,25 @@ object CustomFieldDefinitionsTable : UUIDTable("custom_field_definitions") {
     val createdAt = timestamp("created_at")
 }
 
+/**
+ * Implemented by each module that stores `custom_attributes` for an entity type, so Settings can
+ * show how a field is used and guard edits (docs/06 §4.5) without depending on that module. Every
+ * method runs in the caller's tenant-scoped transaction. An entity type with no implementation
+ * stores no values yet, so every count is zero.
+ */
+interface CustomAttributeUsage {
+    val entity: CustomFieldEntity
+
+    /** Records holding a value, per field key. */
+    fun counts(): Map<String, Long>
+
+    /** Records whose value for [fieldKey] equals [value] (case-insensitive): a SELECT option in use. */
+    fun countWithValue(fieldKey: String, value: String): Long
+
+    /** Live (not removed) records with no value for [fieldKey]: what would break if it became required. */
+    fun countMissing(fieldKey: String): Long
+}
+
 data class CustomFieldDefinition(
     val key: String,
     val label: String,

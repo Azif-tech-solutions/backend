@@ -20,6 +20,7 @@ data class ModuleSettingView(
     val updatedAt: Instant?,
 )
 
-data class ModuleSettingsGroup(val module: String, val settings: List<ModuleSettingView>)
+/** [editable]: the caller may change these (settings.module-settings.manage); otherwise they're shown read-only. */
+data class ModuleSettingsGroup(val module: String, val editable: Boolean, val settings: List<ModuleSettingView>)
 
 data class ModuleSettingUpdateRequest(@field:NotNull val value: JsonNode?)

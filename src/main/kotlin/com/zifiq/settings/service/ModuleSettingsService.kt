@@ -3,6 +3,7 @@ package com.zifiq.settings.service
 import com.fasterxml.jackson.databind.JsonNode
 import com.zifiq.platform.events.DomainEvents
 import com.zifiq.platform.security.CurrentActorProvider
+import com.zifiq.platform.security.PermissionAuthorizer
 import com.zifiq.platform.settings.ModuleSettings
 import com.zifiq.platform.settings.SettingValue
 import com.zifiq.platform.tenancy.TenantScopedTransaction
@@ -18,12 +19,32 @@ class ModuleSettingsService(
     private val tenantScopedTransaction: TenantScopedTransaction,
     private val currentActorProvider: CurrentActorProvider,
     private val domainEvents: DomainEvents,
+    private val permissionAuthorizer: PermissionAuthorizer,
 ) {
-    fun list(): List<ModuleSettingsGroup> = tenantScopedTransaction.execute {
-        moduleSettings.values()
-            .groupBy { it.definition.module }
-            .map { (module, values) -> ModuleSettingsGroup(module, values.map(::view)) }
-            .sortedBy { it.module }
+    /**
+     * Holders of `settings.module-settings.manage` see (and may change) every setting. Anyone else
+     * sees, read-only, the settings of modules where they hold a `<module>.….manage` permission
+     * (docs/06 §4.4). [modified]: only settings changed from their default.
+     */
+    fun list(q: String? = null, modules: Set<String> = emptySet(), types: Set<String> = emptySet(), modified: Boolean? = null): List<ModuleSettingsGroup> =
+        tenantScopedTransaction.execute {
+            val visibility = visibility()
+            val words = SettingsText.words(q)
+            moduleSettings.values()
+                .filter { visibility.canSee(it.definition.module) }
+                .filter { modules.isEmpty() || modules.any { m -> m.equals(it.definition.module, ignoreCase = true) } }
+                .filter { types.isEmpty() || types.any { t -> t.equals(it.definition.type.name, ignoreCase = true) } }
+                .filter { modified == null || it.isDefault != modified }
+                .filter { SettingsText.matches(words, it.definition.key, it.definition.label, it.definition.module) }
+                .groupBy { it.definition.module }
+                .map { (module, values) -> ModuleSettingsGroup(module, visibility.canEdit, values.sortedBy { it.definition.label }.map(::view)) }
+                .sortedBy { it.module }
+        }
+
+    /** Which modules' settings the current user may see. */
+    fun visibility(): SettingsVisibility {
+        val permissions = permissionAuthorizer.permissions(currentActorProvider.current().userId)
+        return SettingsVisibility(permissions)
     }
 
     fun update(key: String, value: JsonNode): ModuleSettingView = tenantScopedTransaction.execute {
@@ -66,4 +87,17 @@ class ModuleSettingsService(
         updatedByUserId = value.updatedByUserId,
         updatedAt = value.updatedAt,
     )
+}
+
+class SettingsVisibility(private val permissions: Set<String>) {
+    val canEdit: Boolean = MANAGE in permissions
+
+    fun has(permission: String): Boolean = permission in permissions
+
+    fun canSee(module: String): Boolean =
+        canEdit || permissions.any { it.startsWith("$module.") && it.endsWith(".manage") }
+
+    companion object {
+        const val MANAGE = "settings.module-settings.manage"
+    }
 }

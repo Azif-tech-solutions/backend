@@ -69,6 +69,15 @@ Every request also carries one saved example response showing the exact
 description of what it does, its permission, and the optional
 query/body fields it accepts.
 
+## Testing the Settings module (folder 05)
+
+Folder **05 - Settings** (19 requests) needs only **01 - Auth > Register Tenant**.
+Run it top to bottom: A company profile and logo, B onboarding, C module
+settings, D custom fields, E settings search. The logo upload uses
+`postman/fixtures/company-logo.png`; in the Postman app pick any PNG or JPEG
+under 512 KB for the `file` field. C4 resets the inventory OTP threshold so
+the later Inventory folders see the default.
+
 ## Testing the Customers module (folder 12)
 
 Folder **12 - Customers** covers every Customers endpoint (64 requests). It
@@ -180,7 +189,7 @@ npx newman run postman/ZifIQ-API.postman_collection.json -e postman/ZifIQ-Dev.po
   --folder "01 - Auth" --folder "12 - Customers"
 ```
 
-A clean full run reports `216/216` requests and `261/261` assertions
+A clean full run reports `233/233` requests and `289/289` assertions
 passing. Several requests are *deliberately* run against a state that makes
 them fail. These are not bugs: they demonstrate real error paths on purpose,
 so each gets its own status + error-code assertion instead of the generic

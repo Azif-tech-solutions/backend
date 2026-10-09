@@ -2485,7 +2485,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"4d86b771-762e-4228-a9e9-8b545a30846f\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"f546068a-1eaa-488a-82ad-b814c73d8e7a\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -2576,7 +2576,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"ba624947-1bfa-4d8f-b178-96f18901b4ae\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"9f44f5fd-7236-4564-9214-a834f4eabd91\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -2786,7 +2786,7 @@
       "name": "05 - Settings",
       "item": [
         {
-          "name": "Get Company Settings",
+          "name": "A1 Get Company Profile",
           "request": {
             "method": "GET",
             "header": [],
@@ -2802,6 +2802,958 @@
                 "company"
               ]
             },
+            "description": "Any member can read it (every screen shows the company name). Every company gets a profile when it registers, named after the company. nrsReadiness lists the e-invoicing issuer fields still empty: informational only, nothing is blocked this phase.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('the profile starts from the registered company name', () => pm.expect(json.data.tradingName).to.be.a('string').and.not.empty);",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "A1 Get Company Profile - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/settings/company",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "settings",
+                    "company"
+                  ]
+                },
+                "description": "Any member can read it (every screen shows the company name). Every company gets a profile when it registers, named after the company. nrsReadiness lists the e-invoicing issuer fields still empty: informational only, nothing is blocked this phase.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"tradingName\": \"Apex Industries\",\n    \"legalName\": null,\n    \"registrationNumber\": null,\n    \"tin\": null,\n    \"vatRegistrationNumber\": null,\n    \"nrsBusinessId\": null,\n    \"businessDescription\": null,\n    \"email\": null,\n    \"phone\": \"\",\n    \"website\": null,\n    \"streetAddress\": \"\",\n    \"city\": null,\n    \"postalCode\": null,\n    \"stateCode\": null,\n    \"stateName\": null,\n    \"lgaCode\": null,\n    \"lgaName\": null,\n    \"countryCode\": \"NG\",\n    \"hasLogo\": false,\n    \"logoUpdatedAt\": null,\n    \"documentFooter\": null,\n    \"financialYearStartMonth\": 1,\n    \"nrsReadiness\": {\n      \"ready\": false,\n      \"missing\": [\n        \"tin\",\n        \"email\",\n        \"streetAddress\",\n        \"stateCode\",\n        \"lgaCode\",\n        \"nrsBusinessId\",\n        \"businessDescription\"\n      ]\n    },\n    \"updatedBy\": null,\n    \"updatedAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "A2 Update Company Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/settings/company",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "settings",
+                "company"
+              ]
+            },
+            "description": "Perm settings.manage. Replaces the whole profile: optional fields left out are cleared. Required: tradingName (2-200), phone, streetAddress. tin is 6-30 letters/digits/hyphens (stored upper-case); website must start with http(s)://; the LGA must belong to the state. New documents use the new values at once; documents already issued keep the issuer they were issued with.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tradingName\": \"Apex Industries Ltd\",\n  \"legalName\": \"Apex Industries Limited\",\n  \"registrationNumber\": \"RC-1849302\",\n  \"tin\": \"33467982-0001\",\n  \"vatRegistrationNumber\": \"NG-VAT-4471029\",\n  \"businessDescription\": \"Beverage manufacturing and distribution\",\n  \"email\": \"info@apex.ng\",\n  \"phone\": \"+234 803 412 7781\",\n  \"website\": \"https://apex.ng\",\n  \"streetAddress\": \"12 Industrial Way\",\n  \"city\": \"Aba\",\n  \"postalCode\": \"450001\",\n  \"stateCode\": \"NG-AB\",\n  \"lgaCode\": \"NG-AB-ANO\",\n  \"countryCode\": \"NG\",\n  \"documentFooter\": \"Goods sold in good condition are not returnable except under our returns policy.\",\n  \"financialYearStartMonth\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('state and LGA names are resolved', () => { pm.expect(json.data.stateName).to.eql('Abia'); pm.expect(json.data.lgaName).to.eql('Aba North'); });",
+                  "    pm.test('only the NRS business id is still missing', () => pm.expect(json.data.nrsReadiness.missing).to.eql(['nrsBusinessId']));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "A2 Update Company Profile - 200 OK",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/settings/company",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "settings",
+                    "company"
+                  ]
+                },
+                "description": "Perm settings.manage. Replaces the whole profile: optional fields left out are cleared. Required: tradingName (2-200), phone, streetAddress. tin is 6-30 letters/digits/hyphens (stored upper-case); website must start with http(s)://; the LGA must belong to the state. New documents use the new values at once; documents already issued keep the issuer they were issued with.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"tradingName\": \"Apex Industries Ltd\",\n  \"legalName\": \"Apex Industries Limited\",\n  \"registrationNumber\": \"RC-1849302\",\n  \"tin\": \"33467982-0001\",\n  \"vatRegistrationNumber\": \"NG-VAT-4471029\",\n  \"businessDescription\": \"Beverage manufacturing and distribution\",\n  \"email\": \"info@apex.ng\",\n  \"phone\": \"+234 803 412 7781\",\n  \"website\": \"https://apex.ng\",\n  \"streetAddress\": \"12 Industrial Way\",\n  \"city\": \"Aba\",\n  \"postalCode\": \"450001\",\n  \"stateCode\": \"NG-AB\",\n  \"lgaCode\": \"NG-AB-ANO\",\n  \"countryCode\": \"NG\",\n  \"documentFooter\": \"Goods sold in good condition are not returnable except under our returns policy.\",\n  \"financialYearStartMonth\": 1\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"tradingName\": \"Apex Industries Ltd\",\n    \"legalName\": \"Apex Industries Limited\",\n    \"registrationNumber\": \"RC-1849302\",\n    \"tin\": \"33467982-0001\",\n    \"vatRegistrationNumber\": \"NG-VAT-4471029\",\n    \"nrsBusinessId\": null,\n    \"businessDescription\": \"Beverage manufacturing and distribution\",\n    \"email\": \"info@apex.ng\",\n    \"phone\": \"+234 803 412 7781\",\n    \"website\": \"https://apex.ng\",\n    \"streetAddress\": \"12 Industrial Way\",\n    \"city\": \"Aba\",\n    \"postalCode\": \"450001\",\n    \"stateCode\": \"NG-AB\",\n    \"stateName\": \"Abia\",\n    \"lgaCode\": \"NG-AB-ANO\",\n    \"lgaName\": \"Aba North\",\n    \"countryCode\": \"NG\",\n    \"hasLogo\": false,\n    \"logoUpdatedAt\": null,\n    \"documentFooter\": \"Goods sold in good condition are not returnable except under our returns policy.\",\n    \"financialYearStartMonth\": 1,\n    \"nrsReadiness\": {\n      \"ready\": false,\n      \"missing\": [\n        \"nrsBusinessId\"\n      ]\n    },\n    \"updatedBy\": \"Alice Admin\",\n    \"updatedAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "A3 Update Company Profile (error: LGA not in state)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/settings/company",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "settings",
+                "company"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tradingName\": \"Apex Industries Ltd\",\n  \"legalName\": \"Apex Industries Limited\",\n  \"registrationNumber\": \"RC-1849302\",\n  \"tin\": \"33467982-0001\",\n  \"vatRegistrationNumber\": \"NG-VAT-4471029\",\n  \"businessDescription\": \"Beverage manufacturing and distribution\",\n  \"email\": \"info@apex.ng\",\n  \"phone\": \"+234 803 412 7781\",\n  \"website\": \"https://apex.ng\",\n  \"streetAddress\": \"12 Industrial Way\",\n  \"city\": \"Aba\",\n  \"postalCode\": \"450001\",\n  \"stateCode\": \"NG-LA\",\n  \"lgaCode\": \"NG-AB-ANO\",\n  \"countryCode\": \"NG\",\n  \"documentFooter\": \"Goods sold in good condition are not returnable except under our returns policy.\",\n  \"financialYearStartMonth\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 400 INVALID_LGA_CODE', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('INVALID_LGA_CODE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "A3 Update Company Profile (error: LGA not in state) - 400 Bad Request",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/settings/company",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "settings",
+                    "company"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"tradingName\": \"Apex Industries Ltd\",\n  \"legalName\": \"Apex Industries Limited\",\n  \"registrationNumber\": \"RC-1849302\",\n  \"tin\": \"33467982-0001\",\n  \"vatRegistrationNumber\": \"NG-VAT-4471029\",\n  \"businessDescription\": \"Beverage manufacturing and distribution\",\n  \"email\": \"info@apex.ng\",\n  \"phone\": \"+234 803 412 7781\",\n  \"website\": \"https://apex.ng\",\n  \"streetAddress\": \"12 Industrial Way\",\n  \"city\": \"Aba\",\n  \"postalCode\": \"450001\",\n  \"stateCode\": \"NG-LA\",\n  \"lgaCode\": \"NG-AB-ANO\",\n  \"countryCode\": \"NG\",\n  \"documentFooter\": \"Goods sold in good condition are not returnable except under our returns policy.\",\n  \"financialYearStartMonth\": 1\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"INVALID_LGA_CODE\",\n    \"message\": \"Unknown LGA code, or the LGA is not in the selected state\",\n    \"details\": {}\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "A4 Upload Company Logo",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/settings/company/logo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "settings",
+                "company",
+                "logo"
+              ]
+            },
+            "description": "multipart/form-data, part `file`: a PNG or JPEG of at most 512 KB. The type is checked from the file's content, not its name; SVG is refused because it can carry script. Newman uses postman/fixtures/company-logo.png.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "postman/fixtures/company-logo.png"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('logo is set', () => pm.expect(json.data.hasLogo).to.eql(true));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "A4 Upload Company Logo - 200 OK",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/settings/company/logo",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "settings",
+                    "company",
+                    "logo"
+                  ]
+                },
+                "description": "multipart/form-data, part `file`: a PNG or JPEG of at most 512 KB. The type is checked from the file's content, not its name; SVG is refused because it can carry script. Newman uses postman/fixtures/company-logo.png.",
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": "postman/fixtures/company-logo.png"
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"tradingName\": \"Apex Industries Ltd\",\n    \"legalName\": \"Apex Industries Limited\",\n    \"registrationNumber\": \"RC-1849302\",\n    \"tin\": \"33467982-0001\",\n    \"vatRegistrationNumber\": \"NG-VAT-4471029\",\n    \"nrsBusinessId\": null,\n    \"businessDescription\": \"Beverage manufacturing and distribution\",\n    \"email\": \"info@apex.ng\",\n    \"phone\": \"+234 803 412 7781\",\n    \"website\": \"https://apex.ng\",\n    \"streetAddress\": \"12 Industrial Way\",\n    \"city\": \"Aba\",\n    \"postalCode\": \"450001\",\n    \"stateCode\": \"NG-AB\",\n    \"stateName\": \"Abia\",\n    \"lgaCode\": \"NG-AB-ANO\",\n    \"lgaName\": \"Aba North\",\n    \"countryCode\": \"NG\",\n    \"hasLogo\": true,\n    \"logoUpdatedAt\": \"2026-10-01T10:15:30Z\",\n    \"documentFooter\": \"Goods sold in good condition are not returnable except under our returns policy.\",\n    \"financialYearStartMonth\": 1,\n    \"nrsReadiness\": {\n      \"ready\": false,\n      \"missing\": [\n        \"nrsBusinessId\"\n      ]\n    },\n    \"updatedBy\": \"Alice Admin\",\n    \"updatedAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "A5 Upload Company Logo (error: not an image)",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/settings/company/logo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "settings",
+                "company",
+                "logo"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "postman/fixtures/sample-attachment.pdf"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 400 INVALID_LOGO', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('INVALID_LOGO');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "A5 Upload Company Logo (error: not an image) - 400 Bad Request",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/settings/company/logo",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "settings",
+                    "company",
+                    "logo"
+                  ]
+                },
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": "postman/fixtures/sample-attachment.pdf"
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"INVALID_LOGO\",\n    \"message\": \"The logo must be a PNG or JPEG image\",\n    \"details\": {}\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "A6 Get Company Logo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/settings/company/logo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "settings",
+                "company",
+                "logo"
+              ]
+            },
+            "description": "Streams the image with its own content type (cached privately for 5 minutes). 404 LOGO_NOT_SET when there is none. DELETE on the same path removes it (perm settings.manage).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('response is image/png', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('image/png'));"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "A6 Get Company Logo - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/settings/company/logo",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "settings",
+                    "company",
+                    "logo"
+                  ]
+                },
+                "description": "Streams the image with its own content type (cached privately for 5 minutes). 404 LOGO_NOT_SET when there is none. DELETE on the same path removes it (perm settings.manage).",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "(binary image/png)"
+            }
+          ]
+        },
+        {
+          "name": "B1 Get Onboarding Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/settings/onboarding",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "settings",
+                "onboarding"
+              ]
+            },
+            "description": "COMPANY is done once trading name, phone and street address are set; BRANCH once the company has a showroom; FACTORY once it has a factory.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('company step is done after A2', () => pm.expect(json.data.steps[0]).to.include({key: 'COMPANY', done: true}));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "B1 Get Onboarding Status - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/settings/onboarding",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "settings",
+                    "onboarding"
+                  ]
+                },
+                "description": "COMPANY is done once trading name, phone and street address are set; BRANCH once the company has a showroom; FACTORY once it has a factory.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"completed\": false,\n    \"completedAt\": null,\n    \"steps\": [\n      {\n        \"key\": \"COMPANY\",\n        \"done\": true,\n        \"skipped\": false\n      },\n      {\n        \"key\": \"BRANCH\",\n        \"done\": false,\n        \"skipped\": false\n      },\n      {\n        \"key\": \"FACTORY\",\n        \"done\": false,\n        \"skipped\": false\n      }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "B2 Complete Onboarding (error: unfinished step not skipped)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/settings/onboarding/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "settings",
+                "onboarding",
+                "complete"
+              ]
+            },
+            "description": "Every step must be done or listed in skippedSteps. No showroom exists yet at this point of the run, so BRANCH is unfinished.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"skippedSteps\": [\n    \"FACTORY\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 409 ONBOARDING_INCOMPLETE', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('ONBOARDING_INCOMPLETE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "B2 Complete Onboarding (error: unfinished step not skipped) - 409 Conflict",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/settings/onboarding/complete",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "settings",
+                    "onboarding",
+                    "complete"
+                  ]
+                },
+                "description": "Every step must be done or listed in skippedSteps. No showroom exists yet at this point of the run, so BRANCH is unfinished.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"skippedSteps\": [\n    \"FACTORY\"\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"ONBOARDING_INCOMPLETE\",\n    \"message\": \"Complete the company details before finishing onboarding\",\n    \"details\": {\n      \"missing\": \"BRANCH\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "B3 Complete Onboarding",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/settings/onboarding/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "settings",
+                "onboarding",
+                "complete"
+              ]
+            },
+            "description": "Perm settings.manage. Only BRANCH and FACTORY can be skipped. The wizard's branch and factory forms call the Showroom and Factory Setup create endpoints.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"skippedSteps\": [\n    \"BRANCH\",\n    \"FACTORY\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('completed', () => pm.expect(json.data.completed).to.eql(true));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "B3 Complete Onboarding - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/settings/onboarding/complete",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "settings",
+                    "onboarding",
+                    "complete"
+                  ]
+                },
+                "description": "Perm settings.manage. Only BRANCH and FACTORY can be skipped. The wizard's branch and factory forms call the Showroom and Factory Setup create endpoints.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"skippedSteps\": [\n    \"BRANCH\",\n    \"FACTORY\"\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"completed\": true,\n    \"completedAt\": \"2026-10-01T10:15:30Z\",\n    \"steps\": [\n      {\n        \"key\": \"COMPANY\",\n        \"done\": true,\n        \"skipped\": false\n      },\n      {\n        \"key\": \"BRANCH\",\n        \"done\": false,\n        \"skipped\": true\n      },\n      {\n        \"key\": \"FACTORY\",\n        \"done\": false,\n        \"skipped\": true\n      }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "C1 List Module Settings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/settings/module-settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "settings",
+                "module-settings"
+              ]
+            },
+            "description": "Grouped by module. Holders of settings.module-settings.manage see and may change everything; anyone else sees, read-only (editable: false), the settings of modules where they hold a <module>.*.manage permission. Filters: q (key, label, module), module, type, modified=true (changed from default).",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -2826,12 +3778,12 @@
           ],
           "response": [
             {
-              "name": "Get Company Settings - 200 OK",
+              "name": "C1 List Module Settings - 200 OK",
               "originalRequest": {
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/settings/company",
+                  "raw": "{{baseUrl}}/api/v1/settings/module-settings",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2839,8 +3791,127 @@
                     "api",
                     "v1",
                     "settings",
-                    "company"
+                    "module-settings"
                   ]
+                },
+                "description": "Grouped by module. Holders of settings.module-settings.manage see and may change everything; anyone else sees, read-only (editable: false), the settings of modules where they hold a <module>.*.manage permission. Filters: q (key, label, module), module, type, modified=true (changed from default).",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"module\": \"inventory\",\n      \"editable\": true,\n      \"settings\": [\n        {\n          \"key\": \"inventory.adjustment.otpThresholdQty\",\n          \"label\": \"Quantity adjustments above this quantity need an Admin-issued OTP\",\n          \"type\": \"DECIMAL\",\n          \"value\": 50,\n          \"default\": 50,\n          \"isDefault\": true,\n          \"min\": 1,\n          \"max\": 1000000,\n          \"options\": [],\n          \"updatedByUserId\": null,\n          \"updatedAt\": null\n        }\n      ]\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "C2 Change Module Setting",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/settings/module-settings/inventory.adjustment.otpThresholdQty",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "settings",
+                "module-settings",
+                "inventory.adjustment.otpThresholdQty"
+              ]
+            },
+            "description": "Perm settings.module-settings.manage. Validated against the setting's type and bounds; takes effect on the next request, no restart.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": 100\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('value changed', () => pm.expect(json.data.isDefault).to.eql(false));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "C2 Change Module Setting - 200 OK",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/settings/module-settings/inventory.adjustment.otpThresholdQty",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "settings",
+                    "module-settings",
+                    "inventory.adjustment.otpThresholdQty"
+                  ]
+                },
+                "description": "Perm settings.module-settings.manage. Validated against the setting's type and bounds; takes effect on the next request, no restart.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"value\": 100\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
                 },
                 "auth": {
                   "type": "bearer",
@@ -2863,12 +3934,12 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": {\n    \"tenantId\": \"{{tenantId}}\",\n    \"companyName\": \"ZifIQ Operations Ltd\",\n    \"primaryEmail\": \"info@zifiq.com\",\n    \"primaryPhone\": \"+1-800-555-ZIF\",\n    \"taxRegistrationNumber\": \"TAX-9948120\",\n    \"headOfficeAddress\": \"Suite 400, Innovation Tower, Central District\",\n    \"updatedAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+              "body": "{\n  \"data\": {\n    \"key\": \"inventory.adjustment.otpThresholdQty\",\n    \"label\": \"Quantity adjustments above this quantity need an Admin-issued OTP\",\n    \"type\": \"DECIMAL\",\n    \"value\": 100,\n    \"default\": 50,\n    \"isDefault\": false,\n    \"min\": 1,\n    \"max\": 1000000,\n    \"options\": [],\n    \"updatedByUserId\": \"{{userId}}\",\n    \"updatedAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
             }
           ]
         },
         {
-          "name": "Update Company Settings",
+          "name": "C3 Change Module Setting (error: out of range)",
           "request": {
             "method": "PUT",
             "header": [
@@ -2878,7 +3949,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/settings/company",
+              "raw": "{{baseUrl}}/api/v1/settings/module-settings/inventory.adjustment.otpThresholdQty",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -2886,12 +3957,551 @@
                 "api",
                 "v1",
                 "settings",
-                "company"
+                "module-settings",
+                "inventory.adjustment.otpThresholdQty"
               ]
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"companyName\": \"Apex Industries Ltd\",\n  \"primaryEmail\": \"info@apex.com\",\n  \"primaryPhone\": \"+1-800-555-0100\",\n  \"taxRegistrationNumber\": \"TAX-1122334\",\n  \"headOfficeAddress\": \"12 Industrial Way, Lagos\"\n}",
+              "raw": "{\n  \"value\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 400 SETTING_VALUE_INVALID', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('SETTING_VALUE_INVALID');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "C3 Change Module Setting (error: out of range) - 400 Bad Request",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/settings/module-settings/inventory.adjustment.otpThresholdQty",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "settings",
+                    "module-settings",
+                    "inventory.adjustment.otpThresholdQty"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"value\": 0\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"SETTING_VALUE_INVALID\",\n    \"message\": \"Invalid value for 'inventory.adjustment.otpThresholdQty': must be at least 1\",\n    \"details\": {\n      \"key\": \"inventory.adjustment.otpThresholdQty\",\n      \"reason\": \"must be at least 1\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "C4 Reset Module Setting",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/settings/module-settings/inventory.adjustment.otpThresholdQty",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "settings",
+                "module-settings",
+                "inventory.adjustment.otpThresholdQty"
+              ]
+            },
+            "description": "Back to the default (the later Inventory folders rely on the default threshold of 50).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('back to the default', () => pm.expect(json.data.isDefault).to.eql(true));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "C4 Reset Module Setting - 200 OK",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/settings/module-settings/inventory.adjustment.otpThresholdQty",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "settings",
+                    "module-settings",
+                    "inventory.adjustment.otpThresholdQty"
+                  ]
+                },
+                "description": "Back to the default (the later Inventory folders rely on the default threshold of 50).",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"key\": \"inventory.adjustment.otpThresholdQty\",\n    \"label\": \"Quantity adjustments above this quantity need an Admin-issued OTP\",\n    \"type\": \"DECIMAL\",\n    \"value\": 50,\n    \"default\": 50,\n    \"isDefault\": true,\n    \"min\": 1,\n    \"max\": 1000000,\n    \"options\": [],\n    \"updatedByUserId\": null,\n    \"updatedAt\": null\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "D1 Create Custom Field",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/settings/custom-fields",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "settings",
+                "custom-fields"
+              ]
+            },
+            "description": "Perm settings.custom-fields.manage. entityType STOCK_ITEM, CUSTOMER or SUPPLIER; dataType TEXT, NUMBER, DATE, BOOLEAN or SELECT (options only for SELECT: 1-50 distinct values). The key is derived from the label and never changes, nor does the type. A required field can only be created when no existing record would be left blank (409 FIELD_HAS_BLANKS).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entityType\": \"CUSTOMER\",\n  \"label\": \"Preferred Delivery Day\",\n  \"dataType\": \"SELECT\",\n  \"options\": [\n    \"Monday\",\n    \"Wednesday\",\n    \"Friday\"\n  ],\n  \"required\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('customFieldId', json.data.id);",
+                  "    pm.test('key derived from the label', () => pm.expect(json.data.fieldKey).to.eql('preferred_delivery_day'));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "D1 Create Custom Field - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/settings/custom-fields",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "settings",
+                    "custom-fields"
+                  ]
+                },
+                "description": "Perm settings.custom-fields.manage. entityType STOCK_ITEM, CUSTOMER or SUPPLIER; dataType TEXT, NUMBER, DATE, BOOLEAN or SELECT (options only for SELECT: 1-50 distinct values). The key is derived from the label and never changes, nor does the type. A required field can only be created when no existing record would be left blank (409 FIELD_HAS_BLANKS).",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"entityType\": \"CUSTOMER\",\n  \"label\": \"Preferred Delivery Day\",\n  \"dataType\": \"SELECT\",\n  \"options\": [\n    \"Monday\",\n    \"Wednesday\",\n    \"Friday\"\n  ],\n  \"required\": false\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{customFieldId}}\",\n    \"entityType\": \"CUSTOMER\",\n    \"fieldKey\": \"preferred_delivery_day\",\n    \"label\": \"Preferred Delivery Day\",\n    \"dataType\": \"SELECT\",\n    \"options\": [\n      \"Monday\",\n      \"Wednesday\",\n      \"Friday\"\n    ],\n    \"required\": false,\n    \"status\": \"ACTIVE\",\n    \"sortOrder\": 10,\n    \"usageCount\": 0,\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "D2 Create Custom Field (error: duplicate label)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/settings/custom-fields",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "settings",
+                "custom-fields"
+              ]
+            },
+            "description": "Labels are unique per entity type, ignoring case. details.existingId lets the stock-item form's \"Add custom field\" reuse the existing field.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entityType\": \"CUSTOMER\",\n  \"label\": \"preferred delivery day\",\n  \"dataType\": \"TEXT\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 409 DUPLICATE_NAME', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('DUPLICATE_NAME');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "D2 Create Custom Field (error: duplicate label) - 409 Conflict",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/settings/custom-fields",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "settings",
+                    "custom-fields"
+                  ]
+                },
+                "description": "Labels are unique per entity type, ignoring case. details.existingId lets the stock-item form's \"Add custom field\" reuse the existing field.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"entityType\": \"CUSTOMER\",\n  \"label\": \"preferred delivery day\",\n  \"dataType\": \"TEXT\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"DUPLICATE_NAME\",\n    \"message\": \"A custom field called 'preferred delivery day' already exists\",\n    \"details\": {\n      \"name\": \"preferred delivery day\",\n      \"existingId\": \"{{customFieldId}}\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "D3 List Custom Fields",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/settings/custom-fields?entityType=CUSTOMER",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "settings",
+                "custom-fields"
+              ],
+              "query": [
+                {
+                  "key": "entityType",
+                  "value": "CUSTOMER"
+                }
+              ]
+            },
+            "description": "Any member (forms need the definitions). Unpaged. Filters: q (key, label, options), entityType, status, dataType, required, inUse; sort=sortOrder (default), label or usageCount[,asc|desc]. usageCount = records holding a value.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "D3 List Custom Fields - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/settings/custom-fields?entityType=CUSTOMER",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "settings",
+                    "custom-fields"
+                  ],
+                  "query": [
+                    {
+                      "key": "entityType",
+                      "value": "CUSTOMER"
+                    }
+                  ]
+                },
+                "description": "Any member (forms need the definitions). Unpaged. Filters: q (key, label, options), entityType, status, dataType, required, inUse; sort=sortOrder (default), label or usageCount[,asc|desc]. usageCount = records holding a value.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{customFieldId}}\",\n      \"entityType\": \"CUSTOMER\",\n      \"fieldKey\": \"preferred_delivery_day\",\n      \"label\": \"Preferred Delivery Day\",\n      \"dataType\": \"SELECT\",\n      \"options\": [\n        \"Monday\",\n        \"Wednesday\",\n        \"Friday\"\n      ],\n      \"required\": false,\n      \"status\": \"ACTIVE\",\n      \"sortOrder\": 10,\n      \"usageCount\": 0,\n      \"createdAt\": \"2026-10-01T10:15:30Z\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "D4 Update Custom Field",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/settings/custom-fields/{{customFieldId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "settings",
+                "custom-fields",
+                "{{customFieldId}}"
+              ]
+            },
+            "description": "label and required are replaced; options and sortOrder are kept when left out. Removing an option some record uses is refused (409 OPTION_IN_USE), as is making the field required while records lack a value (409 FIELD_HAS_BLANKS).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"Preferred Delivery Day\",\n  \"options\": [\n    \"Monday\",\n    \"Wednesday\",\n    \"Friday\",\n    \"Saturday\"\n  ],\n  \"required\": false\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2922,7 +4532,7 @@
           ],
           "response": [
             {
-              "name": "Update Company Settings - 200 OK",
+              "name": "D4 Update Custom Field - 200 OK",
               "originalRequest": {
                 "method": "PUT",
                 "header": [
@@ -2932,7 +4542,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/settings/company",
+                  "raw": "{{baseUrl}}/api/v1/settings/custom-fields/{{customFieldId}}",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2940,12 +4550,14 @@
                     "api",
                     "v1",
                     "settings",
-                    "company"
+                    "custom-fields",
+                    "{{customFieldId}}"
                   ]
                 },
+                "description": "label and required are replaced; options and sortOrder are kept when left out. Removing an option some record uses is refused (409 OPTION_IN_USE), as is making the field required while records lack a value (409 FIELD_HAS_BLANKS).",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"companyName\": \"Apex Industries Ltd\",\n  \"primaryEmail\": \"info@apex.com\",\n  \"primaryPhone\": \"+1-800-555-0100\",\n  \"taxRegistrationNumber\": \"TAX-1122334\",\n  \"headOfficeAddress\": \"12 Industrial Way, Lagos\"\n}",
+                  "raw": "{\n  \"label\": \"Preferred Delivery Day\",\n  \"options\": [\n    \"Monday\",\n    \"Wednesday\",\n    \"Friday\",\n    \"Saturday\"\n  ],\n  \"required\": false\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -2973,11 +4585,228 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": {\n    \"tenantId\": \"{{tenantId}}\",\n    \"companyName\": \"Apex Industries Ltd\",\n    \"primaryEmail\": \"info@apex.com\",\n    \"primaryPhone\": \"+1-800-555-0100\",\n    \"taxRegistrationNumber\": \"TAX-1122334\",\n    \"headOfficeAddress\": \"12 Industrial Way, Lagos\",\n    \"updatedAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+              "body": "{\n  \"data\": {\n    \"id\": \"{{customFieldId}}\",\n    \"entityType\": \"CUSTOMER\",\n    \"fieldKey\": \"preferred_delivery_day\",\n    \"label\": \"Preferred Delivery Day\",\n    \"dataType\": \"SELECT\",\n    \"options\": [\n      \"Monday\",\n      \"Wednesday\",\n      \"Friday\",\n      \"Saturday\"\n    ],\n    \"required\": false,\n    \"status\": \"ACTIVE\",\n    \"sortOrder\": 10,\n    \"usageCount\": 0,\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "D5 Deactivate Custom Field",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/settings/custom-fields/{{customFieldId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "settings",
+                "custom-fields",
+                "{{customFieldId}}",
+                "status"
+              ]
+            },
+            "description": "Hidden from forms; values already stored stay and are still shown read-only. Send ACTIVE to bring it back.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"INACTIVE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "D5 Deactivate Custom Field - 200 OK",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/settings/custom-fields/{{customFieldId}}/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "settings",
+                    "custom-fields",
+                    "{{customFieldId}}",
+                    "status"
+                  ]
+                },
+                "description": "Hidden from forms; values already stored stay and are still shown read-only. Send ACTIVE to bring it back.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"INACTIVE\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{customFieldId}}\",\n    \"entityType\": \"CUSTOMER\",\n    \"fieldKey\": \"preferred_delivery_day\",\n    \"label\": \"Preferred Delivery Day\",\n    \"dataType\": \"SELECT\",\n    \"options\": [\n      \"Monday\",\n      \"Wednesday\",\n      \"Friday\",\n      \"Saturday\"\n    ],\n    \"required\": false,\n    \"status\": \"INACTIVE\",\n    \"sortOrder\": 10,\n    \"usageCount\": 0,\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "E1 Search Settings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/settings/search?q=logo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "settings",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "logo"
+                }
+              ]
+            },
+            "description": "Settings screens, module settings and custom fields the caller can see (e.g. q=otp finds the adjustment threshold). Also part of the header search (GET /api/v1/search) as type 'setting'.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('finds the logo screen', () => pm.expect(json.data.map(h => h.route)).to.include('/settings/company/logo'));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "E1 Search Settings - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/settings/search?q=logo",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "settings",
+                    "search"
+                  ],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": "logo"
+                    }
+                  ]
+                },
+                "description": "Settings screens, module settings and custom fields the caller can see (e.g. q=otp finds the adjustment threshold). Also part of the header search (GET /api/v1/search) as type 'setting'.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"type\": \"screen\",\n      \"label\": \"Company logo\",\n      \"detail\": null,\n      \"route\": \"/settings/company/logo\"\n    }\n  ]\n}"
             }
           ]
         }
-      ]
+      ],
+      "description": "Settings (backend docs/06): A company profile and logo, B onboarding, C module settings, D custom fields, E settings search. Needs 01 - Auth > Register Tenant first. Run top to bottom; C4 puts the inventory OTP threshold back to its default for the later folders. Captured variable: customFieldId."
     },
     {
       "name": "06 - Factory Setup",

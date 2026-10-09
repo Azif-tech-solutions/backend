@@ -211,4 +211,14 @@ object ApiErrors {
     fun reverseInSourceModule(module: String) = ApiException(HttpStatus.CONFLICT, ErrorCode.REVERSE_IN_SOURCE_MODULE, "Reverse this entry by voiding its source document in $module", mapOf("module" to module))
     fun phoneRequired() = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.PHONE_REQUIRED, "A phone number is required")
     fun ledgerEntryNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.LEDGER_ENTRY_NOT_FOUND, "Ledger entry not found")
+
+    // ---- Settings (docs/06 §7) ----
+    fun invalidLogo(reason: String) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_LOGO, reason)
+    fun logoNotSet() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.LOGO_NOT_SET, "No company logo has been uploaded")
+    fun onboardingIncomplete(missing: List<String>) = ApiException(HttpStatus.CONFLICT, ErrorCode.ONBOARDING_INCOMPLETE, "Complete the company details before finishing onboarding", mapOf("missing" to missing.joinToString(",")))
+    fun optionInUse(option: String, count: Long) = ApiException(HttpStatus.CONFLICT, ErrorCode.OPTION_IN_USE, "The option '$option' is used by $count record(s) and can't be removed", mapOf("option" to option, "count" to count.toString()))
+    fun fieldHasBlanks(count: Long) = ApiException(HttpStatus.CONFLICT, ErrorCode.FIELD_HAS_BLANKS, "$count record(s) have no value for this field, so it can't be made required yet", mapOf("count" to count.toString()))
+    /** DUPLICATE_NAME with the existing field's id, so "Add custom field" can reuse it (docs/06 §4.5). */
+    fun duplicateCustomField(label: String, existingId: java.util.UUID) = ApiException(HttpStatus.CONFLICT, ErrorCode.DUPLICATE_NAME, "A custom field called '$label' already exists", mapOf("name" to label, "existingId" to existingId.toString()))
+    fun customFieldNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.CUSTOM_FIELD_NOT_FOUND, "Custom field not found")
 }

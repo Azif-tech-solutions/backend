@@ -163,4 +163,12 @@ enum class ErrorCode {
     REVERSE_IN_SOURCE_MODULE,
     PHONE_REQUIRED,
     LEDGER_ENTRY_NOT_FOUND,
+
+    // ---- Settings (docs/06 §7) ----
+    INVALID_LOGO,
+    LOGO_NOT_SET,
+    ONBOARDING_INCOMPLETE,
+    OPTION_IN_USE,
+    FIELD_HAS_BLANKS,
+    CUSTOM_FIELD_NOT_FOUND,
 }

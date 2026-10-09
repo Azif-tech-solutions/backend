@@ -36,4 +36,18 @@ class PermissionAuthorizer(
             .limit(1)
             .any()
     }
+
+    /** Every permission code the user holds in the current tenant, through any of their roles. */
+    fun permissions(userId: UUID): Set<String> = tenantScopedTransaction.execute {
+        val tenantId = currentActorProvider.current().tenantId
+        UserRoleAssignmentsTable
+            .join(TenantRolesTable, JoinType.INNER) { UserRoleAssignmentsTable.roleId eq TenantRolesTable.id }
+            .join(RolePermissionsTable, JoinType.INNER) { TenantRolesTable.id eq RolePermissionsTable.roleId }
+            .join(PermissionCatalogTable, JoinType.INNER) { RolePermissionsTable.permissionId eq PermissionCatalogTable.id }
+            .select(PermissionCatalogTable.code)
+            .andWhere { UserRoleAssignmentsTable.userId eq userId }
+            .andWhere { UserRoleAssignmentsTable.tenantId eq tenantId }
+            .map { it[PermissionCatalogTable.code] }
+            .toSet()
+    }
 }

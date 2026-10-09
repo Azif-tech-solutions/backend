@@ -1,6 +1,6 @@
 # 06 — Settings Module
 
-Status: **design finalized, not yet implemented**
+Status: **implemented** (V10, 2026-10-09) — differences from the original design are recorded inline and in §11
 Owner package: `com.zifiq.settings` (substrate module — exposes `com.zifiq.settings.spi`)
 Depends on: `platform`, `common` only.
 Depended on by: `invoicing` (issuer party on every invoice), `cashier` (receipt/pro-forma/waybill headers), `reports`, `dashboard`, `ai` (briefing header).
@@ -66,9 +66,11 @@ select id, name, '', '' from tenants
 on conflict do nothing;
 ```
 
-`AuthService.registerTenant` / `TenantService.createChild` insert the row at tenant creation (`trading_name` = `companyName`, other fields empty), in the same transaction that seeds roles.
+`AuthService.registerTenant` / `TenantService.createChild` create the row through the `TenantProvisioner` hook (`trading_name` = the tenant's name, other fields empty), in the same transaction that seeds roles.
 
-Why the logo is a `bytea` column, not object storage: the system has no object store yet (doc 16 raises that decision for OCR images), a logo is one small file per tenant, and keeping it in Postgres keeps it under RLS and in the database backup. If object storage is introduced later, `logo` moves there behind the same endpoints.
+Why the logo is a `bytea` column even though S3 file storage now exists (doc 03 §8.4): a logo is one small file per tenant; keeping it in Postgres keeps it under RLS and in the database backup, and lets every PDF render it without a network call or a dependency on storage being configured. Two extra checks back the API rules: `(logo is null) = (logo_content_type is null)` and `octet_length(logo) <= 524288`. If it ever needs to move to S3, it moves behind the same endpoints.
+
+The backfill runs **before** RLS is enabled on the table, so it reaches every tenant whatever role runs the migration. New tenants get their row from `CompanyProfileService`, a `TenantProvisioner` (platform calls every provisioner inside the tenant-creation transaction) — platform itself never references this table.
 
 ---
 
@@ -126,7 +128,7 @@ Emits `settings.company.updated` (payload: changed field names only). "Changes a
 ### 4.3 Onboarding — `/api/v1/settings/onboarding`
 
 - `GET` — any member. `{ completed: bool, completedAt, steps: [ { key: "COMPANY", done: bool }, { key: "BRANCH", done: bool, skipped: bool }, { key: "FACTORY", done: bool, skipped: bool } ] }`. `COMPANY` is done when `tradingName`, `phone`, `streetAddress` are set; `BRANCH` when the tenant has ≥1 showroom; `FACTORY` when it has ≥1 factory (both read from `platform` `locations`, so Settings needs no dependency on Showroom/Factory).
-- `POST /complete` — perm `settings.manage`. Body `{ skippedSteps: ["BRANCH"|"FACTORY"] }`. Sets `onboarding_completed_at`. The company step can't be skipped → `409 ONBOARDING_INCOMPLETE` if it isn't done. The wizard's step 2/3 forms call `POST /api/v1/showroom/showrooms` (doc 05) and `POST /api/v1/factory/setup/factories` (shipped) directly.
+- `POST /complete` — perm `settings.manage`. Body `{ skippedSteps: ["BRANCH"|"FACTORY"] }`. Sets `onboarding_completed_at`. **Every unfinished step must be listed in `skippedSteps`** → else `409 ONBOARDING_INCOMPLETE` (details `missing`); the company step can't be skipped (`400 VALIDATION_FAILED` if listed) and so must be done. Calling it again keeps the first `completedAt` and only updates which steps were skipped; `settings.onboarding.completed` is recorded once. Each step in the response carries `skipped` (true only for an unfinished step that was skipped). The wizard's step 2/3 forms call `POST /api/v1/showroom/showrooms` (doc 05) and `POST /api/v1/factory/setup/factories` (shipped) directly.
 
 ### 4.4 Module settings — `/api/v1/settings/module-settings`
 
@@ -137,15 +139,16 @@ Emits `settings.company.updated` (payload: changed field names only). "Changes a
     "type": "DECIMAL", "value": 50, "default": 50, "min": 1, "max": 100000, "options": null,
     "updatedBy": null, "updatedAt": null } ] } ] }
 ```
-  Visibility: holders of `settings.module-settings.manage` see all; others see only modules where they hold a `.manage` permission (read-only).
+  Visibility: holders of `settings.module-settings.manage` see all; others see only modules where they hold a `<module>.….manage` permission, read-only. Each group carries `editable` (true only for holders of `settings.module-settings.manage`). Query parameters: `q` (every word must appear in the key, label or module name, accent- and case-insensitive), `module`, `type`, `modified` (true = changed from the default). Settings are declared in code, so this list is filtered in memory rather than through `FilterSpec`; there is no `/filters` endpoint for it.
 - `PUT /{key}` — perm `settings.module-settings.manage`. Body `{ value }`. Unknown key → `400 SETTING_KEY_UNKNOWN`; wrong type / outside min-max / not in options → `400 SETTING_VALUE_INVALID` (details `{ key, reason }`). Emits `settings.module-setting.changed` (payload `{ key, from, to }` — settings hold no secrets; secret-typed settings, if any, live in doc 15's vault, never here).
 - `DELETE /{key}` — reset to default.
 
 ### 4.5 Custom fields — `/api/v1/settings/custom-fields`
 
 Over `custom_field_definitions` (doc 03 §12.2).
-- `GET ?entityType=STOCK_ITEM|CUSTOMER|SUPPLIER&status=` — any member (forms need them). Row `{ id, entityType, fieldKey, label, dataType, options, required, status, sortOrder, usageCount }` (`usageCount` = rows whose `custom_attributes` has the key, via the GIN index).
-- `POST` — perm `settings.custom-fields.manage`. Body `{ entityType, label (2–80), dataType, options? (SELECT only, 1–50 distinct values), required (default false), sortOrder? }`. `fieldKey` = slug of the label, made unique by suffix; immutable afterwards. Duplicate label (case-insensitive) for the entity → `409 DUPLICATE_NAME` ("Add custom field" in `StockRegistration.jsx` reuses an existing field instead — the frontend can match on the 409's details `{ existingId }`).
+- `GET ?entityType=STOCK_ITEM|CUSTOMER|SUPPLIER&status=` — any member (forms need them). Row `{ id, entityType, fieldKey, label, dataType, options, required, status, sortOrder, usageCount, createdAt }` (`usageCount` = rows whose `custom_attributes` has the key). Also `GET /{id}`.
+  *Usage without a module dependency:* each module that stores `custom_attributes` implements platform's `CustomAttributeUsage` (`counts()`, `countWithValue(key, value)`, `countMissing(key)`); Settings receives all of them. Today only Customers stores values (`CustomerAttributeUsage`); stock items get the column with product variants (doc 03 §12.2) and suppliers have none yet, so their counts are 0 and nothing blocks their edits.
+- `POST` — perm `settings.custom-fields.manage`. Body `{ entityType, label (2–80), dataType, options? (SELECT only, 1–50 distinct values, ≤ 60 chars each, compared case-insensitively), required (default false), sortOrder? (default: last + 10) }`. `fieldKey` = slug of the label (accents dropped, non-alphanumerics → `_`, a leading digit gets `f_`), made unique per entity type by `_2`, `_3` … (keys of inactive fields stay reserved); immutable afterwards. Creating a **required** field is refused with `409 FIELD_HAS_BLANKS` when existing records would be left without a value. Duplicate label (case-insensitive) for the entity → `409 DUPLICATE_NAME` ("Add custom field" in `StockRegistration.jsx` reuses an existing field instead — the frontend can match on the 409's details `{ existingId }`).
 - `PUT /{id}` — label, options (only *adding* options is allowed once in use → removing an in-use option `409 OPTION_IN_USE`), required (turning `required` on is allowed only when every existing active row already has a value → else `409 FIELD_HAS_BLANKS` with the count), sortOrder. `dataType` and `entityType` are immutable.
 - `PUT /{id}/status` — `INACTIVE` hides the field from forms; existing values are kept and still displayed read-only.
 Emits `settings.custom-field.created` / `.updated` / `.status-changed`.
@@ -196,7 +199,7 @@ Settings lists are small and bounded, so they stay unpaged (doc 03 §5.1), but t
 | `GET /settings/module-settings` · `settings.module-settings` | `key` CODE, `label` TRIGRAM (accent-insensitive; the French labels are searched too), owning-module name TRIGRAM | `module` multi, `type` (`DECIMAL`/`INT`/`BOOLEAN`/`ENUM`/`STRING`/`ARRAY`), `modified` (value ≠ default), `updatedBy`, `updatedAt` range | `module, label`; `updatedAt` |
 | `GET /settings/custom-fields` · `settings.custom-fields` | `field_key` CODE, `label` TRIGRAM, SELECT `options` TRIGRAM | `entityType` multi, `dataType` multi, `status`, `required`, `inUse` (`usageCount > 0`) | `sortOrder`; `label`, `usageCount` |
 
-**Settings search box**: `GET /api/v1/settings/search?q=` searches module-setting labels and keys, custom-field labels, and the fixed list of settings screens (Company profile, Logo, Onboarding, VAT Control, Workflow Defaults, …). It returns `{ type, label, route }` so a user can type "otp" and jump to the adjustment-threshold setting. It is also registered as the global-search provider `setting` (perm: the screen's own permission).
+**Settings search box**: `GET /api/v1/settings/search?q=` searches module-setting labels and keys, custom-field labels and keys, and the fixed list of settings screens (Company profile, Company logo, Onboarding, Module settings, Custom fields, VAT Control). It returns up to 20 `{ type: screen|module-setting|custom-field, label, detail, route }` so a user can type "otp" and jump to the adjustment-threshold setting; only what the caller may see is returned (module settings by the visibility rule above, VAT Control needs `accounting.read`). Routes: `/settings/company`, `/settings/company/logo`, `/settings/onboarding`, `/settings/module-settings?key=<key>`, `/settings/custom-fields/<id>`, `/settings/vat-control`. It is also registered as the global-search provider `setting`. Workflow Defaults joins the list when doc 15 is built.
 
 **Custom-field filtering in other modules**: every entity with custom fields (stock items, customers, suppliers) exposes them as filters `attr.<field_key>` typed by `dataType` (TEXT → `contains`/`eq`, NUMBER/DATE → ranges, BOOLEAN, SELECT → `in`). The fields appear automatically in that list's `/filters` metadata, so a field created here becomes filterable everywhere without code changes. Inactive fields stay filterable (historic data) but are marked `inactive: true`.
 
@@ -209,4 +212,12 @@ Settings lists are small and bounded, so they stay unpaged (doc 03 §5.1), but t
 - Change the trading name, render an invoice issued before the change (doc 08) → old name; a new invoice → new name.
 - Module setting out of range → `400 SETTING_VALUE_INVALID`; inventory's OTP threshold change takes effect on the next adjustment without restart.
 - Custom field: create "Color" (SELECT), use it on a stock item, try to remove the used option → `409 OPTION_IN_USE`.
-- Newman folder "13 - Settings".
+- Newman folder "05 - Settings".
+
+## 11. Implementation notes (V10)
+
+- The spi field is `logo` (with `logoContentType`, PNG or JPEG), not `logoPng`.
+- `PUT /company` replaces the whole profile: optional fields left out are cleared. `tin` is stored upper-case, `email` lower-case, `phone_e164` via `PhoneNumbers`. An LGA without a state is `400 INVALID_LGA_CODE`.
+- `settings.company.updated` carries `{ fields: [changed field names] }` and is recorded only when something changed. Removing the logo records `settings.company.logo-updated` with `{ removed: true }`.
+- `PermissionAuthorizer.permissions(userId)` (new) returns all of a user's permission codes; module-settings visibility uses it.
+- Tests: `SettingsIntegrationTest` (7 tests against PostgreSQL with RLS).

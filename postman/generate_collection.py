@@ -16,7 +16,7 @@ def uid():
 
 ENDPOINTS = []
 
-def ep(folder, name, method, path, auth=None, body=None, resp=None, status=200, status_text="OK", tests=None, query=None, desc="", expect_error=None, form=None, pdf=False):
+def ep(folder, name, method, path, auth=None, body=None, resp=None, status=200, status_text="OK", tests=None, query=None, desc="", expect_error=None, form=None, pdf=False, binary=None):
     # expect_error: {"status": int, "code": "ERROR_CODE"} for requests that are DELIBERATELY run
     # against a state that makes them fail (demonstrating a real error path), so the generic
     # "response has data envelope" assertion every other request gets would always fail here --
@@ -26,7 +26,7 @@ def ep(folder, name, method, path, auth=None, body=None, resp=None, status=200, 
     ENDPOINTS.append(dict(
         folder=folder, name=name, method=method, path=path, auth=auth, body=body,
         resp=resp, status=status, status_text=status_text, tests=tests or [], query=query or [], desc=desc,
-        expect_error=expect_error, form=form, pdf=pdf,
+        expect_error=expect_error, form=form, pdf=pdf, binary=binary,
     ))
 
 NOW = "2026-10-01T10:15:30Z"
@@ -246,17 +246,152 @@ ep("04 - VAT Control", "Select Tenant VAT Categories", "PUT", "/api/v1/account/v
    desc="Replaces the tenant's active VAT category set with exactly the codes given -- this call activates all 3. A stock item's vatCategoryId must be one the tenant has activated here, or registration fails with VAT_CATEGORY_NOT_ACTIVE.")
 
 # ============================== SETTINGS ==============================
-ep("05 - Settings", "Get Company Settings", "GET", "/api/v1/settings/company",
-   resp={"data": {"tenantId": "{{tenantId}}", "companyName": "ZifIQ Operations Ltd", "primaryEmail": "info@zifiq.com",
-                  "primaryPhone": "+1-800-555-ZIF", "taxRegistrationNumber": "TAX-9948120",
-                  "headOfficeAddress": "Suite 400, Innovation Tower, Central District", "updatedAt": NOW}})
+F = "05 - Settings"
+PROFILE = {
+    "tradingName": "Apex Industries Ltd", "legalName": "Apex Industries Limited", "registrationNumber": "RC-1849302",
+    "tin": "33467982-0001", "vatRegistrationNumber": "NG-VAT-4471029", "nrsBusinessId": None,
+    "businessDescription": "Beverage manufacturing and distribution", "email": "info@apex.ng", "phone": "+234 803 412 7781",
+    "website": "https://apex.ng", "streetAddress": "12 Industrial Way", "city": "Aba", "postalCode": "450001",
+    "stateCode": "NG-AB", "stateName": "Abia", "lgaCode": "NG-AB-ANO", "lgaName": "Aba North", "countryCode": "NG",
+    "hasLogo": False, "logoUpdatedAt": None, "documentFooter": "Goods sold in good condition are not returnable except under our returns policy.",
+    "financialYearStartMonth": 1, "nrsReadiness": {"ready": False, "missing": ["nrsBusinessId"]},
+    "updatedBy": "Alice Admin", "updatedAt": NOW,
+}
+PROFILE_BODY = {k: PROFILE[k] for k in (
+    "tradingName", "legalName", "registrationNumber", "tin", "vatRegistrationNumber", "businessDescription", "email", "phone",
+    "website", "streetAddress", "city", "postalCode", "stateCode", "lgaCode", "countryCode", "documentFooter", "financialYearStartMonth")}
+CUSTOM_FIELD = {"id": "{{customFieldId}}", "entityType": "CUSTOMER", "fieldKey": "preferred_delivery_day", "label": "Preferred Delivery Day",
+                "dataType": "SELECT", "options": ["Monday", "Wednesday", "Friday"], "required": False, "status": "ACTIVE",
+                "sortOrder": 10, "usageCount": 0, "createdAt": NOW}
 
-ep("05 - Settings", "Update Company Settings", "PUT", "/api/v1/settings/company",
-   body={"companyName": "Apex Industries Ltd", "primaryEmail": "info@apex.com", "primaryPhone": "+1-800-555-0100",
-         "taxRegistrationNumber": "TAX-1122334", "headOfficeAddress": "12 Industrial Way, Lagos"},
-   resp={"data": {"tenantId": "{{tenantId}}", "companyName": "Apex Industries Ltd", "primaryEmail": "info@apex.com",
-                  "primaryPhone": "+1-800-555-0100", "taxRegistrationNumber": "TAX-1122334",
-                  "headOfficeAddress": "12 Industrial Way, Lagos", "updatedAt": NOW}})
+ep(F, "A1 Get Company Profile", "GET", "/api/v1/settings/company",
+   resp={"data": dict(PROFILE, tradingName="Apex Industries", legalName=None, registrationNumber=None, tin=None, vatRegistrationNumber=None,
+                      businessDescription=None, email=None, phone="", website=None, streetAddress="", city=None, postalCode=None,
+                      stateCode=None, stateName=None, lgaCode=None, lgaName=None, documentFooter=None, updatedBy=None,
+                      nrsReadiness={"ready": False, "missing": ["tin", "email", "streetAddress", "stateCode", "lgaCode", "nrsBusinessId", "businessDescription"]})},
+   tests=["const json = pm.response.json();",
+          "pm.test('the profile starts from the registered company name', () => pm.expect(json.data.tradingName).to.be.a('string').and.not.empty);"],
+   desc="Any member can read it (every screen shows the company name). Every company gets a profile when it registers, named after the company. "
+        "nrsReadiness lists the e-invoicing issuer fields still empty: informational only, nothing is blocked this phase.")
+
+ep(F, "A2 Update Company Profile", "PUT", "/api/v1/settings/company", body=PROFILE_BODY, resp={"data": PROFILE},
+   tests=["const json = pm.response.json();",
+          "pm.test('state and LGA names are resolved', () => { pm.expect(json.data.stateName).to.eql('Abia'); pm.expect(json.data.lgaName).to.eql('Aba North'); });",
+          "pm.test('only the NRS business id is still missing', () => pm.expect(json.data.nrsReadiness.missing).to.eql(['nrsBusinessId']));"],
+   desc="Perm settings.manage. Replaces the whole profile: optional fields left out are cleared. Required: tradingName (2-200), phone, streetAddress. "
+        "tin is 6-30 letters/digits/hyphens (stored upper-case); website must start with http(s)://; the LGA must belong to the state. "
+        "New documents use the new values at once; documents already issued keep the issuer they were issued with.")
+
+ep(F, "A3 Update Company Profile (error: LGA not in state)", "PUT", "/api/v1/settings/company",
+   body=dict(PROFILE_BODY, stateCode="NG-LA"), status=400, status_text="Bad Request",
+   resp={"error": {"code": "INVALID_LGA_CODE", "message": "Unknown LGA code, or the LGA is not in the selected state", "details": {}}},
+   expect_error={"status": 400, "code": "INVALID_LGA_CODE"})
+
+ep(F, "A4 Upload Company Logo", "PUT", "/api/v1/settings/company/logo",
+   form=[{"key": "file", "src": "postman/fixtures/company-logo.png"}],
+   resp={"data": dict(PROFILE, hasLogo=True, logoUpdatedAt=NOW)},
+   tests=["const json = pm.response.json();", "pm.test('logo is set', () => pm.expect(json.data.hasLogo).to.eql(true));"],
+   desc="multipart/form-data, part `file`: a PNG or JPEG of at most 512 KB. The type is checked from the file's content, not its name; "
+        "SVG is refused because it can carry script. Newman uses postman/fixtures/company-logo.png.")
+
+ep(F, "A5 Upload Company Logo (error: not an image)", "PUT", "/api/v1/settings/company/logo",
+   form=[{"key": "file", "src": "postman/fixtures/sample-attachment.pdf"}], status=400, status_text="Bad Request",
+   resp={"error": {"code": "INVALID_LOGO", "message": "The logo must be a PNG or JPEG image", "details": {}}},
+   expect_error={"status": 400, "code": "INVALID_LOGO"})
+
+ep(F, "A6 Get Company Logo", "GET", "/api/v1/settings/company/logo", binary="image/png",
+   desc="Streams the image with its own content type (cached privately for 5 minutes). 404 LOGO_NOT_SET when there is none. "
+        "DELETE on the same path removes it (perm settings.manage).")
+
+ep(F, "B1 Get Onboarding Status", "GET", "/api/v1/settings/onboarding",
+   resp={"data": {"completed": False, "completedAt": None, "steps": [
+       {"key": "COMPANY", "done": True, "skipped": False}, {"key": "BRANCH", "done": False, "skipped": False},
+       {"key": "FACTORY", "done": False, "skipped": False}]}},
+   tests=["const json = pm.response.json();",
+          "pm.test('company step is done after A2', () => pm.expect(json.data.steps[0]).to.include({key: 'COMPANY', done: true}));"],
+   desc="COMPANY is done once trading name, phone and street address are set; BRANCH once the company has a showroom; FACTORY once it has a factory.")
+
+ep(F, "B2 Complete Onboarding (error: unfinished step not skipped)", "POST", "/api/v1/settings/onboarding/complete",
+   body={"skippedSteps": ["FACTORY"]}, status=409, status_text="Conflict",
+   resp={"error": {"code": "ONBOARDING_INCOMPLETE", "message": "Complete the company details before finishing onboarding", "details": {"missing": "BRANCH"}}},
+   expect_error={"status": 409, "code": "ONBOARDING_INCOMPLETE"},
+   desc="Every step must be done or listed in skippedSteps. No showroom exists yet at this point of the run, so BRANCH is unfinished.")
+
+ep(F, "B3 Complete Onboarding", "POST", "/api/v1/settings/onboarding/complete",
+   body={"skippedSteps": ["BRANCH", "FACTORY"]},
+   resp={"data": {"completed": True, "completedAt": NOW, "steps": [
+       {"key": "COMPANY", "done": True, "skipped": False}, {"key": "BRANCH", "done": False, "skipped": True},
+       {"key": "FACTORY", "done": False, "skipped": True}]}},
+   tests=["const json = pm.response.json();", "pm.test('completed', () => pm.expect(json.data.completed).to.eql(true));"],
+   desc="Perm settings.manage. Only BRANCH and FACTORY can be skipped. The wizard's branch and factory forms call the Showroom and Factory Setup create endpoints.")
+
+ep(F, "C1 List Module Settings", "GET", "/api/v1/settings/module-settings",
+   resp={"data": [{"module": "inventory", "editable": True, "settings": [
+       {"key": "inventory.adjustment.otpThresholdQty", "label": "Quantity adjustments above this quantity need an Admin-issued OTP",
+        "type": "DECIMAL", "value": 50, "default": 50, "isDefault": True, "min": 1, "max": 1000000, "options": [],
+        "updatedByUserId": None, "updatedAt": None}]}]},
+   desc="Grouped by module. Holders of settings.module-settings.manage see and may change everything; anyone else sees, read-only (editable: false), "
+        "the settings of modules where they hold a <module>.*.manage permission. Filters: q (key, label, module), module, type, modified=true (changed from default).")
+
+ep(F, "C2 Change Module Setting", "PUT", "/api/v1/settings/module-settings/inventory.adjustment.otpThresholdQty",
+   body={"value": 100},
+   resp={"data": {"key": "inventory.adjustment.otpThresholdQty", "label": "Quantity adjustments above this quantity need an Admin-issued OTP",
+                  "type": "DECIMAL", "value": 100, "default": 50, "isDefault": False, "min": 1, "max": 1000000, "options": [],
+                  "updatedByUserId": "{{userId}}", "updatedAt": NOW}},
+   tests=["const json = pm.response.json();", "pm.test('value changed', () => pm.expect(json.data.isDefault).to.eql(false));"],
+   desc="Perm settings.module-settings.manage. Validated against the setting's type and bounds; takes effect on the next request, no restart.")
+
+ep(F, "C3 Change Module Setting (error: out of range)", "PUT", "/api/v1/settings/module-settings/inventory.adjustment.otpThresholdQty",
+   body={"value": 0}, status=400, status_text="Bad Request",
+   resp={"error": {"code": "SETTING_VALUE_INVALID", "message": "Invalid value for 'inventory.adjustment.otpThresholdQty': must be at least 1",
+                   "details": {"key": "inventory.adjustment.otpThresholdQty", "reason": "must be at least 1"}}},
+   expect_error={"status": 400, "code": "SETTING_VALUE_INVALID"})
+
+ep(F, "C4 Reset Module Setting", "DELETE", "/api/v1/settings/module-settings/inventory.adjustment.otpThresholdQty",
+   resp={"data": {"key": "inventory.adjustment.otpThresholdQty", "label": "Quantity adjustments above this quantity need an Admin-issued OTP",
+                  "type": "DECIMAL", "value": 50, "default": 50, "isDefault": True, "min": 1, "max": 1000000, "options": [],
+                  "updatedByUserId": None, "updatedAt": None}},
+   tests=["const json = pm.response.json();", "pm.test('back to the default', () => pm.expect(json.data.isDefault).to.eql(true));"],
+   desc="Back to the default (the later Inventory folders rely on the default threshold of 50).")
+
+ep(F, "D1 Create Custom Field", "POST", "/api/v1/settings/custom-fields",
+   body={"entityType": "CUSTOMER", "label": "Preferred Delivery Day", "dataType": "SELECT", "options": ["Monday", "Wednesday", "Friday"], "required": False},
+   resp={"data": CUSTOM_FIELD},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('customFieldId', json.data.id);",
+          "pm.test('key derived from the label', () => pm.expect(json.data.fieldKey).to.eql('preferred_delivery_day'));"],
+   desc="Perm settings.custom-fields.manage. entityType STOCK_ITEM, CUSTOMER or SUPPLIER; dataType TEXT, NUMBER, DATE, BOOLEAN or SELECT "
+        "(options only for SELECT: 1-50 distinct values). The key is derived from the label and never changes, nor does the type. "
+        "A required field can only be created when no existing record would be left blank (409 FIELD_HAS_BLANKS).")
+
+ep(F, "D2 Create Custom Field (error: duplicate label)", "POST", "/api/v1/settings/custom-fields",
+   body={"entityType": "CUSTOMER", "label": "preferred delivery day", "dataType": "TEXT"}, status=409, status_text="Conflict",
+   resp={"error": {"code": "DUPLICATE_NAME", "message": "A custom field called 'preferred delivery day' already exists",
+                   "details": {"name": "preferred delivery day", "existingId": "{{customFieldId}}"}}},
+   expect_error={"status": 409, "code": "DUPLICATE_NAME"},
+   desc="Labels are unique per entity type, ignoring case. details.existingId lets the stock-item form's \"Add custom field\" reuse the existing field.")
+
+ep(F, "D3 List Custom Fields", "GET", "/api/v1/settings/custom-fields",
+   query=[{"key": "entityType", "value": "CUSTOMER"}],
+   resp={"data": [CUSTOM_FIELD]},
+   desc="Any member (forms need the definitions). Unpaged. Filters: q (key, label, options), entityType, status, dataType, required, inUse; "
+        "sort=sortOrder (default), label or usageCount[,asc|desc]. usageCount = records holding a value.")
+
+ep(F, "D4 Update Custom Field", "PUT", "/api/v1/settings/custom-fields/{{customFieldId}}",
+   body={"label": "Preferred Delivery Day", "options": ["Monday", "Wednesday", "Friday", "Saturday"], "required": False},
+   resp={"data": dict(CUSTOM_FIELD, options=["Monday", "Wednesday", "Friday", "Saturday"])},
+   desc="label and required are replaced; options and sortOrder are kept when left out. Removing an option some record uses is refused "
+        "(409 OPTION_IN_USE), as is making the field required while records lack a value (409 FIELD_HAS_BLANKS).")
+
+ep(F, "D5 Deactivate Custom Field", "PUT", "/api/v1/settings/custom-fields/{{customFieldId}}/status",
+   body={"status": "INACTIVE"}, resp={"data": dict(CUSTOM_FIELD, options=["Monday", "Wednesday", "Friday", "Saturday"], status="INACTIVE")},
+   desc="Hidden from forms; values already stored stay and are still shown read-only. Send ACTIVE to bring it back.")
+
+ep(F, "E1 Search Settings", "GET", "/api/v1/settings/search", query=[{"key": "q", "value": "logo"}],
+   resp={"data": [{"type": "screen", "label": "Company logo", "detail": None, "route": "/settings/company/logo"}]},
+   tests=["const json = pm.response.json();",
+          "pm.test('finds the logo screen', () => pm.expect(json.data.map(h => h.route)).to.include('/settings/company/logo'));"],
+   desc="Settings screens, module settings and custom fields the caller can see (e.g. q=otp finds the adjustment threshold). "
+        "Also part of the header search (GET /api/v1/search) as type 'setting'.")
 
 # ============================== FACTORY SETUP ==============================
 ep("06 - Factory Setup", "Create Factory", "POST", "/api/v1/factory/setup/factories",
@@ -1734,6 +1869,11 @@ def pm_request_item(e, with_examples=True):
             f"    pm.expect(j.error.code).to.eql('{err['code']}');",
             "});",
         ]
+    elif e.get("binary"):
+        full_tests = custom_tests + [
+            "pm.test('status is 200', () => pm.response.to.have.status(200));",
+            f"pm.test('response is {e['binary']}', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('{e['binary']}'));",
+        ]
     elif e.get("pdf"):
         full_tests = custom_tests + [
             "pm.test('status is 200', () => pm.response.to.have.status(200));",
@@ -1755,12 +1895,17 @@ def pm_request_item(e, with_examples=True):
             "_postman_previewlanguage": "json",
             "header": [{"key": "Content-Type", "value": "application/json"}],
             "cookie": [],
-            "body": ("%PDF-1.7 ... (binary PDF)" if e.get("pdf") else json.dumps(e["resp"], indent=2) if e["resp"] is not None else ""),
+            "body": ("%PDF-1.7 ... (binary PDF)" if e.get("pdf") else f"(binary {e['binary']})" if e.get("binary") else json.dumps(e["resp"], indent=2) if e["resp"] is not None else ""),
         }
         item["response"] = [example]
     return item
 
 FOLDER_DESCRIPTIONS = {
+    "05 - Settings": (
+        "Settings (backend docs/06): A company profile and logo, B onboarding, C module settings, D custom fields, E settings search. "
+        "Needs 01 - Auth > Register Tenant first. Run top to bottom; C4 puts the inventory OTP threshold back to its default for the later folders. "
+        "Captured variable: customFieldId."
+    ),
     "16 - Showroom": (
         "Showroom (backend docs/05). Run after folders 06-15: it uses the factory, units, finished product (with the price published in 15), "
         "manufacturer, driver and dealer they create. A: register showrooms and areas. B: direct entries and outsource receipts. "
