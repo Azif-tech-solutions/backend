@@ -5,15 +5,17 @@ Everything needed to start wiring the frontend against the live dev API.
 ## Base URL
 
 ```
-http://16.192.105.205:8080
+https://d3t9f2p14df2uo.cloudfront.net
 ```
 
-Dev EC2 box. Not HTTPS yet, no custom domain — plain HTTP on port 8080.
+HTTPS through AWS CloudFront in front of the dev EC2 box (no custom domain yet). Use this from the deployed frontend: browsers block calls from an HTTPS page to the plain-HTTP address `http://16.192.105.205:8080`, which still works for local tools (curl, Postman).
+
+CORS allows `https://zifiq.vercel.app` and any `http://localhost:*` / `http://127.0.0.1:*` dev server. Another deployed origin (e.g. a Vercel preview URL) must be added on the backend (`CORS_ALLOWED_ORIGINS` in `compose.yaml`) — exact origins only, since requests may carry credentials. Allowed request headers: `Authorization`, `Content-Type`.
 
 ## API Docs (Swagger / OpenAPI)
 
-- **Swagger UI** (interactive, browsable): `http://16.192.105.205:8080/swagger-ui.html`
-- **Raw OpenAPI JSON** (for codegen, Postman import, etc.): `http://16.192.105.205:8080/v3/api-docs`
+- **Swagger UI** (interactive, browsable): `https://d3t9f2p14df2uo.cloudfront.net/swagger-ui.html`
+- **Raw OpenAPI JSON** (for codegen, Postman import, etc.): `https://d3t9f2p14df2uo.cloudfront.net/v3/api-docs`
 
 ## Postman collection
 
@@ -130,5 +132,4 @@ Customers endpoints live under `/api/v1/customers` (register, list/search, stats
 - Settings is real (backend `docs/06-settings.md`, Postman folder "05 - Settings"). **Breaking:** `GET/PUT /api/v1/settings/company` now uses the company-profile shape (`tradingName`, `legalName`, `tin`, `phone`, `streetAddress`, `stateCode`/`lgaCode`, `documentFooter`, … plus `hasLogo` and `nrsReadiness`); the old mock fields (`companyName`, `primaryEmail`, `primaryPhone`, `taxRegistrationNumber`, `headOfficeAddress`) are gone. New: logo (`PUT` multipart `file` / `GET` image / `DELETE` at `/api/v1/settings/company/logo`), onboarding (`GET /api/v1/settings/onboarding`, `POST …/complete` with `skippedSteps`), custom fields (`/api/v1/settings/custom-fields`), settings search (`GET /api/v1/settings/search?q=`, also in the header search as type `setting`). Module settings groups now carry `editable`, and the list takes `q`, `module`, `type`, `modified`.
 ## Notes
 
-- CORS: ask backend to confirm the frontend's dev origin is allowed before you start making cross-origin requests from a local dev server — not yet confirmed configured for arbitrary origins.
 - This is a **dev** server (small EC2 instance, no HTTPS, redeploys whenever `main` gets pushed) — don't treat any data stored here as durable long-term.

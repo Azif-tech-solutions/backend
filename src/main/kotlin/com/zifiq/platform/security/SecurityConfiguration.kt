@@ -27,8 +27,9 @@ class SecurityConfiguration(
     @Value("\${jwt.secret:zifiq-secret-key-must-be-at-least-256-bits-long-for-hmac-sha256-signing!}")
     private val secret: String,
     // Comma-separated allowed-origin patterns (supports * wildcards, e.g. "http://localhost:*").
-    // Defaults cover any local dev frontend (Vite/CRA/etc. on any port) -- tighten this via the
-    // CORS_ALLOWED_ORIGINS env var once there's a real frontend deployment to allowlist instead.
+    // Defaults cover any local dev frontend (Vite/CRA/etc. on any port). Deployed frontends are added
+    // via the CORS_ALLOWED_ORIGINS env var (compose.yaml lists the Vercel app). Exact origins only for
+    // deployed sites: credentials are allowed, so a wildcard like https://*.vercel.app would admit anyone's app.
     @Value("\${cors.allowed-origins:http://localhost:*,http://127.0.0.1:*}")
     private val corsAllowedOrigins: String,
 ) {
@@ -41,6 +42,8 @@ class SecurityConfiguration(
             allowedOriginPatterns = corsAllowedOrigins.split(",").map { it.trim() }
             allowedMethods = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
             allowedHeaders = listOf("Authorization", "Content-Type")
+            // Lets the frontend read the file name of PDF/image downloads.
+            exposedHeaders = listOf("Content-Disposition")
             allowCredentials = true
             maxAge = 3600
         }
