@@ -166,6 +166,7 @@ object ApiErrors {
     fun priceAlreadyEffective() = ApiException(HttpStatus.CONFLICT, ErrorCode.PRICE_ALREADY_EFFECTIVE, "This price is already in effect and can't be changed; publish a new price instead")
     fun showroomNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.SHOWROOM_NOT_FOUND, "Showroom not found")
     fun driverNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.DRIVER_NOT_FOUND, "Driver not found")
+    fun stockEntryNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.STOCK_ENTRY_NOT_FOUND, "Stock entry not found")
     fun duplicateViewName() = ApiException(HttpStatus.CONFLICT, ErrorCode.DUPLICATE_VIEW_NAME, "You already have a view with this name for this list")
 
     // ---- Module settings, custom fields, notifications ----

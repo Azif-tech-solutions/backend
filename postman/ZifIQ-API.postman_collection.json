@@ -250,6 +250,71 @@
       "key": "scheduledPriceId",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "showroomId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "showroomName",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "pendingShowroomId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "floorAreaId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "warehouseAreaId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "coldRoomId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "entryId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "directItemId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "outsourcedItemId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "showroomTransferId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "showroomTransferLineId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "returnId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "dealerReturnId",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -2420,7 +2485,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"216f0225-a72c-48b1-beca-27c3be2f27c2\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"2953eedb-521f-43c0-b26c-ff49f323dfe1\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -2511,7 +2576,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"c0f8844d-5b4c-4616-84aa-6eac378ef289\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"d8ee2b55-6578-49fb-acd9-33de5f099163\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -19583,6 +19648,3505 @@
           ]
         }
       ]
+    },
+    {
+      "name": "16 - Showroom",
+      "item": [
+        {
+          "name": "A1 Register Showroom",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/showroom/showrooms",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "showroom",
+                "showrooms"
+              ]
+            },
+            "description": "Perm showroom.register.manage. Code SHR-n (system-generated, never edited). createDefaultAreas adds the areas in the module setting showroom.defaultAreas (Shop Floor + Warehouse by default); Warehouse becomes the default receiving area and Shop Floor the default selling area. active=false registers it as 'pending opening': it can receive stock but can't trade, dispatch or take returns.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Showroom Ikeja {{$randomInt}}\",\n  \"stateCode\": \"NG-LA\",\n  \"streetAddress\": \"48 Allen Avenue\",\n  \"city\": \"Ikeja\",\n  \"phone\": \"0803 000 1111\",\n  \"email\": \"ikeja@apex.ng\",\n  \"managerName\": \"Ngozi Eze\",\n  \"managerUserId\": null,\n  \"dateOpened\": \"2026-10-01\",\n  \"storageCapacity\": \"1,200 cartons\",\n  \"operatingHours\": \"Mon\\u2013Sat 8am\\u20137pm\",\n  \"active\": true,\n  \"createDefaultAreas\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('showroomId', json.data.id);",
+                  "    pm.collectionVariables.set('showroomName', json.data.name);",
+                  "    pm.collectionVariables.set('floorAreaId', json.data.areas.find(a => a.kind === 'SHOP_FLOOR').id);",
+                  "    pm.collectionVariables.set('warehouseAreaId', json.data.areas.find(a => a.kind === 'WAREHOUSE').id);",
+                  "    pm.collectionVariables.set('today', new Date(Date.now() + 3600 * 1000).toISOString().slice(0, 10));",
+                  "    pm.test('default areas created', () => pm.expect(json.data.areas.map(a => a.kind).sort()).to.eql(['SHOP_FLOOR', 'WAREHOUSE']));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "A1 Register Showroom - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/showroom/showrooms",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "showroom",
+                    "showrooms"
+                  ]
+                },
+                "description": "Perm showroom.register.manage. Code SHR-n (system-generated, never edited). createDefaultAreas adds the areas in the module setting showroom.defaultAreas (Shop Floor + Warehouse by default); Warehouse becomes the default receiving area and Shop Floor the default selling area. active=false registers it as 'pending opening': it can receive stock but can't trade, dispatch or take returns.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Showroom Ikeja {{$randomInt}}\",\n  \"stateCode\": \"NG-LA\",\n  \"streetAddress\": \"48 Allen Avenue\",\n  \"city\": \"Ikeja\",\n  \"phone\": \"0803 000 1111\",\n  \"email\": \"ikeja@apex.ng\",\n  \"managerName\": \"Ngozi Eze\",\n  \"managerUserId\": null,\n  \"dateOpened\": \"2026-10-01\",\n  \"storageCapacity\": \"1,200 cartons\",\n  \"operatingHours\": \"Mon\\u2013Sat 8am\\u20137pm\",\n  \"active\": true,\n  \"createDefaultAreas\": true\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{showroomId}}\",\n    \"code\": \"SHR-1\",\n    \"name\": \"Showroom Ikeja\",\n    \"stateCode\": \"NG-LA\",\n    \"stateName\": \"Lagos\",\n    \"streetAddress\": \"48 Allen Avenue\",\n    \"city\": \"Ikeja\",\n    \"phone\": \"0803 000 1111\",\n    \"email\": \"ikeja@apex.ng\",\n    \"managerName\": \"Ngozi Eze\",\n    \"managerUserId\": null,\n    \"dateOpened\": \"2026-10-01\",\n    \"storageCapacity\": \"1,200 cartons\",\n    \"operatingHours\": \"Mon\\u2013Sat 8am\\u20137pm\",\n    \"status\": \"ACTIVE\",\n    \"vatRate\": 7.5,\n    \"vatEnabled\": true,\n    \"vatRegistrationNumber\": null,\n    \"areas\": [\n      {\n        \"id\": \"{{floorAreaId}}\",\n        \"code\": \"SHR-1-SF\",\n        \"name\": \"Shop Floor\",\n        \"kind\": \"SHOP_FLOOR\",\n        \"status\": \"ACTIVE\",\n        \"unitsOnHand\": 0\n      },\n      {\n        \"id\": \"{{warehouseAreaId}}\",\n        \"code\": \"SHR-1-WH\",\n        \"name\": \"Warehouse\",\n        \"kind\": \"WAREHOUSE\",\n        \"status\": \"ACTIVE\",\n        \"unitsOnHand\": 0\n      }\n    ],\n    \"defaultReceivingLocationId\": \"{{warehouseAreaId}}\",\n    \"defaultSellingLocationId\": \"{{floorAreaId}}\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\",\n    \"warnings\": []\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "A2 Register Showroom (pending opening)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/showroom/showrooms",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "showroom",
+                "showrooms"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Showroom Kano {{$randomInt}}\",\n  \"stateCode\": \"NG-KN\",\n  \"streetAddress\": \"12 Murtala Mohammed Way\",\n  \"city\": \"Kano\",\n  \"phone\": \"0803 000 2222\",\n  \"active\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('pendingShowroomId', json.data.id);",
+                  "    pm.test('pending opening', () => pm.expect(json.data.status).to.eql('PENDING'));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "A2 Register Showroom (pending opening) - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/showroom/showrooms",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "showroom",
+                    "showrooms"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Showroom Kano {{$randomInt}}\",\n  \"stateCode\": \"NG-KN\",\n  \"streetAddress\": \"12 Murtala Mohammed Way\",\n  \"city\": \"Kano\",\n  \"phone\": \"0803 000 2222\",\n  \"active\": false\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{pendingShowroomId}}\",\n    \"code\": \"SHR-2\",\n    \"name\": \"Showroom Kano\",\n    \"stateCode\": \"NG-LA\",\n    \"stateName\": \"Lagos\",\n    \"streetAddress\": \"48 Allen Avenue\",\n    \"city\": \"Ikeja\",\n    \"phone\": \"0803 000 1111\",\n    \"email\": \"ikeja@apex.ng\",\n    \"managerName\": \"Ngozi Eze\",\n    \"managerUserId\": null,\n    \"dateOpened\": \"2026-10-01\",\n    \"storageCapacity\": \"1,200 cartons\",\n    \"operatingHours\": \"Mon\\u2013Sat 8am\\u20137pm\",\n    \"status\": \"PENDING\",\n    \"vatRate\": 7.5,\n    \"vatEnabled\": true,\n    \"vatRegistrationNumber\": null,\n    \"areas\": [\n      {\n        \"id\": \"{{floorAreaId}}\",\n        \"code\": \"SHR-1-SF\",\n        \"name\": \"Shop Floor\",\n        \"kind\": \"SHOP_FLOOR\",\n        \"status\": \"ACTIVE\",\n        \"unitsOnHand\": 0\n      },\n      {\n        \"id\": \"{{warehouseAreaId}}\",\n        \"code\": \"SHR-1-WH\",\n        \"name\": \"Warehouse\",\n        \"kind\": \"WAREHOUSE\",\n        \"status\": \"ACTIVE\",\n        \"unitsOnHand\": 0\n      }\n    ],\n    \"defaultReceivingLocationId\": \"{{warehouseAreaId}}\",\n    \"defaultSellingLocationId\": \"{{floorAreaId}}\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\",\n    \"warnings\": []\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "A3 Register Showroom (error: duplicate name)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/showroom/showrooms",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "showroom",
+                "showrooms"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{showroomName}}\",\n  \"stateCode\": \"NG-LA\",\n  \"streetAddress\": \"1 Road\",\n  \"city\": \"Ikeja\",\n  \"phone\": \"08030000000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 409 DUPLICATE_NAME', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('DUPLICATE_NAME');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "A3 Register Showroom (error: duplicate name) - 409 Conflict",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/showroom/showrooms",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "showroom",
+                    "showrooms"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"{{showroomName}}\",\n  \"stateCode\": \"NG-LA\",\n  \"streetAddress\": \"1 Road\",\n  \"city\": \"Ikeja\",\n  \"phone\": \"08030000000\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"DUPLICATE_NAME\",\n    \"message\": \"'Showroom Ikeja' is already in use\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "A4 List Showrooms",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/showroom/showrooms?q=ikeja",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "showroom",
+                "showrooms"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "ikeja"
+                }
+              ]
+            },
+            "description": "Perm showroom.stock.read. Unpaged. Query: q (code, name, city, manager), status (repeatable), stateCode (repeatable). stats counts every showroom in scope.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "A4 List Showrooms - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/showroom/showrooms?q=ikeja",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "showroom",
+                    "showrooms"
+                  ],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": "ikeja"
+                    }
+                  ]
+                },
+                "description": "Perm showroom.stock.read. Unpaged. Query: q (code, name, city, manager), status (repeatable), stateCode (repeatable). stats counts every showroom in scope.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": \"{{showroomId}}\",\n        \"code\": \"SHR-1\",\n        \"name\": \"Showroom Ikeja\",\n        \"streetAddress\": \"48 Allen Avenue\",\n        \"city\": \"Ikeja\",\n        \"stateCode\": \"NG-LA\",\n        \"stateName\": \"Lagos\",\n        \"managerName\": \"Ngozi Eze\",\n        \"phone\": \"0803 000 1111\",\n        \"dateOpened\": \"2026-10-01\",\n        \"vatRate\": 7.5,\n        \"vatEnabled\": true,\n        \"status\": \"ACTIVE\",\n        \"areaCount\": 2\n      }\n    ],\n    \"stats\": {\n      \"active\": 1,\n      \"pendingOpening\": 1,\n      \"suspended\": 0\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "A5 Get Showroom",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/showroom/showrooms/{{showroomId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "showroom",
+                "showrooms",
+                "{{showroomId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "A5 Get Showroom - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/showroom/showrooms/{{showroomId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "showroom",
+                    "showrooms",
+                    "{{showroomId}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{showroomId}}\",\n    \"code\": \"SHR-1\",\n    \"name\": \"Showroom Ikeja\",\n    \"stateCode\": \"NG-LA\",\n    \"stateName\": \"Lagos\",\n    \"streetAddress\": \"48 Allen Avenue\",\n    \"city\": \"Ikeja\",\n    \"phone\": \"0803 000 1111\",\n    \"email\": \"ikeja@apex.ng\",\n    \"managerName\": \"Ngozi Eze\",\n    \"managerUserId\": null,\n    \"dateOpened\": \"2026-10-01\",\n    \"storageCapacity\": \"1,200 cartons\",\n    \"operatingHours\": \"Mon\\u2013Sat 8am\\u20137pm\",\n    \"status\": \"ACTIVE\",\n    \"vatRate\": 7.5,\n    \"vatEnabled\": true,\n    \"vatRegistrationNumber\": null,\n    \"areas\": [\n      {\n        \"id\": \"{{floorAreaId}}\",\n        \"code\": \"SHR-1-SF\",\n        \"name\": \"Shop Floor\",\n        \"kind\": \"SHOP_FLOOR\",\n        \"status\": \"ACTIVE\",\n        \"unitsOnHand\": 0\n      },\n      {\n        \"id\": \"{{warehouseAreaId}}\",\n        \"code\": \"SHR-1-WH\",\n        \"name\": \"Warehouse\",\n        \"kind\": \"WAREHOUSE\",\n        \"status\": \"ACTIVE\",\n        \"unitsOnHand\": 0\n      }\n    ],\n    \"defaultReceivingLocationId\": \"{{warehouseAreaId}}\",\n    \"defaultSellingLocationId\": \"{{floorAreaId}}\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\",\n    \"warnings\": []\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "A6 Update Showroom",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/showroom/showrooms/{{showroomId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "showroom",
+                "showrooms",
+                "{{showroomId}}"
+              ]
+            },
+            "description": "Same fields as register (active/createDefaultAreas are ignored). Status changes go through A9.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{showroomName}}\",\n  \"stateCode\": \"NG-LA\",\n  \"streetAddress\": \"48 Allen Avenue\",\n  \"city\": \"Ikeja\",\n  \"phone\": \"0803 000 1111\",\n  \"email\": \"ikeja@apex.ng\",\n  \"managerName\": \"Ngozi Eze\",\n  \"operatingHours\": \"Mon\\u2013Sun 8am\\u20138pm\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "A6 Update Showroom - 200 OK",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/showroom/showrooms/{{showroomId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "showroom",
+                    "showrooms",
+                    "{{showroomId}}"
+                  ]
+                },
+                "description": "Same fields as register (active/createDefaultAreas are ignored). Status changes go through A9.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"{{showroomName}}\",\n  \"stateCode\": \"NG-LA\",\n  \"streetAddress\": \"48 Allen Avenue\",\n  \"city\": \"Ikeja\",\n  \"phone\": \"0803 000 1111\",\n  \"email\": \"ikeja@apex.ng\",\n  \"managerName\": \"Ngozi Eze\",\n  \"operatingHours\": \"Mon\\u2013Sun 8am\\u20138pm\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{showroomId}}\",\n    \"code\": \"SHR-1\",\n    \"name\": \"Showroom Ikeja\",\n    \"stateCode\": \"NG-LA\",\n    \"stateName\": \"Lagos\",\n    \"streetAddress\": \"48 Allen Avenue\",\n    \"city\": \"Ikeja\",\n    \"phone\": \"0803 000 1111\",\n    \"email\": \"ikeja@apex.ng\",\n    \"managerName\": \"Ngozi Eze\",\n    \"managerUserId\": null,\n    \"dateOpened\": \"2026-10-01\",\n    \"storageCapacity\": \"1,200 cartons\",\n    \"operatingHours\": \"Mon\\u2013Sun 8am\\u20138pm\",\n    \"status\": \"ACTIVE\",\n    \"vatRate\": 7.5,\n    \"vatEnabled\": true,\n    \"vatRegistrationNumber\": null,\n    \"areas\": [\n      {\n        \"id\": \"{{floorAreaId}}\",\n        \"code\": \"SHR-1-SF\",\n        \"name\": \"Shop Floor\",\n        \"kind\": \"SHOP_FLOOR\",\n        \"status\": \"ACTIVE\",\n        \"unitsOnHand\": 0\n      },\n      {\n        \"id\": \"{{warehouseAreaId}}\",\n        \"code\": \"SHR-1-WH\",\n        \"name\": \"Warehouse\",\n        \"kind\": \"WAREHOUSE\",\n        \"status\": \"ACTIVE\",\n        \"unitsOnHand\": 0\n      }\n    ],\n    \"defaultReceivingLocationId\": \"{{warehouseAreaId}}\",\n    \"defaultSellingLocationId\": \"{{floorAreaId}}\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\",\n    \"warnings\": []\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "A7 Add Storage Area",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/showroom/showrooms/{{showroomId}}/areas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "showroom",
+                "showrooms",
+                "{{showroomId}}",
+                "areas"
+              ]
+            },
+            "description": "kind: SHOP_FLOOR | WAREHOUSE | RECEIVING | QUARANTINE | OTHER. Codes follow the showroom: SHR-1-SF, -WH, -RC, -QR, -A1…",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Cold Room\",\n  \"kind\": \"OTHER\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('coldRoomId', json.data.areas.find(a => a.name === 'Cold Room').id);",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "A7 Add Storage Area - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/showroom/showrooms/{{showroomId}}/areas",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "showroom",
+                    "showrooms",
+                    "{{showroomId}}",
+                    "areas"
+                  ]
+                },
+                "description": "kind: SHOP_FLOOR | WAREHOUSE | RECEIVING | QUARANTINE | OTHER. Codes follow the showroom: SHR-1-SF, -WH, -RC, -QR, -A1…",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Cold Room\",\n  \"kind\": \"OTHER\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{showroomId}}\",\n    \"code\": \"SHR-1\",\n    \"name\": \"Showroom Ikeja\",\n    \"stateCode\": \"NG-LA\",\n    \"stateName\": \"Lagos\",\n    \"streetAddress\": \"48 Allen Avenue\",\n    \"city\": \"Ikeja\",\n    \"phone\": \"0803 000 1111\",\n    \"email\": \"ikeja@apex.ng\",\n    \"managerName\": \"Ngozi Eze\",\n    \"managerUserId\": null,\n    \"dateOpened\": \"2026-10-01\",\n    \"storageCapacity\": \"1,200 cartons\",\n    \"operatingHours\": \"Mon\\u2013Sat 8am\\u20137pm\",\n    \"status\": \"ACTIVE\",\n    \"vatRate\": 7.5,\n    \"vatEnabled\": true,\n    \"vatRegistrationNumber\": null,\n    \"areas\": [\n      {\n        \"id\": \"{{floorAreaId}}\",\n        \"code\": \"SHR-1-SF\",\n        \"name\": \"Shop Floor\",\n        \"kind\": \"SHOP_FLOOR\",\n        \"status\": \"ACTIVE\",\n        \"unitsOnHand\": 0\n      },\n      {\n        \"id\": \"{{warehouseAreaId}}\",\n        \"code\": \"SHR-1-WH\",\n        \"name\": \"Warehouse\",\n        \"kind\": \"WAREHOUSE\",\n        \"status\": \"ACTIVE\",\n        \"unitsOnHand\": 0\n      },\n      {\n        \"id\": \"{{coldRoomId}}\",\n        \"code\": \"SHR-1-A1\",\n        \"name\": \"Cold Room\",\n        \"kind\": \"OTHER\",\n        \"status\": \"ACTIVE\",\n        \"unitsOnHand\": 0\n      }\n    ],\n    \"defaultReceivingLocationId\": \"{{warehouseAreaId}}\",\n    \"defaultSellingLocationId\": \"{{floorAreaId}}\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\",\n    \"warnings\": []\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "A8 Deactivate Storage Area",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/showroom/showrooms/areas/{{coldRoomId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "showroom",
+                "showrooms",
+                "areas",
+                "{{coldRoomId}}",
+                "status"
+              ]
+            },
+            "description": "An area must be empty (409 AREA_HAS_STOCK — move the stock first) and not a default receiving/selling area.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"SUSPENDED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "A8 Deactivate Storage Area - 200 OK",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/showroom/showrooms/areas/{{coldRoomId}}/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "showroom",
+                    "showrooms",
+                    "areas",
+                    "{{coldRoomId}}",
+                    "status"
+                  ]
+                },
+                "description": "An area must be empty (409 AREA_HAS_STOCK — move the stock first) and not a default receiving/selling area.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"SUSPENDED\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{showroomId}}\",\n    \"code\": \"SHR-1\",\n    \"name\": \"Showroom Ikeja\",\n    \"stateCode\": \"NG-LA\",\n    \"stateName\": \"Lagos\",\n    \"streetAddress\": \"48 Allen Avenue\",\n    \"city\": \"Ikeja\",\n    \"phone\": \"0803 000 1111\",\n    \"email\": \"ikeja@apex.ng\",\n    \"managerName\": \"Ngozi Eze\",\n    \"managerUserId\": null,\n    \"dateOpened\": \"2026-10-01\",\n    \"storageCapacity\": \"1,200 cartons\",\n    \"operatingHours\": \"Mon\\u2013Sat 8am\\u20137pm\",\n    \"status\": \"ACTIVE\",\n    \"vatRate\": 7.5,\n    \"vatEnabled\": true,\n    \"vatRegistrationNumber\": null,\n    \"areas\": [\n      {\n        \"id\": \"{{floorAreaId}}\",\n        \"code\": \"SHR-1-SF\",\n        \"name\": \"Shop Floor\",\n        \"kind\": \"SHOP_FLOOR\",\n        \"status\": \"ACTIVE\",\n        \"unitsOnHand\": 0\n      },\n      {\n        \"id\": \"{{warehouseAreaId}}\",\n        \"code\": \"SHR-1-WH\",\n        \"name\": \"Warehouse\",\n        \"kind\": \"WAREHOUSE\",\n        \"status\": \"ACTIVE\",\n        \"unitsOnHand\": 0\n      }\n    ],\n    \"defaultReceivingLocationId\": \"{{warehouseAreaId}}\",\n    \"defaultSellingLocationId\": \"{{floorAreaId}}\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\",\n    \"warnings\": []\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "A9 Open Pending Showroom",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/showroom/showrooms/{{pendingShowroomId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "showroom",
+                "showrooms",
+                "{{pendingShowroomId}}",
+                "status"
+              ]
+            },
+            "description": "status ACTIVE | PENDING | SUSPENDED. Suspending a showroom that holds stock is allowed but the response carries a warning; nothing moves while suspended.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ACTIVE\",\n  \"reason\": \"Opening day\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "A9 Open Pending Showroom - 200 OK",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/showroom/showrooms/{{pendingShowroomId}}/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "showroom",
+                    "showrooms",
+                    "{{pendingShowroomId}}",
+                    "status"
+                  ]
+                },
+                "description": "status ACTIVE | PENDING | SUSPENDED. Suspending a showroom that holds stock is allowed but the response carries a warning; nothing moves while suspended.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"ACTIVE\",\n  \"reason\": \"Opening day\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{pendingShowroomId}}\",\n    \"code\": \"SHR-1\",\n    \"name\": \"Showroom Kano\",\n    \"stateCode\": \"NG-LA\",\n    \"stateName\": \"Lagos\",\n    \"streetAddress\": \"48 Allen Avenue\",\n    \"city\": \"Ikeja\",\n    \"phone\": \"0803 000 1111\",\n    \"email\": \"ikeja@apex.ng\",\n    \"managerName\": \"Ngozi Eze\",\n    \"managerUserId\": null,\n    \"dateOpened\": \"2026-10-01\",\n    \"storageCapacity\": \"1,200 cartons\",\n    \"operatingHours\": \"Mon\\u2013Sat 8am\\u20137pm\",\n    \"status\": \"ACTIVE\",\n    \"vatRate\": 7.5,\n    \"vatEnabled\": true,\n    \"vatRegistrationNumber\": null,\n    \"areas\": [\n      {\n        \"id\": \"{{floorAreaId}}\",\n        \"code\": \"SHR-1-SF\",\n        \"name\": \"Shop Floor\",\n        \"kind\": \"SHOP_FLOOR\",\n        \"status\": \"ACTIVE\",\n        \"unitsOnHand\": 0\n      },\n      {\n        \"id\": \"{{warehouseAreaId}}\",\n        \"code\": \"SHR-1-WH\",\n        \"name\": \"Warehouse\",\n        \"kind\": \"WAREHOUSE\",\n        \"status\": \"ACTIVE\",\n        \"unitsOnHand\": 0\n      }\n    ],\n    \"defaultReceivingLocationId\": \"{{warehouseAreaId}}\",\n    \"defaultSellingLocationId\": \"{{floorAreaId}}\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\",\n    \"warnings\": []\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "A10 Showroom Lookup",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/showroom/showrooms/lookup?q=ikeja",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "showroom",
+                "showrooms",
+                "lookup"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "ikeja"
+                }
+              ]
+            },
+            "description": "Picker with areas as children (active showrooms by default).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "A10 Showroom Lookup - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/showroom/showrooms/lookup?q=ikeja",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "showroom",
+                    "showrooms",
+                    "lookup"
+                  ],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": "ikeja"
+                    }
+                  ]
+                },
+                "description": "Picker with areas as children (active showrooms by default).",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{showroomId}}\",\n      \"code\": \"SHR-1\",\n      \"label\": \"Showroom Ikeja\",\n      \"status\": \"ACTIVE\",\n      \"areas\": [\n        {\n          \"id\": \"{{floorAreaId}}\",\n          \"code\": \"SHR-1-SF\",\n          \"name\": \"Shop Floor\",\n          \"kind\": \"SHOP_FLOOR\",\n          \"status\": \"ACTIVE\",\n          \"unitsOnHand\": 0\n        },\n        {\n          \"id\": \"{{warehouseAreaId}}\",\n          \"code\": \"SHR-1-WH\",\n          \"name\": \"Warehouse\",\n          \"kind\": \"WAREHOUSE\",\n          \"status\": \"ACTIVE\",\n          \"unitsOnHand\": 0\n        }\n      ]\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "B1 Direct Stock Entry",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/showroom/direct-entries",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "showroom",
+                "direct-entries"
+              ]
+            },
+            "description": "Perm showroom.intake.manage. Third-party goods not in the product register: each description becomes a DIRECT_ENTRY item held only at this showroom (the same description + unit restocks the same item), priced from sellingPrice/dealerPrice, costed at unitCost. Goods go to intoLocationId or the showroom's receiving area. Give supplierId (registered) or supplierName. inputVatRate is the VAT the supplier charged.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"locationId\": \"{{showroomId}}\",\n  \"intoLocationId\": null,\n  \"supplierId\": null,\n  \"supplierName\": \"Independent local vendor\",\n  \"supplierInvoiceNo\": \"INV-7781\",\n  \"paymentTerms\": \"Cash on delivery\",\n  \"receivedDate\": \"{{today}}\",\n  \"vatCategoryId\": null,\n  \"lines\": [\n    {\n      \"description\": \"Local Groundnuts 500g\",\n      \"quantity\": 20,\n      \"unitOfMeasureId\": \"{{unitId}}\",\n      \"unitCost\": 800,\n      \"inputVatRate\": 7.5,\n      \"sellingPrice\": 1200,\n      \"dealerPrice\": 1100\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('entryId', json.data.id);",
+                  "    pm.collectionVariables.set('directItemId', json.data.lines[0].stockItemId);",
+                  "    pm.test('goes to the warehouse by default', () => pm.expect(json.data.intoLocationId).to.eql(pm.collectionVariables.get('warehouseAreaId')));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "B1 Direct Stock Entry - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/showroom/direct-entries",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "showroom",
+                    "direct-entries"
+                  ]
+                },
+                "description": "Perm showroom.intake.manage. Third-party goods not in the product register: each description becomes a DIRECT_ENTRY item held only at this showroom (the same description + unit restocks the same item), priced from sellingPrice/dealerPrice, costed at unitCost. Goods go to intoLocationId or the showroom's receiving area. Give supplierId (registered) or supplierName. inputVatRate is the VAT the supplier charged.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"locationId\": \"{{showroomId}}\",\n  \"intoLocationId\": null,\n  \"supplierId\": null,\n  \"supplierName\": \"Independent local vendor\",\n  \"supplierInvoiceNo\": \"INV-7781\",\n  \"paymentTerms\": \"Cash on delivery\",\n  \"receivedDate\": \"{{today}}\",\n  \"vatCategoryId\": null,\n  \"lines\": [\n    {\n      \"description\": \"Local Groundnuts 500g\",\n      \"quantity\": 20,\n      \"unitOfMeasureId\": \"{{unitId}}\",\n      \"unitCost\": 800,\n      \"inputVatRate\": 7.5,\n      \"sellingPrice\": 1200,\n      \"dealerPrice\": 1100\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{entryId}}\",\n    \"ref\": \"DE-1\",\n    \"kind\": \"DIRECT_ENTRY\",\n    \"locationId\": \"{{showroomId}}\",\n    \"locationName\": \"Showroom Ikeja\",\n    \"intoLocationId\": \"{{warehouseAreaId}}\",\n    \"intoLocationName\": \"Showroom Ikeja \\u2014 Warehouse\",\n    \"supplierId\": null,\n    \"supplierName\": \"Independent local vendor\",\n    \"manufacturerId\": null,\n    \"partnerName\": null,\n    \"partnerReference\": \"INV-7781\",\n    \"paymentTerms\": \"Cash on delivery\",\n    \"checkedBy\": null,\n    \"receivedDate\": \"2026-10-09\",\n    \"lines\": [\n      {\n        \"lineNo\": 1,\n        \"stockItemId\": \"{{directItemId}}\",\n        \"code\": \"ITM-9\",\n        \"description\": \"Local Groundnuts 500g\",\n        \"quantity\": 20.0,\n        \"unit\": \"Kilogram\",\n        \"unitCost\": 800.0,\n        \"lineCost\": 16000.0,\n        \"inputVatRate\": 7.5,\n        \"inputVatAmount\": 1200.0,\n        \"sellingPrice\": 1200.0,\n        \"batchNo\": null,\n        \"expiryDate\": null\n      }\n    ],\n    \"totalCost\": 16000.0,\n    \"totalInputVat\": 1200.0,\n    \"enteredByUserId\": \"{{userId}}\",\n    \"enteredByName\": \"Alice Admin\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\",\n    \"costVisible\": true,\n    \"warnings\": []\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "B2 Direct Entries Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/showroom/direct-entries?q=groundnuts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "showroom",
+                "direct-entries"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "groundnuts"
+                }
+              ]
+            },
+            "description": "One row per line. Filters: locationId, supplierId, stockItemId, receivedDate/from/to/period, expiryDate, hasBatch, inputVatRate, quantity, lineCost (cost), enteredBy. q: reference, invoice no., product, supplier, batch. Costs are 0 without factory.costing.read.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "B2 Direct Entries Report - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/showroom/direct-entries?q=groundnuts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "showroom",
+                    "direct-entries"
+                  ],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": "groundnuts"
+                    }
+                  ]
+                },
+                "description": "One row per line. Filters: locationId, supplierId, stockItemId, receivedDate/from/to/period, expiryDate, hasBatch, inputVatRate, quantity, lineCost (cost), enteredBy. q: reference, invoice no., product, supplier, batch. Costs are 0 without factory.costing.read.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"entryId\": \"{{entryId}}\",\n        \"lineId\": \"1a2b3c4d-7777-4c4c-9a9a-000000000007\",\n        \"date\": \"2026-10-09\",\n        \"ref\": \"DE-1\",\n        \"kind\": \"DIRECT_ENTRY\",\n        \"locationId\": \"{{showroomId}}\",\n        \"locationName\": \"Showroom Ikeja\",\n        \"stockItemId\": \"{{directItemId}}\",\n        \"productCode\": \"ITM-9\",\n        \"product\": \"Local Groundnuts 500g\",\n        \"party\": \"Independent local vendor\",\n        \"partnerReference\": \"INV-7781\",\n        \"batchNo\": null,\n        \"expiryDate\": null,\n        \"quantity\": 20.0,\n        \"unit\": \"Kilogram\",\n        \"unitCost\": 800.0,\n        \"lineCost\": 16000.0,\n        \"inputVatAmount\": 1200.0,\n        \"enteredByName\": \"Alice Admin\"\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": {\n      \"entries\": 1,\n      \"lines\": 1,\n      \"units\": 20,\n      \"totalCost\": 16000.0,\n      \"inputVat\": 1200.0,\n      \"costVisible\": true\n    },\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "B3 Get Stock Entry",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/showroom/stock-entries/{{entryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "showroom",
+                "stock-entries",
+                "{{entryId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "B3 Get Stock Entry - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/showroom/stock-entries/{{entryId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "showroom",
+                    "stock-entries",
+                    "{{entryId}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{entryId}}\",\n    \"ref\": \"DE-1\",\n    \"kind\": \"DIRECT_ENTRY\",\n    \"lines\": [\n      {\n        \"lineNo\": 1,\n        \"stockItemId\": \"{{directItemId}}\",\n        \"code\": \"ITM-9\",\n        \"description\": \"Local Groundnuts 500g\",\n        \"quantity\": 20.0,\n        \"unit\": \"Kilogram\",\n        \"unitCost\": 800.0,\n        \"lineCost\": 16000.0,\n        \"inputVatRate\": 7.5,\n        \"inputVatAmount\": 1200.0,\n        \"sellingPrice\": 1200.0,\n        \"batchNo\": null,\n        \"expiryDate\": null\n      }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "B4 Register Outsourced Product",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/inventory/stock-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "inventory",
+                "stock-items"
+              ]
+            },
+            "description": "Setup for B5: outsourced products are registered in the product register with their landing cost.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"locationId\": \"{{factoryId}}\",\n  \"itemType\": \"OUTSOURCED\",\n  \"code\": null,\n  \"name\": \"Partner Cola 35cl\",\n  \"categoryId\": null,\n  \"brand\": \"Partner\",\n  \"unitOfMeasureId\": \"{{unitId}}\",\n  \"reorderLevel\": 0,\n  \"barcode\": null,\n  \"landingCost\": 2000,\n  \"markupCost\": null,\n  \"vatCategoryId\": \"{{standardRateVatCategoryId}}\",\n  \"hsnSectionId\": \"{{hsnSectionId}}\",\n  \"isicSectionId\": \"{{isicSectionId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('outsourcedItemId', json.data.id);",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "B4 Register Outsourced Product - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/inventory/stock-items",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "inventory",
+                    "stock-items"
+                  ]
+                },
+                "description": "Setup for B5: outsourced products are registered in the product register with their landing cost.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"locationId\": \"{{factoryId}}\",\n  \"itemType\": \"OUTSOURCED\",\n  \"code\": null,\n  \"name\": \"Partner Cola 35cl\",\n  \"categoryId\": null,\n  \"brand\": \"Partner\",\n  \"unitOfMeasureId\": \"{{unitId}}\",\n  \"reorderLevel\": 0,\n  \"barcode\": null,\n  \"landingCost\": 2000,\n  \"markupCost\": null,\n  \"vatCategoryId\": \"{{standardRateVatCategoryId}}\",\n  \"hsnSectionId\": \"{{hsnSectionId}}\",\n  \"isicSectionId\": \"{{isicSectionId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{outsourcedItemId}}\",\n    \"itemType\": \"OUTSOURCED\",\n    \"name\": \"Partner Cola 35cl\",\n    \"landingCost\": 2000.0\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "B5 Outsource Stock Receipt",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/showroom/outsource-receipts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "showroom",
+                "outsource-receipts"
+              ]
+            },
+            "description": "Perm showroom.intake.manage. Only registered OUTSOURCED products (400 ITEM_NOT_OUTSOURCED otherwise; use Direct Entry for unregistered goods), ACTIVE, with a landing cost (400 OUTSOURCE_COST_NOT_SET). Unit cost is the registered landing cost, not input. Expiry must be after the received date.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"locationId\": \"{{showroomId}}\",\n  \"intoLocationId\": \"{{floorAreaId}}\",\n  \"manufacturerId\": \"{{manufacturerId}}\",\n  \"partnerReference\": \"PW-5521\",\n  \"checkedBy\": \"Musa\",\n  \"receivedDate\": \"{{today}}\",\n  \"lines\": [\n    {\n      \"stockItemId\": \"{{outsourcedItemId}}\",\n      \"quantity\": 12,\n      \"inputVatRate\": 0,\n      \"batchNo\": \"PC-2610\",\n      \"expiryDate\": \"2099-06-30\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('costed at the registered landing cost', () => pm.expect(json.data.lines[0].unitCost).to.eql(2000));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "B5 Outsource Stock Receipt - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/showroom/outsource-receipts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "showroom",
+                    "outsource-receipts"
+                  ]
+                },
+                "description": "Perm showroom.intake.manage. Only registered OUTSOURCED products (400 ITEM_NOT_OUTSOURCED otherwise; use Direct Entry for unregistered goods), ACTIVE, with a landing cost (400 OUTSOURCE_COST_NOT_SET). Unit cost is the registered landing cost, not input. Expiry must be after the received date.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"locationId\": \"{{showroomId}}\",\n  \"intoLocationId\": \"{{floorAreaId}}\",\n  \"manufacturerId\": \"{{manufacturerId}}\",\n  \"partnerReference\": \"PW-5521\",\n  \"checkedBy\": \"Musa\",\n  \"receivedDate\": \"{{today}}\",\n  \"lines\": [\n    {\n      \"stockItemId\": \"{{outsourcedItemId}}\",\n      \"quantity\": 12,\n      \"inputVatRate\": 0,\n      \"batchNo\": \"PC-2610\",\n      \"expiryDate\": \"2099-06-30\"\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"ref\": \"OS-1\",\n    \"kind\": \"OUTSOURCE_RECEIPT\",\n    \"partnerName\": \"Partner Bottlers\",\n    \"lines\": [\n      {\n        \"lineNo\": 1,\n        \"stockItemId\": \"{{directItemId}}\",\n        \"code\": \"ITM-9\",\n        \"description\": \"Local Groundnuts 500g\",\n        \"quantity\": 20.0,\n        \"unit\": \"Kilogram\",\n        \"unitCost\": 2000.0,\n        \"lineCost\": 24000.0,\n        \"inputVatRate\": 7.5,\n        \"inputVatAmount\": 1200.0,\n        \"sellingPrice\": 1200.0,\n        \"batchNo\": null,\n        \"expiryDate\": null\n      }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "B6 Outsource Stock Receipt (error: not outsourced)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/showroom/outsource-receipts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "showroom",
+                "outsource-receipts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"locationId\": \"{{showroomId}}\",\n  \"manufacturerId\": \"{{manufacturerId}}\",\n  \"receivedDate\": \"{{today}}\",\n  \"lines\": [\n    {\n      \"stockItemId\": \"{{finishedProductId}}\",\n      \"quantity\": 1\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 400 ITEM_NOT_OUTSOURCED', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('ITEM_NOT_OUTSOURCED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "B6 Outsource Stock Receipt (error: not outsourced) - 400 Bad Request",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/showroom/outsource-receipts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "showroom",
+                    "outsource-receipts"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"locationId\": \"{{showroomId}}\",\n  \"manufacturerId\": \"{{manufacturerId}}\",\n  \"receivedDate\": \"{{today}}\",\n  \"lines\": [\n    {\n      \"stockItemId\": \"{{finishedProductId}}\",\n      \"quantity\": 1\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"ITEM_NOT_OUTSOURCED\",\n    \"message\": \"Only registered outsourced products can be received here; for third-party goods not in the register use Stock Entry (Direct)\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "B7 Outsource Receipts Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/showroom/outsource-receipts?locationId={{showroomId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "showroom",
+                "outsource-receipts"
+              ],
+              "query": [
+                {
+                  "key": "locationId",
+                  "value": "{{showroomId}}"
+                }
+              ]
+            },
+            "description": "Filters: locationId, manufacturerId, stockItemId, receivedDate, expiryDate (expiryDate.lte = expiring soon), hasBatch, quantity.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "B7 Outsource Receipts Report - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/showroom/outsource-receipts?locationId={{showroomId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "showroom",
+                    "outsource-receipts"
+                  ],
+                  "query": [
+                    {
+                      "key": "locationId",
+                      "value": "{{showroomId}}"
+                    }
+                  ]
+                },
+                "description": "Filters: locationId, manufacturerId, stockItemId, receivedDate, expiryDate (expiryDate.lte = expiring soon), hasBatch, quantity.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 0,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": null,\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "C1 Dispatch Factory → Showroom",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/inventory/stock/transfers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "inventory",
+                "stock",
+                "transfers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceLocationId\": \"{{factoryId}}\",\n  \"destinationLocationId\": \"{{showroomId}}\",\n  \"driverId\": \"{{driverId}}\",\n  \"lines\": [\n    {\n      \"stockItemId\": \"{{finishedProductId}}\",\n      \"quantity\": 6,\n      \"unitPrice\": null\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('showroomTransferId', json.data.id);",
+                  "    pm.collectionVariables.set('showroomTransferLineId', json.data.lines[0].id);",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "C1 Dispatch Factory → Showroom - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/inventory/stock/transfers",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "inventory",
+                    "stock",
+                    "transfers"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"sourceLocationId\": \"{{factoryId}}\",\n  \"destinationLocationId\": \"{{showroomId}}\",\n  \"driverId\": \"{{driverId}}\",\n  \"lines\": [\n    {\n      \"stockItemId\": \"{{finishedProductId}}\",\n      \"quantity\": 6,\n      \"unitPrice\": null\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{showroomTransferId}}\",\n    \"waybillRef\": \"WB-2\",\n    \"sourceLocationId\": \"{{factoryId}}\",\n    \"sourceLocationName\": \"Apex Plant A (Updated)\",\n    \"sourceLocationType\": \"FACTORY\",\n    \"destinationLocationId\": \"{{showroomId}}\",\n    \"destinationLocationName\": \"Apex Plant B\",\n    \"destinationLocationType\": \"SHOWROOM\",\n    \"status\": \"DISPATCHED\",\n    \"driverId\": \"{{driverId}}\",\n    \"driverName\": \"Musa Bello\",\n    \"driverVehicle\": \"KN-482-ABC\",\n    \"transferDate\": \"2026-10-08\",\n    \"dispatchedAt\": \"2026-10-01T10:15:30Z\",\n    \"receivedDate\": null,\n    \"receivedAt\": null,\n    \"receiptNote\": null,\n    \"totalSent\": 5.0,\n    \"totalRejected\": 0,\n    \"waybillUrl\": \"/api/v1/inventory/stock/transfers/{{transfer2Id}}/waybill.pdf\",\n    \"lines\": [\n      {\n        \"id\": \"{{transfer2LineId}}\",\n        \"stockItemId\": \"{{finishedProductId}}\",\n        \"stockItemCode\": \"ITM-2\",\n        \"stockItemName\": \"Premium Blend\",\n        \"unit\": \"Kilogram\",\n        \"qtySent\": 5.0,\n        \"qtyReceived\": null,\n        \"qtyRejected\": null,\n        \"outstanding\": 5.0,\n        \"fromLocationId\": null,\n        \"fromLocationName\": null,\n        \"receivedIntoLocationId\": null,\n        \"receivedIntoLocationName\": null,\n        \"batchNo\": \"B-2026-10-01\",\n        \"rejectionNote\": null\n      }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "C2 Receive at Showroom",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/inventory/stock/transfers/{{showroomTransferId}}/receive",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "inventory",
+                "stock",
+                "transfers",
+                "{{showroomTransferId}}",
+                "receive"
+              ]
+            },
+            "description": "With no receivedIntoLocationId, goods go to the showroom's default receiving area (Warehouse).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lines\": [\n    {\n      \"stockTransferLineId\": \"{{showroomTransferLineId}}\",\n      \"qtyReceived\": 6,\n      \"qtyRejected\": 0\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('received into the showroom warehouse by default', () => pm.expect(json.data.lines[0].receivedIntoLocationId).to.eql(pm.collectionVariables.get('warehouseAreaId')));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "C2 Receive at Showroom - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/inventory/stock/transfers/{{showroomTransferId}}/receive",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "inventory",
+                    "stock",
+                    "transfers",
+                    "{{showroomTransferId}}",
+                    "receive"
+                  ]
+                },
+                "description": "With no receivedIntoLocationId, goods go to the showroom's default receiving area (Warehouse).",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"lines\": [\n    {\n      \"stockTransferLineId\": \"{{showroomTransferLineId}}\",\n      \"qtyReceived\": 6,\n      \"qtyRejected\": 0\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{transfer2Id}}\",\n    \"waybillRef\": \"WB-2\",\n    \"sourceLocationId\": \"{{factoryId}}\",\n    \"sourceLocationName\": \"Apex Plant A (Updated)\",\n    \"sourceLocationType\": \"FACTORY\",\n    \"destinationLocationId\": \"{{factoryId2}}\",\n    \"destinationLocationName\": \"Apex Plant B\",\n    \"destinationLocationType\": \"FACTORY\",\n    \"status\": \"RECEIVED\",\n    \"driverId\": \"{{driverId}}\",\n    \"driverName\": \"Musa Bello\",\n    \"driverVehicle\": \"KN-482-ABC\",\n    \"transferDate\": \"2026-10-08\",\n    \"dispatchedAt\": \"2026-10-01T10:15:30Z\",\n    \"receivedDate\": null,\n    \"receivedAt\": null,\n    \"receiptNote\": null,\n    \"totalSent\": 5.0,\n    \"totalRejected\": 0,\n    \"waybillUrl\": \"/api/v1/inventory/stock/transfers/{{transfer2Id}}/waybill.pdf\",\n    \"lines\": [\n      {\n        \"id\": \"{{transfer2LineId}}\",\n        \"stockItemId\": \"{{finishedProductId}}\",\n        \"stockItemCode\": \"ITM-2\",\n        \"stockItemName\": \"Premium Blend\",\n        \"unit\": \"Kilogram\",\n        \"qtySent\": 5.0,\n        \"qtyReceived\": null,\n        \"qtyRejected\": null,\n        \"outstanding\": 5.0,\n        \"fromLocationId\": null,\n        \"fromLocationName\": null,\n        \"receivedIntoLocationId\": null,\n        \"receivedIntoLocationName\": null,\n        \"batchNo\": \"B-2026-10-01\",\n        \"rejectionNote\": null\n      }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "D1 Move Warehouse → Shop Floor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/showroom/area-moves",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "showroom",
+                "area-moves"
+              ]
+            },
+            "description": "Perm showroom.stock.manage. Both areas must belong to the same showroom/factory (400 NOT_SAME_LOCATION). Leaving a QUARANTINE area needs a note.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromLocationId\": \"{{warehouseAreaId}}\",\n  \"toLocationId\": \"{{floorAreaId}}\",\n  \"movedDate\": null,\n  \"note\": \"Restock the floor\",\n  \"lines\": [\n    {\n      \"stockItemId\": \"{{finishedProductId}}\",\n      \"quantity\": 2\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "D1 Move Warehouse → Shop Floor - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/showroom/area-moves",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "showroom",
+                    "area-moves"
+                  ]
+                },
+                "description": "Perm showroom.stock.manage. Both areas must belong to the same showroom/factory (400 NOT_SAME_LOCATION). Leaving a QUARANTINE area needs a note.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"fromLocationId\": \"{{warehouseAreaId}}\",\n  \"toLocationId\": \"{{floorAreaId}}\",\n  \"movedDate\": null,\n  \"note\": \"Restock the floor\",\n  \"lines\": [\n    {\n      \"stockItemId\": \"{{finishedProductId}}\",\n      \"quantity\": 2\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"2b3c4d5e-8888-4c4c-9a9a-000000000008\",\n    \"ref\": \"AM-1\",\n    \"rootLocationId\": \"{{showroomId}}\",\n    \"rootLocationName\": \"Showroom Ikeja\",\n    \"fromLocationId\": \"{{warehouseAreaId}}\",\n    \"fromLocationName\": \"Warehouse\",\n    \"toLocationId\": \"{{floorAreaId}}\",\n    \"toLocationName\": \"Shop Floor\",\n    \"movedDate\": \"2026-10-09\",\n    \"note\": \"Restock the floor\",\n    \"lines\": [\n      {\n        \"lineNo\": 1,\n        \"stockItemId\": \"{{finishedProductId}}\",\n        \"code\": \"ITM-2\",\n        \"name\": \"Premium Blend\",\n        \"quantity\": 2.0,\n        \"unit\": \"Kilogram\"\n      }\n    ],\n    \"movedByUserId\": \"{{userId}}\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "D2 Move (error: more than available)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/showroom/area-moves",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "showroom",
+                "area-moves"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromLocationId\": \"{{warehouseAreaId}}\",\n  \"toLocationId\": \"{{floorAreaId}}\",\n  \"lines\": [\n    {\n      \"stockItemId\": \"{{finishedProductId}}\",\n      \"quantity\": 9999\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 400 INSUFFICIENT_STOCK', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('INSUFFICIENT_STOCK');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "D2 Move (error: more than available) - 400 Bad Request",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/showroom/area-moves",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "showroom",
+                    "area-moves"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"fromLocationId\": \"{{warehouseAreaId}}\",\n  \"toLocationId\": \"{{floorAreaId}}\",\n  \"lines\": [\n    {\n      \"stockItemId\": \"{{finishedProductId}}\",\n      \"quantity\": 9999\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"INSUFFICIENT_STOCK\",\n    \"message\": \"Insufficient stock\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "D3 List Area Moves",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/showroom/area-moves?locationId={{showroomId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "showroom",
+                "area-moves"
+              ],
+              "query": [
+                {
+                  "key": "locationId",
+                  "value": "{{showroomId}}"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "D3 List Area Moves - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/showroom/area-moves?locationId={{showroomId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "showroom",
+                    "area-moves"
+                  ],
+                  "query": [
+                    {
+                      "key": "locationId",
+                      "value": "{{showroomId}}"
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 0,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": null,\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "E1 Walk-in Return (non-dealer)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/showroom/returns",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "showroom",
+                "returns"
+              ]
+            },
+            "description": "Perm showroom.returns.manage; the showroom must be ACTIVE. No customer record? Give walkIn {name, phone}: an existing non-dealer with that phone is used, otherwise a temporary customer is created (removed once its wallet is spent). Every line is credited to the wallet at today's price (retail for non-dealers, dealer price for dealers; 400 PRICE_NOT_SET if none). RESALEABLE goes back into stock (receiving area), QUARANTINE into the quarantine area (created on first use, never sold from), DAMAGED_WRITE_OFF is recorded as a loss.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"returnType\": \"NON_DEALER\",\n  \"locationId\": \"{{showroomId}}\",\n  \"customerId\": null,\n  \"walkIn\": {\n    \"name\": \"Ada Nwosu\",\n    \"phone\": \"0809 111 {{$randomInt}}\"\n  },\n  \"originalDocumentRef\": \"RCT-552\",\n  \"returnDate\": null,\n  \"note\": null,\n  \"lines\": [\n    {\n      \"stockItemId\": \"{{finishedProductId}}\",\n      \"quantity\": 1,\n      \"reason\": \"PRODUCT_DEFECT\",\n      \"condition\": \"RESALEABLE\"\n    },\n    {\n      \"stockItemId\": \"{{finishedProductId}}\",\n      \"quantity\": 1,\n      \"reason\": \"DAMAGED_IN_TRANSIT\",\n      \"condition\": \"DAMAGED_WRITE_OFF\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('returnId', json.data.id);",
+                  "    pm.test('temporary customer credited for both lines', () => { pm.expect(json.data.customer.temporary).to.eql(true); pm.expect(json.data.walletCredit).to.eql(10000); });",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "E1 Walk-in Return (non-dealer) - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/showroom/returns",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "showroom",
+                    "returns"
+                  ]
+                },
+                "description": "Perm showroom.returns.manage; the showroom must be ACTIVE. No customer record? Give walkIn {name, phone}: an existing non-dealer with that phone is used, otherwise a temporary customer is created (removed once its wallet is spent). Every line is credited to the wallet at today's price (retail for non-dealers, dealer price for dealers; 400 PRICE_NOT_SET if none). RESALEABLE goes back into stock (receiving area), QUARANTINE into the quarantine area (created on first use, never sold from), DAMAGED_WRITE_OFF is recorded as a loss.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"returnType\": \"NON_DEALER\",\n  \"locationId\": \"{{showroomId}}\",\n  \"customerId\": null,\n  \"walkIn\": {\n    \"name\": \"Ada Nwosu\",\n    \"phone\": \"0809 111 {{$randomInt}}\"\n  },\n  \"originalDocumentRef\": \"RCT-552\",\n  \"returnDate\": null,\n  \"note\": null,\n  \"lines\": [\n    {\n      \"stockItemId\": \"{{finishedProductId}}\",\n      \"quantity\": 1,\n      \"reason\": \"PRODUCT_DEFECT\",\n      \"condition\": \"RESALEABLE\"\n    },\n    {\n      \"stockItemId\": \"{{finishedProductId}}\",\n      \"quantity\": 1,\n      \"reason\": \"DAMAGED_IN_TRANSIT\",\n      \"condition\": \"DAMAGED_WRITE_OFF\"\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{returnId}}\",\n    \"ref\": \"RT-1\",\n    \"returnType\": \"NON_DEALER\",\n    \"locationId\": \"{{showroomId}}\",\n    \"locationName\": \"Showroom Ikeja\",\n    \"customer\": {\n      \"id\": \"8f8f8f8f-6666-4c4c-9a9a-000000000006\",\n      \"code\": \"CU-5\",\n      \"name\": \"Ada Nwosu\",\n      \"type\": \"NO_CREDIT_WALKIN\",\n      \"temporary\": true\n    },\n    \"originalDocumentRef\": \"RCT-552\",\n    \"returnDate\": \"2026-10-09\",\n    \"note\": null,\n    \"lines\": [\n      {\n        \"lineNo\": 1,\n        \"stockItemId\": \"{{finishedProductId}}\",\n        \"code\": \"ITM-2\",\n        \"name\": \"Premium Blend\",\n        \"quantity\": 1.0,\n        \"unit\": \"Kilogram\",\n        \"unitPrice\": 5000.0,\n        \"lineValue\": 5000.0,\n        \"reason\": \"PRODUCT_DEFECT\",\n        \"condition\": \"RESALEABLE\",\n        \"intoLocationId\": \"{{warehouseAreaId}}\",\n        \"intoLocationName\": \"Showroom Ikeja \\u2014 Warehouse\",\n        \"note\": null\n      }\n    ],\n    \"totalValue\": 10000.0,\n    \"writeOffValue\": 5000.0,\n    \"walletBalanceBefore\": 0.0,\n    \"walletCredit\": 10000.0,\n    \"walletBalanceAfter\": 10000.0,\n    \"status\": \"POSTED\",\n    \"reversedReason\": null,\n    \"reversedAt\": null,\n    \"processedByUserId\": \"{{userId}}\",\n    \"processedByName\": \"Alice Admin\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "E2 Dealer Return",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/showroom/returns",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "showroom",
+                "returns"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"returnType\": \"DEALER\",\n  \"locationId\": \"{{showroomId}}\",\n  \"customerId\": \"{{dealerId}}\",\n  \"originalDocumentRef\": \"INV-9001\",\n  \"lines\": [\n    {\n      \"stockItemId\": \"{{finishedProductId}}\",\n      \"quantity\": 1,\n      \"reason\": \"EXPIRED_OR_NEAR_EXPIRY\",\n      \"condition\": \"QUARANTINE\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('dealerReturnId', json.data.id);",
+                  "    pm.test('credited at the dealer price', () => pm.expect(json.data.totalValue).to.eql(4500));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "E2 Dealer Return - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/showroom/returns",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "showroom",
+                    "returns"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"returnType\": \"DEALER\",\n  \"locationId\": \"{{showroomId}}\",\n  \"customerId\": \"{{dealerId}}\",\n  \"originalDocumentRef\": \"INV-9001\",\n  \"lines\": [\n    {\n      \"stockItemId\": \"{{finishedProductId}}\",\n      \"quantity\": 1,\n      \"reason\": \"EXPIRED_OR_NEAR_EXPIRY\",\n      \"condition\": \"QUARANTINE\"\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{dealerReturnId}}\",\n    \"ref\": \"RT-2\",\n    \"returnType\": \"DEALER\",\n    \"locationId\": \"{{showroomId}}\",\n    \"locationName\": \"Showroom Ikeja\",\n    \"customer\": {\n      \"id\": \"8f8f8f8f-6666-4c4c-9a9a-000000000006\",\n      \"code\": \"CU-5\",\n      \"name\": \"Ada Nwosu\",\n      \"type\": \"NO_CREDIT_WALKIN\",\n      \"temporary\": true\n    },\n    \"originalDocumentRef\": \"RCT-552\",\n    \"returnDate\": \"2026-10-09\",\n    \"note\": null,\n    \"lines\": [\n      {\n        \"lineNo\": 1,\n        \"stockItemId\": \"{{finishedProductId}}\",\n        \"code\": \"ITM-2\",\n        \"name\": \"Premium Blend\",\n        \"quantity\": 1.0,\n        \"unit\": \"Kilogram\",\n        \"unitPrice\": 5000.0,\n        \"lineValue\": 5000.0,\n        \"reason\": \"PRODUCT_DEFECT\",\n        \"condition\": \"RESALEABLE\",\n        \"intoLocationId\": \"{{warehouseAreaId}}\",\n        \"intoLocationName\": \"Showroom Ikeja \\u2014 Warehouse\",\n        \"note\": null\n      }\n    ],\n    \"totalValue\": 4500.0,\n    \"writeOffValue\": 0.0,\n    \"walletBalanceBefore\": 0.0,\n    \"walletCredit\": 4500.0,\n    \"walletBalanceAfter\": 10000.0,\n    \"status\": \"POSTED\",\n    \"reversedReason\": null,\n    \"reversedAt\": null,\n    \"processedByUserId\": \"{{userId}}\",\n    \"processedByName\": \"Alice Admin\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "E3 Return (error: dealer as non-dealer)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/showroom/returns",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "showroom",
+                "returns"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"returnType\": \"NON_DEALER\",\n  \"locationId\": \"{{showroomId}}\",\n  \"customerId\": \"{{dealerId}}\",\n  \"lines\": [\n    {\n      \"stockItemId\": \"{{finishedProductId}}\",\n      \"quantity\": 1,\n      \"reason\": \"PRODUCT_DEFECT\",\n      \"condition\": \"RESALEABLE\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 400 USE_DEALER_RETURN', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('USE_DEALER_RETURN');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "E3 Return (error: dealer as non-dealer) - 400 Bad Request",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/showroom/returns",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "showroom",
+                    "returns"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"returnType\": \"NON_DEALER\",\n  \"locationId\": \"{{showroomId}}\",\n  \"customerId\": \"{{dealerId}}\",\n  \"lines\": [\n    {\n      \"stockItemId\": \"{{finishedProductId}}\",\n      \"quantity\": 1,\n      \"reason\": \"PRODUCT_DEFECT\",\n      \"condition\": \"RESALEABLE\"\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"USE_DEALER_RETURN\",\n    \"message\": \"This customer is an Authorised Dealer; record a dealer return instead\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "E4 Get Return",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/showroom/returns/{{returnId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "showroom",
+                "returns",
+                "{{returnId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "E4 Get Return - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/showroom/returns/{{returnId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "showroom",
+                    "returns",
+                    "{{returnId}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{returnId}}\",\n    \"ref\": \"RT-1\",\n    \"returnType\": \"NON_DEALER\",\n    \"locationId\": \"{{showroomId}}\",\n    \"locationName\": \"Showroom Ikeja\",\n    \"customer\": {\n      \"id\": \"8f8f8f8f-6666-4c4c-9a9a-000000000006\",\n      \"code\": \"CU-5\",\n      \"name\": \"Ada Nwosu\",\n      \"type\": \"NO_CREDIT_WALKIN\",\n      \"temporary\": true\n    },\n    \"originalDocumentRef\": \"RCT-552\",\n    \"returnDate\": \"2026-10-09\",\n    \"note\": null,\n    \"lines\": [\n      {\n        \"lineNo\": 1,\n        \"stockItemId\": \"{{finishedProductId}}\",\n        \"code\": \"ITM-2\",\n        \"name\": \"Premium Blend\",\n        \"quantity\": 1.0,\n        \"unit\": \"Kilogram\",\n        \"unitPrice\": 5000.0,\n        \"lineValue\": 5000.0,\n        \"reason\": \"PRODUCT_DEFECT\",\n        \"condition\": \"RESALEABLE\",\n        \"intoLocationId\": \"{{warehouseAreaId}}\",\n        \"intoLocationName\": \"Showroom Ikeja \\u2014 Warehouse\",\n        \"note\": null\n      }\n    ],\n    \"totalValue\": 10000.0,\n    \"writeOffValue\": 5000.0,\n    \"walletBalanceBefore\": 0.0,\n    \"walletCredit\": 10000.0,\n    \"walletBalanceAfter\": 10000.0,\n    \"status\": \"POSTED\",\n    \"reversedReason\": null,\n    \"reversedAt\": null,\n    \"processedByUserId\": \"{{userId}}\",\n    \"processedByName\": \"Alice Admin\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "E5 Reverse Dealer Return",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/showroom/returns/{{dealerReturnId}}/reverse",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "showroom",
+                "returns",
+                "{{dealerReturnId}}",
+                "reverse"
+              ]
+            },
+            "description": "Perm showroom.returns.manage + customers.wallet.adjust. Only while the wallet still holds the credit (400 INSUFFICIENT_WALLET_BALANCE) and the goods are still where they went (400 INSUFFICIENT_STOCK). Takes the credit and the goods back.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Recorded against the wrong dealer\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('reversed', () => pm.expect(json.data.status).to.eql('REVERSED'));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "E5 Reverse Dealer Return - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/showroom/returns/{{dealerReturnId}}/reverse",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "showroom",
+                    "returns",
+                    "{{dealerReturnId}}",
+                    "reverse"
+                  ]
+                },
+                "description": "Perm showroom.returns.manage + customers.wallet.adjust. Only while the wallet still holds the credit (400 INSUFFICIENT_WALLET_BALANCE) and the goods are still where they went (400 INSUFFICIENT_STOCK). Takes the credit and the goods back.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Recorded against the wrong dealer\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{dealerReturnId}}\",\n    \"ref\": \"RT-1\",\n    \"returnType\": \"NON_DEALER\",\n    \"locationId\": \"{{showroomId}}\",\n    \"locationName\": \"Showroom Ikeja\",\n    \"customer\": {\n      \"id\": \"8f8f8f8f-6666-4c4c-9a9a-000000000006\",\n      \"code\": \"CU-5\",\n      \"name\": \"Ada Nwosu\",\n      \"type\": \"NO_CREDIT_WALKIN\",\n      \"temporary\": true\n    },\n    \"originalDocumentRef\": \"RCT-552\",\n    \"returnDate\": \"2026-10-09\",\n    \"note\": null,\n    \"lines\": [\n      {\n        \"lineNo\": 1,\n        \"stockItemId\": \"{{finishedProductId}}\",\n        \"code\": \"ITM-2\",\n        \"name\": \"Premium Blend\",\n        \"quantity\": 1.0,\n        \"unit\": \"Kilogram\",\n        \"unitPrice\": 5000.0,\n        \"lineValue\": 5000.0,\n        \"reason\": \"PRODUCT_DEFECT\",\n        \"condition\": \"RESALEABLE\",\n        \"intoLocationId\": \"{{warehouseAreaId}}\",\n        \"intoLocationName\": \"Showroom Ikeja \\u2014 Warehouse\",\n        \"note\": null\n      }\n    ],\n    \"totalValue\": 10000.0,\n    \"writeOffValue\": 5000.0,\n    \"walletBalanceBefore\": 0.0,\n    \"walletCredit\": 10000.0,\n    \"walletBalanceAfter\": 10000.0,\n    \"status\": \"REVERSED\",\n    \"reversedReason\": \"Recorded against the wrong dealer\",\n    \"reversedAt\": \"2026-10-01T10:15:30Z\",\n    \"processedByUserId\": \"{{userId}}\",\n    \"processedByName\": \"Alice Admin\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "E6 Reverse Return (error: already reversed)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/showroom/returns/{{dealerReturnId}}/reverse",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "showroom",
+                "returns",
+                "{{dealerReturnId}}",
+                "reverse"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Again\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 409 RETURN_ALREADY_REVERSED', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('RETURN_ALREADY_REVERSED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "E6 Reverse Return (error: already reversed) - 409 Conflict",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/showroom/returns/{{dealerReturnId}}/reverse",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "showroom",
+                    "returns",
+                    "{{dealerReturnId}}",
+                    "reverse"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Again\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"RETURN_ALREADY_REVERSED\",\n    \"message\": \"This return has already been reversed\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "E7 Return Reports",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/showroom/returns?locationId={{showroomId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "showroom",
+                "returns"
+              ],
+              "query": [
+                {
+                  "key": "locationId",
+                  "value": "{{showroomId}}"
+                }
+              ]
+            },
+            "description": "Perm showroom.returns.read. One row per line; POSTED returns unless status is filtered. Filters: locationId, returnType, condition, reason, customerId, customerType, status, stockItemId, lineValue, creditedTo, returnDate/from/to/period. q: RT ref, original document, customer code/name/phone, product, note.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('write-off counted as the net cost of returns', () => pm.expect(json.data.summary.writeOffValue).to.eql(5000));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "E7 Return Reports - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/showroom/returns?locationId={{showroomId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "showroom",
+                    "returns"
+                  ],
+                  "query": [
+                    {
+                      "key": "locationId",
+                      "value": "{{showroomId}}"
+                    }
+                  ]
+                },
+                "description": "Perm showroom.returns.read. One row per line; POSTED returns unless status is filtered. Filters: locationId, returnType, condition, reason, customerId, customerType, status, stockItemId, lineValue, creditedTo, returnDate/from/to/period. q: RT ref, original document, customer code/name/phone, product, note.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 0,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": {\n      \"returns\": 1,\n      \"units\": 2,\n      \"valueCredited\": 10000.0,\n      \"resaleableValue\": 5000.0,\n      \"quarantineValue\": 0.0,\n      \"writeOffValue\": 5000.0,\n      \"byReason\": [\n        {\n          \"reason\": \"PRODUCT_DEFECT\",\n          \"lines\": 1,\n          \"units\": 1,\n          \"value\": 5000.0\n        }\n      ]\n    },\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "F1 Comprehensive Stock (showroom)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/showroom/reports/comprehensive-stock?locationId={{showroomId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "showroom",
+                "reports",
+                "comprehensive-stock"
+              ],
+              "query": [
+                {
+                  "key": "locationId",
+                  "value": "{{showroomId}}"
+                }
+              ]
+            },
+            "description": "One row per item × area. Query: locationId (or areaId), source (FINISHED_PRODUCT|OUTSOURCED|DIRECT_ENTRY, repeatable), categoryId, asAt (past dates read the ledger), includeZero, q, sort (group, detail, qty, retailValue, totalCost). Cost columns are 0 and summary.costVisible false without factory.costing.read.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('rows per area', () => pm.expect(json.data.items.map(r => r.area)).to.include('Warehouse'));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "F1 Comprehensive Stock (showroom) - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/showroom/reports/comprehensive-stock?locationId={{showroomId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "showroom",
+                    "reports",
+                    "comprehensive-stock"
+                  ],
+                  "query": [
+                    {
+                      "key": "locationId",
+                      "value": "{{showroomId}}"
+                    }
+                  ]
+                },
+                "description": "One row per item × area. Query: locationId (or areaId), source (FINISHED_PRODUCT|OUTSOURCED|DIRECT_ENTRY, repeatable), categoryId, asAt (past dates read the ledger), includeZero, q, sort (group, detail, qty, retailValue, totalCost). Cost columns are 0 and summary.costVisible false without factory.costing.read.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"ln\": 1,\n        \"stockItemId\": \"{{finishedProductId}}\",\n        \"code\": \"ITM-2\",\n        \"detail\": \"Premium Blend\",\n        \"group\": \"Ungrouped\",\n        \"source\": \"Finished Product\",\n        \"locationId\": \"{{warehouseAreaId}}\",\n        \"area\": \"Warehouse\",\n        \"qty\": 5.0,\n        \"unit\": \"Kilogram\",\n        \"unitCost\": 0.0,\n        \"totalCost\": 0.0,\n        \"sellingPrice\": 5000.0,\n        \"retailValue\": 25000.0\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": {\n      \"costVisible\": true,\n      \"asAt\": \"2026-10-09\",\n      \"lineItems\": 4,\n      \"totalQuantity\": 39,\n      \"totalStockValue\": 64000.0,\n      \"retailValue\": 115400.0,\n      \"storageAreas\": 3\n    },\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "F2 General Transfer Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/showroom/reports/transfers?route=FACTORY_TO_SHOWROOM",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "showroom",
+                "reports",
+                "transfers"
+              ],
+              "query": [
+                {
+                  "key": "route",
+                  "value": "FACTORY_TO_SHOWROOM"
+                }
+              ]
+            },
+            "description": "One row per transfer line. Filters: route (SHOWROOM_TO_SHOWROOM, FACTORY_TO_SHOWROOM, SHOWROOM_TO_FACTORY, FACTORY_TO_FACTORY), sourceLocationId, destinationLocationId, driverId, status (IN_TRANSIT|RECEIVED), hasRejections, stockItemId, transferDate/from/to/period. q: waybill, product, driver, vehicle.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('the factory → showroom transfer is listed', () => pm.expect(json.data.items.map(r => r.transferId)).to.include(pm.collectionVariables.get('showroomTransferId')));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "F2 General Transfer Report - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/showroom/reports/transfers?route=FACTORY_TO_SHOWROOM",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "showroom",
+                    "reports",
+                    "transfers"
+                  ],
+                  "query": [
+                    {
+                      "key": "route",
+                      "value": "FACTORY_TO_SHOWROOM"
+                    }
+                  ]
+                },
+                "description": "One row per transfer line. Filters: route (SHOWROOM_TO_SHOWROOM, FACTORY_TO_SHOWROOM, SHOWROOM_TO_FACTORY, FACTORY_TO_FACTORY), sourceLocationId, destinationLocationId, driverId, status (IN_TRANSIT|RECEIVED), hasRejections, stockItemId, transferDate/from/to/period. q: waybill, product, driver, vehicle.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 0,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": {\n      \"transfers\": 1,\n      \"totalQuantity\": 6,\n      \"inTransit\": 0,\n      \"locationsInvolved\": 2\n    },\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "F3 Deactivate Area (error: holds stock)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/showroom/showrooms/areas/{{warehouseAreaId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "showroom",
+                "showrooms",
+                "areas",
+                "{{warehouseAreaId}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"SUSPENDED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 409 AREA_HAS_STOCK', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('AREA_HAS_STOCK');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "F3 Deactivate Area (error: holds stock) - 409 Conflict",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/showroom/showrooms/areas/{{warehouseAreaId}}/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "showroom",
+                    "showrooms",
+                    "areas",
+                    "{{warehouseAreaId}}",
+                    "status"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"SUSPENDED\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"AREA_HAS_STOCK\",\n    \"message\": \"This area still holds 23 units; move them first\"\n  }\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Showroom (backend docs/05). Run after folders 06-15: it uses the factory, units, finished product (with the price published in 15), manufacturer, driver and dealer they create. A: register showrooms and areas. B: direct entries and outsource receipts. C: stock from the factory into the showroom warehouse. D: area moves. E: walk-in and dealer returns credited to wallets, reversal, Return Reports. F: comprehensive stock and transfer reports."
     }
   ]
 }

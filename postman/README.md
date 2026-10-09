@@ -41,7 +41,7 @@ means it has expired).
 
 ## Running it
 
-Run folders **01 through 15 in order**, either by hand or with the
+Run folders **01 through 16 in order**, either by hand or with the
 Collection Runner. Each request's Tests script captures tokens and
 created-entity IDs (tenant id, access token, factory id, stock item ids,
 recipe id, costing id, customer ids, etc.) into collection variables that
@@ -151,6 +151,20 @@ PDF** returns the printable waybill (use *Send and Download* to save it);
 difference. Folder 06 now reactivates the factory after testing the
 suspension, because a suspended location can't move stock.
 
+## Showroom (folder 16)
+
+Showrooms with their storage areas, direct entries and outsource receipts,
+stock arriving from the factory, moves between areas, customer returns
+credited to wallets (walk-in and dealer), reversal, Return Reports, and the
+comprehensive stock and transfer reports (backend `docs/05-showroom.md`).
+It uses data created in folders 06–15 — the factory, unit, finished product
+and its price, manufacturer, driver and dealer — so run it after them.
+Highlights: **A1 Register Showroom** creates the Shop Floor and Warehouse
+areas; **C2 Receive at Showroom** shows goods landing in the Warehouse by
+default; **E1 Walk-in Return** creates a temporary customer and credits both
+lines (one resaleable, one written off); **F1 Comprehensive Stock** lists
+stock per area with retail value.
+
 ## Running it headless (Newman)
 
 The whole collection can also be run end-to-end from the command line with
@@ -166,7 +180,7 @@ npx newman run postman/ZifIQ-API.postman_collection.json -e postman/ZifIQ-Dev.po
   --folder "01 - Auth" --folder "12 - Customers"
 ```
 
-A clean full run reports `182/182` requests and `216/216` assertions
+A clean full run reports `214/214` requests and `259/259` assertions
 passing. Several requests are *deliberately* run against a state that makes
 them fail. These are not bugs: they demonstrate real error paths on purpose,
 so each gets its own status + error-code assertion instead of the generic

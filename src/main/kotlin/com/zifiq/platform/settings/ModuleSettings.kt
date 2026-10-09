@@ -166,6 +166,9 @@ class ModuleSettings(
                 val items = raw.map { item -> if (item.isTextual && item.textValue().isNotBlank()) item.textValue().trim().take(120) else invalid("every item must be non-empty text") }
                 if (items.size > definition.maxItems) invalid("at most ${definition.maxItems} items")
                 if (items.map { it.lowercase() }.toSet().size != items.size) invalid("items must be unique")
+                if (definition.options.isNotEmpty()) {
+                    items.firstOrNull { it !in definition.options }?.let { invalid("'$it' is not one of ${definition.options.joinToString()}") }
+                }
                 items
             }
         }

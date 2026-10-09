@@ -37,6 +37,7 @@ object RoleDefaults {
             "platform.documents.read",
             "inventory.pricing.read",
             "inventory.drivers.read",
+            "showroom.returns.read",
         ),
         ACCOUNTS_PERSONNEL to setOf(
             "accounting.read",
@@ -49,6 +50,8 @@ object RoleDefaults {
             "customers.ledger.read",
             "platform.documents.read",
             "inventory.pricing.read",
+            "showroom.stock.read",
+            "showroom.returns.read",
         ),
         STOCK_KEEPER to setOf(
             "inventory.stock.read",
@@ -61,6 +64,9 @@ object RoleDefaults {
             "inventory.pricing.read",
             "inventory.drivers.read",
             "inventory.drivers.manage",
+            "showroom.intake.manage",
+            "showroom.returns.manage",
+            "showroom.returns.read",
         ),
         QUALITY_CONTROL to setOf(
             "inventory.stock.read",
@@ -75,6 +81,9 @@ object RoleDefaults {
             "platform.documents.read",
             "inventory.pricing.read",
             "inventory.drivers.read",
+            "showroom.stock.read",
+            "showroom.returns.manage",
+            "showroom.returns.read",
         ),
         // Correspondents see only their own customers; dealers only their own account (PRD §7).
         CORRESPONDENT to setOf("customers.read.own"),

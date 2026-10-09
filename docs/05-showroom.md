@@ -1,6 +1,6 @@
 # 05 — Showroom Module
 
-Status: **in progress** — slice 1 (storage areas, document registry, PDF rendering; V9) and slice 2 (inventory extensions; V9_2) are shipped; slice 3 (the Showroom module itself) is next.
+Status: **implemented** — slice 1 (storage areas, document registry, PDF rendering; V9), slice 2 (inventory extensions; V9_2) and slice 3 (the Showroom module; V9_3).
 
 **Implementation notes (slices 1–2), where the build differs from or adds to the design below:**
 - Migrations: V9 (storage areas + document registry, the docs/03 §8/§11 items the V7 pass didn't ship), V9_1 (file storage, docs/03 §8.4), V9_2 (§2.2–§2.6 here plus counted-adjustment columns). §2.7–§2.10 (showroom entries, returns, area moves, location detail columns, showroom permissions) come with slice 3 as V9_3.
@@ -11,6 +11,12 @@ Status: **in progress** — slice 1 (storage areas, document registry, PDF rende
 - Group cards (§4.10): `groupBy=CATEGORY` only. `PARENT_PRODUCT` returns `400 INVALID_FILTER` until product variants (docs/03 §12.2) are built.
 - Price list (§4.12): extra filters `status`, `batchRef`, `marginPct` (cost); `GET /stock-items/{id}/prices` rows carry `state` (`CURRENT`|`SUPERSEDED`|`SCHEDULED`). `inventory.price-list.entry-changed` event added.
 - Drivers (§4.13): vehicle numbers stored upper-case; `GET /drivers/lookup` picker (active only).
+- Slice 3 (V9_3): `showroom.defaultAreas` is a list of area **kinds** (`["SHOP_FLOOR","WAREHOUSE"]`; module settings hold scalars and string lists) — each kind gets its standard name and code suffix (`-SF`, `-WH`, `-RC`, `-QR`, `-A1…`). Showroom names are unique among showrooms only (factories keep their own rule). The receiving default now applies to transfer receipts, direct entries, outsource receipts and resaleable returns.
+- Direct entry: a different price for an item that already has a price in force **from the same date** is not published (rows in force are never changed) — the response carries a `warnings` entry instead. Suppliers must be ACTIVE. Outsource receipts also accept `inputVatRate` per line, and expiry must be after the received date.
+- Generated item codes skip codes already in use (`StockItemCodes`), because users may type their own `ITM-n` codes; this also fixes the same latent collision in `POST /inventory/stock-items`.
+- Added: `GET /api/v1/showroom/stock-entries/{id}` (`404 STOCK_ENTRY_NOT_FOUND`), `GET/POST …/direct-entries|outsource-receipts/search|filters`, `GET /api/v1/showroom/showrooms/lookup`, return search provider (`return`) and showroom search provider (`showroom`); direct-entry/outsource search providers are not added (their refs are found through the reports' `q`).
+- The comprehensive stock report filters, sorts and pages in memory over the scoped showrooms' item×area rows (bounded by items × areas); it records `security.cost-data.viewed` when a cost-authorised user fetches it (docs/03 §7.3).
+- Return reversal checks `customers.wallet.adjust` in the service (the endpoint itself needs `showroom.returns.manage`), as §4.8 specifies.
 - Inventory write paths now emit the docs/03 §7.4 events (`inventory.stock-item.registered|status-changed`, `inventory.refill.posted`, `inventory.receipt.posted|verified`, `inventory.transfer.dispatched|received`, `inventory.adjustment.posted`, `inventory.driver.*`, `inventory.price-list.*`). Factory's events are still to do.
 Owner package: `com.zifiq.showroom` (consumer module; exposes a read-only `com.zifiq.showroom.spi` for reports)
 Also changes the OPEN `com.zifiq.inventory` module (price list, drivers, group stock cards, transfer-receipt reconciliation, new ledger source types) — Showroom is the first consumer of all of these, the same way Factory added Settings' reference tables in doc 02.

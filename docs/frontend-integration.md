@@ -125,6 +125,7 @@ Customers endpoints live under `/api/v1/customers` (register, list/search, stats
 
 - `GET /api/v1/inventory/quantity-adjustments` is now **paged** (`data.items`, `data.summary` with `qtyAdded`/`qtyRemoved`/`netEffect`) and searchable, like the other lists. Rows carry product code/name, location names, mode and before/after quantities.
 - Stock transfers: dispatch accepts `driverId`, `transferDate` and per-line `fromLocationId`/`batchNo`; receiving needs accepted + rejected to equal what's outstanding, `rejectionNote` for rejections, and returns rejected goods to the source. Transfer rows now include location names, driver, dates, per-line outstanding quantities and `waybillUrl` (a PDF).
+- New: Showroom module under `/api/v1/showroom` — showrooms and storage areas (`/showrooms`), direct entries, outsource receipts, area moves, returns (`/returns`) and reports (`/reports/comprehensive-stock`, `/reports/transfers`). The old mock `/api/v1/showroom/stock`, `/stock/direct`, `/transfers` and `/vat-report` endpoints are gone (transfers are `/api/v1/inventory/stock/transfers`).
 - New: drivers (`/api/v1/inventory/drivers`), price list (`/api/v1/inventory/price-list`), group stock/bin cards (`/api/v1/inventory/stock/group-card`, `group-bin-card`), documents registry (`/api/v1/documents`), file uploads (`/api/v1/files`).
 
 ## Notes

@@ -1416,6 +1416,243 @@ ep(I, "Group Bin Card", "GET", "/api/v1/inventory/stock/group-bin-card",
                              "totalReceived": 0, "totalIssued": 0, "closingBalance": 0}, "rows": []}},
    desc="Daily totals for the group.")
 
+# ============================== SHOWROOM (docs/05) ==============================
+S = "16 - Showroom"
+AREAS = [{"id": "{{floorAreaId}}", "code": "SHR-1-SF", "name": "Shop Floor", "kind": "SHOP_FLOOR", "status": "ACTIVE", "unitsOnHand": 0},
+         {"id": "{{warehouseAreaId}}", "code": "SHR-1-WH", "name": "Warehouse", "kind": "WAREHOUSE", "status": "ACTIVE", "unitsOnHand": 0}]
+SHOWROOM = {"id": "{{showroomId}}", "code": "SHR-1", "name": "Showroom Ikeja", "stateCode": "NG-LA", "stateName": "Lagos",
+            "streetAddress": "48 Allen Avenue", "city": "Ikeja", "phone": "0803 000 1111", "email": "ikeja@apex.ng", "managerName": "Ngozi Eze",
+            "managerUserId": None, "dateOpened": "2026-10-01", "storageCapacity": "1,200 cartons", "operatingHours": "Mon–Sat 8am–7pm",
+            "status": "ACTIVE", "vatRate": 7.50, "vatEnabled": True, "vatRegistrationNumber": None, "areas": AREAS,
+            "defaultReceivingLocationId": "{{warehouseAreaId}}", "defaultSellingLocationId": "{{floorAreaId}}", "createdAt": NOW, "warnings": []}
+ENTRY_LINE = {"lineNo": 1, "stockItemId": "{{directItemId}}", "code": "ITM-9", "description": "Local Groundnuts 500g", "quantity": 20.000,
+              "unit": "Kilogram", "unitCost": 800.00, "lineCost": 16000.00, "inputVatRate": 7.50, "inputVatAmount": 1200.00,
+              "sellingPrice": 1200.00, "batchNo": None, "expiryDate": None}
+RETURN = {"id": "{{returnId}}", "ref": "RT-1", "returnType": "NON_DEALER", "locationId": "{{showroomId}}", "locationName": "Showroom Ikeja",
+          "customer": {"id": "8f8f8f8f-6666-4c4c-9a9a-000000000006", "code": "CU-5", "name": "Ada Nwosu", "type": "NO_CREDIT_WALKIN", "temporary": True},
+          "originalDocumentRef": "RCT-552", "returnDate": "2026-10-09", "note": None,
+          "lines": [{"lineNo": 1, "stockItemId": "{{finishedProductId}}", "code": "ITM-2", "name": "Premium Blend", "quantity": 1.000, "unit": "Kilogram",
+                     "unitPrice": 5000.00, "lineValue": 5000.00, "reason": "PRODUCT_DEFECT", "condition": "RESALEABLE",
+                     "intoLocationId": "{{warehouseAreaId}}", "intoLocationName": "Showroom Ikeja — Warehouse", "note": None}],
+          "totalValue": 10000.00, "writeOffValue": 5000.00, "walletBalanceBefore": 0.00, "walletCredit": 10000.00, "walletBalanceAfter": 10000.00,
+          "status": "POSTED", "reversedReason": None, "reversedAt": None, "processedByUserId": "{{userId}}", "processedByName": "Alice Admin", "createdAt": NOW}
+
+# ---- A. Showroom register ----
+ep(S, "A1 Register Showroom", "POST", "/api/v1/showroom/showrooms",
+   body={"name": "Showroom Ikeja {{$randomInt}}", "stateCode": "NG-LA", "streetAddress": "48 Allen Avenue", "city": "Ikeja", "phone": "0803 000 1111",
+         "email": "ikeja@apex.ng", "managerName": "Ngozi Eze", "managerUserId": None, "dateOpened": "2026-10-01", "storageCapacity": "1,200 cartons",
+         "operatingHours": "Mon–Sat 8am–7pm", "active": True, "createDefaultAreas": True},
+   resp={"data": SHOWROOM},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('showroomId', json.data.id);",
+          "pm.collectionVariables.set('showroomName', json.data.name);",
+          "pm.collectionVariables.set('floorAreaId', json.data.areas.find(a => a.kind === 'SHOP_FLOOR').id);",
+          "pm.collectionVariables.set('warehouseAreaId', json.data.areas.find(a => a.kind === 'WAREHOUSE').id);",
+          "pm.collectionVariables.set('today', new Date(Date.now() + 3600 * 1000).toISOString().slice(0, 10));",
+          "pm.test('default areas created', () => pm.expect(json.data.areas.map(a => a.kind).sort()).to.eql(['SHOP_FLOOR', 'WAREHOUSE']));"],
+   desc="Perm showroom.register.manage. Code SHR-n (system-generated, never edited). createDefaultAreas adds the areas in the module setting "
+        "showroom.defaultAreas (Shop Floor + Warehouse by default); Warehouse becomes the default receiving area and Shop Floor the default selling area. "
+        "active=false registers it as 'pending opening': it can receive stock but can't trade, dispatch or take returns.")
+
+ep(S, "A2 Register Showroom (pending opening)", "POST", "/api/v1/showroom/showrooms",
+   body={"name": "Showroom Kano {{$randomInt}}", "stateCode": "NG-KN", "streetAddress": "12 Murtala Mohammed Way", "city": "Kano", "phone": "0803 000 2222", "active": False},
+   resp={"data": dict(SHOWROOM, id="{{pendingShowroomId}}", code="SHR-2", name="Showroom Kano", status="PENDING")},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('pendingShowroomId', json.data.id);",
+          "pm.test('pending opening', () => pm.expect(json.data.status).to.eql('PENDING'));"])
+
+ep(S, "A3 Register Showroom (error: duplicate name)", "POST", "/api/v1/showroom/showrooms",
+   body={"name": "{{showroomName}}", "stateCode": "NG-LA", "streetAddress": "1 Road", "city": "Ikeja", "phone": "08030000000"},
+   status=409, status_text="Conflict", resp={"error": {"code": "DUPLICATE_NAME", "message": "'Showroom Ikeja' is already in use"}},
+   expect_error={"status": 409, "code": "DUPLICATE_NAME"})
+
+ep(S, "A4 List Showrooms", "GET", "/api/v1/showroom/showrooms", query=[{"key": "q", "value": "ikeja"}],
+   resp={"data": {"items": [{"id": "{{showroomId}}", "code": "SHR-1", "name": "Showroom Ikeja", "streetAddress": "48 Allen Avenue", "city": "Ikeja",
+                             "stateCode": "NG-LA", "stateName": "Lagos", "managerName": "Ngozi Eze", "phone": "0803 000 1111", "dateOpened": "2026-10-01",
+                             "vatRate": 7.50, "vatEnabled": True, "status": "ACTIVE", "areaCount": 2}],
+                  "stats": {"active": 1, "pendingOpening": 1, "suspended": 0}}},
+   desc="Perm showroom.stock.read. Unpaged. Query: q (code, name, city, manager), status (repeatable), stateCode (repeatable). stats counts every showroom in scope.")
+
+ep(S, "A5 Get Showroom", "GET", "/api/v1/showroom/showrooms/{{showroomId}}", resp={"data": SHOWROOM})
+
+ep(S, "A6 Update Showroom", "PUT", "/api/v1/showroom/showrooms/{{showroomId}}",
+   body={"name": "{{showroomName}}", "stateCode": "NG-LA", "streetAddress": "48 Allen Avenue", "city": "Ikeja", "phone": "0803 000 1111",
+         "email": "ikeja@apex.ng", "managerName": "Ngozi Eze", "operatingHours": "Mon–Sun 8am–8pm"},
+   resp={"data": dict(SHOWROOM, operatingHours="Mon–Sun 8am–8pm")},
+   desc="Same fields as register (active/createDefaultAreas are ignored). Status changes go through A9.")
+
+ep(S, "A7 Add Storage Area", "POST", "/api/v1/showroom/showrooms/{{showroomId}}/areas",
+   body={"name": "Cold Room", "kind": "OTHER"},
+   resp={"data": dict(SHOWROOM, areas=AREAS + [{"id": "{{coldRoomId}}", "code": "SHR-1-A1", "name": "Cold Room", "kind": "OTHER", "status": "ACTIVE", "unitsOnHand": 0}])},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('coldRoomId', json.data.areas.find(a => a.name === 'Cold Room').id);"],
+   desc="kind: SHOP_FLOOR | WAREHOUSE | RECEIVING | QUARANTINE | OTHER. Codes follow the showroom: SHR-1-SF, -WH, -RC, -QR, -A1…")
+
+ep(S, "A8 Deactivate Storage Area", "PUT", "/api/v1/showroom/showrooms/areas/{{coldRoomId}}/status", body={"status": "SUSPENDED"},
+   resp={"data": SHOWROOM},
+   desc="An area must be empty (409 AREA_HAS_STOCK — move the stock first) and not a default receiving/selling area.")
+
+ep(S, "A9 Open Pending Showroom", "PUT", "/api/v1/showroom/showrooms/{{pendingShowroomId}}/status", body={"status": "ACTIVE", "reason": "Opening day"},
+   resp={"data": dict(SHOWROOM, id="{{pendingShowroomId}}", name="Showroom Kano")},
+   desc="status ACTIVE | PENDING | SUSPENDED. Suspending a showroom that holds stock is allowed but the response carries a warning; nothing moves while suspended.")
+
+ep(S, "A10 Showroom Lookup", "GET", "/api/v1/showroom/showrooms/lookup", query=[{"key": "q", "value": "ikeja"}],
+   resp={"data": [{"id": "{{showroomId}}", "code": "SHR-1", "label": "Showroom Ikeja", "status": "ACTIVE", "areas": AREAS}]},
+   desc="Picker with areas as children (active showrooms by default).")
+
+# ---- B. Stock intake ----
+ep(S, "B1 Direct Stock Entry", "POST", "/api/v1/showroom/direct-entries",
+   body={"locationId": "{{showroomId}}", "intoLocationId": None, "supplierId": None, "supplierName": "Independent local vendor",
+         "supplierInvoiceNo": "INV-7781", "paymentTerms": "Cash on delivery", "receivedDate": "{{today}}", "vatCategoryId": None,
+         "lines": [{"description": "Local Groundnuts 500g", "quantity": 20, "unitOfMeasureId": "{{unitId}}", "unitCost": 800, "inputVatRate": 7.5,
+                    "sellingPrice": 1200, "dealerPrice": 1100}]},
+   resp={"data": {"id": "{{entryId}}", "ref": "DE-1", "kind": "DIRECT_ENTRY", "locationId": "{{showroomId}}", "locationName": "Showroom Ikeja",
+                  "intoLocationId": "{{warehouseAreaId}}", "intoLocationName": "Showroom Ikeja — Warehouse", "supplierId": None,
+                  "supplierName": "Independent local vendor", "manufacturerId": None, "partnerName": None, "partnerReference": "INV-7781",
+                  "paymentTerms": "Cash on delivery", "checkedBy": None, "receivedDate": "2026-10-09", "lines": [ENTRY_LINE], "totalCost": 16000.00,
+                  "totalInputVat": 1200.00, "enteredByUserId": "{{userId}}", "enteredByName": "Alice Admin", "createdAt": NOW, "costVisible": True, "warnings": []}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('entryId', json.data.id);",
+          "pm.collectionVariables.set('directItemId', json.data.lines[0].stockItemId);",
+          "pm.test('goes to the warehouse by default', () => pm.expect(json.data.intoLocationId).to.eql(pm.collectionVariables.get('warehouseAreaId')));"],
+   desc="Perm showroom.intake.manage. Third-party goods not in the product register: each description becomes a DIRECT_ENTRY item held only at this "
+        "showroom (the same description + unit restocks the same item), priced from sellingPrice/dealerPrice, costed at unitCost. Goods go to "
+        "intoLocationId or the showroom's receiving area. Give supplierId (registered) or supplierName. inputVatRate is the VAT the supplier charged.")
+
+ep(S, "B2 Direct Entries Report", "GET", "/api/v1/showroom/direct-entries", query=[{"key": "q", "value": "groundnuts"}],
+   resp=PAGE([{"entryId": "{{entryId}}", "lineId": "1a2b3c4d-7777-4c4c-9a9a-000000000007", "date": "2026-10-09", "ref": "DE-1", "kind": "DIRECT_ENTRY",
+               "locationId": "{{showroomId}}", "locationName": "Showroom Ikeja", "stockItemId": "{{directItemId}}", "productCode": "ITM-9",
+               "product": "Local Groundnuts 500g", "party": "Independent local vendor", "partnerReference": "INV-7781", "batchNo": None, "expiryDate": None,
+               "quantity": 20.000, "unit": "Kilogram", "unitCost": 800.00, "lineCost": 16000.00, "inputVatAmount": 1200.00, "enteredByName": "Alice Admin"}],
+             summary={"entries": 1, "lines": 1, "units": 20, "totalCost": 16000.00, "inputVat": 1200.00, "costVisible": True}),
+   desc="One row per line. Filters: locationId, supplierId, stockItemId, receivedDate/from/to/period, expiryDate, hasBatch, inputVatRate, quantity, lineCost "
+        "(cost), enteredBy. q: reference, invoice no., product, supplier, batch. Costs are 0 without factory.costing.read.")
+
+ep(S, "B3 Get Stock Entry", "GET", "/api/v1/showroom/stock-entries/{{entryId}}",
+   resp={"data": {"id": "{{entryId}}", "ref": "DE-1", "kind": "DIRECT_ENTRY", "lines": [ENTRY_LINE]}})
+
+ep(S, "B4 Register Outsourced Product", "POST", "/api/v1/inventory/stock-items",
+   body={"locationId": "{{factoryId}}", "itemType": "OUTSOURCED", "code": None, "name": "Partner Cola 35cl", "categoryId": None, "brand": "Partner",
+         "unitOfMeasureId": "{{unitId}}", "reorderLevel": 0, "barcode": None, "landingCost": 2000, "markupCost": None,
+         "vatCategoryId": "{{standardRateVatCategoryId}}", "hsnSectionId": "{{hsnSectionId}}", "isicSectionId": "{{isicSectionId}}"},
+   resp={"data": {"id": "{{outsourcedItemId}}", "itemType": "OUTSOURCED", "name": "Partner Cola 35cl", "landingCost": 2000.00}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('outsourcedItemId', json.data.id);"],
+   desc="Setup for B5: outsourced products are registered in the product register with their landing cost.")
+
+ep(S, "B5 Outsource Stock Receipt", "POST", "/api/v1/showroom/outsource-receipts",
+   body={"locationId": "{{showroomId}}", "intoLocationId": "{{floorAreaId}}", "manufacturerId": "{{manufacturerId}}", "partnerReference": "PW-5521",
+         "checkedBy": "Musa", "receivedDate": "{{today}}",
+         "lines": [{"stockItemId": "{{outsourcedItemId}}", "quantity": 12, "inputVatRate": 0, "batchNo": "PC-2610", "expiryDate": "2099-06-30"}]},
+   resp={"data": {"ref": "OS-1", "kind": "OUTSOURCE_RECEIPT", "partnerName": "Partner Bottlers", "lines": [dict(ENTRY_LINE, unitCost=2000.00, lineCost=24000.00)]}},
+   tests=["const json = pm.response.json();", "pm.test('costed at the registered landing cost', () => pm.expect(json.data.lines[0].unitCost).to.eql(2000));"],
+   desc="Perm showroom.intake.manage. Only registered OUTSOURCED products (400 ITEM_NOT_OUTSOURCED otherwise; use Direct Entry for unregistered goods), "
+        "ACTIVE, with a landing cost (400 OUTSOURCE_COST_NOT_SET). Unit cost is the registered landing cost, not input. Expiry must be after the received date.")
+
+ep(S, "B6 Outsource Stock Receipt (error: not outsourced)", "POST", "/api/v1/showroom/outsource-receipts",
+   body={"locationId": "{{showroomId}}", "manufacturerId": "{{manufacturerId}}", "receivedDate": "{{today}}", "lines": [{"stockItemId": "{{finishedProductId}}", "quantity": 1}]},
+   status=400, status_text="Bad Request",
+   resp={"error": {"code": "ITEM_NOT_OUTSOURCED", "message": "Only registered outsourced products can be received here; for third-party goods not in the register use Stock Entry (Direct)"}},
+   expect_error={"status": 400, "code": "ITEM_NOT_OUTSOURCED"})
+
+ep(S, "B7 Outsource Receipts Report", "GET", "/api/v1/showroom/outsource-receipts", query=[{"key": "locationId", "value": "{{showroomId}}"}],
+   resp=PAGE([]), desc="Filters: locationId, manufacturerId, stockItemId, receivedDate, expiryDate (expiryDate.lte = expiring soon), hasBatch, quantity.")
+
+# ---- C. Stock from the factory ----
+ep(S, "C1 Dispatch Factory → Showroom", "POST", "/api/v1/inventory/stock/transfers",
+   body={"sourceLocationId": "{{factoryId}}", "destinationLocationId": "{{showroomId}}", "driverId": "{{driverId}}",
+         "lines": [{"stockItemId": "{{finishedProductId}}", "quantity": 6, "unitPrice": None}]},
+   resp={"data": dict(TRANSFER2, id="{{showroomTransferId}}", destinationLocationId="{{showroomId}}", destinationLocationType="SHOWROOM")},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('showroomTransferId', json.data.id);",
+          "pm.collectionVariables.set('showroomTransferLineId', json.data.lines[0].id);"])
+
+ep(S, "C2 Receive at Showroom", "POST", "/api/v1/inventory/stock/transfers/{{showroomTransferId}}/receive",
+   body={"lines": [{"stockTransferLineId": "{{showroomTransferLineId}}", "qtyReceived": 6, "qtyRejected": 0}]},
+   resp={"data": dict(TRANSFER2, status="RECEIVED")},
+   tests=["const json = pm.response.json();",
+          "pm.test('received into the showroom warehouse by default', () => pm.expect(json.data.lines[0].receivedIntoLocationId).to.eql(pm.collectionVariables.get('warehouseAreaId')));"],
+   desc="With no receivedIntoLocationId, goods go to the showroom's default receiving area (Warehouse).")
+
+# ---- D. Area moves ----
+ep(S, "D1 Move Warehouse → Shop Floor", "POST", "/api/v1/showroom/area-moves",
+   body={"fromLocationId": "{{warehouseAreaId}}", "toLocationId": "{{floorAreaId}}", "movedDate": None, "note": "Restock the floor",
+         "lines": [{"stockItemId": "{{finishedProductId}}", "quantity": 2}]},
+   resp={"data": {"id": "2b3c4d5e-8888-4c4c-9a9a-000000000008", "ref": "AM-1", "rootLocationId": "{{showroomId}}", "rootLocationName": "Showroom Ikeja",
+                  "fromLocationId": "{{warehouseAreaId}}", "fromLocationName": "Warehouse", "toLocationId": "{{floorAreaId}}", "toLocationName": "Shop Floor",
+                  "movedDate": "2026-10-09", "note": "Restock the floor",
+                  "lines": [{"lineNo": 1, "stockItemId": "{{finishedProductId}}", "code": "ITM-2", "name": "Premium Blend", "quantity": 2.000, "unit": "Kilogram"}],
+                  "movedByUserId": "{{userId}}", "createdAt": NOW}},
+   desc="Perm showroom.stock.manage. Both areas must belong to the same showroom/factory (400 NOT_SAME_LOCATION). Leaving a QUARANTINE area needs a note.")
+
+ep(S, "D2 Move (error: more than available)", "POST", "/api/v1/showroom/area-moves",
+   body={"fromLocationId": "{{warehouseAreaId}}", "toLocationId": "{{floorAreaId}}", "lines": [{"stockItemId": "{{finishedProductId}}", "quantity": 9999}]},
+   status=400, status_text="Bad Request", resp={"error": {"code": "INSUFFICIENT_STOCK", "message": "Insufficient stock"}},
+   expect_error={"status": 400, "code": "INSUFFICIENT_STOCK"})
+
+ep(S, "D3 List Area Moves", "GET", "/api/v1/showroom/area-moves", query=[{"key": "locationId", "value": "{{showroomId}}"}], resp=PAGE([]))
+
+# ---- E. Returns ----
+ep(S, "E1 Walk-in Return (non-dealer)", "POST", "/api/v1/showroom/returns",
+   body={"returnType": "NON_DEALER", "locationId": "{{showroomId}}", "customerId": None, "walkIn": {"name": "Ada Nwosu", "phone": "0809 111 {{$randomInt}}"},
+         "originalDocumentRef": "RCT-552", "returnDate": None, "note": None,
+         "lines": [{"stockItemId": "{{finishedProductId}}", "quantity": 1, "reason": "PRODUCT_DEFECT", "condition": "RESALEABLE"},
+                   {"stockItemId": "{{finishedProductId}}", "quantity": 1, "reason": "DAMAGED_IN_TRANSIT", "condition": "DAMAGED_WRITE_OFF"}]},
+   resp={"data": RETURN},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('returnId', json.data.id);",
+          "pm.test('temporary customer credited for both lines', () => { pm.expect(json.data.customer.temporary).to.eql(true); pm.expect(json.data.walletCredit).to.eql(10000); });"],
+   desc="Perm showroom.returns.manage; the showroom must be ACTIVE. No customer record? Give walkIn {name, phone}: an existing non-dealer with that phone "
+        "is used, otherwise a temporary customer is created (removed once its wallet is spent). Every line is credited to the wallet at today's price "
+        "(retail for non-dealers, dealer price for dealers; 400 PRICE_NOT_SET if none). RESALEABLE goes back into stock (receiving area), QUARANTINE "
+        "into the quarantine area (created on first use, never sold from), DAMAGED_WRITE_OFF is recorded as a loss.")
+
+ep(S, "E2 Dealer Return", "POST", "/api/v1/showroom/returns",
+   body={"returnType": "DEALER", "locationId": "{{showroomId}}", "customerId": "{{dealerId}}", "originalDocumentRef": "INV-9001",
+         "lines": [{"stockItemId": "{{finishedProductId}}", "quantity": 1, "reason": "EXPIRED_OR_NEAR_EXPIRY", "condition": "QUARANTINE"}]},
+   resp={"data": dict(RETURN, id="{{dealerReturnId}}", ref="RT-2", returnType="DEALER", totalValue=4500.00, writeOffValue=0.00, walletCredit=4500.00)},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('dealerReturnId', json.data.id);",
+          "pm.test('credited at the dealer price', () => pm.expect(json.data.totalValue).to.eql(4500));"])
+
+ep(S, "E3 Return (error: dealer as non-dealer)", "POST", "/api/v1/showroom/returns",
+   body={"returnType": "NON_DEALER", "locationId": "{{showroomId}}", "customerId": "{{dealerId}}",
+         "lines": [{"stockItemId": "{{finishedProductId}}", "quantity": 1, "reason": "PRODUCT_DEFECT", "condition": "RESALEABLE"}]},
+   status=400, status_text="Bad Request", resp={"error": {"code": "USE_DEALER_RETURN", "message": "This customer is an Authorised Dealer; record a dealer return instead"}},
+   expect_error={"status": 400, "code": "USE_DEALER_RETURN"})
+
+ep(S, "E4 Get Return", "GET", "/api/v1/showroom/returns/{{returnId}}", resp={"data": RETURN})
+
+ep(S, "E5 Reverse Dealer Return", "POST", "/api/v1/showroom/returns/{{dealerReturnId}}/reverse", body={"reason": "Recorded against the wrong dealer"},
+   resp={"data": dict(RETURN, id="{{dealerReturnId}}", status="REVERSED", reversedReason="Recorded against the wrong dealer", reversedAt=NOW)},
+   tests=["const json = pm.response.json();", "pm.test('reversed', () => pm.expect(json.data.status).to.eql('REVERSED'));"],
+   desc="Perm showroom.returns.manage + customers.wallet.adjust. Only while the wallet still holds the credit (400 INSUFFICIENT_WALLET_BALANCE) and the "
+        "goods are still where they went (400 INSUFFICIENT_STOCK). Takes the credit and the goods back.")
+
+ep(S, "E6 Reverse Return (error: already reversed)", "POST", "/api/v1/showroom/returns/{{dealerReturnId}}/reverse", body={"reason": "Again"},
+   status=409, status_text="Conflict", resp={"error": {"code": "RETURN_ALREADY_REVERSED", "message": "This return has already been reversed"}},
+   expect_error={"status": 409, "code": "RETURN_ALREADY_REVERSED"})
+
+ep(S, "E7 Return Reports", "GET", "/api/v1/showroom/returns", query=[{"key": "locationId", "value": "{{showroomId}}"}],
+   resp=PAGE([], summary={"returns": 1, "units": 2, "valueCredited": 10000.00, "resaleableValue": 5000.00, "quarantineValue": 0.00, "writeOffValue": 5000.00,
+                         "byReason": [{"reason": "PRODUCT_DEFECT", "lines": 1, "units": 1, "value": 5000.00}]}),
+   tests=["const json = pm.response.json();", "pm.test('write-off counted as the net cost of returns', () => pm.expect(json.data.summary.writeOffValue).to.eql(5000));"],
+   desc="Perm showroom.returns.read. One row per line; POSTED returns unless status is filtered. Filters: locationId, returnType, condition, reason, customerId, "
+        "customerType, status, stockItemId, lineValue, creditedTo, returnDate/from/to/period. q: RT ref, original document, customer code/name/phone, product, note.")
+
+# ---- F. Reports ----
+ep(S, "F1 Comprehensive Stock (showroom)", "GET", "/api/v1/showroom/reports/comprehensive-stock", query=[{"key": "locationId", "value": "{{showroomId}}"}],
+   resp=PAGE([{"ln": 1, "stockItemId": "{{finishedProductId}}", "code": "ITM-2", "detail": "Premium Blend", "group": "Ungrouped", "source": "Finished Product",
+               "locationId": "{{warehouseAreaId}}", "area": "Warehouse", "qty": 5.000, "unit": "Kilogram", "unitCost": 0.00, "totalCost": 0.00,
+               "sellingPrice": 5000.00, "retailValue": 25000.00}],
+             summary={"costVisible": True, "asAt": "2026-10-09", "lineItems": 4, "totalQuantity": 39, "totalStockValue": 64000.00, "retailValue": 115400.00, "storageAreas": 3}),
+   tests=["const json = pm.response.json();", "pm.test('rows per area', () => pm.expect(json.data.items.map(r => r.area)).to.include('Warehouse'));"],
+   desc="One row per item × area. Query: locationId (or areaId), source (FINISHED_PRODUCT|OUTSOURCED|DIRECT_ENTRY, repeatable), categoryId, asAt (past dates "
+        "read the ledger), includeZero, q, sort (group, detail, qty, retailValue, totalCost). Cost columns are 0 and summary.costVisible false without "
+        "factory.costing.read.")
+
+ep(S, "F2 General Transfer Report", "GET", "/api/v1/showroom/reports/transfers", query=[{"key": "route", "value": "FACTORY_TO_SHOWROOM"}],
+   resp=PAGE([], summary={"transfers": 1, "totalQuantity": 6, "inTransit": 0, "locationsInvolved": 2}),
+   tests=["const json = pm.response.json();", "pm.test('the factory → showroom transfer is listed', () => pm.expect(json.data.items.map(r => r.transferId)).to.include(pm.collectionVariables.get('showroomTransferId')));"],
+   desc="One row per transfer line. Filters: route (SHOWROOM_TO_SHOWROOM, FACTORY_TO_SHOWROOM, SHOWROOM_TO_FACTORY, FACTORY_TO_FACTORY), sourceLocationId, "
+        "destinationLocationId, driverId, status (IN_TRANSIT|RECEIVED), hasRejections, stockItemId, transferDate/from/to/period. q: waybill, product, driver, vehicle.")
+
+ep(S, "F3 Deactivate Area (error: holds stock)", "PUT", "/api/v1/showroom/showrooms/areas/{{warehouseAreaId}}/status", body={"status": "SUSPENDED"},
+   status=409, status_text="Conflict", resp={"error": {"code": "AREA_HAS_STOCK", "message": "This area still holds 23 units; move them first"}},
+   expect_error={"status": 409, "code": "AREA_HAS_STOCK"})
+
 print(f"TOTAL ENDPOINTS: {len(ENDPOINTS)}")
 
 # =====================================================================================
@@ -1512,6 +1749,12 @@ def pm_request_item(e, with_examples=True):
     return item
 
 FOLDER_DESCRIPTIONS = {
+    "16 - Showroom": (
+        "Showroom (backend docs/05). Run after folders 06-15: it uses the factory, units, finished product (with the price published in 15), "
+        "manufacturer, driver and dealer they create. A: register showrooms and areas. B: direct entries and outsource receipts. "
+        "C: stock from the factory into the showroom warehouse. D: area moves. E: walk-in and dealer returns credited to wallets, reversal, "
+        "Return Reports. F: comprehensive stock and transfer reports."
+    ),
     "12 - Customers": (
         "Customers & Distributors (backend docs/04). Needs 01 - Auth > Register Tenant first (for the token); everything else this folder "
         "needs it creates itself, so it can be run on its own right after Register Tenant.\n\n"
@@ -1550,6 +1793,8 @@ def build_collection():
         "dealerId", "dealerName", "dealerCode", "customerId", "adjustmentEntryId", "reclassificationId",
         "correspondent2Id", "specialId", "walkinId", "waybillRef", "fileId",
         "driverId", "transfer2Id", "transfer2LineId", "scheduledPriceId",
+        "showroomId", "showroomName", "pendingShowroomId", "floorAreaId", "warehouseAreaId", "coldRoomId", "entryId", "directItemId",
+        "outsourcedItemId", "showroomTransferId", "showroomTransferLineId", "returnId", "dealerReturnId",
     ]
 
     collection = {

@@ -59,6 +59,7 @@ class InventoryStockService(
     private val locationAccessService: LocationAccessService,
     private val locationHierarchy: com.zifiq.platform.tenancy.LocationHierarchy,
     private val domainEvents: com.zifiq.platform.events.DomainEvents,
+    private val stockItemCodes: StockItemCodes,
 ) {
     fun listStockItems(locationId: UUID?, itemType: String?, status: String?): List<StockItemSummary> =
         tenantScopedTransaction.execute {
@@ -74,7 +75,7 @@ class InventoryStockService(
     fun registerStockItem(request: StockItemRequest): StockItemSummary = tenantScopedTransaction.execute {
         val actor = currentActorProvider.current()
         locationAccessService.assertAccess(request.locationId)
-        val code = request.code?.trim()?.takeIf(String::isNotEmpty) ?: documentSequenceService.next("ITM")
+        val code = request.code?.trim()?.takeIf(String::isNotEmpty) ?: stockItemCodes.next()
 
         if (!taxClassificationRepository.isVatCategoryActiveForTenant(actor.tenantId, request.vatCategoryId)) {
             throw ApiErrors.vatCategoryNotActive()

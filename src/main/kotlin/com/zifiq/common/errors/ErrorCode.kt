@@ -122,6 +122,7 @@ enum class ErrorCode {
     PRICE_ALREADY_EFFECTIVE,
     SHOWROOM_NOT_FOUND,
     DRIVER_NOT_FOUND,
+    STOCK_ENTRY_NOT_FOUND,
     DUPLICATE_VIEW_NAME,
 
     // ---- Module settings, custom fields, notifications (docs/03 §9, §10, §12.2) ----

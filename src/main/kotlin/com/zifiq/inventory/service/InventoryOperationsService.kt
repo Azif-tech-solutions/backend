@@ -198,6 +198,9 @@ class InventoryOperationsService(
             throw ApiErrors.validationFailed(mapOf("lines" to "Each transfer line may appear once"))
         }
         val requireFull = moduleSettings.boolean(InventorySettings.RECEIVE_REQUIRE_FULL_RECONCILIATION)
+        // The destination's default receiving area (e.g. a showroom's Warehouse) when the line doesn't say.
+        val defaultInto = LocationsTable.select(LocationsTable.defaultReceivingLocationId)
+            .where { LocationsTable.id eq destinationId }.single()[LocationsTable.defaultReceivingLocationId] ?: destinationId
 
         val lines = StockTransferLinesTable.selectAll()
             .andWhere { StockTransferLinesTable.stockTransferId eq id }
@@ -219,7 +222,7 @@ class InventoryOperationsService(
             if (rejected.signum() > 0 && input.rejectionNote.isNullOrBlank()) {
                 throw ApiErrors.validationFailed(mapOf("lines[$index].rejectionNote" to "is required when goods are rejected"))
             }
-            val into = input.receivedIntoLocationId ?: destinationId
+            val into = input.receivedIntoLocationId ?: defaultInto
             stockLocations.requireWithin(destination.rootId, into, "receivedIntoLocationId")
             val itemId = line[StockTransferLinesTable.stockItemId].value
 
