@@ -1,19 +1,27 @@
 name: zifiq-backend
 
+# Every credential and per-environment value comes from .env next to this file (git-ignored; start
+# from .env.example). `${VAR:?…}` makes compose refuse to start when a required value is missing,
+# instead of running with a default that is visible in the repo.
+
 services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: zifiq
-      POSTGRES_USER: zifiq_admin
-      POSTGRES_PASSWORD: zifiq-local
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      # Used by docker/init (first start of an empty volume only) to create the application role.
+      APP_DB_USER: ${APP_DB_USER:?set APP_DB_USER in .env}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?set APP_DB_PASSWORD in .env}
     ports:
-      - "5434:5432"
+      # Bound to this machine only: the database is never reachable from outside it.
+      - "127.0.0.1:${POSTGRES_PORT:-5434}:5432"
     volumes:
       - zifiq-postgres:/var/lib/postgresql/data
-      - ./docker/init/01-application-role.sql:/docker-entrypoint-initdb.d/01-application-role.sql:ro
+      - ./docker/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U zifiq_admin -d zifiq"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -24,18 +32,16 @@ services:
     image: ${ZIFIQ_IMAGE:-zifiq-backend:local}
     build: .
     environment:
-      DATABASE_URL: jdbc:postgresql://postgres:5432/zifiq
-      DATABASE_USERNAME: zifiq_app
-      DATABASE_PASSWORD: zifiq-local
-      # File storage (docs/03 §8.4). Set these in a .env file next to this one (never committed; the
-      # deploy keeps the server's own copy). On EC2 the AWS credentials come from the instance's IAM
-      # role. Locally/CI, compose.local-storage.yaml points these at S3Mock instead.
+      DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:?set POSTGRES_DB in .env}
+      DATABASE_USERNAME: ${APP_DB_USER:?set APP_DB_USER in .env}
+      DATABASE_PASSWORD: ${APP_DB_PASSWORD:?set APP_DB_PASSWORD in .env}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?set CORS_ALLOWED_ORIGINS in .env}
+      # File storage (docs/03 §8.4). On EC2 the AWS credentials come from the instance's IAM role;
+      # locally / in CI, compose.local-storage.yaml points these at S3Mock instead.
       ZIFIQ_STORAGE_BUCKET: ${ZIFIQ_STORAGE_BUCKET:-}
-      ZIFIQ_STORAGE_REGION: ${ZIFIQ_STORAGE_REGION:-eu-north-1}
+      ZIFIQ_STORAGE_REGION: ${ZIFIQ_STORAGE_REGION:-}
       ZIFIQ_STORAGE_KEY_PREFIX: ${ZIFIQ_STORAGE_KEY_PREFIX:-}
-      # Browser origins allowed to call the API (comma-separated, * wildcards allowed). The deployed
-      # frontend is on Vercel and reaches the API through CloudFront (HTTPS); override in .env if needed.
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:*,http://127.0.0.1:*,https://zifiq.vercel.app}
     ports:
       - "8080:8080"
     depends_on:

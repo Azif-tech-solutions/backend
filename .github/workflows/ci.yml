@@ -178,6 +178,14 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Create .env with throwaway secrets
+        # compose.yaml takes every credential from .env (never committed); CI makes random ones per run.
+        run: |
+          cp .env.example .env
+          sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$(openssl rand -hex 24)|" .env
+          sed -i "s|^APP_DB_PASSWORD=.*|APP_DB_PASSWORD=$(openssl rand -hex 24)|" .env
+          sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$(openssl rand -hex 48)|" .env
+
       - name: Start stack
         # compose.local-storage.yaml adds S3Mock so file uploads work without AWS credentials.
         run: docker compose -f compose.yaml -f compose.local-storage.yaml up --build -d
@@ -306,6 +314,10 @@ jobs:
           script: |
             set -e
             cd ~/backend
+            # Credentials live only in the server's .env. Stop before touching the running app if one is missing.
+            for key in POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD APP_DB_USER APP_DB_PASSWORD JWT_SECRET CORS_ALLOWED_ORIGINS; do
+              grep -q "^$key=." .env || { echo "::error::$key is missing from ~/backend/.env on the server (see README: Deployment)"; exit 1; }
+            done
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
             docker pull "$ZIFIQ_IMAGE"
             docker logout ghcr.io

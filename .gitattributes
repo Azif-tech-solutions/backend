@@ -1,3 +1,5 @@
 # Test fixtures and fonts are byte-exact; never convert their line endings.
 postman/fixtures/* binary
 *.ttf binary
+# Run inside Linux containers: always LF, even on a Windows checkout.
+*.sh text eol=lf

@@ -24,13 +24,12 @@ import javax.crypto.spec.SecretKeySpec
 @EnableMethodSecurity
 class SecurityConfiguration(
     private val objectMapper: ObjectMapper,
-    @Value("\${jwt.secret:zifiq-secret-key-must-be-at-least-256-bits-long-for-hmac-sha256-signing!}")
+    @Value("\${jwt.secret}")
     private val secret: String,
-    // Comma-separated allowed-origin patterns (supports * wildcards, e.g. "http://localhost:*").
-    // Defaults cover any local dev frontend (Vite/CRA/etc. on any port). Deployed frontends are added
-    // via the CORS_ALLOWED_ORIGINS env var (compose.yaml lists the Vercel app). Exact origins only for
-    // deployed sites: credentials are allowed, so a wildcard like https://*.vercel.app would admit anyone's app.
-    @Value("\${cors.allowed-origins:http://localhost:*,http://127.0.0.1:*}")
+    // Comma-separated allowed-origin patterns from CORS_ALLOWED_ORIGINS (wildcards allowed for local dev,
+    // e.g. "http://localhost:*"). Exact origins only for deployed sites: credentials are allowed, so a
+    // wildcard like https://*.vercel.app would admit anyone's app. Empty = no cross-origin calls allowed.
+    @Value("\${cors.allowed-origins:}")
     private val corsAllowedOrigins: String,
 ) {
     @Bean
@@ -39,7 +38,7 @@ class SecurityConfiguration(
     @Bean
     fun corsConfigurationSource(): CorsConfigurationSource {
         val config = CorsConfiguration().apply {
-            allowedOriginPatterns = corsAllowedOrigins.split(",").map { it.trim() }
+            allowedOriginPatterns = corsAllowedOrigins.split(",").map { it.trim() }.filter { it.isNotEmpty() }
             allowedMethods = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
             allowedHeaders = listOf("Authorization", "Content-Type")
             // Lets the frontend read the file name of PDF/image downloads.

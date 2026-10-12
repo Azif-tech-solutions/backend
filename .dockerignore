@@ -3,3 +3,7 @@ build/
 docs/
 postman/
 *.md
+.env
+.env.*
+*.env
+*.pem

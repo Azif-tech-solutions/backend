@@ -16,13 +16,12 @@ import java.util.UUID
 
 @Component
 class JwtTokenProvider(
-    @Value("\${jwt.secret:zifiq-secret-key-must-be-at-least-256-bits-long-for-hmac-sha256-signing!}")
+    @Value("\${jwt.secret}")
     private val secret: String,
 ) {
-    private val keyBytes: ByteArray by lazy {
-        secret.toByteArray(Charsets.UTF_8).let { bytes ->
-            if (bytes.size < 32) bytes.copyOf(32) else bytes
-        }
+    // HMAC-SHA256 needs at least 256 bits of key; a short secret is refused at startup rather than padded.
+    private val keyBytes: ByteArray = secret.toByteArray(Charsets.UTF_8).also {
+        require(it.size >= 32) { "JWT_SECRET must be at least 32 bytes (e.g. `openssl rand -base64 48`)" }
     }
 
     val accessTokenValiditySeconds: Long = 3600 // 1 hour
