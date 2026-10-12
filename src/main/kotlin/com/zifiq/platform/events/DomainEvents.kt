@@ -17,7 +17,7 @@ sealed interface EventActor {
 }
 
 /**
- * Records a business event — docs/03-cross-module-conventions.md §7.3. Runs in the caller's
+ * Records a business event — docs/implemented/03-cross-module-conventions.md §7.3. Runs in the caller's
  * transaction (it never opens its own), so an event exists if and only if the change it describes
  * committed. Payloads must stay small and never carry cost values, OTP codes, secrets or full
  * account numbers.

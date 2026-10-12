@@ -34,7 +34,7 @@ Kotlin / Spring Boot modular monolith for the ZifIQ operations platform. The ini
 
 Keep reports and history queries within their owning business module unless they become an independent bounded context.
 
-See `docs/` for the exhaustive, per-module design reference (schema, endpoints, permission codes, business rules traced to source): `docs/00-platform-foundation.md`, `docs/01-user-tenant-access-control.md`, `docs/02-factory.md`, with one `docs/NN-<module>.md` added per module as it's built.
+See `docs/` for the exhaustive, per-module design reference (schema, endpoints, permission codes, business rules traced to source): `docs/implemented/00-platform-foundation.md`, `docs/implemented/01-user-tenant-access-control.md`, `docs/implemented/02-factory.md`, with one `docs/NN-<module>.md` added per module as it's built.
 
 ## Run locally
 
@@ -52,11 +52,11 @@ Requirements: JDK 17+, Gradle 8.10+, and Docker. Connect the application with a 
    Or run the whole stack in Docker: `docker compose -f compose.yaml -f compose.local-storage.yaml up --build -d` (this is what CI does).
 5. Open `/swagger-ui.html`; OpenAPI JSON is at `/v3/api-docs`.
 
-Database, JWT and storage settings are environment-overridable in `src/main/resources/application.yml`. Flyway installs the platform schema and enables RLS policies at startup. Persistence is via Exposed (`org.jetbrains.exposed`), not JPA/Hibernate — see `docs/00-platform-foundation.md` §3.
+Database, JWT and storage settings are environment-overridable in `src/main/resources/application.yml`. Flyway installs the platform schema and enables RLS policies at startup. Persistence is via Exposed (`org.jetbrains.exposed`), not JPA/Hibernate — see `docs/implemented/00-platform-foundation.md` §3.
 
 ## File storage (S3)
 
-Uploaded files are stored in Amazon S3 (`docs/03-cross-module-conventions.md` §8.4). The server reads:
+Uploaded files are stored in Amazon S3 (`docs/implemented/03-cross-module-conventions.md` §8.4). The server reads:
 
 | Variable | Meaning |
 |---|---|

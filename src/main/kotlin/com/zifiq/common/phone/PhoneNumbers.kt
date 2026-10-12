@@ -1,7 +1,7 @@
 package com.zifiq.common.phone
 
 /**
- * One phone normalisation for the whole system (docs/04-customers-distributors.md §4.8): stored
+ * One phone normalisation for the whole system (docs/implemented/04-customers-distributors.md §4.8): stored
  * values and searched values go through the same rules, so "0803 123 4567", "+2348031234567" and
  * "234-803-123-4567" are the same number.
  */

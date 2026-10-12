@@ -1423,7 +1423,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{adminRoleId}}\",\n      \"name\": \"Administrator\",\n      \"description\": \"System-seeded Administrator role\",\n      \"permissions\": [\n        \"accounting.manage\",\n        \"accounting.read\",\n        \"cashier.sales.manage\",\n        \"cashier.sales.read\",\n        \"factory.costing.approve\",\n        \"factory.costing.read\",\n        \"factory.production.manage\",\n        \"factory.recipes.manage\",\n        \"factory.setup.manage\",\n        \"factory.trade.manage\",\n        \"iam.roles.manage\",\n        \"iam.users.assign\",\n        \"iam.users.manage\",\n        \"inventory.adjustments.manage\",\n        \"inventory.stock.manage\",\n        \"inventory.stock.read\",\n        \"inventory.transfers.manage\",\n        \"otp.issue\",\n        \"settings.manage\",\n        \"showroom.stock.manage\",\n        \"showroom.stock.read\",\n        \"tenants.create_child\"\n      ]\n    },\n    {\n      \"id\": \"{{stockKeeperRoleId}}\",\n      \"name\": \"Stock Keeper\",\n      \"description\": \"System-seeded Stock Keeper role\",\n      \"permissions\": [\n        \"inventory.adjustments.manage\",\n        \"inventory.stock.manage\",\n        \"inventory.stock.read\",\n        \"inventory.transfers.manage\",\n        \"showroom.stock.manage\",\n        \"showroom.stock.read\"\n      ]\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{adminRoleId}}\",\n      \"name\": \"Administrator\",\n      \"description\": \"System-seeded Administrator role\",\n      \"permissions\": [\n        \"accounting.read\",\n        \"cashier.sales.manage\",\n        \"cashier.sales.read\",\n        \"factory.costing.approve\",\n        \"factory.costing.read\",\n        \"factory.production.manage\",\n        \"factory.recipes.manage\",\n        \"factory.setup.manage\",\n        \"factory.trade.manage\",\n        \"iam.roles.manage\",\n        \"iam.users.assign\",\n        \"iam.users.manage\",\n        \"inventory.adjustments.manage\",\n        \"inventory.stock.manage\",\n        \"inventory.stock.read\",\n        \"inventory.transfers.manage\",\n        \"otp.issue\",\n        \"settings.manage\",\n        \"showroom.stock.manage\",\n        \"showroom.stock.read\",\n        \"tenants.create_child\"\n      ]\n    },\n    {\n      \"id\": \"{{stockKeeperRoleId}}\",\n      \"name\": \"Stock Keeper\",\n      \"description\": \"System-seeded Stock Keeper role\",\n      \"permissions\": [\n        \"inventory.adjustments.manage\",\n        \"inventory.stock.manage\",\n        \"inventory.stock.read\",\n        \"inventory.transfers.manage\",\n        \"showroom.stock.manage\",\n        \"showroom.stock.read\"\n      ]\n    }\n  ]\n}"
             }
           ]
         },
@@ -2485,7 +2485,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"0dbd9315-7303-4783-bb20-481a1028794d\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"53953df4-27d6-48ca-a9be-df1069560082\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -2576,7 +2576,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"3844f6e8-d121-4faa-8c99-cc155c269616\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"65a19a2e-8278-4d6b-8002-5ceb6b658974\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -28176,6 +28176,3167 @@
           ]
         },
         {
+          "name": "F1 Fund Petty Cash",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/petty-cash/fundings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "petty-cash",
+                "fundings"
+              ]
+            },
+            "description": "Perm accounting.petty-cash.fund. Credit/Fund Petty Cash: the source (sourceKind BANK with sourceBankAccountId, or CASH with sourceCashAccountId) is debited and the petty cash box credited, under one PCF-n. The box's float limit can't be passed (409 FLOAT_LIMIT_EXCEEDED). POST /fundings/{id}/reverse {reason} undoes it while the box still holds the money.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pettyCashAccountId\": \"{{pettyCashAccountId}}\",\n  \"sourceKind\": \"BANK\",\n  \"sourceBankAccountId\": \"{{bankAccountId}}\",\n  \"amount\": 50000,\n  \"fundingDate\": \"{{today}}\",\n  \"transferOrChequeReference\": \"TRF-20931\",\n  \"authorisedBy\": \"Alice Admin\",\n  \"description\": \"Weekly top-up\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('pettyFundingId', json.data.id);",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "F1 Fund Petty Cash - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/petty-cash/fundings",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "petty-cash",
+                    "fundings"
+                  ]
+                },
+                "description": "Perm accounting.petty-cash.fund. Credit/Fund Petty Cash: the source (sourceKind BANK with sourceBankAccountId, or CASH with sourceCashAccountId) is debited and the petty cash box credited, under one PCF-n. The box's float limit can't be passed (409 FLOAT_LIMIT_EXCEEDED). POST /fundings/{id}/reverse {reason} undoes it while the box still holds the money.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"pettyCashAccountId\": \"{{pettyCashAccountId}}\",\n  \"sourceKind\": \"BANK\",\n  \"sourceBankAccountId\": \"{{bankAccountId}}\",\n  \"amount\": 50000,\n  \"fundingDate\": \"{{today}}\",\n  \"transferOrChequeReference\": \"TRF-20931\",\n  \"authorisedBy\": \"Alice Admin\",\n  \"description\": \"Weekly top-up\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{pettyFundingId}}\",\n    \"ref\": \"PCF-1\",\n    \"date\": \"2026-10-12\",\n    \"pettyCashAccountId\": \"{{pettyCashAccountId}}\",\n    \"pettyCashAccountCode\": \"PC-IKJ\",\n    \"sourceKind\": \"BANK\",\n    \"sourceName\": \"BA-1 Guaranty Trust Bank\",\n    \"amount\": 50000.0,\n    \"transferOrChequeReference\": \"TRF-20931\",\n    \"authorisedBy\": \"Alice Admin\",\n    \"description\": \"Weekly top-up\",\n    \"fundedBy\": \"Alice Admin\",\n    \"status\": \"POSTED\",\n    \"reversalReason\": null,\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "F2 Fund Petty Cash (error: float limit)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/petty-cash/fundings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "petty-cash",
+                "fundings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pettyCashAccountId\": \"{{pettyCashAccountId}}\",\n  \"sourceKind\": \"BANK\",\n  \"sourceBankAccountId\": \"{{bankAccountId}}\",\n  \"amount\": 100000,\n  \"fundingDate\": \"{{today}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 409 FLOAT_LIMIT_EXCEEDED', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('FLOAT_LIMIT_EXCEEDED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "F2 Fund Petty Cash (error: float limit) - 409 Conflict",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/petty-cash/fundings",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "petty-cash",
+                    "fundings"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"pettyCashAccountId\": \"{{pettyCashAccountId}}\",\n  \"sourceKind\": \"BANK\",\n  \"sourceBankAccountId\": \"{{bankAccountId}}\",\n  \"amount\": 100000,\n  \"fundingDate\": \"{{today}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"FLOAT_LIMIT_EXCEEDED\",\n    \"message\": \"This would take PC-IKJ to 299000.00, above its float limit of 250000.00\",\n    \"details\": {\n      \"account\": \"PC-IKJ\",\n      \"floatLimit\": \"250000.00\",\n      \"balanceAfter\": \"299000.00\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "F3 List Petty Cash Fundings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/petty-cash/fundings?pettyCashAccountId={{pettyCashAccountId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "petty-cash",
+                "fundings"
+              ],
+              "query": [
+                {
+                  "key": "pettyCashAccountId",
+                  "value": "{{pettyCashAccountId}}"
+                }
+              ]
+            },
+            "description": "Perm accounting.read. Paged, newest first. Filters: pettyCashAccountId, locationId, sourceKind, fundedBy, status, amount, from/to (fundingDate). With pettyCashAccountId the summary is that box's aside: opening balance, funded to date, utilised to date, current balance.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "F3 List Petty Cash Fundings - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/petty-cash/fundings?pettyCashAccountId={{pettyCashAccountId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "petty-cash",
+                    "fundings"
+                  ],
+                  "query": [
+                    {
+                      "key": "pettyCashAccountId",
+                      "value": "{{pettyCashAccountId}}"
+                    }
+                  ]
+                },
+                "description": "Perm accounting.read. Paged, newest first. Filters: pettyCashAccountId, locationId, sourceKind, fundedBy, status, amount, from/to (fundingDate). With pettyCashAccountId the summary is that box's aside: opening balance, funded to date, utilised to date, current balance.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": \"{{pettyFundingId}}\",\n        \"ref\": \"PCF-1\",\n        \"date\": \"2026-10-12\",\n        \"pettyCashAccountId\": \"{{pettyCashAccountId}}\",\n        \"pettyCashAccountCode\": \"PC-IKJ\",\n        \"sourceKind\": \"BANK\",\n        \"sourceName\": \"BA-1 Guaranty Trust Bank\",\n        \"amount\": 50000.0,\n        \"transferOrChequeReference\": \"TRF-20931\",\n        \"authorisedBy\": \"Alice Admin\",\n        \"description\": \"Weekly top-up\",\n        \"fundedBy\": \"Alice Admin\",\n        \"status\": \"POSTED\",\n        \"reversalReason\": null,\n        \"createdAt\": \"2026-10-01T10:15:30Z\"\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": {\n      \"pettyCashAccountId\": \"{{pettyCashAccountId}}\",\n      \"code\": \"PC-IKJ\",\n      \"openingBalance\": 150000.0,\n      \"fundedToDate\": 50000.0,\n      \"utilisedToDate\": 0.0,\n      \"currentBalance\": 199000.0\n    },\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "F4 Pay From Petty Cash",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/petty-cash/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "petty-cash",
+                "payments"
+              ]
+            },
+            "description": "Perm accounting.petty-cash.pay. No approval step, so the rules are enforced on the spot: an active category payable from petty cash (400 CATEGORY_NOT_PAYABLE_FROM_PETTY_CASH), the cash must be there (400 INSUFFICIENT_CASH: petty cash is never overdrawn), and the category's monthly cap can't be passed (409 MONTHLY_CAP_EXCEEDED). approvedBy is the name of whoever approved it verbally.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pettyCashAccountId\": \"{{pettyCashAccountId}}\",\n  \"expenseCategoryId\": \"{{expenseCategoryId}}\",\n  \"amount\": 12000,\n  \"paidTo\": \"Total filling station\",\n  \"paymentDate\": \"{{today}}\",\n  \"approvedBy\": \"Mrs Okafor\",\n  \"description\": \"20 litres\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('pettyPaymentId', json.data.id);",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "F4 Pay From Petty Cash - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/petty-cash/payments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "petty-cash",
+                    "payments"
+                  ]
+                },
+                "description": "Perm accounting.petty-cash.pay. No approval step, so the rules are enforced on the spot: an active category payable from petty cash (400 CATEGORY_NOT_PAYABLE_FROM_PETTY_CASH), the cash must be there (400 INSUFFICIENT_CASH: petty cash is never overdrawn), and the category's monthly cap can't be passed (409 MONTHLY_CAP_EXCEEDED). approvedBy is the name of whoever approved it verbally.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"pettyCashAccountId\": \"{{pettyCashAccountId}}\",\n  \"expenseCategoryId\": \"{{expenseCategoryId}}\",\n  \"amount\": 12000,\n  \"paidTo\": \"Total filling station\",\n  \"paymentDate\": \"{{today}}\",\n  \"approvedBy\": \"Mrs Okafor\",\n  \"description\": \"20 litres\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{pettyPaymentId}}\",\n    \"ref\": \"PCP-1\",\n    \"date\": \"2026-10-12\",\n    \"pettyCashAccountId\": \"{{pettyCashAccountId}}\",\n    \"pettyCashAccountCode\": \"PC-IKJ\",\n    \"expenseCategoryId\": \"{{expenseCategoryId}}\",\n    \"category\": \"Generator Diesel\",\n    \"amount\": 12000.0,\n    \"paidTo\": \"Total filling station\",\n    \"approvedBy\": \"Mrs Okafor\",\n    \"description\": \"20 litres\",\n    \"status\": \"POSTED\",\n    \"reversalReason\": null,\n    \"balanceAfter\": 187000.0,\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "F5 Pay From Petty Cash (error: category not payable from petty cash)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/petty-cash/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "petty-cash",
+                "payments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pettyCashAccountId\": \"{{pettyCashAccountId}}\",\n  \"expenseCategoryId\": \"{{bankChargesCategoryId}}\",\n  \"amount\": 500,\n  \"paidTo\": \"Bank\",\n  \"paymentDate\": \"{{today}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 400 CATEGORY_NOT_PAYABLE_FROM_PETTY_CASH', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('CATEGORY_NOT_PAYABLE_FROM_PETTY_CASH');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "F5 Pay From Petty Cash (error: category not payable from petty cash) - 400 Bad Request",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/petty-cash/payments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "petty-cash",
+                    "payments"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"pettyCashAccountId\": \"{{pettyCashAccountId}}\",\n  \"expenseCategoryId\": \"{{bankChargesCategoryId}}\",\n  \"amount\": 500,\n  \"paidTo\": \"Bank\",\n  \"paymentDate\": \"{{today}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"CATEGORY_NOT_PAYABLE_FROM_PETTY_CASH\",\n    \"message\": \"'Bank Charges' can't be paid from petty cash; settle it by bank transfer or cheque instead\",\n    \"details\": {\n      \"category\": \"Bank Charges\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "F6 Reverse Petty Cash Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/petty-cash/payments/{{pettyPaymentId}}/reverse",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "petty-cash",
+                "payments",
+                "{{pettyPaymentId}}",
+                "reverse"
+              ]
+            },
+            "description": "The cash goes back into the box; the payment stays on record as REVERSED.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Paid twice\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "F6 Reverse Petty Cash Payment - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/petty-cash/payments/{{pettyPaymentId}}/reverse",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "petty-cash",
+                    "payments",
+                    "{{pettyPaymentId}}",
+                    "reverse"
+                  ]
+                },
+                "description": "The cash goes back into the box; the payment stays on record as REVERSED.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Paid twice\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{pettyPaymentId}}\",\n    \"ref\": \"PCP-1\",\n    \"date\": \"2026-10-12\",\n    \"pettyCashAccountId\": \"{{pettyCashAccountId}}\",\n    \"pettyCashAccountCode\": \"PC-IKJ\",\n    \"expenseCategoryId\": \"{{expenseCategoryId}}\",\n    \"category\": \"Generator Diesel\",\n    \"amount\": 12000.0,\n    \"paidTo\": \"Total filling station\",\n    \"approvedBy\": \"Mrs Okafor\",\n    \"description\": \"20 litres\",\n    \"status\": \"REVERSED\",\n    \"reversalReason\": \"Paid twice\",\n    \"balanceAfter\": 199000.0,\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "F7 Petty Cash Payment History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/petty-cash/payments/history?pettyCashAccountId={{pettyCashAccountId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "petty-cash",
+                "payments",
+                "history"
+              ],
+              "query": [
+                {
+                  "key": "pettyCashAccountId",
+                  "value": "{{pettyCashAccountId}}"
+                }
+              ]
+            },
+            "description": "Perm accounting.read. Everything paid out of petty cash: petty cash payments and running costs approved with the PETTY_CASH method. Filters: pettyCashAccountId, locationId, expenseCategoryId, source, status, amount, from/to. The summary counts only payments not reversed.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "F7 Petty Cash Payment History - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/petty-cash/payments/history?pettyCashAccountId={{pettyCashAccountId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "petty-cash",
+                    "payments",
+                    "history"
+                  ],
+                  "query": [
+                    {
+                      "key": "pettyCashAccountId",
+                      "value": "{{pettyCashAccountId}}"
+                    }
+                  ]
+                },
+                "description": "Perm accounting.read. Everything paid out of petty cash: petty cash payments and running costs approved with the PETTY_CASH method. Filters: pettyCashAccountId, locationId, expenseCategoryId, source, status, amount, from/to. The summary counts only payments not reversed.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"sn\": 1,\n        \"id\": \"{{pettyPaymentId}}\",\n        \"date\": \"2026-10-12\",\n        \"ref\": \"PCP-1\",\n        \"description\": \"Generator Diesel \\u2014 Total filling station: 20 litres\",\n        \"category\": \"Generator Diesel\",\n        \"paidTo\": \"Total filling station\",\n        \"approvedBy\": \"Mrs Okafor\",\n        \"amount\": 12000.0,\n        \"source\": \"Petty cash payment\",\n        \"status\": \"REVERSED\",\n        \"pettyCashAccountCode\": \"PC-IKJ\"\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": {\n      \"paymentsMade\": 0,\n      \"totalPaidOut\": 0.0,\n      \"categoriesUsed\": 0,\n      \"largestPayment\": 0.0\n    },\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "F8 Petty Cash Statement",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/petty-cash/statement?pettyCashAccountId={{pettyCashAccountId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "petty-cash",
+                "statement"
+              ],
+              "query": [
+                {
+                  "key": "pettyCashAccountId",
+                  "value": "{{pettyCashAccountId}}"
+                }
+              ]
+            },
+            "description": "Perm accounting.read. One box (pettyCashAccountId) or every box at a location (locationId), for from/to (default this month to date): the ledger with a running balance, funding (opening + top-ups and accepted allocations), utilisation by category net of reversals, closing balance and the share used.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "F8 Petty Cash Statement - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/petty-cash/statement?pettyCashAccountId={{pettyCashAccountId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "petty-cash",
+                    "statement"
+                  ],
+                  "query": [
+                    {
+                      "key": "pettyCashAccountId",
+                      "value": "{{pettyCashAccountId}}"
+                    }
+                  ]
+                },
+                "description": "Perm accounting.read. One box (pettyCashAccountId) or every box at a location (locationId), for from/to (default this month to date): the ledger with a running balance, funding (opening + top-ups and accepted allocations), utilisation by category net of reversals, closing balance and the share used.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"accounts\": [\n      {\n        \"id\": \"{{pettyCashAccountId}}\",\n        \"code\": \"PC-IKJ\",\n        \"name\": \"Ikeja Petty Cash Box\",\n        \"locationName\": \"Showroom Ikeja\"\n      }\n    ],\n    \"period\": {\n      \"from\": \"2026-10-01\",\n      \"to\": \"2026-10-12\"\n    },\n    \"ledger\": [\n      {\n        \"date\": \"2026-10-12\",\n        \"ref\": \"PCF-1\",\n        \"description\": \"Funding from BA-1 Guaranty Trust Bank \\u2014 PCF-1\",\n        \"category\": null,\n        \"direction\": \"Funding\",\n        \"in\": 50000.0,\n        \"out\": 0.0,\n        \"balance\": 199000.0,\n        \"accountCode\": \"PC-IKJ\"\n      }\n    ],\n    \"statement\": {\n      \"funding\": {\n        \"openingBalance\": 0.0,\n        \"entries\": [\n          {\n            \"ref\": \"PCF-1\",\n            \"date\": \"2026-10-12\",\n            \"amount\": 50000.0\n          }\n        ],\n        \"totalAvailable\": 50000.0\n      },\n      \"utilisationByCategory\": [],\n      \"totalUtilised\": 0.0,\n      \"closingBalance\": 199000.0,\n      \"utilisedPct\": 0.0\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "F9 Send Petty Cash to a Branch",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/petty-cash/allocations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "petty-cash",
+                "allocations"
+              ]
+            },
+            "description": "Perm accounting.petty-cash.fund. The source pays now; the branch's petty cash is credited only when the branch accepts. Notifies holders of accounting.petty-cash.respond at the branch. The source must not be at the same location as the destination.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceKind\": \"BANK\",\n  \"sourceBankAccountId\": \"{{bankAccountId}}\",\n  \"destinationPettyCashAccountId\": \"{{pettyCashAccountId}}\",\n  \"amount\": 20000,\n  \"purpose\": \"Branch float for October\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('allocationId', json.data.id);",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "F9 Send Petty Cash to a Branch - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/petty-cash/allocations",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "petty-cash",
+                    "allocations"
+                  ]
+                },
+                "description": "Perm accounting.petty-cash.fund. The source pays now; the branch's petty cash is credited only when the branch accepts. Notifies holders of accounting.petty-cash.respond at the branch. The source must not be at the same location as the destination.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"sourceKind\": \"BANK\",\n  \"sourceBankAccountId\": \"{{bankAccountId}}\",\n  \"destinationPettyCashAccountId\": \"{{pettyCashAccountId}}\",\n  \"amount\": 20000,\n  \"purpose\": \"Branch float for October\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{allocationId}}\",\n    \"ref\": \"PPC-1\",\n    \"date\": \"2026-10-01T10:15:30Z\",\n    \"sourceName\": \"BA-1 Guaranty Trust Bank\",\n    \"destinationLocationId\": \"{{showroomId}}\",\n    \"branch\": \"Showroom Ikeja\",\n    \"destinationAccountCode\": \"PC-IKJ\",\n    \"purpose\": \"Branch float for October\",\n    \"sentBy\": \"Alice Admin\",\n    \"amount\": 20000.0,\n    \"status\": \"PENDING\",\n    \"respondedBy\": null,\n    \"respondedOn\": null,\n    \"note\": null\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "F10 List Petty Cash Allocations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/petty-cash/allocations?status=PENDING",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "petty-cash",
+                "allocations"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "PENDING"
+                }
+              ]
+            },
+            "description": "The Pending / Accepted / Rejected tabs (status). A user tied to a branch sees only petty cash sent to that branch.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "F10 List Petty Cash Allocations - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/petty-cash/allocations?status=PENDING",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "petty-cash",
+                    "allocations"
+                  ],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "PENDING"
+                    }
+                  ]
+                },
+                "description": "The Pending / Accepted / Rejected tabs (status). A user tied to a branch sees only petty cash sent to that branch.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": \"{{allocationId}}\",\n        \"ref\": \"PPC-1\",\n        \"date\": \"2026-10-01T10:15:30Z\",\n        \"sourceName\": \"BA-1 Guaranty Trust Bank\",\n        \"destinationLocationId\": \"{{showroomId}}\",\n        \"branch\": \"Showroom Ikeja\",\n        \"destinationAccountCode\": \"PC-IKJ\",\n        \"purpose\": \"Branch float for October\",\n        \"sentBy\": \"Alice Admin\",\n        \"amount\": 20000.0,\n        \"status\": \"PENDING\",\n        \"respondedBy\": null,\n        \"respondedOn\": null,\n        \"note\": null\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": {\n      \"awaitingCount\": 1,\n      \"valuePending\": 20000.0,\n      \"acceptedValue\": 0.0,\n      \"rejectedCount\": 0\n    },\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "F11 Accept Petty Cash Allocation",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/petty-cash/allocations/{{allocationId}}/accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "petty-cash",
+                "allocations",
+                "{{allocationId}}",
+                "accept"
+              ]
+            },
+            "description": "Perm accounting.petty-cash.respond, at the destination branch. The whole amount lands in the branch's petty cash. POST …/reject {note} returns it to the source instead.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "F11 Accept Petty Cash Allocation - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/petty-cash/allocations/{{allocationId}}/accept",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "petty-cash",
+                    "allocations",
+                    "{{allocationId}}",
+                    "accept"
+                  ]
+                },
+                "description": "Perm accounting.petty-cash.respond, at the destination branch. The whole amount lands in the branch's petty cash. POST …/reject {note} returns it to the source instead.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{allocationId}}\",\n    \"ref\": \"PPC-1\",\n    \"date\": \"2026-10-01T10:15:30Z\",\n    \"sourceName\": \"BA-1 Guaranty Trust Bank\",\n    \"destinationLocationId\": \"{{showroomId}}\",\n    \"branch\": \"Showroom Ikeja\",\n    \"destinationAccountCode\": \"PC-IKJ\",\n    \"purpose\": \"Branch float for October\",\n    \"sentBy\": \"Alice Admin\",\n    \"amount\": 20000.0,\n    \"status\": \"ACCEPTED\",\n    \"respondedBy\": \"Alice Admin\",\n    \"respondedOn\": \"2026-10-01T10:15:30Z\",\n    \"note\": null\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "F12 Accept Petty Cash Allocation (error: already decided)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/petty-cash/allocations/{{allocationId}}/accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "petty-cash",
+                "allocations",
+                "{{allocationId}}",
+                "accept"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 409 ALREADY_DECIDED', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('ALREADY_DECIDED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "F12 Accept Petty Cash Allocation (error: already decided) - 409 Conflict",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/petty-cash/allocations/{{allocationId}}/accept",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "petty-cash",
+                    "allocations",
+                    "{{allocationId}}",
+                    "accept"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"ALREADY_DECIDED\",\n    \"message\": \"This petty cash allocation has already been decided\",\n    \"details\": {}\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "G1 Save Running Cost Draft",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/running-costs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "running-costs"
+              ]
+            },
+            "description": "Perm accounting.running-costs.submit. submit=false saves a draft (no reference, only field checks); submit=true submits it straight away. paymentMethod PETTY_CASH or CASH needs payingCashAccountId (a petty cash box, or a till/vault); BANK_TRANSFER or CHEQUE needs payingBankAccountId (CHEQUE also chequeNumber). inputVatAmount is the VAT included in amount per the supplier's VAT invoice and needs supplierTin.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expenseCategoryId\": \"{{expenseCategoryId}}\",\n  \"payee\": \"CoolAir Ltd\",\n  \"amount\": 45000,\n  \"paymentMethod\": \"BANK_TRANSFER\",\n  \"payingBankAccountId\": \"{{bankAccountId}}\",\n  \"invoiceOrReceiptNo\": \"INV-889\",\n  \"inputVatAmount\": 3139.53,\n  \"supplierTin\": \"12345678-0001\",\n  \"paymentDate\": \"{{today}}\",\n  \"description\": \"Generator servicing\",\n  \"submit\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('runningCostId', json.data.id);",
+                  "    pm.test('a draft has no reference yet', () => pm.expect(json.data.ref).to.eql(null));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "G1 Save Running Cost Draft - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/running-costs",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "running-costs"
+                  ]
+                },
+                "description": "Perm accounting.running-costs.submit. submit=false saves a draft (no reference, only field checks); submit=true submits it straight away. paymentMethod PETTY_CASH or CASH needs payingCashAccountId (a petty cash box, or a till/vault); BANK_TRANSFER or CHEQUE needs payingBankAccountId (CHEQUE also chequeNumber). inputVatAmount is the VAT included in amount per the supplier's VAT invoice and needs supplierTin.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"expenseCategoryId\": \"{{expenseCategoryId}}\",\n  \"payee\": \"CoolAir Ltd\",\n  \"amount\": 45000,\n  \"paymentMethod\": \"BANK_TRANSFER\",\n  \"payingBankAccountId\": \"{{bankAccountId}}\",\n  \"invoiceOrReceiptNo\": \"INV-889\",\n  \"inputVatAmount\": 3139.53,\n  \"supplierTin\": \"12345678-0001\",\n  \"paymentDate\": \"{{today}}\",\n  \"description\": \"Generator servicing\",\n  \"submit\": false\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{runningCostId}}\",\n    \"ref\": null,\n    \"date\": \"2026-10-12\",\n    \"description\": \"Generator servicing\",\n    \"expenseCategoryId\": \"{{expenseCategoryId}}\",\n    \"category\": \"Generator Diesel\",\n    \"payee\": \"CoolAir Ltd\",\n    \"method\": \"BANK_TRANSFER\",\n    \"payingAccountId\": \"{{bankAccountId}}\",\n    \"payingAccount\": \"BA-1\",\n    \"amount\": 45000.0,\n    \"inputVatAmount\": 3139.53,\n    \"supplierTin\": \"12345678-0001\",\n    \"invoiceOrReceiptNo\": \"INV-889\",\n    \"chequeNumber\": null,\n    \"locationId\": null,\n    \"locationName\": null,\n    \"status\": \"DRAFT\",\n    \"exceedsMonthlyCap\": false,\n    \"submittedBy\": null,\n    \"submittedAt\": null,\n    \"approvedBy\": null,\n    \"approvedAt\": null,\n    \"rejectionReason\": null,\n    \"reversalReason\": null,\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "G2 Submit Running Cost",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/running-costs/{{runningCostId}}/submit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "running-costs",
+                "{{runningCostId}}",
+                "submit"
+              ]
+            },
+            "description": "Gives the RC-n reference and runs the checks: usable category, a paying account of the right kind (400 INVALID_PAYING_ACCOUNT), enough cash for cash methods. exceedsMonthlyCap flags (without blocking) a cost that would take the category past its cap. Notifies holders of accounting.running-costs.approve. PUT /{id} edits a draft or a rejected cost (submit=true resubmits it, keeping its reference).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('runningCostRef', json.data.ref);",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "G2 Submit Running Cost - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/running-costs/{{runningCostId}}/submit",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "running-costs",
+                    "{{runningCostId}}",
+                    "submit"
+                  ]
+                },
+                "description": "Gives the RC-n reference and runs the checks: usable category, a paying account of the right kind (400 INVALID_PAYING_ACCOUNT), enough cash for cash methods. exceedsMonthlyCap flags (without blocking) a cost that would take the category past its cap. Notifies holders of accounting.running-costs.approve. PUT /{id} edits a draft or a rejected cost (submit=true resubmits it, keeping its reference).",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{runningCostId}}\",\n    \"ref\": \"RC-1\",\n    \"date\": \"2026-10-12\",\n    \"description\": \"Generator servicing\",\n    \"expenseCategoryId\": \"{{expenseCategoryId}}\",\n    \"category\": \"Generator Diesel\",\n    \"payee\": \"CoolAir Ltd\",\n    \"method\": \"BANK_TRANSFER\",\n    \"payingAccountId\": \"{{bankAccountId}}\",\n    \"payingAccount\": \"BA-1\",\n    \"amount\": 45000.0,\n    \"inputVatAmount\": 3139.53,\n    \"supplierTin\": \"12345678-0001\",\n    \"invoiceOrReceiptNo\": \"INV-889\",\n    \"chequeNumber\": null,\n    \"locationId\": null,\n    \"locationName\": null,\n    \"status\": \"PENDING_APPROVAL\",\n    \"exceedsMonthlyCap\": false,\n    \"submittedBy\": \"Alice Admin\",\n    \"submittedAt\": \"2026-10-01T10:15:30Z\",\n    \"approvedBy\": null,\n    \"approvedAt\": null,\n    \"rejectionReason\": null,\n    \"reversalReason\": null,\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "G3 Approve Running Cost",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/running-costs/{{runningCostId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "running-costs",
+                "{{runningCostId}}",
+                "approve"
+              ]
+            },
+            "description": "Perm accounting.running-costs.approve. The money moves now: a bank debit (or cash out) tagged with the category. The approver must not be the submitter (409 SELF_APPROVAL_NOT_ALLOWED); an Administrator may approve their own while the setting accounting.runningCost.allowSelfApprovalForAdmin is on (the default, for one-person companies), which is what happens here. POST …/reject {rejectionReason} sends it back with nothing paid.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "G3 Approve Running Cost - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/running-costs/{{runningCostId}}/approve",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "running-costs",
+                    "{{runningCostId}}",
+                    "approve"
+                  ]
+                },
+                "description": "Perm accounting.running-costs.approve. The money moves now: a bank debit (or cash out) tagged with the category. The approver must not be the submitter (409 SELF_APPROVAL_NOT_ALLOWED); an Administrator may approve their own while the setting accounting.runningCost.allowSelfApprovalForAdmin is on (the default, for one-person companies), which is what happens here. POST …/reject {rejectionReason} sends it back with nothing paid.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{runningCostId}}\",\n    \"ref\": \"RC-1\",\n    \"date\": \"2026-10-12\",\n    \"description\": \"Generator servicing\",\n    \"expenseCategoryId\": \"{{expenseCategoryId}}\",\n    \"category\": \"Generator Diesel\",\n    \"payee\": \"CoolAir Ltd\",\n    \"method\": \"BANK_TRANSFER\",\n    \"payingAccountId\": \"{{bankAccountId}}\",\n    \"payingAccount\": \"BA-1\",\n    \"amount\": 45000.0,\n    \"inputVatAmount\": 3139.53,\n    \"supplierTin\": \"12345678-0001\",\n    \"invoiceOrReceiptNo\": \"INV-889\",\n    \"chequeNumber\": null,\n    \"locationId\": null,\n    \"locationName\": null,\n    \"status\": \"APPROVED\",\n    \"exceedsMonthlyCap\": false,\n    \"submittedBy\": \"Alice Admin\",\n    \"submittedAt\": \"2026-10-01T10:15:30Z\",\n    \"approvedBy\": \"Alice Admin\",\n    \"approvedAt\": \"2026-10-01T10:15:30Z\",\n    \"rejectionReason\": null,\n    \"reversalReason\": null,\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "G4 List Running Costs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/running-costs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "running-costs"
+              ]
+            },
+            "description": "Perm accounting.read. Filters: status, expenseCategoryId, paymentMethod, locationId, payingAccountId, submittedBy, approvedBy, exceedsMonthlyCap, hasInputVat, amount, paymentDate (from/to), submittedAt; awaitingMyApproval=true = pending ones you didn't submit. q matches reference, invoice and cheque numbers, supplier TIN, payee, description and amounts. GET /running-costs/filters lists them.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "G4 List Running Costs - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/running-costs",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "running-costs"
+                  ]
+                },
+                "description": "Perm accounting.read. Filters: status, expenseCategoryId, paymentMethod, locationId, payingAccountId, submittedBy, approvedBy, exceedsMonthlyCap, hasInputVat, amount, paymentDate (from/to), submittedAt; awaitingMyApproval=true = pending ones you didn't submit. q matches reference, invoice and cheque numbers, supplier TIN, payee, description and amounts. GET /running-costs/filters lists them.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": \"{{runningCostId}}\",\n        \"ref\": \"RC-1\",\n        \"date\": \"2026-10-12\",\n        \"description\": \"Generator servicing\",\n        \"expenseCategoryId\": \"{{expenseCategoryId}}\",\n        \"category\": \"Generator Diesel\",\n        \"payee\": \"CoolAir Ltd\",\n        \"method\": \"BANK_TRANSFER\",\n        \"payingAccountId\": \"{{bankAccountId}}\",\n        \"payingAccount\": \"BA-1\",\n        \"amount\": 45000.0,\n        \"inputVatAmount\": 3139.53,\n        \"supplierTin\": \"12345678-0001\",\n        \"invoiceOrReceiptNo\": \"INV-889\",\n        \"chequeNumber\": null,\n        \"locationId\": null,\n        \"locationName\": null,\n        \"status\": \"APPROVED\",\n        \"exceedsMonthlyCap\": false,\n        \"submittedBy\": null,\n        \"submittedAt\": null,\n        \"approvedBy\": null,\n        \"approvedAt\": null,\n        \"rejectionReason\": null,\n        \"reversalReason\": null,\n        \"createdAt\": \"2026-10-01T10:15:30Z\"\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": {\n      \"count\": 1,\n      \"total\": 45000.0,\n      \"pendingCount\": 0,\n      \"pendingValue\": 0.0\n    },\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "G5 Reverse Running Cost",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/running-costs/{{runningCostId}}/reverse",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "running-costs",
+                "{{runningCostId}}",
+                "reverse"
+              ]
+            },
+            "description": "Perm accounting.running-costs.approve. Only an APPROVED cost; the money goes back to the paying account.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Paid to the wrong supplier\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "G5 Reverse Running Cost - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/running-costs/{{runningCostId}}/reverse",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "running-costs",
+                    "{{runningCostId}}",
+                    "reverse"
+                  ]
+                },
+                "description": "Perm accounting.running-costs.approve. Only an APPROVED cost; the money goes back to the paying account.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Paid to the wrong supplier\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{runningCostId}}\",\n    \"ref\": \"RC-1\",\n    \"date\": \"2026-10-12\",\n    \"description\": \"Generator servicing\",\n    \"expenseCategoryId\": \"{{expenseCategoryId}}\",\n    \"category\": \"Generator Diesel\",\n    \"payee\": \"CoolAir Ltd\",\n    \"method\": \"BANK_TRANSFER\",\n    \"payingAccountId\": \"{{bankAccountId}}\",\n    \"payingAccount\": \"BA-1\",\n    \"amount\": 45000.0,\n    \"inputVatAmount\": 3139.53,\n    \"supplierTin\": \"12345678-0001\",\n    \"invoiceOrReceiptNo\": \"INV-889\",\n    \"chequeNumber\": null,\n    \"locationId\": null,\n    \"locationName\": null,\n    \"status\": \"REVERSED\",\n    \"exceedsMonthlyCap\": false,\n    \"submittedBy\": null,\n    \"submittedAt\": null,\n    \"approvedBy\": null,\n    \"approvedAt\": null,\n    \"rejectionReason\": null,\n    \"reversalReason\": \"Paid to the wrong supplier\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "G6 Save Another Draft",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/running-costs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "running-costs"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expenseCategoryId\": \"{{expenseCategoryId}}\",\n  \"payee\": \"Draft only\",\n  \"amount\": 1000,\n  \"paymentMethod\": \"BANK_TRANSFER\",\n  \"payingBankAccountId\": \"{{bankAccountId}}\",\n  \"invoiceOrReceiptNo\": \"INV-889\",\n  \"inputVatAmount\": 0,\n  \"supplierTin\": null,\n  \"paymentDate\": \"{{today}}\",\n  \"description\": \"Generator servicing\",\n  \"submit\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('draftCostId', json.data.id);",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "G6 Save Another Draft - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/running-costs",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "running-costs"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"expenseCategoryId\": \"{{expenseCategoryId}}\",\n  \"payee\": \"Draft only\",\n  \"amount\": 1000,\n  \"paymentMethod\": \"BANK_TRANSFER\",\n  \"payingBankAccountId\": \"{{bankAccountId}}\",\n  \"invoiceOrReceiptNo\": \"INV-889\",\n  \"inputVatAmount\": 0,\n  \"supplierTin\": null,\n  \"paymentDate\": \"{{today}}\",\n  \"description\": \"Generator servicing\",\n  \"submit\": false\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{draftCostId}}\",\n    \"ref\": null,\n    \"date\": \"2026-10-12\",\n    \"description\": \"Generator servicing\",\n    \"expenseCategoryId\": \"{{expenseCategoryId}}\",\n    \"category\": \"Generator Diesel\",\n    \"payee\": \"Draft only\",\n    \"method\": \"BANK_TRANSFER\",\n    \"payingAccountId\": \"{{bankAccountId}}\",\n    \"payingAccount\": \"BA-1\",\n    \"amount\": 1000.0,\n    \"inputVatAmount\": 0.0,\n    \"supplierTin\": null,\n    \"invoiceOrReceiptNo\": \"INV-889\",\n    \"chequeNumber\": null,\n    \"locationId\": null,\n    \"locationName\": null,\n    \"status\": \"DRAFT\",\n    \"exceedsMonthlyCap\": false,\n    \"submittedBy\": null,\n    \"submittedAt\": null,\n    \"approvedBy\": null,\n    \"approvedAt\": null,\n    \"rejectionReason\": null,\n    \"reversalReason\": null,\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "G7 Delete Running Cost Draft",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/running-costs/{{draftCostId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "running-costs",
+                "{{draftCostId}}"
+              ]
+            },
+            "description": "Drafts only (409 NOT_EDITABLE otherwise): a draft isn't a document yet; submitted costs are never deleted.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "G7 Delete Running Cost Draft - 200 OK",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/running-costs/{{draftCostId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "running-costs",
+                    "{{draftCostId}}"
+                  ]
+                },
+                "description": "Drafts only (409 NOT_EDITABLE otherwise): a draft isn't a document yet; submitted costs are never deleted.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{draftCostId}}\",\n    \"deleted\": true\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "H1 Register Branch Bank Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/bank-accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "bank-accounts"
+              ]
+            },
+            "description": "The showroom's own account, to receive the funds sent in H2.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bankName\": \"Access Bank\",\n  \"accountName\": \"Apex Industries Ikeja\",\n  \"accountNumber\": \"0698877665\",\n  \"accountType\": \"CURRENT\",\n  \"locationId\": \"{{showroomId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('branchBankAccountId', json.data.id);",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "H1 Register Branch Bank Account - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/bank-accounts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "bank-accounts"
+                  ]
+                },
+                "description": "The showroom's own account, to receive the funds sent in H2.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"bankName\": \"Access Bank\",\n  \"accountName\": \"Apex Industries Ikeja\",\n  \"accountNumber\": \"0698877665\",\n  \"accountType\": \"CURRENT\",\n  \"locationId\": \"{{showroomId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{branchBankAccountId}}\",\n    \"code\": \"BA-2\",\n    \"bankName\": \"Access Bank\",\n    \"branch\": null,\n    \"accountName\": \"Apex Industries Ikeja\",\n    \"accountNumber\": \"0698877665\",\n    \"accountNumberMasked\": \"\\u2022\\u2022\\u2022\\u2022 7665\",\n    \"accountType\": \"CURRENT\",\n    \"currencyCode\": \"NGN\",\n    \"sortCodeOrBic\": null,\n    \"authorisedSignatory\": null,\n    \"relationshipManager\": null,\n    \"dateOpened\": null,\n    \"openingBalance\": 0.0,\n    \"openingBalanceDate\": \"2026-10-01\",\n    \"currentBalance\": 0.0,\n    \"locationId\": \"{{showroomId}}\",\n    \"locationName\": \"Showroom Ikeja\",\n    \"status\": \"ACTIVE\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "H2 Send Funds to a Branch",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/fund-disbursements",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "fund-disbursements"
+              ]
+            },
+            "description": "Perm accounting.funds.send. channel BANK_TRANSFER (source and destination bank accounts) or CASH (source cash account, destination vault or till). The destination account must belong to the destination location (400 INVALID_DESTINATION_ACCOUNT). The source pays now (BF-n); holders of accounting.funds.confirm at the destination are notified.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"channel\": \"BANK_TRANSFER\",\n  \"sourceBankAccountId\": \"{{bankAccountId}}\",\n  \"destinationLocationId\": \"{{showroomId}}\",\n  \"destinationBankAccountId\": \"{{branchBankAccountId}}\",\n  \"purpose\": \"Restocking float\",\n  \"sentAmount\": 300000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('disbursementId', json.data.id);",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "H2 Send Funds to a Branch - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/fund-disbursements",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "fund-disbursements"
+                  ]
+                },
+                "description": "Perm accounting.funds.send. channel BANK_TRANSFER (source and destination bank accounts) or CASH (source cash account, destination vault or till). The destination account must belong to the destination location (400 INVALID_DESTINATION_ACCOUNT). The source pays now (BF-n); holders of accounting.funds.confirm at the destination are notified.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"channel\": \"BANK_TRANSFER\",\n  \"sourceBankAccountId\": \"{{bankAccountId}}\",\n  \"destinationLocationId\": \"{{showroomId}}\",\n  \"destinationBankAccountId\": \"{{branchBankAccountId}}\",\n  \"purpose\": \"Restocking float\",\n  \"sentAmount\": 300000\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{disbursementId}}\",\n    \"ref\": \"BF-1\",\n    \"date\": \"2026-10-01T10:15:30Z\",\n    \"destinationLocationId\": \"{{showroomId}}\",\n    \"branch\": \"Showroom Ikeja\",\n    \"purpose\": \"Restocking float\",\n    \"channel\": \"BANK_TRANSFER\",\n    \"sourceAccount\": \"BA-1\",\n    \"destinationAccount\": \"BA-2\",\n    \"sentBy\": \"Alice Admin\",\n    \"sent\": 300000.0,\n    \"received\": null,\n    \"shortfall\": null,\n    \"shortfallReason\": null,\n    \"status\": \"AWAITING\",\n    \"confirmedBy\": null,\n    \"dateReceived\": null,\n    \"rejectionReason\": null\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "H3 Confirm Funds (error: more than was sent)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/fund-disbursements/{{disbursementId}}/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "fund-disbursements",
+                "{{disbursementId}}",
+                "confirm"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receivedAmount\": 300001,\n  \"dateReceived\": \"{{today}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 400 RECEIVED_EXCEEDS_SENT', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('RECEIVED_EXCEEDS_SENT');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "H3 Confirm Funds (error: more than was sent) - 400 Bad Request",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/fund-disbursements/{{disbursementId}}/confirm",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "fund-disbursements",
+                    "{{disbursementId}}",
+                    "confirm"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"receivedAmount\": 300001,\n  \"dateReceived\": \"{{today}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"RECEIVED_EXCEEDS_SENT\",\n    \"message\": \"The amount received can't exceed the amount sent\",\n    \"details\": {}\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "H4 Confirm Funds Received (with a shortfall)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/fund-disbursements/{{disbursementId}}/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "fund-disbursements",
+                "{{disbursementId}}",
+                "confirm"
+              ]
+            },
+            "description": "Perm accounting.funds.confirm, at the destination. The destination is credited with what arrived. Less than sent needs shortfallReason (400 SHORTFALL_REASON_REQUIRED); the shortfall is reported to the sender and Management, not re-credited anywhere. POST …/reject {reason} returns the full amount to the source instead.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receivedAmount\": 299500,\n  \"dateReceived\": \"{{today}}\",\n  \"bankCreditReference\": \"NIP-55120\",\n  \"shortfallReason\": \"Bank deducted a transfer charge\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('shortfall recorded', () => pm.expect(json.data.shortfall).to.eql(500));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "H4 Confirm Funds Received (with a shortfall) - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/fund-disbursements/{{disbursementId}}/confirm",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "fund-disbursements",
+                    "{{disbursementId}}",
+                    "confirm"
+                  ]
+                },
+                "description": "Perm accounting.funds.confirm, at the destination. The destination is credited with what arrived. Less than sent needs shortfallReason (400 SHORTFALL_REASON_REQUIRED); the shortfall is reported to the sender and Management, not re-credited anywhere. POST …/reject {reason} returns the full amount to the source instead.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"receivedAmount\": 299500,\n  \"dateReceived\": \"{{today}}\",\n  \"bankCreditReference\": \"NIP-55120\",\n  \"shortfallReason\": \"Bank deducted a transfer charge\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{disbursementId}}\",\n    \"ref\": \"BF-1\",\n    \"date\": \"2026-10-01T10:15:30Z\",\n    \"destinationLocationId\": \"{{showroomId}}\",\n    \"branch\": \"Showroom Ikeja\",\n    \"purpose\": \"Restocking float\",\n    \"channel\": \"BANK_TRANSFER\",\n    \"sourceAccount\": \"BA-1\",\n    \"destinationAccount\": \"BA-2\",\n    \"sentBy\": \"Alice Admin\",\n    \"sent\": 300000.0,\n    \"received\": 299500.0,\n    \"shortfall\": 500.0,\n    \"shortfallReason\": \"Bank deducted a transfer charge\",\n    \"status\": \"PARTIALLY_CONFIRMED\",\n    \"confirmedBy\": \"Alice Admin\",\n    \"dateReceived\": \"2026-10-12\",\n    \"rejectionReason\": null\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "H5 List Fund Disbursements",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/fund-disbursements",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "fund-disbursements"
+              ]
+            },
+            "description": "Filters: locationId (destination), status, channel, hasShortfall, sentBy, sentAmount, from/to (sentAt). The destination's Awaiting cards are status=AWAITING.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "H5 List Fund Disbursements - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/fund-disbursements",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "fund-disbursements"
+                  ]
+                },
+                "description": "Filters: locationId (destination), status, channel, hasShortfall, sentBy, sentAmount, from/to (sentAt). The destination's Awaiting cards are status=AWAITING.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": \"{{disbursementId}}\",\n        \"ref\": \"BF-1\",\n        \"date\": \"2026-10-01T10:15:30Z\",\n        \"destinationLocationId\": \"{{showroomId}}\",\n        \"branch\": \"Showroom Ikeja\",\n        \"purpose\": \"Restocking float\",\n        \"channel\": \"BANK_TRANSFER\",\n        \"sourceAccount\": \"BA-1\",\n        \"destinationAccount\": \"BA-2\",\n        \"sentBy\": \"Alice Admin\",\n        \"sent\": 300000.0,\n        \"received\": 299500.0,\n        \"shortfall\": 500.0,\n        \"shortfallReason\": null,\n        \"status\": \"PARTIALLY_CONFIRMED\",\n        \"confirmedBy\": null,\n        \"dateReceived\": null,\n        \"rejectionReason\": null\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": {\n      \"awaiting\": 0,\n      \"valueAwaiting\": 0.0,\n      \"shortfallTotal\": 500.0\n    },\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "I1 Count the Till (puts the day's takings on the books)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/cash-accounts/{{tillAccountId}}/cash-counts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "cash-accounts",
+                "{{tillAccountId}}",
+                "cash-counts"
+              ]
+            },
+            "description": "Until Sales & POS posts takings into tills, a count gives this till cash to lodge in I2.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"countedAmount\": 32500,\n  \"countDate\": \"{{today}}\",\n  \"note\": \"Takings counted at close (no sales module yet)\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "I1 Count the Till (puts the day's takings on the books) - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/cash-accounts/{{tillAccountId}}/cash-counts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "cash-accounts",
+                    "{{tillAccountId}}",
+                    "cash-counts"
+                  ]
+                },
+                "description": "Until Sales & POS posts takings into tills, a count gives this till cash to lodge in I2.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"countedAmount\": 32500,\n  \"countDate\": \"{{today}}\",\n  \"note\": \"Takings counted at close (no sales module yet)\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"account\": {\n      \"id\": \"{{tillAccountId}}\",\n      \"code\": \"TILL-IKJ-01\",\n      \"currentBalance\": 32500.0\n    },\n    \"bookBalance\": 0.0,\n    \"countedAmount\": 32500.0,\n    \"variance\": 32500.0,\n    \"adjustmentReference\": \"CC-2\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "I2 Record Cash Lodgement",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/cash-lodgements",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "cash-lodgements"
+              ]
+            },
+            "description": "Perm accounting.lodgements.manage (Cashiers have it). The cash leaves the till now (it has physically gone to the bank); retained = takings − banked (400 BANKED_EXCEEDS_TAKINGS). The bank can be any active company account, including head office's collection account.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"locationId\": \"{{showroomId}}\",\n  \"cashAccountId\": \"{{tillAccountId}}\",\n  \"depositDate\": \"{{today}}\",\n  \"takings\": 32500,\n  \"banked\": 30000,\n  \"bankAccountId\": \"{{bankAccountId}}\",\n  \"tellerReference\": \"TLR-8812\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('lodgementId', json.data.id);",
+                  "    pm.test('retained = takings - banked', () => pm.expect(json.data.retained).to.eql(2500));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "I2 Record Cash Lodgement - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/cash-lodgements",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "cash-lodgements"
+                  ]
+                },
+                "description": "Perm accounting.lodgements.manage (Cashiers have it). The cash leaves the till now (it has physically gone to the bank); retained = takings − banked (400 BANKED_EXCEEDS_TAKINGS). The bank can be any active company account, including head office's collection account.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"locationId\": \"{{showroomId}}\",\n  \"cashAccountId\": \"{{tillAccountId}}\",\n  \"depositDate\": \"{{today}}\",\n  \"takings\": 32500,\n  \"banked\": 30000,\n  \"bankAccountId\": \"{{bankAccountId}}\",\n  \"tellerReference\": \"TLR-8812\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{lodgementId}}\",\n    \"ref\": \"LDG-1\",\n    \"date\": \"2026-10-12\",\n    \"locationId\": \"{{showroomId}}\",\n    \"showroom\": \"Showroom Ikeja\",\n    \"cashAccountCode\": \"TILL-IKJ-01\",\n    \"takings\": 32500.0,\n    \"banked\": 30000.0,\n    \"retained\": 2500.0,\n    \"bank\": \"BA-1 Guaranty Trust Bank\",\n    \"accountNumberMasked\": \"\\u2022\\u2022\\u2022\\u2022 6789\",\n    \"depositedBy\": \"Alice Admin\",\n    \"teller\": \"TLR-8812\",\n    \"status\": \"AWAITING_CONFIRMATION\",\n    \"confirmedBy\": null,\n    \"confirmedAt\": null,\n    \"rejectionReason\": null\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "I3 Record Cash Lodgement (error: banked exceeds takings)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/cash-lodgements",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "cash-lodgements"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"locationId\": \"{{showroomId}}\",\n  \"cashAccountId\": \"{{tillAccountId}}\",\n  \"depositDate\": \"{{today}}\",\n  \"takings\": 1000,\n  \"banked\": 2000,\n  \"bankAccountId\": \"{{bankAccountId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 400 BANKED_EXCEEDS_TAKINGS', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('BANKED_EXCEEDS_TAKINGS');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "I3 Record Cash Lodgement (error: banked exceeds takings) - 400 Bad Request",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/cash-lodgements",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "cash-lodgements"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"locationId\": \"{{showroomId}}\",\n  \"cashAccountId\": \"{{tillAccountId}}\",\n  \"depositDate\": \"{{today}}\",\n  \"takings\": 1000,\n  \"banked\": 2000,\n  \"bankAccountId\": \"{{bankAccountId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"BANKED_EXCEEDS_TAKINGS\",\n    \"message\": \"The amount banked can't exceed the takings\",\n    \"details\": {}\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "I4 Confirm Cash Lodgement",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/cash-lodgements/{{lodgementId}}/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "cash-lodgements",
+                "{{lodgementId}}",
+                "confirm"
+              ]
+            },
+            "description": "Perm accounting.lodgements.confirm. Credits the bank: the deposit now shows on the Bank Statement as well as an out-flow on the showroom's Cash Inflow/Outflow. POST …/reject {reason} (the bank never got it) flags it to Management; the cash is not put back.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "I4 Confirm Cash Lodgement - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/cash-lodgements/{{lodgementId}}/confirm",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "cash-lodgements",
+                    "{{lodgementId}}",
+                    "confirm"
+                  ]
+                },
+                "description": "Perm accounting.lodgements.confirm. Credits the bank: the deposit now shows on the Bank Statement as well as an out-flow on the showroom's Cash Inflow/Outflow. POST …/reject {reason} (the bank never got it) flags it to Management; the cash is not put back.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{lodgementId}}\",\n    \"ref\": \"LDG-1\",\n    \"date\": \"2026-10-12\",\n    \"locationId\": \"{{showroomId}}\",\n    \"showroom\": \"Showroom Ikeja\",\n    \"cashAccountCode\": \"TILL-IKJ-01\",\n    \"takings\": 32500.0,\n    \"banked\": 30000.0,\n    \"retained\": 2500.0,\n    \"bank\": \"BA-1 Guaranty Trust Bank\",\n    \"accountNumberMasked\": \"\\u2022\\u2022\\u2022\\u2022 6789\",\n    \"depositedBy\": \"Alice Admin\",\n    \"teller\": \"TLR-8812\",\n    \"status\": \"CONFIRMED\",\n    \"confirmedBy\": \"Alice Admin\",\n    \"confirmedAt\": \"2026-10-01T10:15:30Z\",\n    \"rejectionReason\": null\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "I5 List Cash Lodgements",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/cash-lodgements",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "cash-lodgements"
+              ]
+            },
+            "description": "Cash Transfer History. Filters: locationId, bankAccountId, status, depositedBy, banked, from/to (depositDate); q matches reference, teller reference, amount.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "I5 List Cash Lodgements - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/cash-lodgements",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "cash-lodgements"
+                  ]
+                },
+                "description": "Cash Transfer History. Filters: locationId, bankAccountId, status, depositedBy, banked, from/to (depositDate); q matches reference, teller reference, amount.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": \"{{lodgementId}}\",\n        \"ref\": \"LDG-1\",\n        \"date\": \"2026-10-12\",\n        \"locationId\": \"{{showroomId}}\",\n        \"showroom\": \"Showroom Ikeja\",\n        \"cashAccountCode\": \"TILL-IKJ-01\",\n        \"takings\": 32500.0,\n        \"banked\": 30000.0,\n        \"retained\": 2500.0,\n        \"bank\": \"BA-1 Guaranty Trust Bank\",\n        \"accountNumberMasked\": \"\\u2022\\u2022\\u2022\\u2022 6789\",\n        \"depositedBy\": \"Alice Admin\",\n        \"teller\": \"TLR-8812\",\n        \"status\": \"CONFIRMED\",\n        \"confirmedBy\": null,\n        \"confirmedAt\": null,\n        \"rejectionReason\": null\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": {\n      \"takings\": 32500.0,\n      \"banked\": 30000.0,\n      \"retained\": 2500.0\n    },\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "J1 Global Search: Running Cost",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/search?q={{runningCostRef}}&types=running-cost",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{runningCostRef}}"
+                },
+                {
+                  "key": "types",
+                  "value": "running-cost"
+                }
+              ]
+            },
+            "description": "Header search also finds running costs (by reference, payee or invoice number) and cash lodgements (type lodgement).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('the running cost is found', () => pm.expect(json.data.groups.find(g => g.type === 'running-cost').hits.length).to.be.at.least(1));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "J1 Global Search: Running Cost - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/search?q={{runningCostRef}}&types=running-cost",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "search"
+                  ],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": "{{runningCostRef}}"
+                    },
+                    {
+                      "key": "types",
+                      "value": "running-cost"
+                    }
+                  ]
+                },
+                "description": "Header search also finds running costs (by reference, payee or invoice number) and cash lodgements (type lodgement).",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"groups\": [\n      {\n        \"type\": \"running-cost\",\n        \"label\": \"Running costs\",\n        \"hits\": [\n          {\n            \"type\": \"running-cost\",\n            \"id\": \"{{runningCostId}}\",\n            \"title\": \"RC-1\",\n            \"subtitle\": \"CoolAir Ltd \\u00b7 \\u20a645,000.00 \\u00b7 reversed\",\n            \"ref\": \"RC-1\",\n            \"route\": \"/account/running-costs/{{runningCostId}}\"\n          }\n        ],\n        \"more\": false,\n        \"moreRoute\": \"/account/running-costs?q=RC-1\"\n      }\n    ],\n    \"timedOut\": []\n  }\n}"
+            }
+          ]
+        },
+        {
           "name": "E1 Global Search: Bank Entry by Reference",
           "request": {
             "method": "GET",
@@ -28282,7 +31443,7 @@
           ]
         }
       ],
-      "description": "Finance & Accounting, slice 1 (backend docs/07): the money ledgers. A expense categories, B bank accounts, manual entries and the Bank Statement, C cash accounts (petty cash, tills), cash counts and the Cash Inflow/Outflow Statement, D exchange rates, E global search. Run after folder 16 (it uses the showroom created there) and 12 (for the today variable). Captured variables: bankChargesCategoryId, expenseCategoryId, bankAccountId, manualEntryRef, pettyCashAccountId, tillAccountId."
+      "description": "Finance & Accounting (backend docs/in-progress/07): A expense categories, B bank accounts, manual entries and the Bank Statement, C cash accounts (petty cash, tills), cash counts and the Cash Inflow/Outflow Statement, D exchange rates, E global search, F petty cash (fund, pay, history, statement, send to a branch and accept), G running costs (draft, submit, approve, reverse), H funds sent to a branch and confirmed, I cash lodgements, J search. Run after folder 16 (it uses the showroom created there) and 12 (for the today variable). Captured variables: bankChargesCategoryId, expenseCategoryId, bankAccountId, manualEntryRef, pettyCashAccountId, tillAccountId, pettyFundingId, pettyPaymentId, allocationId, runningCostId, runningCostRef, draftCostId, branchBankAccountId, disbursementId, lodgementId."
     }
   ]
 }

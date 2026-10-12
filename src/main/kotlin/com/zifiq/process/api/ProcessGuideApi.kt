@@ -6,15 +6,9 @@ import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 
-@Tag(name = "Process Guide & Admin", description = "Exchange Rates, Commissions, Error Logs, Recycle Bin & Sales Reps")
+@Tag(name = "Process Guide & Admin", description = "Commissions, Error Logs, Recycle Bin & Sales Reps (exchange rates moved to /api/v1/account/exchange-rates)")
 @SecurityRequirement(name = "bearerAuth")
 interface ProcessGuideApi {
-    @Operation(summary = "Get current exchange rates")
-    fun getExchangeRates(): ApiEnvelope<List<ExchangeRateSummary>>
-
-    @Operation(summary = "Update currency exchange rate")
-    fun updateExchangeRate(request: ExchangeRateUpdate): ApiEnvelope<ExchangeRateSummary>
-
     @Operation(summary = "List commission rules and rates")
     fun getCommissionRules(): ApiEnvelope<List<CommissionRuleSummary>>
 

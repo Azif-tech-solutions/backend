@@ -18,7 +18,7 @@ Eight roles, seeded automatically for every new tenant (root, via `registerTenan
 |---|---|---|
 | **Administrator** | *every code in `permission_catalog`* | View, Create, Edit, Approve, Delete |
 | **Management** | `factory.stock.read`, `factory.costing.read`, `factory.costing.approve`, `showroom.stock.read`, `accounting.read`, `cashier.sales.read` | View (incl. cost), Approve — no create/edit/delete |
-| **Accounts Personnel** | `accounting.read`, `accounting.manage`, `cashier.sales.read` | View, Create, Edit, Approve (financial) |
+| **Accounts Personnel** | `accounting.read`, the granular `accounting.*` codes of doc 07 §3, `cashier.sales.read` | View, Create, Edit, Approve (financial) |
 | **Stock Keeper** | `factory.stock.read`, `factory.stock.manage`, `factory.adjustments.manage`, `factory.transfers.manage`, `showroom.stock.read`, `showroom.stock.manage` | View, Create (stock entries/adjustments) — the only role allowed to post quantity adjustments |
 | **Quality Control** | `factory.stock.read`, `factory.production.manage`, `factory.recipes.manage` | View (no cost — `factory.costing.read`/`factory.costing.approve` deliberately **not** granted), Create (production entries) |
 | **Cashier** | `cashier.sales.read`, `cashier.sales.manage` | View (own transactions), Create (POS/invoices) |

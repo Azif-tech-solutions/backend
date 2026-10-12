@@ -23,7 +23,7 @@ import org.jetbrains.exposed.sql.update
 import org.springframework.stereotype.Service
 
 /**
- * Factory-to-Factory Trade (docs/02-factory.md §3.11). Stays under Factory & Production per the
+ * Factory-to-Factory Trade (docs/implemented/02-factory.md §3.11). Stays under Factory & Production per the
  * proposed navigation architecture (sketch/index.html), even though it posts to Inventory's shared
  * stock ledger — the same allowed dependency direction Production uses (Factory depends on
  * Inventory, never the reverse).

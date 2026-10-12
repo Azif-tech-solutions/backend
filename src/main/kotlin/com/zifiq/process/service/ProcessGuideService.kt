@@ -8,23 +8,6 @@ import java.util.UUID
 
 @Service
 class ProcessGuideService {
-    fun getExchangeRates(): List<ExchangeRateSummary> {
-        return listOf(
-            ExchangeRateSummary("USD", "EUR", BigDecimal("0.92"), Instant.now()),
-            ExchangeRateSummary("USD", "GBP", BigDecimal("0.78"), Instant.now()),
-            ExchangeRateSummary("USD", "NGN", BigDecimal("1600.00"), Instant.now()),
-        )
-    }
-
-    fun updateExchangeRate(request: ExchangeRateUpdate): ExchangeRateSummary {
-        return ExchangeRateSummary(
-            baseCurrency = request.baseCurrency,
-            targetCurrency = request.targetCurrency,
-            rate = request.rate,
-            updatedAt = Instant.now(),
-        )
-    }
-
     fun getCommissionRules(): List<CommissionRuleSummary> {
         return listOf(
             CommissionRuleSummary(UUID.randomUUID(), "Dealer", BigDecimal("5.0"), "Standard dealer sales commission"),

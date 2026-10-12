@@ -144,7 +144,7 @@ class AuthService(
         // is itself RLS-scoped to app.tenant_id — this query deliberately runs with no tenant
         // context set yet, relying on tenant_memberships having no RLS policy of its own keyed
         // off the querying user, which is why this table's policy only checks tenant_id; see
-        // docs/00-platform-foundation.md for the login-time bootstrap ordering).
+        // docs/implemented/00-platform-foundation.md for the login-time bootstrap ordering).
         val tenantIds = TenantMembershipsTable
             .select(TenantMembershipsTable.tenantId)
             .andWhere { TenantMembershipsTable.userId eq userId }
@@ -263,7 +263,7 @@ class AuthService(
             // as the delivery scope; this grants no cross-tenant data access, it only determines
             // which tenant's RLS context the INSERT runs under. Queueing via the outbox (rather
             // than calling NotificationDispatcher inline) lets NotificationOutboxDispatcher drain
-            // it, per docs/00-platform-foundation.md §5.2.
+            // it, per docs/implemented/00-platform-foundation.md §5.2.
             val deliveryTenantId = TenantMembershipsTable
                 .select(TenantMembershipsTable.tenantId)
                 .andWhere { TenantMembershipsTable.userId eq userId }

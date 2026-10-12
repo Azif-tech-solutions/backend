@@ -13,7 +13,7 @@ import org.testcontainers.junit.jupiter.Testcontainers
  * Shared base for integration tests that need a real Postgres instance with the actual Flyway
  * migrations applied — Exposed's DSL isn't interface-based, so platform/business services are
  * tested against a real (throwaway) database rather than a mocked JdbcTemplate. See
- * docs/00-platform-foundation.md §8.
+ * docs/implemented/00-platform-foundation.md §8.
  *
  * Connects through the non-superuser zifiq_app application role (created here, mirroring
  * docker/init/01-application-role.sql) so RLS policies are actually enforced, matching production.

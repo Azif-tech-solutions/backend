@@ -9,7 +9,7 @@ data class DateRange(val from: LocalDate?, val to: LocalDate?)
 
 /**
  * Named relative periods (`period=LAST_MONTH`), resolved against "today" in the tenant's timezone —
- * docs/03-cross-module-conventions.md §5.2. Weeks start on Monday. Calendar periods (week, month,
+ * docs/implemented/03-cross-module-conventions.md §5.2. Weeks start on Monday. Calendar periods (week, month,
  * quarter, year) cover the whole period; `…_TO_DATE` and `LAST_n_DAYS` end today.
  */
 enum class DatePeriod {

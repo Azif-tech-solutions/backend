@@ -10,7 +10,7 @@ import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.TextColumnType
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 
-/** How a field takes part in free-text search — docs/03-cross-module-conventions.md §4.3. */
+/** How a field takes part in free-text search — docs/implemented/03-cross-module-conventions.md §4.3. */
 enum class SearchKind {
     /** Short code: case-insensitive exact or prefix match. */
     CODE,

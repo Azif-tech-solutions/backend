@@ -7,19 +7,6 @@ import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
 
-data class ExchangeRateUpdate(
-    @field:NotBlank val baseCurrency: String,
-    @field:NotBlank val targetCurrency: String,
-    @field:NotNull @field:Positive val rate: BigDecimal,
-)
-
-data class ExchangeRateSummary(
-    val baseCurrency: String,
-    val targetCurrency: String,
-    val rate: BigDecimal,
-    val updatedAt: Instant,
-)
-
 data class PasswordChangeRequest(
     @field:NotBlank val oldPassword: String,
     @field:NotBlank val newPassword: String,

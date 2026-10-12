@@ -23,7 +23,7 @@ import org.springframework.stereotype.Component
 /**
  * Writes a stock_ledger_entries row and updates stock_balances in the same call — the only
  * sanctioned way any module (Factory, Showroom) touches either table, so quantity_on_hand can
- * never drift from the ledger's sum. See docs/02-factory.md and docs/05-showroom.md §1.3. Public API other modules
+ * never drift from the ledger's sum. See docs/implemented/02-factory.md and docs/implemented/05-showroom.md §1.3. Public API other modules
  * depend on (Factory's Production/Trade services post entries here) — Inventory is the shared
  * stock substrate, analogous to how every module depends on `platform`.
  *
@@ -95,7 +95,7 @@ class StockLedgerRepository(
     }
 
     /**
-     * Re-Order Report (docs/02-factory.md) is pull-only -- nothing paged anyone when a level was
+     * Re-Order Report (docs/implemented/02-factory.md) is pull-only -- nothing paged anyone when a level was
      * actually crossed. Fires once per crossing (previous balance above the level, new balance at
      * or below it), not on every subsequent decrease while already below, so dropping stock to zero
      * over several postings doesn't spam the outbox. reorderLevel == 0 means "no threshold

@@ -119,7 +119,7 @@ ep("02 - Tenants & Members", "Create Child Tenant", "POST", "/api/v1/tenants",
 
 ep("02 - Tenants & Members", "List Tenant Roles", "GET", "/api/v1/tenants/roles",
    resp={"data": [
-       {"id": "{{adminRoleId}}", "name": "Administrator", "description": "System-seeded Administrator role", "permissions": ["accounting.manage", "accounting.read", "cashier.sales.manage", "cashier.sales.read", "factory.costing.approve", "factory.costing.read", "factory.production.manage", "factory.recipes.manage", "factory.setup.manage", "factory.trade.manage", "iam.roles.manage", "iam.users.assign", "iam.users.manage", "inventory.adjustments.manage", "inventory.stock.manage", "inventory.stock.read", "inventory.transfers.manage", "otp.issue", "settings.manage", "showroom.stock.manage", "showroom.stock.read", "tenants.create_child"]},
+       {"id": "{{adminRoleId}}", "name": "Administrator", "description": "System-seeded Administrator role", "permissions": ["accounting.read", "cashier.sales.manage", "cashier.sales.read", "factory.costing.approve", "factory.costing.read", "factory.production.manage", "factory.recipes.manage", "factory.setup.manage", "factory.trade.manage", "iam.roles.manage", "iam.users.assign", "iam.users.manage", "inventory.adjustments.manage", "inventory.stock.manage", "inventory.stock.read", "inventory.transfers.manage", "otp.issue", "settings.manage", "showroom.stock.manage", "showroom.stock.read", "tenants.create_child"]},
        {"id": "{{stockKeeperRoleId}}", "name": "Stock Keeper", "description": "System-seeded Stock Keeper role", "permissions": ["inventory.adjustments.manage", "inventory.stock.manage", "inventory.stock.read", "inventory.transfers.manage", "showroom.stock.manage", "showroom.stock.read"]},
    ]},
    tests=[
@@ -2023,6 +2023,240 @@ ep(A, "D4 Exchange Rate History", "GET", "/api/v1/account/exchange-rates/history
                   "meta": {"appliedFilters": {}, "ignoredQualifiers": [], "suggestions": [], "matches": {}}}},
    desc="Paged, newest first. Filters: currencyCode, publishedBy, buyRate, from/to (publishedAt); q matches the FX-n reference.")
 
+FUNDING = {"id": "{{pettyFundingId}}", "ref": "PCF-1", "date": "2026-10-12", "pettyCashAccountId": "{{pettyCashAccountId}}", "pettyCashAccountCode": "PC-IKJ",
+           "sourceKind": "BANK", "sourceName": "BA-1 Guaranty Trust Bank", "amount": 50000.00, "transferOrChequeReference": "TRF-20931",
+           "authorisedBy": "Alice Admin", "description": "Weekly top-up", "fundedBy": "Alice Admin", "status": "POSTED", "reversalReason": None, "createdAt": NOW}
+PAYMENT = {"id": "{{pettyPaymentId}}", "ref": "PCP-1", "date": "2026-10-12", "pettyCashAccountId": "{{pettyCashAccountId}}", "pettyCashAccountCode": "PC-IKJ",
+           "expenseCategoryId": "{{expenseCategoryId}}", "category": "Generator Diesel", "amount": 12000.00, "paidTo": "Total filling station",
+           "approvedBy": "Mrs Okafor", "description": "20 litres", "status": "POSTED", "reversalReason": None, "balanceAfter": 187000.00, "createdAt": NOW}
+ALLOCATION = {"id": "{{allocationId}}", "ref": "PPC-1", "date": NOW, "sourceName": "BA-1 Guaranty Trust Bank", "destinationLocationId": "{{showroomId}}",
+              "branch": "Showroom Ikeja", "destinationAccountCode": "PC-IKJ", "purpose": "Branch float for October", "sentBy": "Alice Admin",
+              "amount": 20000.00, "status": "PENDING", "respondedBy": None, "respondedOn": None, "note": None}
+COST = {"id": "{{runningCostId}}", "ref": None, "date": "2026-10-12", "description": "Generator servicing", "expenseCategoryId": "{{expenseCategoryId}}",
+        "category": "Generator Diesel", "payee": "CoolAir Ltd", "method": "BANK_TRANSFER", "payingAccountId": "{{bankAccountId}}", "payingAccount": "BA-1",
+        "amount": 45000.00, "inputVatAmount": 3139.53, "supplierTin": "12345678-0001", "invoiceOrReceiptNo": "INV-889", "chequeNumber": None,
+        "locationId": None, "locationName": None, "status": "DRAFT", "exceedsMonthlyCap": False, "submittedBy": None, "submittedAt": None,
+        "approvedBy": None, "approvedAt": None, "rejectionReason": None, "reversalReason": None, "createdAt": NOW}
+COST_BODY = {"expenseCategoryId": "{{expenseCategoryId}}", "payee": "CoolAir Ltd", "amount": 45000, "paymentMethod": "BANK_TRANSFER",
+             "payingBankAccountId": "{{bankAccountId}}", "invoiceOrReceiptNo": "INV-889", "inputVatAmount": 3139.53, "supplierTin": "12345678-0001",
+             "paymentDate": "{{today}}", "description": "Generator servicing", "submit": False}
+DISBURSEMENT = {"id": "{{disbursementId}}", "ref": "BF-1", "date": NOW, "destinationLocationId": "{{showroomId}}", "branch": "Showroom Ikeja",
+                "purpose": "Restocking float", "channel": "BANK_TRANSFER", "sourceAccount": "BA-1", "destinationAccount": "BA-2", "sentBy": "Alice Admin",
+                "sent": 300000.00, "received": None, "shortfall": None, "shortfallReason": None, "status": "AWAITING", "confirmedBy": None,
+                "dateReceived": None, "rejectionReason": None}
+LODGEMENT = {"id": "{{lodgementId}}", "ref": "LDG-1", "date": "2026-10-12", "locationId": "{{showroomId}}", "showroom": "Showroom Ikeja",
+             "cashAccountCode": "TILL-IKJ-01", "takings": 32500.00, "banked": 30000.00, "retained": 2500.00, "bank": "BA-1 Guaranty Trust Bank",
+             "accountNumberMasked": "•••• 6789", "depositedBy": "Alice Admin", "teller": "TLR-8812", "status": "AWAITING_CONFIRMATION",
+             "confirmedBy": None, "confirmedAt": None, "rejectionReason": None}
+
+ep(A, "F1 Fund Petty Cash", "POST", "/api/v1/account/petty-cash/fundings",
+   body={"pettyCashAccountId": "{{pettyCashAccountId}}", "sourceKind": "BANK", "sourceBankAccountId": "{{bankAccountId}}", "amount": 50000,
+         "fundingDate": "{{today}}", "transferOrChequeReference": "TRF-20931", "authorisedBy": "Alice Admin", "description": "Weekly top-up"},
+   resp={"data": FUNDING},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('pettyFundingId', json.data.id);"],
+   desc="Perm accounting.petty-cash.fund. Credit/Fund Petty Cash: the source (sourceKind BANK with sourceBankAccountId, or CASH with sourceCashAccountId) is "
+        "debited and the petty cash box credited, under one PCF-n. The box's float limit can't be passed (409 FLOAT_LIMIT_EXCEEDED). "
+        "POST /fundings/{id}/reverse {reason} undoes it while the box still holds the money.")
+
+ep(A, "F2 Fund Petty Cash (error: float limit)", "POST", "/api/v1/account/petty-cash/fundings",
+   body={"pettyCashAccountId": "{{pettyCashAccountId}}", "sourceKind": "BANK", "sourceBankAccountId": "{{bankAccountId}}", "amount": 100000, "fundingDate": "{{today}}"},
+   status=409, status_text="Conflict",
+   resp={"error": {"code": "FLOAT_LIMIT_EXCEEDED", "message": "This would take PC-IKJ to 299000.00, above its float limit of 250000.00",
+                   "details": {"account": "PC-IKJ", "floatLimit": "250000.00", "balanceAfter": "299000.00"}}},
+   expect_error={"status": 409, "code": "FLOAT_LIMIT_EXCEEDED"})
+
+ep(A, "F3 List Petty Cash Fundings", "GET", "/api/v1/account/petty-cash/fundings", query=[{"key": "pettyCashAccountId", "value": "{{pettyCashAccountId}}"}],
+   resp={"data": {"items": [FUNDING], "page": 0, "size": 50, "totalItems": 1, "totalPages": 1, "totalIsEstimate": False, "facets": None,
+                  "summary": {"pettyCashAccountId": "{{pettyCashAccountId}}", "code": "PC-IKJ", "openingBalance": 150000.00, "fundedToDate": 50000.00,
+                              "utilisedToDate": 0.00, "currentBalance": 199000.00},
+                  "meta": {"appliedFilters": {}, "ignoredQualifiers": [], "suggestions": [], "matches": {}}}},
+   desc="Perm accounting.read. Paged, newest first. Filters: pettyCashAccountId, locationId, sourceKind, fundedBy, status, amount, from/to (fundingDate). "
+        "With pettyCashAccountId the summary is that box's aside: opening balance, funded to date, utilised to date, current balance.")
+
+ep(A, "F4 Pay From Petty Cash", "POST", "/api/v1/account/petty-cash/payments",
+   body={"pettyCashAccountId": "{{pettyCashAccountId}}", "expenseCategoryId": "{{expenseCategoryId}}", "amount": 12000, "paidTo": "Total filling station",
+         "paymentDate": "{{today}}", "approvedBy": "Mrs Okafor", "description": "20 litres"},
+   resp={"data": PAYMENT},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('pettyPaymentId', json.data.id);"],
+   desc="Perm accounting.petty-cash.pay. No approval step, so the rules are enforced on the spot: an active category payable from petty cash "
+        "(400 CATEGORY_NOT_PAYABLE_FROM_PETTY_CASH), the cash must be there (400 INSUFFICIENT_CASH: petty cash is never overdrawn), and the category's "
+        "monthly cap can't be passed (409 MONTHLY_CAP_EXCEEDED). approvedBy is the name of whoever approved it verbally.")
+
+ep(A, "F5 Pay From Petty Cash (error: category not payable from petty cash)", "POST", "/api/v1/account/petty-cash/payments",
+   body={"pettyCashAccountId": "{{pettyCashAccountId}}", "expenseCategoryId": "{{bankChargesCategoryId}}", "amount": 500, "paidTo": "Bank", "paymentDate": "{{today}}"},
+   status=400, status_text="Bad Request",
+   resp={"error": {"code": "CATEGORY_NOT_PAYABLE_FROM_PETTY_CASH", "message": "'Bank Charges' can't be paid from petty cash; settle it by bank transfer or cheque instead",
+                   "details": {"category": "Bank Charges"}}},
+   expect_error={"status": 400, "code": "CATEGORY_NOT_PAYABLE_FROM_PETTY_CASH"})
+
+ep(A, "F6 Reverse Petty Cash Payment", "POST", "/api/v1/account/petty-cash/payments/{{pettyPaymentId}}/reverse",
+   body={"reason": "Paid twice"}, resp={"data": dict(PAYMENT, status="REVERSED", reversalReason="Paid twice", balanceAfter=199000.00)},
+   desc="The cash goes back into the box; the payment stays on record as REVERSED.")
+
+ep(A, "F7 Petty Cash Payment History", "GET", "/api/v1/account/petty-cash/payments/history", query=[{"key": "pettyCashAccountId", "value": "{{pettyCashAccountId}}"}],
+   resp={"data": {"items": [{"sn": 1, "id": "{{pettyPaymentId}}", "date": "2026-10-12", "ref": "PCP-1", "description": "Generator Diesel — Total filling station: 20 litres",
+                             "category": "Generator Diesel", "paidTo": "Total filling station", "approvedBy": "Mrs Okafor", "amount": 12000.00,
+                             "source": "Petty cash payment", "status": "REVERSED", "pettyCashAccountCode": "PC-IKJ"}],
+                  "page": 0, "size": 50, "totalItems": 1, "totalPages": 1, "totalIsEstimate": False, "facets": None,
+                  "summary": {"paymentsMade": 0, "totalPaidOut": 0.00, "categoriesUsed": 0, "largestPayment": 0.00},
+                  "meta": {"appliedFilters": {}, "ignoredQualifiers": [], "suggestions": [], "matches": {}}}},
+   desc="Perm accounting.read. Everything paid out of petty cash: petty cash payments and running costs approved with the PETTY_CASH method. "
+        "Filters: pettyCashAccountId, locationId, expenseCategoryId, source, status, amount, from/to. The summary counts only payments not reversed.")
+
+ep(A, "F8 Petty Cash Statement", "GET", "/api/v1/account/petty-cash/statement", query=[{"key": "pettyCashAccountId", "value": "{{pettyCashAccountId}}"}],
+   resp={"data": {"accounts": [{"id": "{{pettyCashAccountId}}", "code": "PC-IKJ", "name": "Ikeja Petty Cash Box", "locationName": "Showroom Ikeja"}],
+                  "period": {"from": "2026-10-01", "to": "2026-10-12"},
+                  "ledger": [{"date": "2026-10-12", "ref": "PCF-1", "description": "Funding from BA-1 Guaranty Trust Bank — PCF-1", "category": None,
+                              "direction": "Funding", "in": 50000.00, "out": 0.00, "balance": 199000.00, "accountCode": "PC-IKJ"}],
+                  "statement": {"funding": {"openingBalance": 0.00, "entries": [{"ref": "PCF-1", "date": "2026-10-12", "amount": 50000.00}], "totalAvailable": 50000.00},
+                                "utilisationByCategory": [], "totalUtilised": 0.00, "closingBalance": 199000.00, "utilisedPct": 0.0}}},
+   desc="Perm accounting.read. One box (pettyCashAccountId) or every box at a location (locationId), for from/to (default this month to date): "
+        "the ledger with a running balance, funding (opening + top-ups and accepted allocations), utilisation by category net of reversals, "
+        "closing balance and the share used.")
+
+ep(A, "F9 Send Petty Cash to a Branch", "POST", "/api/v1/account/petty-cash/allocations",
+   body={"sourceKind": "BANK", "sourceBankAccountId": "{{bankAccountId}}", "destinationPettyCashAccountId": "{{pettyCashAccountId}}", "amount": 20000,
+         "purpose": "Branch float for October"},
+   resp={"data": ALLOCATION},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('allocationId', json.data.id);"],
+   desc="Perm accounting.petty-cash.fund. The source pays now; the branch's petty cash is credited only when the branch accepts. "
+        "Notifies holders of accounting.petty-cash.respond at the branch. The source must not be at the same location as the destination.")
+
+ep(A, "F10 List Petty Cash Allocations", "GET", "/api/v1/account/petty-cash/allocations", query=[{"key": "status", "value": "PENDING"}],
+   resp={"data": {"items": [ALLOCATION], "page": 0, "size": 50, "totalItems": 1, "totalPages": 1, "totalIsEstimate": False, "facets": None,
+                  "summary": {"awaitingCount": 1, "valuePending": 20000.00, "acceptedValue": 0.00, "rejectedCount": 0},
+                  "meta": {"appliedFilters": {}, "ignoredQualifiers": [], "suggestions": [], "matches": {}}}},
+   desc="The Pending / Accepted / Rejected tabs (status). A user tied to a branch sees only petty cash sent to that branch.")
+
+ep(A, "F11 Accept Petty Cash Allocation", "POST", "/api/v1/account/petty-cash/allocations/{{allocationId}}/accept",
+   resp={"data": dict(ALLOCATION, status="ACCEPTED", respondedBy="Alice Admin", respondedOn=NOW)},
+   desc="Perm accounting.petty-cash.respond, at the destination branch. The whole amount lands in the branch's petty cash. "
+        "POST …/reject {note} returns it to the source instead.")
+
+ep(A, "F12 Accept Petty Cash Allocation (error: already decided)", "POST", "/api/v1/account/petty-cash/allocations/{{allocationId}}/accept",
+   status=409, status_text="Conflict",
+   resp={"error": {"code": "ALREADY_DECIDED", "message": "This petty cash allocation has already been decided", "details": {}}},
+   expect_error={"status": 409, "code": "ALREADY_DECIDED"})
+
+ep(A, "G1 Save Running Cost Draft", "POST", "/api/v1/account/running-costs", body=COST_BODY, resp={"data": COST},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('runningCostId', json.data.id);",
+          "pm.test('a draft has no reference yet', () => pm.expect(json.data.ref).to.eql(null));"],
+   desc="Perm accounting.running-costs.submit. submit=false saves a draft (no reference, only field checks); submit=true submits it straight away. "
+        "paymentMethod PETTY_CASH or CASH needs payingCashAccountId (a petty cash box, or a till/vault); BANK_TRANSFER or CHEQUE needs payingBankAccountId "
+        "(CHEQUE also chequeNumber). inputVatAmount is the VAT included in amount per the supplier's VAT invoice and needs supplierTin.")
+
+ep(A, "G2 Submit Running Cost", "POST", "/api/v1/account/running-costs/{{runningCostId}}/submit",
+   resp={"data": dict(COST, ref="RC-1", status="PENDING_APPROVAL", submittedBy="Alice Admin", submittedAt=NOW)},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('runningCostRef', json.data.ref);"],
+   desc="Gives the RC-n reference and runs the checks: usable category, a paying account of the right kind (400 INVALID_PAYING_ACCOUNT), enough cash for "
+        "cash methods. exceedsMonthlyCap flags (without blocking) a cost that would take the category past its cap. Notifies holders of "
+        "accounting.running-costs.approve. PUT /{id} edits a draft or a rejected cost (submit=true resubmits it, keeping its reference).")
+
+ep(A, "G3 Approve Running Cost", "POST", "/api/v1/account/running-costs/{{runningCostId}}/approve",
+   resp={"data": dict(COST, ref="RC-1", status="APPROVED", submittedBy="Alice Admin", submittedAt=NOW, approvedBy="Alice Admin", approvedAt=NOW)},
+   desc="Perm accounting.running-costs.approve. The money moves now: a bank debit (or cash out) tagged with the category. The approver must not be the submitter "
+        "(409 SELF_APPROVAL_NOT_ALLOWED); an Administrator may approve their own while the setting accounting.runningCost.allowSelfApprovalForAdmin is on "
+        "(the default, for one-person companies), which is what happens here. POST …/reject {rejectionReason} sends it back with nothing paid.")
+
+ep(A, "G4 List Running Costs", "GET", "/api/v1/account/running-costs",
+   resp={"data": {"items": [dict(COST, ref="RC-1", status="APPROVED")], "page": 0, "size": 50, "totalItems": 1, "totalPages": 1, "totalIsEstimate": False,
+                  "facets": None, "summary": {"count": 1, "total": 45000.00, "pendingCount": 0, "pendingValue": 0.00},
+                  "meta": {"appliedFilters": {}, "ignoredQualifiers": [], "suggestions": [], "matches": {}}}},
+   desc="Perm accounting.read. Filters: status, expenseCategoryId, paymentMethod, locationId, payingAccountId, submittedBy, approvedBy, exceedsMonthlyCap, "
+        "hasInputVat, amount, paymentDate (from/to), submittedAt; awaitingMyApproval=true = pending ones you didn't submit. q matches reference, invoice "
+        "and cheque numbers, supplier TIN, payee, description and amounts. GET /running-costs/filters lists them.")
+
+ep(A, "G5 Reverse Running Cost", "POST", "/api/v1/account/running-costs/{{runningCostId}}/reverse",
+   body={"reason": "Paid to the wrong supplier"},
+   resp={"data": dict(COST, ref="RC-1", status="REVERSED", reversalReason="Paid to the wrong supplier")},
+   desc="Perm accounting.running-costs.approve. Only an APPROVED cost; the money goes back to the paying account.")
+
+ep(A, "G6 Save Another Draft", "POST", "/api/v1/account/running-costs", body=dict(COST_BODY, payee="Draft only", amount=1000, inputVatAmount=0, supplierTin=None),
+   resp={"data": dict(COST, id="{{draftCostId}}", payee="Draft only", amount=1000.00, inputVatAmount=0.00, supplierTin=None)},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('draftCostId', json.data.id);"])
+
+ep(A, "G7 Delete Running Cost Draft", "DELETE", "/api/v1/account/running-costs/{{draftCostId}}",
+   resp={"data": {"id": "{{draftCostId}}", "deleted": True}},
+   desc="Drafts only (409 NOT_EDITABLE otherwise): a draft isn't a document yet; submitted costs are never deleted.")
+
+ep(A, "H1 Register Branch Bank Account", "POST", "/api/v1/account/bank-accounts",
+   body={"bankName": "Access Bank", "accountName": "Apex Industries Ikeja", "accountNumber": "0698877665", "accountType": "CURRENT", "locationId": "{{showroomId}}"},
+   resp={"data": dict(BANK, id="{{branchBankAccountId}}", code="BA-2", bankName="Access Bank", accountName="Apex Industries Ikeja", accountNumber="0698877665",
+                      accountNumberMasked="•••• 7665", accountType="CURRENT", openingBalance=0.00, currentBalance=0.00, locationId="{{showroomId}}",
+                      locationName="Showroom Ikeja", branch=None, sortCodeOrBic=None, authorisedSignatory=None, relationshipManager=None, dateOpened=None)},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('branchBankAccountId', json.data.id);"],
+   desc="The showroom's own account, to receive the funds sent in H2.")
+
+ep(A, "H2 Send Funds to a Branch", "POST", "/api/v1/account/fund-disbursements",
+   body={"channel": "BANK_TRANSFER", "sourceBankAccountId": "{{bankAccountId}}", "destinationLocationId": "{{showroomId}}",
+         "destinationBankAccountId": "{{branchBankAccountId}}", "purpose": "Restocking float", "sentAmount": 300000},
+   resp={"data": DISBURSEMENT},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('disbursementId', json.data.id);"],
+   desc="Perm accounting.funds.send. channel BANK_TRANSFER (source and destination bank accounts) or CASH (source cash account, destination vault or till). "
+        "The destination account must belong to the destination location (400 INVALID_DESTINATION_ACCOUNT). The source pays now (BF-n); holders of "
+        "accounting.funds.confirm at the destination are notified.")
+
+ep(A, "H3 Confirm Funds (error: more than was sent)", "POST", "/api/v1/account/fund-disbursements/{{disbursementId}}/confirm",
+   body={"receivedAmount": 300001, "dateReceived": "{{today}}"}, status=400, status_text="Bad Request",
+   resp={"error": {"code": "RECEIVED_EXCEEDS_SENT", "message": "The amount received can't exceed the amount sent", "details": {}}},
+   expect_error={"status": 400, "code": "RECEIVED_EXCEEDS_SENT"})
+
+ep(A, "H4 Confirm Funds Received (with a shortfall)", "POST", "/api/v1/account/fund-disbursements/{{disbursementId}}/confirm",
+   body={"receivedAmount": 299500, "dateReceived": "{{today}}", "bankCreditReference": "NIP-55120", "shortfallReason": "Bank deducted a transfer charge"},
+   resp={"data": dict(DISBURSEMENT, received=299500.00, shortfall=500.00, shortfallReason="Bank deducted a transfer charge", status="PARTIALLY_CONFIRMED",
+                      confirmedBy="Alice Admin", dateReceived="2026-10-12")},
+   tests=["const json = pm.response.json();", "pm.test('shortfall recorded', () => pm.expect(json.data.shortfall).to.eql(500));"],
+   desc="Perm accounting.funds.confirm, at the destination. The destination is credited with what arrived. Less than sent needs shortfallReason "
+        "(400 SHORTFALL_REASON_REQUIRED); the shortfall is reported to the sender and Management, not re-credited anywhere. "
+        "POST …/reject {reason} returns the full amount to the source instead.")
+
+ep(A, "H5 List Fund Disbursements", "GET", "/api/v1/account/fund-disbursements",
+   resp={"data": {"items": [dict(DISBURSEMENT, received=299500.00, shortfall=500.00, status="PARTIALLY_CONFIRMED")], "page": 0, "size": 50, "totalItems": 1,
+                  "totalPages": 1, "totalIsEstimate": False, "facets": None, "summary": {"awaiting": 0, "valueAwaiting": 0.00, "shortfallTotal": 500.00},
+                  "meta": {"appliedFilters": {}, "ignoredQualifiers": [], "suggestions": [], "matches": {}}}},
+   desc="Filters: locationId (destination), status, channel, hasShortfall, sentBy, sentAmount, from/to (sentAt). The destination's Awaiting cards are status=AWAITING.")
+
+ep(A, "I1 Count the Till (puts the day's takings on the books)", "POST", "/api/v1/account/cash-accounts/{{tillAccountId}}/cash-counts",
+   body={"countedAmount": 32500, "countDate": "{{today}}", "note": "Takings counted at close (no sales module yet)"},
+   resp={"data": {"account": {"id": "{{tillAccountId}}", "code": "TILL-IKJ-01", "currentBalance": 32500.00}, "bookBalance": 0.00, "countedAmount": 32500.00,
+                  "variance": 32500.00, "adjustmentReference": "CC-2"}},
+   desc="Until Sales & POS posts takings into tills, a count gives this till cash to lodge in I2.")
+
+ep(A, "I2 Record Cash Lodgement", "POST", "/api/v1/account/cash-lodgements",
+   body={"locationId": "{{showroomId}}", "cashAccountId": "{{tillAccountId}}", "depositDate": "{{today}}", "takings": 32500, "banked": 30000,
+         "bankAccountId": "{{bankAccountId}}", "tellerReference": "TLR-8812"},
+   resp={"data": LODGEMENT},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('lodgementId', json.data.id);",
+          "pm.test('retained = takings - banked', () => pm.expect(json.data.retained).to.eql(2500));"],
+   desc="Perm accounting.lodgements.manage (Cashiers have it). The cash leaves the till now (it has physically gone to the bank); retained = takings − banked "
+        "(400 BANKED_EXCEEDS_TAKINGS). The bank can be any active company account, including head office's collection account.")
+
+ep(A, "I3 Record Cash Lodgement (error: banked exceeds takings)", "POST", "/api/v1/account/cash-lodgements",
+   body={"locationId": "{{showroomId}}", "cashAccountId": "{{tillAccountId}}", "depositDate": "{{today}}", "takings": 1000, "banked": 2000, "bankAccountId": "{{bankAccountId}}"},
+   status=400, status_text="Bad Request",
+   resp={"error": {"code": "BANKED_EXCEEDS_TAKINGS", "message": "The amount banked can't exceed the takings", "details": {}}},
+   expect_error={"status": 400, "code": "BANKED_EXCEEDS_TAKINGS"})
+
+ep(A, "I4 Confirm Cash Lodgement", "POST", "/api/v1/account/cash-lodgements/{{lodgementId}}/confirm",
+   resp={"data": dict(LODGEMENT, status="CONFIRMED", confirmedBy="Alice Admin", confirmedAt=NOW)},
+   desc="Perm accounting.lodgements.confirm. Credits the bank: the deposit now shows on the Bank Statement as well as an out-flow on the showroom's "
+        "Cash Inflow/Outflow. POST …/reject {reason} (the bank never got it) flags it to Management; the cash is not put back.")
+
+ep(A, "I5 List Cash Lodgements", "GET", "/api/v1/account/cash-lodgements",
+   resp={"data": {"items": [dict(LODGEMENT, status="CONFIRMED")], "page": 0, "size": 50, "totalItems": 1, "totalPages": 1, "totalIsEstimate": False,
+                  "facets": None, "summary": {"takings": 32500.00, "banked": 30000.00, "retained": 2500.00},
+                  "meta": {"appliedFilters": {}, "ignoredQualifiers": [], "suggestions": [], "matches": {}}}},
+   desc="Cash Transfer History. Filters: locationId, bankAccountId, status, depositedBy, banked, from/to (depositDate); q matches reference, teller reference, amount.")
+
+ep(A, "J1 Global Search: Running Cost", "GET", "/api/v1/search",
+   query=[{"key": "q", "value": "{{runningCostRef}}"}, {"key": "types", "value": "running-cost"}],
+   resp={"data": {"groups": [{"type": "running-cost", "label": "Running costs", "hits": [
+       {"type": "running-cost", "id": "{{runningCostId}}", "title": "RC-1", "subtitle": "CoolAir Ltd · ₦45,000.00 · reversed", "ref": "RC-1",
+        "route": "/account/running-costs/{{runningCostId}}"}], "more": False, "moreRoute": "/account/running-costs?q=RC-1"}], "timedOut": []}},
+   tests=["const json = pm.response.json();",
+          "pm.test('the running cost is found', () => pm.expect(json.data.groups.find(g => g.type === 'running-cost').hits.length).to.be.at.least(1));"],
+   desc="Header search also finds running costs (by reference, payee or invoice number) and cash lodgements (type lodgement).")
+
 ep(A, "E1 Global Search: Bank Entry by Reference", "GET", "/api/v1/search",
    query=[{"key": "q", "value": "{{manualEntryRef}}"}, {"key": "types", "value": "bank-transaction"}],
    resp={"data": {"groups": [{"type": "bank-transaction", "label": "Bank transactions", "hits": [
@@ -2128,10 +2362,13 @@ def pm_request_item(e, with_examples=True):
 
 FOLDER_DESCRIPTIONS = {
     "17 - Finance & Accounting": (
-        "Finance & Accounting, slice 1 (backend docs/07): the money ledgers. A expense categories, B bank accounts, manual entries and the Bank Statement, "
-        "C cash accounts (petty cash, tills), cash counts and the Cash Inflow/Outflow Statement, D exchange rates, E global search. "
+        "Finance & Accounting (backend docs/in-progress/07): A expense categories, B bank accounts, manual entries and the Bank Statement, "
+        "C cash accounts (petty cash, tills), cash counts and the Cash Inflow/Outflow Statement, D exchange rates, E global search, "
+        "F petty cash (fund, pay, history, statement, send to a branch and accept), G running costs (draft, submit, approve, reverse), "
+        "H funds sent to a branch and confirmed, I cash lodgements, J search. "
         "Run after folder 16 (it uses the showroom created there) and 12 (for the today variable). "
-        "Captured variables: bankChargesCategoryId, expenseCategoryId, bankAccountId, manualEntryRef, pettyCashAccountId, tillAccountId."
+        "Captured variables: bankChargesCategoryId, expenseCategoryId, bankAccountId, manualEntryRef, pettyCashAccountId, tillAccountId, pettyFundingId, "
+        "pettyPaymentId, allocationId, runningCostId, runningCostRef, draftCostId, branchBankAccountId, disbursementId, lodgementId."
     ),
     "05 - Settings": (
         "Settings (backend docs/06): A company profile and logo, B onboarding, C module settings, D custom fields, E settings search. "

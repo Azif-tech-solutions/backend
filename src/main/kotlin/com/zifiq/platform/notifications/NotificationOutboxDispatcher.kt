@@ -18,7 +18,7 @@ private const val MAX_ATTEMPTS = 5
 /**
  * Drains notification_outbox. Every module writes a PENDING row to the outbox inside its own
  * tenant-scoped transaction instead of calling NotificationDispatcher directly — see
- * docs/00-platform-foundation.md §5.2. notification_outbox is RLS-protected on tenant_id, so this
+ * docs/implemented/00-platform-foundation.md §5.2. notification_outbox is RLS-protected on tenant_id, so this
  * background job iterates known tenants and re-scopes app.tenant_id per tenant rather than using
  * a bypass-RLS role, preserving the "only zifiq_app, never a bypass-RLS role" security posture.
  */

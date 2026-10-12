@@ -1,10 +1,10 @@
 # 07 — Finance & Accounting Module
 
-Status: **slice 1 of 3 implemented** (2026-10-12: the money ledgers — §2.1–2.4, §2.11, §4.1–4.5, §4.16, §5.3, §5.5; see §12). Slice 2 (petty cash, running costs, funds awaiting, lodgements) and slice 3 (receipts, tenderable, wallet money, other income, VAT per location) follow. VAT/HSN/ISIC classification in this package is already shipped — V5 — and is extended, not redesigned.
+Status: **slices 1 and 2 of 3 implemented** (2026-10-12). Slice 1, the money ledgers: §2.1–2.4, §2.11, §4.1–4.5, §4.16, §5.3, §5.5 (see §12). Slice 2, spending: §2.5–2.6, §2.8–2.9, §4.6–4.9, §4.14–4.15 (see §13). Slice 3 (receipts, tenderable, wallet money, other income, VAT per location) follows. VAT/HSN/ISIC classification in this package is already shipped — V5 — and is extended, not redesigned.
 Owner package: `com.zifiq.account` (substrate module — exposes `com.zifiq.account.spi`)
 Depends on: `platform`, `common`, `inventory` (OPEN), `customers :: spi`
 Depended on by: `invoicing` (invoice payments post here), `cashier` (every POS payment posts here), `communication` (commission payouts), `history`, `reports`, `dashboard`, `ai`.
-Migration: `V11__finance_accounting_ledgers.sql` (slice 1); slices 2 and 3 add `V11_1`, `V11_2`
+Migration: `V11__finance_accounting_ledgers.sql` (slice 1), `V11_1__finance_accounting_spending.sql` (slice 2); slice 3 adds `V11_2`
 Replaces: the mock `AccountService`/`AccountController`/`AccountDto.kt` (`getCashFlow`, `getBankStatement`, `getPettyCashStatement`, `recordOperatingCost`, `registerBankAccount`, `topUpPettyCash`) and `process`'s mock exchange rates.
 
 ---
@@ -882,4 +882,21 @@ What shipped: bank accounts and the bank ledger, cash accounts and the cash ledg
 - **`accounting.manage` is kept until slice 2**, which replaces the last mock endpoints it guards (`/petty-cash/statement`, `/operating-costs`, `/petty-cash/top-up`). Slice 1 removed the mock `/cashflow`, `/bank-statement/{accountNumber}` and mock `POST /bank-accounts`.
 - **New permissions** (V11): `accounting.bank.manage`, `accounting.cash-accounts.manage`, `accounting.expense-categories.manage`, `accounting.fx.manage` — Administrator and Accounts Personnel.
 - Tests: `AccountLedgersIntegrationTest` (7, including the concurrent-payout race and ledger integrity). Newman folder **"17 - Finance & Accounting"** (29 requests).
+
+## 13. Implementation notes — slice 2 (V11_1)
+
+What shipped: petty cash fundings, payments, the Payment History and the Petty Cash Statement; petty cash sent to branches with accept/reject; running costs with drafts, submission, four-eyes approval, rejection/resubmission and reversal; funds sent to branches and confirmed (with shortfalls); cash lodgements; the `running-cost` and `lodgement` global-search providers. All of it posts through `MoneyLedgerRepository` via the small `MoneyMoves` helper. Where it differs from the design above:
+
+- **Reversals are recorded on the document.** `petty_cash_fundings`, `petty_cash_payments` and `operating_costs` gained `reversal_reason`, `reversed_by_user_id`, `reversed_at`; `fund_disbursements` gained `rejection_reason`. Extra checks: `oc_ref_after_draft` (only drafts lack a reference), `oc_vat_needs_tin`, `ppc_rejection_note`. Reversal entries use the original document's `source_type` and `source_id`, with the remark "Reversal of <ref>: <reason>".
+- **Monthly caps** read this calendar month's spend from the ledgers, as `spentThisMonth` does (§12). A petty payment is refused past the cap; a running cost is only flagged (`exceedsMonthlyCap` = ledger spend + other pending costs this month + this one).
+- **Four-eyes:** "Administrator" means holding the tenant's role named Administrator; the exemption is on while `accounting.runningCost.allowSelfApprovalForAdmin` is true (default). Rejection records the decider in `approved_by_user_id`/`approved_at`; resubmitting clears them and keeps the `RC-n`.
+- **Petty Cash Payment History** is read from the cash ledger's OUT entries on petty-cash accounts (`PETTY_CASH_PAYMENT` and `RUNNING_COST`) joined to their documents, so reversed items still show, as `REVERSED`; the summary counts only live ones.
+- **Petty Cash Statement** is unpaged; the response is `{ accounts, period, ledger, statement }` (several boxes when called with `locationId`). Default period: this month to date. Utilisation by category is net of reversals.
+- **Allocations:** the destination must be a branch's petty cash (not head office), at a different location from the source. Accepting doesn't check the float limit (the money has already left the source).
+- **Funds awaiting:** a CASH disbursement lands in a vault or till at the destination. `receivedAmount` 0 is allowed with a reason (nothing is posted). A shortfall alerts the sender and Management (`platform.activity.read`).
+- **Lodgements:** the till/vault must be at the lodgement's location; the bank can be any active company account, including head office's collection account (a branch user lodges takings there). A rejection alerts Management and leaves the cash out of the till.
+- **Codes:** `PCF-n` fundings, `PCP-n` payments, `PPC-n` allocations, `RC-n` running costs, `BF-n` disbursements, `LDG-n` lodgements.
+- **Removed:** `accounting.manage` (catalog and role grants), the mock `/petty-cash/top-up` and `/operating-costs`, the mock `GET /petty-cash/statement` (the real one has the same path), and Process's mock exchange rates (`/api/v1/process/exchange-rates`).
+- **New permissions** (V11_1): `accounting.petty-cash.fund/pay/respond`, `accounting.running-costs.submit/approve`, `accounting.funds.send/confirm`, `accounting.lodgements.manage/confirm`, granted as in §3.
+- Tests: `AccountSpendingIntegrationTest` (8). Newman folder "17 - Finance & Accounting", sections F–J (30 more requests, 59 in all).
 

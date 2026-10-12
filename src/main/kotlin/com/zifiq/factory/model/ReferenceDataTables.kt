@@ -4,7 +4,7 @@ import com.zifiq.platform.tenancy.model.TenantsTable
 import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.javatime.timestamp
 
-// Factory Setup reference registers (docs/02-factory.md): Categories, Units of Measure,
+// Factory Setup reference registers (docs/implemented/02-factory.md): Categories, Units of Measure,
 // Suppliers, Manufacturers.
 
 object CategoriesTable : UUIDTable("categories") {

@@ -1,6 +1,11 @@
 package com.zifiq.account.service
 
 import com.zifiq.common.errors.ApiErrors
+import com.zifiq.common.filter.DatePeriod
+import com.zifiq.common.filter.FilterContext
+import com.zifiq.platform.accesscontrol.RoleDefaults
+import com.zifiq.platform.accesscontrol.model.TenantRolesTable
+import com.zifiq.platform.accesscontrol.model.UserRoleAssignmentsTable
 import com.zifiq.platform.events.DomainEvents
 import com.zifiq.platform.identity.model.AppUsersTable
 import com.zifiq.platform.security.CurrentActorProvider
@@ -15,6 +20,7 @@ import java.time.LocalDate
 import java.util.UUID
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
+import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.selectAll
 import org.springframework.stereotype.Component
@@ -79,6 +85,28 @@ class AccountSupport(
     /** Records a domain event; returns its id so a notification can link to it. */
     fun record(type: String, aggregateType: String, id: UUID, ref: String?, summary: String, payload: Map<String, Any?> = emptyMap(), locationId: UUID? = null): UUID =
         domainEvents.record(type = type, aggregateType = aggregateType, aggregateId = id, aggregateRef = ref, summary = summary, payload = payload, locationId = locationId)
+
+    /** Holds the tenant's Administrator role (exempt from the running-cost four-eyes rule when the setting allows). */
+    fun isAdministrator(): Boolean =
+        UserRoleAssignmentsTable.join(TenantRolesTable, JoinType.INNER, UserRoleAssignmentsTable.roleId, TenantRolesTable.id)
+            .selectAll()
+            .where { (UserRoleAssignmentsTable.tenantId eq tenantId()) and (UserRoleAssignmentsTable.userId eq userId()) and (TenantRolesTable.name eq RoleDefaults.ADMINISTRATOR) }
+            .any()
+
+    fun filterContext(): FilterContext = FilterContext(costVisible = true, zone = moduleSettings.zone())
+
+    /** The from/to a list or statement is bounded by: explicit dates, else a period preset, else null. */
+    fun dateRange(params: Map<String, List<String>>, context: FilterContext = filterContext()): Pair<LocalDate?, LocalDate?> {
+        val period = params["period"]?.firstOrNull()?.let { DatePeriod.parse(it) }?.resolve(context.today)
+        val from = params["from"]?.firstOrNull()?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: period?.from
+        val to = params["to"]?.firstOrNull()?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: period?.to
+        return from to to
+    }
+
+    /** A business date for a money document: not in the future. */
+    fun requireNotFuture(field: String, date: LocalDate) {
+        if (date.isAfter(today())) throw ApiErrors.validationFailed(mapOf(field to "can't be in the future"))
+    }
 
     companion object {
         fun money(value: BigDecimal): BigDecimal = value.setScale(2, RoundingMode.HALF_UP)

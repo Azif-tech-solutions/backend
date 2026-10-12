@@ -96,7 +96,7 @@ data class FilterContext(
 
 /**
  * The whitelisted filters, sorts and qualifiers of one list endpoint, and their compilation to SQL —
- * docs/03-cross-module-conventions.md §5. Every value is bound as a parameter.
+ * docs/implemented/03-cross-module-conventions.md §5. Every value is bound as a parameter.
  */
 class FilterSpec(
     val fields: List<FilterField>,

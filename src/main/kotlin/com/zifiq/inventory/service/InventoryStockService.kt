@@ -350,7 +350,7 @@ class InventoryStockService(
      * Factory & Production > Reports: a cross-item, cross-movement-type ledger view (unlike Stock
      * Card, which is scoped to a single item). Every stock-affecting action across every module
      * writes to StockLedgerEntriesTable, so this report is just that table filtered and joined to
-     * the item it affected -- see docs/02-factory.md §3.10 and com.zifiq.inventory.repository.
+     * the item it affected -- see docs/implemented/02-factory.md §3.10 and com.zifiq.inventory.repository.
      * StockLedgerRepository's own doc comment on why it's the single sanctioned write path.
      */
     fun stockMovementReport(

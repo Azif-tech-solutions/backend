@@ -1,7 +1,5 @@
 package com.zifiq
 
-import com.zifiq.account.dto.OperatingCostPaymentRequest
-import com.zifiq.account.service.AccountService
 import com.zifiq.ai.dto.AssistantQueryRequest
 import com.zifiq.ai.service.AiOperationsService
 import com.zifiq.barcode.dto.BarcodeScanRequest
@@ -25,22 +23,6 @@ import java.math.BigDecimal
 import java.util.UUID
 
 class ModuleCoverageTest {
-
-    @Test
-    fun `account mock service still records operating costs until Finance slice 2 replaces it`() {
-        val currentActorProvider = mock(com.zifiq.platform.security.CurrentActorProvider::class.java)
-        val service = AccountService(currentActorProvider)
-
-        val payment = service.recordOperatingCost(
-            OperatingCostPaymentRequest(
-                category = "Generator Fuel",
-                amount = BigDecimal("250.00"),
-                paymentMethod = "PETTY_CASH",
-                description = "Emergency fuel refill",
-            )
-        )
-        assertEquals("CONFIRMED", payment.status)
-    }
 
     @Test
     fun `cashier service processes pro forma invoices`() {
@@ -83,10 +65,9 @@ class ModuleCoverageTest {
     }
 
     @Test
-    fun `process guide service lists exchange rates`() {
+    fun `process guide service lists commission rules`() {
         val service = ProcessGuideService()
-        val rates = service.getExchangeRates()
-        assertFalse(rates.isEmpty())
+        assertFalse(service.getCommissionRules().isEmpty())
     }
 
     @Test

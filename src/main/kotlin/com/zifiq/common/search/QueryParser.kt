@@ -2,7 +2,7 @@ package com.zifiq.common.search
 
 /**
  * Parses the free-text `q` parameter into a small AST before anything touches SQL — see
- * docs/03-cross-module-conventions.md §4.3. Supported syntax:
+ * docs/implemented/03-cross-module-conventions.md §4.3. Supported syntax:
  *
  * - words: every word must match (AND)
  * - `"exact phrase"`

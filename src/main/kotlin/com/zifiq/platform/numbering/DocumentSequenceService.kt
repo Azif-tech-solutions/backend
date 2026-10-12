@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service
 /**
  * Atomic per-tenant, per-document-type reference number generator backing document_sequences.
  * Every module that needs a reference number (RF-, DL-, WB-, INV-, QA-, FT-, ...) calls
- * [next] instead of re-implementing numbering — see docs/00-platform-foundation.md §6.1.
+ * [next] instead of re-implementing numbering — see docs/implemented/00-platform-foundation.md §6.1.
  *
  * Seeds the row at 0 (no-op if already present), then locks it with SELECT ... FOR UPDATE and
  * increments it in Kotlin before writing back — the row lock is what makes concurrent callers for

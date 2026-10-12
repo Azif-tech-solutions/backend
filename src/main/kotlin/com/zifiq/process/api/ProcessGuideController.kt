@@ -12,17 +12,6 @@ import org.springframework.web.bind.annotation.*
 class ProcessGuideController(
     private val processGuideService: ProcessGuideService,
 ) : ProcessGuideApi {
-    @GetMapping("/exchange-rates")
-    override fun getExchangeRates(): ApiEnvelope<List<ExchangeRateSummary>> =
-        ApiEnvelope(processGuideService.getExchangeRates())
-
-    @PostMapping("/exchange-rates")
-    @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'accounting.manage')")
-    override fun updateExchangeRate(
-        @Valid @RequestBody request: ExchangeRateUpdate,
-    ): ApiEnvelope<ExchangeRateSummary> =
-        ApiEnvelope(processGuideService.updateExchangeRate(request))
-
     @GetMapping("/commissions/guide")
     override fun getCommissionRules(): ApiEnvelope<List<CommissionRuleSummary>> =
         ApiEnvelope(processGuideService.getCommissionRules())

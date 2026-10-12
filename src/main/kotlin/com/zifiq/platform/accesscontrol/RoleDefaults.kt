@@ -1,7 +1,7 @@
 package com.zifiq.platform.accesscontrol
 
 /**
- * Per docs/01-user-tenant-access-control.md §2: the eight PRD-defined roles seeded for every new
+ * Per docs/implemented/01-user-tenant-access-control.md §2: the eight PRD-defined roles seeded for every new
  * tenant (root, via AuthService.registerTenant, and child, via TenantService.createChild). Every
  * module that adds permission codes to permission_catalog extends this map's relevant entries as
  * part of its own migration/doc — this file is never redesigned, only extended.
@@ -38,15 +38,23 @@ object RoleDefaults {
             "inventory.pricing.read",
             "inventory.drivers.read",
             "showroom.returns.read",
+            "accounting.running-costs.approve",
         ),
         ACCOUNTS_PERSONNEL to setOf(
             "accounting.read",
-            "accounting.manage",
             "accounting.vat.manage",
             "accounting.bank.manage",
             "accounting.cash-accounts.manage",
             "accounting.expense-categories.manage",
             "accounting.fx.manage",
+            "accounting.petty-cash.fund",
+            "accounting.petty-cash.pay",
+            "accounting.petty-cash.respond",
+            "accounting.running-costs.submit",
+            "accounting.funds.send",
+            "accounting.funds.confirm",
+            "accounting.lodgements.manage",
+            "accounting.lodgements.confirm",
             "cashier.sales.read",
             "customers.read",
             "customers.manage",
@@ -78,6 +86,7 @@ object RoleDefaults {
             "factory.recipes.manage",
         ),
         CASHIER to setOf(
+            "accounting.lodgements.manage",
             "cashier.sales.read",
             "cashier.sales.manage",
             "customers.read",

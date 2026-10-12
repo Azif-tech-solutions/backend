@@ -5,7 +5,7 @@ import org.jetbrains.exposed.sql.Query
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 
-/** `page` (0-based) and `size` (1–200), validated — docs/03-cross-module-conventions.md §5.1. */
+/** `page` (0-based) and `size` (1–200), validated — docs/implemented/03-cross-module-conventions.md §5.1. */
 data class PageRequest(val page: Int, val size: Int) {
     val offset: Long get() = page.toLong() * size
 

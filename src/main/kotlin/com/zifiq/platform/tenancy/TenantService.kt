@@ -97,7 +97,7 @@ class TenantService(
 
     companion object {
         /**
-         * Seeds the eight PRD-defined roles (see docs/01-user-tenant-access-control.md §2) for a
+         * Seeds the eight PRD-defined roles (see docs/implemented/01-user-tenant-access-control.md §2) for a
          * freshly created tenant. Must be called from inside an active tenant-scoped transaction,
          * already re-scoped (via set_config) to [tenantId]. [RoleDefaults.ROLE_DEFAULTS] is the
          * single source of truth every module extends as it adds its own permission codes.

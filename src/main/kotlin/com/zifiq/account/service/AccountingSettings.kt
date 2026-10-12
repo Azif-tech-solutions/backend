@@ -36,9 +36,17 @@ class AccountingSettings : ModuleSettingProvider {
             options = Currencies.ALL.map { it.code },
             maxItems = Currencies.ALL.size,
         ),
+        SettingDefinition(
+            key = ADMIN_SELF_APPROVAL,
+            module = "accounting",
+            label = "Administrators may approve running costs they submitted themselves (for one-person companies)",
+            type = SettingType.BOOLEAN,
+            default = true,
+        ),
     )
 
     companion object {
         const val TRACKED_CURRENCIES = "accounting.fx.currencies"
+        const val ADMIN_SELF_APPROVAL = "accounting.runningCost.allowSelfApprovalForAdmin"
     }
 }

@@ -80,10 +80,11 @@ the later Inventory folders see the default.
 
 ## Testing Finance & Accounting (folder 17)
 
-Folder **17 - Finance & Accounting** (29 requests) covers slice 1, the money
-ledgers: expense categories, bank accounts with manual entries and the Bank
-Statement, cash accounts with cash counts and the Cash Inflow/Outflow
-Statement, and exchange rates. Run it after folder 16 (it registers its petty
+Folder **17 - Finance & Accounting** (59 requests) covers slices 1 and 2: expense
+categories, bank accounts with manual entries and the Bank Statement, cash
+accounts with cash counts and the Cash Inflow/Outflow Statement, exchange
+rates (A–E), then petty cash, running costs, funds sent to a branch and cash
+lodgements (F–J). Run it after folder 16 (it registers its petty
 cash and till at the showroom created there) in the same run as folder 12,
 which sets the `today` variable.
 
@@ -160,7 +161,7 @@ a Docker-internal host name, so open links only against the dev server.
 
 Drivers, the transfer receipt rules, waybill PDFs, counted adjustments, the
 paged adjustments report, the price list and group stock cards (backend
-`docs/05-showroom.md` §4.2–§4.13). It uses the factories, products and
+`docs/implemented/05-showroom.md` §4.2–§4.13). It uses the factories, products and
 category created in folders 06–07, so run it after them. Highlights:
 **Receive Transfer (with a rejection)** accepts 4 and rejects 1 — the
 rejected unit goes straight back to the sending factory; **Transfer Waybill
@@ -174,7 +175,7 @@ suspension, because a suspended location can't move stock.
 Showrooms with their storage areas, direct entries and outsource receipts,
 stock arriving from the factory, moves between areas, customer returns
 credited to wallets (walk-in and dealer), reversal, Return Reports, and the
-comprehensive stock and transfer reports (backend `docs/05-showroom.md`).
+comprehensive stock and transfer reports (backend `docs/implemented/05-showroom.md`).
 It uses data created in folders 06–15 — the factory, unit, finished product
 and its price, manufacturer, driver and dealer — so run it after them.
 Highlights: **A1 Register Showroom** creates the Shop Floor and Warehouse
@@ -198,7 +199,7 @@ npx newman run postman/ZifIQ-API.postman_collection.json -e postman/ZifIQ-Dev.po
   --folder "01 - Auth" --folder "12 - Customers"
 ```
 
-A clean full run reports `262/262` requests and `326/326` assertions
+A clean full run reports `292/292` requests and `360/360` assertions
 passing. Several requests are *deliberately* run against a state that makes
 them fail. These are not bugs: they demonstrate real error paths on purpose,
 so each gets its own status + error-code assertion instead of the generic

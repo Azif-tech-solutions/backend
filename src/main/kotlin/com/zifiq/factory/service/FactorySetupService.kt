@@ -36,7 +36,7 @@ private fun rowToFactorySummary(row: ResultRow) = FactorySummary(
 )
 
 /**
- * Factory & Production > Factory Setup (docs/02-factory.md): Factories, Suppliers, Manufacturers,
+ * Factory & Production > Factory Setup (docs/implemented/02-factory.md): Factories, Suppliers, Manufacturers,
  * Units of Measure, Categories — previously (incorrectly) owned by `com.zifiq.settings`; moved
  * here to match the proposed navigation architecture in sketch/index.html, which keeps Factory
  * Setup inside Factory & Production, not under a generic cross-module Settings.

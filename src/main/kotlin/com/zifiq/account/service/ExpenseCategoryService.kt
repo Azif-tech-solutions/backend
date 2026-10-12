@@ -138,9 +138,7 @@ class ExpenseCategoryService(
     fun requireUsable(id: UUID, forPettyCash: Boolean = false): ResultRow {
         val category = row(id)
         if (category[ExpenseCategoriesTable.status] != "ACTIVE") throw ApiErrors.expenseCategoryInactive(category[ExpenseCategoriesTable.name])
-        if (forPettyCash && !category[ExpenseCategoriesTable.pettyCashAllowed]) {
-            throw ApiErrors.validationFailed(mapOf("expenseCategoryId" to "${category[ExpenseCategoriesTable.name]} can't be paid from petty cash"))
-        }
+        if (forPettyCash && !category[ExpenseCategoriesTable.pettyCashAllowed]) throw ApiErrors.categoryNotPayableFromPettyCash(category[ExpenseCategoriesTable.name])
         return category
     }
 
