@@ -1806,6 +1806,232 @@ print(f"TOTAL ENDPOINTS: {len(ENDPOINTS)}")
 # ---------------------------- Collection / Environment builders ---------------------
 # =====================================================================================
 
+# ============================== FINANCE & ACCOUNTING ==============================
+A = "17 - Finance & Accounting"
+CATEGORY = {"id": "{{expenseCategoryId}}", "code": "EX-11", "name": "Generator Diesel", "description": "Diesel for the standby generators",
+            "accountHead": "LOGISTICS", "monthlyCap": 400000.00, "pettyCashAllowed": True, "status": "ACTIVE", "spentThisMonth": 0.00,
+            "overCap": False, "createdAt": NOW}
+BANK = {"id": "{{bankAccountId}}", "code": "BA-1", "bankName": "Guaranty Trust Bank", "branch": "Ikeja GRA", "accountName": "Apex Industries Ltd",
+        "accountNumber": "0123456789", "accountNumberMasked": "•••• 6789", "accountType": "COLLECTIONS", "currencyCode": "NGN",
+        "sortCodeOrBic": "058152052", "authorisedSignatory": "Alice Admin", "relationshipManager": "Tunde Bakare", "dateOpened": "2024-02-01",
+        "openingBalance": 2000000.00, "openingBalanceDate": "2026-10-01", "currentBalance": 2000000.00, "locationId": None, "locationName": None,
+        "status": "ACTIVE", "createdAt": NOW}
+PETTY = {"id": "{{pettyCashAccountId}}", "code": "PC-IKJ", "name": "Ikeja Petty Cash", "kind": "PETTY_CASH", "locationId": "{{showroomId}}",
+         "locationName": "Showroom Ikeja", "currencyCode": "NGN", "openingBalance": 150000.00, "currentBalance": 150000.00, "floatLimit": 300000.00,
+         "belowFloat": False, "posTerminalRef": None, "posSettlementBankAccountId": None, "posSettlementBankCode": None, "status": "ACTIVE", "createdAt": NOW}
+
+ep(A, "A1 List Expense Categories", "GET", "/api/v1/account/expense-categories",
+   resp={"data": [dict(CATEGORY, id="{{bankChargesCategoryId}}", code="EX-10", name="Bank Charges", description=None, accountHead="FINANCE",
+                       monthlyCap=None, pettyCashAllowed=False)]},
+   tests=["const json = pm.response.json();",
+          "pm.test('every company starts with the PRD list', () => pm.expect(json.data.length).to.be.at.least(10));",
+          "pm.collectionVariables.set('bankChargesCategoryId', json.data.find(c => c.name === 'Bank Charges').id);"],
+   desc="Perm accounting.read. Unpaged. Every company starts with the PRD's ten categories (Bank Charges can't be paid from petty cash). "
+        "spentThisMonth = bank debits and cash paid out under the category this month, less reversals. "
+        "Filters: q, accountHead, status, pettyCashAllowed, overCap; sort=name (default) or spentThisMonth.")
+
+ep(A, "A2 Create Expense Category", "POST", "/api/v1/account/expense-categories",
+   body={"name": "Generator Diesel", "description": "Diesel for the standby generators", "accountHead": "LOGISTICS", "monthlyCap": 400000, "pettyCashAllowed": True},
+   resp={"data": CATEGORY},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('expenseCategoryId', json.data.id);"],
+   desc="Perm accounting.expense-categories.manage. code is optional (EX-n otherwise) and never changes. accountHead: UTILITIES, LOGISTICS, MAINTENANCE, ADMINISTRATIVE or FINANCE.")
+
+ep(A, "A3 Create Expense Category (error: duplicate name)", "POST", "/api/v1/account/expense-categories",
+   body={"name": "generator diesel", "accountHead": "LOGISTICS"}, status=409, status_text="Conflict",
+   resp={"error": {"code": "DUPLICATE_NAME", "message": "'generator diesel' is already in use", "details": {"name": "generator diesel"}}},
+   expect_error={"status": 409, "code": "DUPLICATE_NAME"})
+
+ep(A, "A4 Update Expense Category", "PUT", "/api/v1/account/expense-categories/{{expenseCategoryId}}",
+   body={"name": "Generator Diesel", "description": "Diesel for the standby generators", "accountHead": "LOGISTICS", "monthlyCap": 500000, "pettyCashAllowed": True},
+   resp={"data": dict(CATEGORY, monthlyCap=500000.00)},
+   desc="PUT /{id}/status with ACTIVE or INACTIVE deactivates one: it stays in historic reports but can't be used on new entries.")
+
+ep(A, "A5 Expense Category Lookup", "GET", "/api/v1/account/expense-categories/lookup", query=[{"key": "q", "value": "diesel"}],
+   resp={"data": [{"id": "{{expenseCategoryId}}", "code": "EX-11", "label": "Generator Diesel", "sublabel": "₦0.00 of ₦500,000.00 this month", "status": "ACTIVE"}]},
+   desc="Picker. pettyCashAllowed=true limits it to categories payable from petty cash; active=false includes inactive ones.")
+
+ep(A, "B1 Register Bank Account", "POST", "/api/v1/account/bank-accounts",
+   body={"bankName": "Guaranty Trust Bank", "branch": "Ikeja GRA", "accountName": "Apex Industries Ltd", "accountNumber": "0123456789",
+         "accountType": "COLLECTIONS", "sortCodeOrBic": "058152052", "authorisedSignatory": "Alice Admin", "relationshipManager": "Tunde Bakare",
+         "dateOpened": "2024-02-01", "openingBalance": 2000000, "openingBalanceDate": "{{today}}"},
+   resp={"data": BANK},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('bankAccountId', json.data.id);",
+          "pm.test('opening balance posted', () => pm.expect(json.data.currentBalance).to.eql(2000000));"],
+   desc="Perm accounting.bank.manage. accountNumber 6-30 digits, unique per bank. accountType CURRENT, COLLECTIONS, PAYROLL, SAVINGS or DOMICILIARY "
+        "(only DOMICILIARY takes currencyCode, which must be a tracked currency). A non-zero openingBalance becomes the account's first ledger entry "
+        "(OPENING), dated openingBalanceDate. locationId = a showroom/factory for a branch account; leave it out for head office.")
+
+ep(A, "B2 Register Bank Account (error: duplicate number)", "POST", "/api/v1/account/bank-accounts",
+   body={"bankName": "guaranty trust bank", "accountName": "Apex Industries Ltd", "accountNumber": "0123456789", "accountType": "CURRENT"},
+   status=409, status_text="Conflict",
+   resp={"error": {"code": "DUPLICATE_ACCOUNT_NUMBER", "message": "Account 0123456789 at guaranty trust bank is already registered", "details": {"bankName": "guaranty trust bank"}}},
+   expect_error={"status": 409, "code": "DUPLICATE_ACCOUNT_NUMBER"})
+
+ep(A, "B3 List Bank Accounts", "GET", "/api/v1/account/bank-accounts", resp={"data": [BANK]},
+   desc="Perm accounting.read. Unpaged. Account numbers are shown in full only to holders of accounting.bank.manage (others get •••• 6789, and can search "
+        "only on those last four digits). Filters: q, accountType, status, locationId, currencyCode; sort=bankName (default), currentBalance or dateOpened[,desc]. "
+        "A user tied to one location sees only that location's accounts.")
+
+ep(A, "B4 Get Bank Account", "GET", "/api/v1/account/bank-accounts/{{bankAccountId}}", resp={"data": BANK})
+
+ep(A, "B5 Update Bank Account", "PUT", "/api/v1/account/bank-accounts/{{bankAccountId}}",
+   body={"bankName": "Guaranty Trust Bank", "branch": "Allen Avenue", "accountName": "Apex Industries Ltd", "accountNumber": "0123456789",
+         "sortCodeOrBic": "058152052", "authorisedSignatory": "Alice Admin", "relationshipManager": "Ngozi Eze", "dateOpened": "2024-02-01"},
+   resp={"data": dict(BANK, branch="Allen Avenue", relationshipManager="Ngozi Eze")},
+   desc="Type, currency and opening balance can't change. PUT /{id}/status with DORMANT keeps the account in historic statements but stops new entries (409 ACCOUNT_NOT_ACTIVE).")
+
+ep(A, "B6 Post Manual Bank Entry", "POST", "/api/v1/account/bank-accounts/{{bankAccountId}}/manual-entries",
+   body={"entryType": "DEBIT", "amount": 1500, "entryDate": "{{today}}", "description": "SMS alert and maintenance fee", "expenseCategoryId": "{{bankChargesCategoryId}}"},
+   resp={"data": {"id": "{{manualEntryId}}", "reference": "MAN-1", "entryType": "DEBIT", "amount": 1500.00, "balanceAfter": 1998500.00,
+                  "entryDate": "2026-10-12", "description": "SMS alert and maintenance fee"}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('manualEntryRef', json.data.reference);",
+          "pm.test('balance reduced', () => pm.expect(json.data.balanceAfter).to.eql(1998500));"],
+   desc="Bank charges, interest and reconciling items that appear on the real bank statement. A DEBIT needs an active expense category. "
+        "entryDate can be back-dated (not before the opening balance date, not in the future); the statement still reads in date order.")
+
+ep(A, "B7 Post Manual Bank Entry (error: debit without category)", "POST", "/api/v1/account/bank-accounts/{{bankAccountId}}/manual-entries",
+   body={"entryType": "DEBIT", "amount": 500, "entryDate": "{{today}}", "description": "Unclassified charge"}, status=400, status_text="Bad Request",
+   resp={"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"expenseCategoryId": "is required for a debit"}}},
+   expect_error={"status": 400, "code": "VALIDATION_FAILED"})
+
+ep(A, "B8 Bank Statement", "GET", "/api/v1/account/bank-accounts/{{bankAccountId}}/statement", query=[{"key": "period", "value": "THIS_MONTH"}],
+   resp={"data": {"items": [
+       {"id": "{{openingEntryId}}", "date": "2026-10-12", "reference": "BA-1", "description": "Opening balance", "type": "Credit", "credit": 2000000.00, "debit": None,
+        "balance": 2000000.00, "sourceType": "OPENING", "expenseCategoryName": None, "createdAt": NOW},
+       {"id": "{{manualEntryId}}", "date": "2026-10-12", "reference": "MAN-1", "description": "SMS alert and maintenance fee", "type": "Debit", "credit": None, "debit": 1500.00,
+        "balance": 1998500.00, "sourceType": "MANUAL", "expenseCategoryName": "Bank Charges", "createdAt": NOW}],
+       "page": 0, "size": 50, "totalItems": 2, "totalPages": 1, "totalIsEstimate": False, "facets": None,
+       "summary": {"account": {"id": "{{bankAccountId}}", "code": "BA-1", "bankName": "Guaranty Trust Bank", "accountName": "Apex Industries Ltd",
+                               "accountNumberMasked": "•••• 6789", "accountType": "COLLECTIONS", "currencyCode": "NGN", "branch": "Allen Avenue",
+                               "signatory": "Alice Admin", "status": "ACTIVE"},
+                   "period": {"from": "2026-10-01", "to": "2026-10-31"}, "openingBalance": 0.00, "closingBalance": 1998500.00,
+                   "totalCredits": 2000000.00, "totalDebits": 1500.00},
+       "meta": {"appliedFilters": {}, "ignoredQualifiers": [], "suggestions": [], "matches": {}}}},
+   tests=["const json = pm.response.json();",
+          "pm.test('closing balance matches the last running balance', () => pm.expect(json.data.summary.closingBalance).to.eql(json.data.items[json.data.items.length - 1].balance));"],
+   desc="Perm accounting.read. Entries in date order with the balance after each. from/to or period (TODAY, THIS_WEEK, THIS_MONTH, LAST_MONTH, …); "
+        "none = this month to date. q matches reference, description words and amounts. Filters: entryType, sourceType, amount, expenseCategoryId. "
+        "summary: account header, period, openingBalance (before from), closingBalance (up to to), totalCredits, totalDebits. "
+        "POST …/statement/search takes the advanced filter body.")
+
+ep(A, "B9 Bank Statement Filters", "GET", "/api/v1/account/bank-accounts/statement/filters",
+   resp={"data": {"fields": [{"key": "entryType", "label": "Type", "type": "ENUM", "operators": ["eq", "ne", "in", "not_in", "is_null", "is_not_null"],
+                              "options": [{"value": "CREDIT", "label": "Credit"}, {"value": "DEBIT", "label": "Debit"}], "lookup": None,
+                              "facetable": True, "sortable": False, "qualifierAliases": []}],
+                  "collections": [], "primaryDate": "entryDate", "defaultSort": [], "periodPresets": ["TODAY", "YESTERDAY", "THIS_WEEK"]}})
+
+ep(A, "B10 Bank Account Lookup", "GET", "/api/v1/account/bank-accounts/lookup",
+   resp={"data": [{"id": "{{bankAccountId}}", "code": "BA-1", "label": "Guaranty Trust Bank · Apex Industries Ltd", "sublabel": "•••• 6789 · NGN", "status": "ACTIVE"}]},
+   desc="Picker; active accounts unless active=false.")
+
+ep(A, "C1 Register Petty Cash Account", "POST", "/api/v1/account/cash-accounts",
+   body={"code": "PC-IKJ", "name": "Ikeja Petty Cash", "kind": "PETTY_CASH", "locationId": "{{showroomId}}", "openingBalance": 150000, "floatLimit": 300000},
+   resp={"data": PETTY},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('pettyCashAccountId', json.data.id);"],
+   desc="Perm accounting.cash-accounts.manage. kind TILL (a cashier's drawer), PETTY_CASH or VAULT. locationId = a showroom or factory (not a storage area); "
+        "leave it out for head office. floatLimit is for petty cash only; posTerminalRef and posSettlementBankAccountId for tills only. "
+        "Code, kind and location never change. Uses the showroom from folder 16.")
+
+ep(A, "C2 Register Till", "POST", "/api/v1/account/cash-accounts",
+   body={"code": "TILL-IKJ-01", "name": "Ikeja Till 1", "kind": "TILL", "locationId": "{{showroomId}}", "posTerminalRef": "T-55",
+         "posSettlementBankAccountId": "{{bankAccountId}}"},
+   resp={"data": dict(PETTY, id="{{tillAccountId}}", code="TILL-IKJ-01", name="Ikeja Till 1", kind="TILL", openingBalance=0.00, currentBalance=0.00,
+                      floatLimit=None, posTerminalRef="T-55", posSettlementBankAccountId="{{bankAccountId}}", posSettlementBankCode="BA-1")},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('tillAccountId', json.data.id);"],
+   desc="Card payments taken on terminal T-55 settle into the bank account given.")
+
+ep(A, "C3 Register Cash Account (error: float limit on a till)", "POST", "/api/v1/account/cash-accounts",
+   body={"code": "TILL-IKJ-02", "name": "Ikeja Till 2", "kind": "TILL", "locationId": "{{showroomId}}", "floatLimit": 50000},
+   status=400, status_text="Bad Request",
+   resp={"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"floatLimit": "only petty-cash accounts have a float limit"}}},
+   expect_error={"status": 400, "code": "VALIDATION_FAILED"})
+
+ep(A, "C4 List Cash Accounts", "GET", "/api/v1/account/cash-accounts", query=[{"key": "locationId", "value": "{{showroomId}}"}],
+   resp={"data": [PETTY]},
+   desc="Perm accounting.read. Unpaged. Filters: q (code, name, terminal), kind, locationId, status, belowFloat (petty cash under half its float limit). "
+        "Head-office accounts are visible only to users not tied to a location.")
+
+ep(A, "C5 Update Cash Account", "PUT", "/api/v1/account/cash-accounts/{{pettyCashAccountId}}",
+   body={"name": "Ikeja Petty Cash Box", "floatLimit": 250000},
+   resp={"data": dict(PETTY, name="Ikeja Petty Cash Box", floatLimit=250000.00)})
+
+ep(A, "C6 Record Cash Count", "POST", "/api/v1/account/cash-accounts/{{pettyCashAccountId}}/cash-counts",
+   body={"countedAmount": 149000, "countDate": "{{today}}", "note": "One ₦1,000 receipt missing"},
+   resp={"data": {"account": dict(PETTY, name="Ikeja Petty Cash Box", floatLimit=250000.00, currentBalance=149000.00),
+                  "bookBalance": 150000.00, "countedAmount": 149000.00, "variance": -1000.00, "adjustmentReference": "CC-1"}},
+   tests=["const json = pm.response.json();", "pm.test('shortage posted', () => pm.expect(json.data.variance).to.eql(-1000));"],
+   desc="Perm accounting.cash-accounts.manage. A difference from the book balance is posted as a CASH_COUNT_ADJUSTMENT (in for a surplus, out for a shortage) "
+        "and notifies Management; note is required when there is a difference.")
+
+ep(A, "C7 Deactivate Cash Account (error: still holds cash)", "PUT", "/api/v1/account/cash-accounts/{{pettyCashAccountId}}/status",
+   body={"status": "INACTIVE"}, status=409, status_text="Conflict",
+   resp={"error": {"code": "ACCOUNT_HAS_BALANCE", "message": "Account PC-IKJ still holds 149000.00; empty it before deactivating",
+                   "details": {"account": "PC-IKJ", "balance": "149000.00"}}},
+   expect_error={"status": 409, "code": "ACCOUNT_HAS_BALANCE"})
+
+ep(A, "C8 Cash Inflow/Outflow Statement", "GET", "/api/v1/account/cash-flow", query=[{"key": "locationId", "value": "{{showroomId}}"}],
+   resp={"data": {"items": [
+       {"sn": 1, "id": "{{cashEntryId}}", "date": "2026-10-12", "reference": "PC-IKJ", "remark": "Opening balance", "inflow": 150000.00, "outflow": None,
+        "balance": 150000.00, "accountCode": "PC-IKJ", "accountName": "Ikeja Petty Cash Box", "kind": "PETTY_CASH", "sourceType": "OPENING", "expenseCategoryName": None},
+       {"sn": 2, "id": "{{cashEntryId}}", "date": "2026-10-12", "reference": "CC-1", "remark": "Cash count shortage: One ₦1,000 receipt missing", "inflow": None,
+        "outflow": 1000.00, "balance": 149000.00, "accountCode": "PC-IKJ", "accountName": "Ikeja Petty Cash Box", "kind": "PETTY_CASH",
+        "sourceType": "CASH_COUNT_ADJUSTMENT", "expenseCategoryName": None}],
+       "page": 0, "size": 50, "totalItems": 2, "totalPages": 1, "totalIsEstimate": False, "facets": None,
+       "summary": {"scope": {"locationId": "{{showroomId}}", "locationName": "Showroom Ikeja",
+                             "accounts": [{"id": "{{pettyCashAccountId}}", "code": "PC-IKJ", "name": "Ikeja Petty Cash Box", "kind": "PETTY_CASH"},
+                                          {"id": "{{tillAccountId}}", "code": "TILL-IKJ-01", "name": "Ikeja Till 1", "kind": "TILL"}]},
+                   "period": {"from": "2026-10-01", "to": "2026-10-12"}, "openingCash": 0.00, "totalInflow": 150000.00, "totalOutflow": 1000.00, "closingCash": 149000.00},
+       "meta": {"appliedFilters": {}, "ignoredQualifiers": [], "suggestions": [], "matches": {}}}},
+   tests=["const json = pm.response.json();",
+          "pm.test('closing cash = opening + in - out', () => { const s = json.data.summary; pm.expect(Math.round((s.openingCash + s.totalInflow - s.totalOutflow) * 100)).to.eql(Math.round(s.closingCash * 100)); });"],
+   desc="Perm accounting.read. Every cash movement across the accounts in scope, in date order, with a running balance over all of them "
+        "(the PRD's Date / Remark / In-Flow / Out-Flow / Balance, plus reference and account). Scope: locationId (a user tied to one location always "
+        "gets their own; none = company-wide), cashAccountId, kind. from/to or period; none = this month to date. Filters: direction, sourceType, "
+        "expenseCategoryId, amount; q matches reference, remark words and amounts. POST /cash-flow/search takes the advanced body; GET /cash-flow/filters lists the filters.")
+
+ep(A, "C9 Cash Flow Filters", "GET", "/api/v1/account/cash-flow/filters",
+   resp={"data": {"fields": [{"key": "direction", "label": "Direction", "type": "ENUM", "operators": ["eq", "ne", "in", "not_in", "is_null", "is_not_null"],
+                              "options": [{"value": "IN", "label": "In-flow"}, {"value": "OUT", "label": "Out-flow"}], "lookup": None,
+                              "facetable": True, "sortable": False, "qualifierAliases": []}],
+                  "collections": [], "primaryDate": "entryDate", "defaultSort": [], "periodPresets": ["TODAY", "YESTERDAY", "THIS_WEEK"]}})
+
+ep(A, "D1 Current Exchange Rates", "GET", "/api/v1/account/exchange-rates",
+   resp={"data": [{"code": "USD", "currency": "US Dollar", "symbol": "$", "buy": None, "sell": None, "spread": None, "previousBuy": None,
+                   "move": None, "movePct": None, "updatedAt": None, "updatedBy": None, "freshness": None}]},
+   desc="One row per tracked currency (module setting accounting.fx.currencies: USD, GBP, EUR, CNY, ZAR, GHS by default). Rates are naira per unit. "
+        "freshness: Current (published today) or Stale. Readable with accounting.read, invoicing.invoice.read or cashier.sales.read.")
+
+ep(A, "D2 Publish Exchange Rates", "POST", "/api/v1/account/exchange-rates/publish",
+   body={"rates": [{"currencyCode": "USD", "buyRate": 1505.50, "sellRate": 1525.00}, {"currencyCode": "GBP", "buyRate": 1910.00, "sellRate": 1945.00}]},
+   resp={"data": {"id": "{{fxPublicationId}}", "ref": "FX-1", "publishedAt": NOW, "publishedBy": "Alice Admin", "rates": [
+       {"id": "{{fxRateId}}", "currencyCode": "USD", "buyRate": 1505.500000, "sellRate": 1525.000000},
+       {"id": "{{fxRateId}}", "currencyCode": "GBP", "buyRate": 1910.000000, "sellRate": 1945.000000}]}},
+   tests=["const json = pm.response.json();", "pm.test('one publication with both rates', () => pm.expect(json.data.rates.length).to.eql(2));"],
+   desc="Perm accounting.fx.manage. Any subset of the tracked currencies; sellRate must not be below buyRate (400 INVALID_RATE). Rates are append-only: "
+        "transactions store the rate they used, so publishing never changes history.")
+
+ep(A, "D3 Publish Exchange Rates (error: untracked currency)", "POST", "/api/v1/account/exchange-rates/publish",
+   body={"rates": [{"currencyCode": "JPY", "buyRate": 10.2, "sellRate": 10.6}]}, status=400, status_text="Bad Request",
+   resp={"error": {"code": "CURRENCY_NOT_TRACKED", "message": "JPY is not a tracked currency", "details": {"currency": "JPY", "tracked": "USD,GBP,EUR,CNY,ZAR,GHS"}}},
+   expect_error={"status": 400, "code": "CURRENCY_NOT_TRACKED"},
+   desc="Track more currencies with the module setting accounting.fx.currencies (Settings > module settings).")
+
+ep(A, "D4 Exchange Rate History", "GET", "/api/v1/account/exchange-rates/history", query=[{"key": "currencyCode", "value": "USD"}],
+   resp={"data": {"items": [{"id": "{{fxRateId}}", "publicationRef": "FX-1", "currencyCode": "USD", "buyRate": 1505.500000, "sellRate": 1525.000000,
+                             "publishedAt": NOW, "publishedBy": "Alice Admin"}],
+                  "page": 0, "size": 50, "totalItems": 1, "totalPages": 1, "totalIsEstimate": False, "facets": None, "summary": None,
+                  "meta": {"appliedFilters": {}, "ignoredQualifiers": [], "suggestions": [], "matches": {}}}},
+   desc="Paged, newest first. Filters: currencyCode, publishedBy, buyRate, from/to (publishedAt); q matches the FX-n reference.")
+
+ep(A, "E1 Global Search: Bank Entry by Reference", "GET", "/api/v1/search",
+   query=[{"key": "q", "value": "{{manualEntryRef}}"}, {"key": "types", "value": "bank-transaction"}],
+   resp={"data": {"groups": [{"type": "bank-transaction", "label": "Bank transactions", "hits": [
+       {"type": "bank-transaction", "id": "{{manualEntryId}}", "title": "MAN-1", "subtitle": "BA-1 · debit ₦1,500.00 · 2026-10-12", "ref": "MAN-1",
+        "route": "/account/bank-accounts/{{bankAccountId}}/statement?q=MAN-1"}], "more": False, "moreRoute": "/account/bank-accounts?q=MAN-1"}], "timedOut": []}},
+   tests=["const json = pm.response.json();",
+          "pm.test('the entry is found', () => pm.expect(json.data.groups.find(g => g.type === 'bank-transaction').hits.length).to.eql(1));"],
+   desc="The header search finds a bank entry by its exact reference (perm accounting.read), within the accounts the caller can see.")
+
 def pm_url(path, query):
     full = "{{baseUrl}}" + path
     parts = [p for p in path.split("/") if p]
@@ -1901,6 +2127,12 @@ def pm_request_item(e, with_examples=True):
     return item
 
 FOLDER_DESCRIPTIONS = {
+    "17 - Finance & Accounting": (
+        "Finance & Accounting, slice 1 (backend docs/07): the money ledgers. A expense categories, B bank accounts, manual entries and the Bank Statement, "
+        "C cash accounts (petty cash, tills), cash counts and the Cash Inflow/Outflow Statement, D exchange rates, E global search. "
+        "Run after folder 16 (it uses the showroom created there) and 12 (for the today variable). "
+        "Captured variables: bankChargesCategoryId, expenseCategoryId, bankAccountId, manualEntryRef, pettyCashAccountId, tillAccountId."
+    ),
     "05 - Settings": (
         "Settings (backend docs/06): A company profile and logo, B onboarding, C module settings, D custom fields, E settings search. "
         "Needs 01 - Auth > Register Tenant first. Run top to bottom; C4 puts the inventory OTP threshold back to its default for the later folders. "

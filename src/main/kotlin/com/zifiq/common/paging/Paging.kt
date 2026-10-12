@@ -45,7 +45,10 @@ data class PageResult<T>(
     val facets: Map<String, List<FacetCount>>? = null,
     val summary: Map<String, Any?>? = null,
     val meta: PageMeta = PageMeta(),
-)
+) {
+    /** The same page with its rows replaced, e.g. raw rows mapped after a batch lookup. */
+    fun <R> withItems(items: List<R>): PageResult<R> = PageResult(items, page, size, totalItems, totalPages, totalIsEstimate, facets, summary, meta)
+}
 
 object Paging {
     /** Counts stop here so a broad search never spends its time counting millions of rows. */

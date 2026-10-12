@@ -27,12 +27,9 @@ import java.util.UUID
 class ModuleCoverageTest {
 
     @Test
-    fun `account service provides cashflow and operating cost records`() {
+    fun `account mock service still records operating costs until Finance slice 2 replaces it`() {
         val currentActorProvider = mock(com.zifiq.platform.security.CurrentActorProvider::class.java)
         val service = AccountService(currentActorProvider)
-
-        val cashflow = service.getCashFlow()
-        assertFalse(cashflow.isEmpty())
 
         val payment = service.recordOperatingCost(
             OperatingCostPaymentRequest(

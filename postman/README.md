@@ -78,6 +78,15 @@ settings, D custom fields, E settings search. The logo upload uses
 under 512 KB for the `file` field. C4 resets the inventory OTP threshold so
 the later Inventory folders see the default.
 
+## Testing Finance & Accounting (folder 17)
+
+Folder **17 - Finance & Accounting** (29 requests) covers slice 1, the money
+ledgers: expense categories, bank accounts with manual entries and the Bank
+Statement, cash accounts with cash counts and the Cash Inflow/Outflow
+Statement, and exchange rates. Run it after folder 16 (it registers its petty
+cash and till at the showroom created there) in the same run as folder 12,
+which sets the `today` variable.
+
 ## Testing the Customers module (folder 12)
 
 Folder **12 - Customers** covers every Customers endpoint (64 requests). It
@@ -189,7 +198,7 @@ npx newman run postman/ZifIQ-API.postman_collection.json -e postman/ZifIQ-Dev.po
   --folder "01 - Auth" --folder "12 - Customers"
 ```
 
-A clean full run reports `233/233` requests and `289/289` assertions
+A clean full run reports `262/262` requests and `326/326` assertions
 passing. Several requests are *deliberately* run against a state that makes
 them fail. These are not bugs: they demonstrate real error paths on purpose,
 so each gets its own status + error-code assertion instead of the generic

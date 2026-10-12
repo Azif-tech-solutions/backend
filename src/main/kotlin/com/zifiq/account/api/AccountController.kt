@@ -12,16 +12,6 @@ import org.springframework.web.bind.annotation.*
 class AccountController(
     private val accountService: AccountService,
 ) : AccountApi {
-    @GetMapping("/cashflow")
-    @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'accounting.read')")
-    override fun getCashFlow(): ApiEnvelope<List<CashFlowEntry>> =
-        ApiEnvelope(accountService.getCashFlow())
-
-    @GetMapping("/bank-statement/{accountNumber}")
-    @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'accounting.read')")
-    override fun getBankStatement(@PathVariable accountNumber: String): ApiEnvelope<BankAccountStatement> =
-        ApiEnvelope(accountService.getBankStatement(accountNumber))
-
     @GetMapping("/petty-cash/statement")
     @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'accounting.read')")
     override fun getPettyCashStatement(): ApiEnvelope<PettyCashStatement> =
@@ -33,13 +23,6 @@ class AccountController(
         @Valid @RequestBody request: OperatingCostPaymentRequest,
     ): ApiEnvelope<PaymentSummary> =
         ApiEnvelope(accountService.recordOperatingCost(request))
-
-    @PostMapping("/bank-accounts")
-    @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'accounting.manage')")
-    override fun registerBankAccount(
-        @Valid @RequestBody request: BankAccountRegistrationRequest,
-    ): ApiEnvelope<BankAccountSummary> =
-        ApiEnvelope(accountService.registerBankAccount(request))
 
     @PostMapping("/petty-cash/top-up")
     @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'accounting.manage')")

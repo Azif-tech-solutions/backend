@@ -11,48 +11,6 @@ import java.util.UUID
 class AccountService(
     private val currentActorProvider: CurrentActorProvider,
 ) {
-    fun getCashFlow(): List<CashFlowEntry> {
-        return listOf(
-            CashFlowEntry(
-                id = UUID.randomUUID(),
-                type = "INFLOW",
-                category = "Showroom Sales",
-                amount = BigDecimal("12500.00"),
-                currency = "USD",
-                description = "Daily showroom sales deposit",
-                timestamp = Instant.now(),
-            ),
-            CashFlowEntry(
-                id = UUID.randomUUID(),
-                type = "OUTFLOW",
-                category = "Raw Material Purchase",
-                amount = BigDecimal("4500.00"),
-                currency = "USD",
-                description = "Supplier payment for cocoa beans",
-                timestamp = Instant.now(),
-            ),
-        )
-    }
-
-    fun getBankStatement(accountNumber: String): BankAccountStatement {
-        return BankAccountStatement(
-            accountId = UUID.randomUUID(),
-            bankName = "First National Bank",
-            accountNumber = accountNumber,
-            currency = "USD",
-            currentBalance = BigDecimal("154200.00"),
-            transactions = listOf(
-                BankTransactionSummary(
-                    id = UUID.randomUUID(),
-                    reference = "TXN-98421",
-                    amount = BigDecimal("12500.00"),
-                    transactionType = "CREDIT",
-                    timestamp = Instant.now(),
-                ),
-            ),
-        )
-    }
-
     fun getPettyCashStatement(): PettyCashStatement {
         return PettyCashStatement(
             accountId = UUID.randomUUID(),
@@ -69,16 +27,6 @@ class AccountService(
             amount = request.amount,
             status = "CONFIRMED",
             referenceCode = "PAY-" + UUID.randomUUID().toString().take(8).uppercase(),
-        )
-    }
-
-    fun registerBankAccount(request: BankAccountRegistrationRequest): BankAccountSummary {
-        return BankAccountSummary(
-            id = UUID.randomUUID(),
-            bankName = request.bankName,
-            accountNumber = request.accountNumber,
-            accountName = request.accountName,
-            currency = request.currency,
         )
     }
 

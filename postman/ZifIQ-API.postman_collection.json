@@ -2485,7 +2485,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"f546068a-1eaa-488a-82ad-b814c73d8e7a\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"0dbd9315-7303-4783-bb20-481a1028794d\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -2576,7 +2576,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"9f44f5fd-7236-4564-9214-a834f4eabd91\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"3844f6e8-d121-4faa-8c99-cc155c269616\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -25212,6 +25212,3077 @@
         }
       ],
       "description": "Showroom (backend docs/05). Run after folders 06-15: it uses the factory, units, finished product (with the price published in 15), manufacturer, driver and dealer they create. A: register showrooms and areas. B: direct entries and outsource receipts. C: stock from the factory into the showroom warehouse. D: area moves. E: walk-in and dealer returns credited to wallets, reversal, Return Reports. F: comprehensive stock and transfer reports."
+    },
+    {
+      "name": "17 - Finance & Accounting",
+      "item": [
+        {
+          "name": "A1 List Expense Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/expense-categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "expense-categories"
+              ]
+            },
+            "description": "Perm accounting.read. Unpaged. Every company starts with the PRD's ten categories (Bank Charges can't be paid from petty cash). spentThisMonth = bank debits and cash paid out under the category this month, less reversals. Filters: q, accountHead, status, pettyCashAllowed, overCap; sort=name (default) or spentThisMonth.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('every company starts with the PRD list', () => pm.expect(json.data.length).to.be.at.least(10));",
+                  "    pm.collectionVariables.set('bankChargesCategoryId', json.data.find(c => c.name === 'Bank Charges').id);",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "A1 List Expense Categories - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/expense-categories",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "expense-categories"
+                  ]
+                },
+                "description": "Perm accounting.read. Unpaged. Every company starts with the PRD's ten categories (Bank Charges can't be paid from petty cash). spentThisMonth = bank debits and cash paid out under the category this month, less reversals. Filters: q, accountHead, status, pettyCashAllowed, overCap; sort=name (default) or spentThisMonth.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{bankChargesCategoryId}}\",\n      \"code\": \"EX-10\",\n      \"name\": \"Bank Charges\",\n      \"description\": null,\n      \"accountHead\": \"FINANCE\",\n      \"monthlyCap\": null,\n      \"pettyCashAllowed\": false,\n      \"status\": \"ACTIVE\",\n      \"spentThisMonth\": 0.0,\n      \"overCap\": false,\n      \"createdAt\": \"2026-10-01T10:15:30Z\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "A2 Create Expense Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/expense-categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "expense-categories"
+              ]
+            },
+            "description": "Perm accounting.expense-categories.manage. code is optional (EX-n otherwise) and never changes. accountHead: UTILITIES, LOGISTICS, MAINTENANCE, ADMINISTRATIVE or FINANCE.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Generator Diesel\",\n  \"description\": \"Diesel for the standby generators\",\n  \"accountHead\": \"LOGISTICS\",\n  \"monthlyCap\": 400000,\n  \"pettyCashAllowed\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('expenseCategoryId', json.data.id);",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "A2 Create Expense Category - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/expense-categories",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "expense-categories"
+                  ]
+                },
+                "description": "Perm accounting.expense-categories.manage. code is optional (EX-n otherwise) and never changes. accountHead: UTILITIES, LOGISTICS, MAINTENANCE, ADMINISTRATIVE or FINANCE.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Generator Diesel\",\n  \"description\": \"Diesel for the standby generators\",\n  \"accountHead\": \"LOGISTICS\",\n  \"monthlyCap\": 400000,\n  \"pettyCashAllowed\": true\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{expenseCategoryId}}\",\n    \"code\": \"EX-11\",\n    \"name\": \"Generator Diesel\",\n    \"description\": \"Diesel for the standby generators\",\n    \"accountHead\": \"LOGISTICS\",\n    \"monthlyCap\": 400000.0,\n    \"pettyCashAllowed\": true,\n    \"status\": \"ACTIVE\",\n    \"spentThisMonth\": 0.0,\n    \"overCap\": false,\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "A3 Create Expense Category (error: duplicate name)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/expense-categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "expense-categories"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"generator diesel\",\n  \"accountHead\": \"LOGISTICS\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 409 DUPLICATE_NAME', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('DUPLICATE_NAME');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "A3 Create Expense Category (error: duplicate name) - 409 Conflict",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/expense-categories",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "expense-categories"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"generator diesel\",\n  \"accountHead\": \"LOGISTICS\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"DUPLICATE_NAME\",\n    \"message\": \"'generator diesel' is already in use\",\n    \"details\": {\n      \"name\": \"generator diesel\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "A4 Update Expense Category",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/expense-categories/{{expenseCategoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "expense-categories",
+                "{{expenseCategoryId}}"
+              ]
+            },
+            "description": "PUT /{id}/status with ACTIVE or INACTIVE deactivates one: it stays in historic reports but can't be used on new entries.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Generator Diesel\",\n  \"description\": \"Diesel for the standby generators\",\n  \"accountHead\": \"LOGISTICS\",\n  \"monthlyCap\": 500000,\n  \"pettyCashAllowed\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "A4 Update Expense Category - 200 OK",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/expense-categories/{{expenseCategoryId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "expense-categories",
+                    "{{expenseCategoryId}}"
+                  ]
+                },
+                "description": "PUT /{id}/status with ACTIVE or INACTIVE deactivates one: it stays in historic reports but can't be used on new entries.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Generator Diesel\",\n  \"description\": \"Diesel for the standby generators\",\n  \"accountHead\": \"LOGISTICS\",\n  \"monthlyCap\": 500000,\n  \"pettyCashAllowed\": true\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{expenseCategoryId}}\",\n    \"code\": \"EX-11\",\n    \"name\": \"Generator Diesel\",\n    \"description\": \"Diesel for the standby generators\",\n    \"accountHead\": \"LOGISTICS\",\n    \"monthlyCap\": 500000.0,\n    \"pettyCashAllowed\": true,\n    \"status\": \"ACTIVE\",\n    \"spentThisMonth\": 0.0,\n    \"overCap\": false,\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "A5 Expense Category Lookup",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/expense-categories/lookup?q=diesel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "expense-categories",
+                "lookup"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "diesel"
+                }
+              ]
+            },
+            "description": "Picker. pettyCashAllowed=true limits it to categories payable from petty cash; active=false includes inactive ones.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "A5 Expense Category Lookup - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/expense-categories/lookup?q=diesel",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "expense-categories",
+                    "lookup"
+                  ],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": "diesel"
+                    }
+                  ]
+                },
+                "description": "Picker. pettyCashAllowed=true limits it to categories payable from petty cash; active=false includes inactive ones.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{expenseCategoryId}}\",\n      \"code\": \"EX-11\",\n      \"label\": \"Generator Diesel\",\n      \"sublabel\": \"\\u20a60.00 of \\u20a6500,000.00 this month\",\n      \"status\": \"ACTIVE\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "B1 Register Bank Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/bank-accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "bank-accounts"
+              ]
+            },
+            "description": "Perm accounting.bank.manage. accountNumber 6-30 digits, unique per bank. accountType CURRENT, COLLECTIONS, PAYROLL, SAVINGS or DOMICILIARY (only DOMICILIARY takes currencyCode, which must be a tracked currency). A non-zero openingBalance becomes the account's first ledger entry (OPENING), dated openingBalanceDate. locationId = a showroom/factory for a branch account; leave it out for head office.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bankName\": \"Guaranty Trust Bank\",\n  \"branch\": \"Ikeja GRA\",\n  \"accountName\": \"Apex Industries Ltd\",\n  \"accountNumber\": \"0123456789\",\n  \"accountType\": \"COLLECTIONS\",\n  \"sortCodeOrBic\": \"058152052\",\n  \"authorisedSignatory\": \"Alice Admin\",\n  \"relationshipManager\": \"Tunde Bakare\",\n  \"dateOpened\": \"2024-02-01\",\n  \"openingBalance\": 2000000,\n  \"openingBalanceDate\": \"{{today}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('bankAccountId', json.data.id);",
+                  "    pm.test('opening balance posted', () => pm.expect(json.data.currentBalance).to.eql(2000000));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "B1 Register Bank Account - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/bank-accounts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "bank-accounts"
+                  ]
+                },
+                "description": "Perm accounting.bank.manage. accountNumber 6-30 digits, unique per bank. accountType CURRENT, COLLECTIONS, PAYROLL, SAVINGS or DOMICILIARY (only DOMICILIARY takes currencyCode, which must be a tracked currency). A non-zero openingBalance becomes the account's first ledger entry (OPENING), dated openingBalanceDate. locationId = a showroom/factory for a branch account; leave it out for head office.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"bankName\": \"Guaranty Trust Bank\",\n  \"branch\": \"Ikeja GRA\",\n  \"accountName\": \"Apex Industries Ltd\",\n  \"accountNumber\": \"0123456789\",\n  \"accountType\": \"COLLECTIONS\",\n  \"sortCodeOrBic\": \"058152052\",\n  \"authorisedSignatory\": \"Alice Admin\",\n  \"relationshipManager\": \"Tunde Bakare\",\n  \"dateOpened\": \"2024-02-01\",\n  \"openingBalance\": 2000000,\n  \"openingBalanceDate\": \"{{today}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{bankAccountId}}\",\n    \"code\": \"BA-1\",\n    \"bankName\": \"Guaranty Trust Bank\",\n    \"branch\": \"Ikeja GRA\",\n    \"accountName\": \"Apex Industries Ltd\",\n    \"accountNumber\": \"0123456789\",\n    \"accountNumberMasked\": \"\\u2022\\u2022\\u2022\\u2022 6789\",\n    \"accountType\": \"COLLECTIONS\",\n    \"currencyCode\": \"NGN\",\n    \"sortCodeOrBic\": \"058152052\",\n    \"authorisedSignatory\": \"Alice Admin\",\n    \"relationshipManager\": \"Tunde Bakare\",\n    \"dateOpened\": \"2024-02-01\",\n    \"openingBalance\": 2000000.0,\n    \"openingBalanceDate\": \"2026-10-01\",\n    \"currentBalance\": 2000000.0,\n    \"locationId\": null,\n    \"locationName\": null,\n    \"status\": \"ACTIVE\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "B2 Register Bank Account (error: duplicate number)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/bank-accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "bank-accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bankName\": \"guaranty trust bank\",\n  \"accountName\": \"Apex Industries Ltd\",\n  \"accountNumber\": \"0123456789\",\n  \"accountType\": \"CURRENT\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 409 DUPLICATE_ACCOUNT_NUMBER', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('DUPLICATE_ACCOUNT_NUMBER');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "B2 Register Bank Account (error: duplicate number) - 409 Conflict",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/bank-accounts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "bank-accounts"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"bankName\": \"guaranty trust bank\",\n  \"accountName\": \"Apex Industries Ltd\",\n  \"accountNumber\": \"0123456789\",\n  \"accountType\": \"CURRENT\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"DUPLICATE_ACCOUNT_NUMBER\",\n    \"message\": \"Account 0123456789 at guaranty trust bank is already registered\",\n    \"details\": {\n      \"bankName\": \"guaranty trust bank\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "B3 List Bank Accounts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/bank-accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "bank-accounts"
+              ]
+            },
+            "description": "Perm accounting.read. Unpaged. Account numbers are shown in full only to holders of accounting.bank.manage (others get •••• 6789, and can search only on those last four digits). Filters: q, accountType, status, locationId, currencyCode; sort=bankName (default), currentBalance or dateOpened[,desc]. A user tied to one location sees only that location's accounts.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "B3 List Bank Accounts - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/bank-accounts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "bank-accounts"
+                  ]
+                },
+                "description": "Perm accounting.read. Unpaged. Account numbers are shown in full only to holders of accounting.bank.manage (others get •••• 6789, and can search only on those last four digits). Filters: q, accountType, status, locationId, currencyCode; sort=bankName (default), currentBalance or dateOpened[,desc]. A user tied to one location sees only that location's accounts.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{bankAccountId}}\",\n      \"code\": \"BA-1\",\n      \"bankName\": \"Guaranty Trust Bank\",\n      \"branch\": \"Ikeja GRA\",\n      \"accountName\": \"Apex Industries Ltd\",\n      \"accountNumber\": \"0123456789\",\n      \"accountNumberMasked\": \"\\u2022\\u2022\\u2022\\u2022 6789\",\n      \"accountType\": \"COLLECTIONS\",\n      \"currencyCode\": \"NGN\",\n      \"sortCodeOrBic\": \"058152052\",\n      \"authorisedSignatory\": \"Alice Admin\",\n      \"relationshipManager\": \"Tunde Bakare\",\n      \"dateOpened\": \"2024-02-01\",\n      \"openingBalance\": 2000000.0,\n      \"openingBalanceDate\": \"2026-10-01\",\n      \"currentBalance\": 2000000.0,\n      \"locationId\": null,\n      \"locationName\": null,\n      \"status\": \"ACTIVE\",\n      \"createdAt\": \"2026-10-01T10:15:30Z\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "B4 Get Bank Account",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/bank-accounts/{{bankAccountId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "bank-accounts",
+                "{{bankAccountId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "B4 Get Bank Account - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/bank-accounts/{{bankAccountId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "bank-accounts",
+                    "{{bankAccountId}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{bankAccountId}}\",\n    \"code\": \"BA-1\",\n    \"bankName\": \"Guaranty Trust Bank\",\n    \"branch\": \"Ikeja GRA\",\n    \"accountName\": \"Apex Industries Ltd\",\n    \"accountNumber\": \"0123456789\",\n    \"accountNumberMasked\": \"\\u2022\\u2022\\u2022\\u2022 6789\",\n    \"accountType\": \"COLLECTIONS\",\n    \"currencyCode\": \"NGN\",\n    \"sortCodeOrBic\": \"058152052\",\n    \"authorisedSignatory\": \"Alice Admin\",\n    \"relationshipManager\": \"Tunde Bakare\",\n    \"dateOpened\": \"2024-02-01\",\n    \"openingBalance\": 2000000.0,\n    \"openingBalanceDate\": \"2026-10-01\",\n    \"currentBalance\": 2000000.0,\n    \"locationId\": null,\n    \"locationName\": null,\n    \"status\": \"ACTIVE\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "B5 Update Bank Account",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/bank-accounts/{{bankAccountId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "bank-accounts",
+                "{{bankAccountId}}"
+              ]
+            },
+            "description": "Type, currency and opening balance can't change. PUT /{id}/status with DORMANT keeps the account in historic statements but stops new entries (409 ACCOUNT_NOT_ACTIVE).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bankName\": \"Guaranty Trust Bank\",\n  \"branch\": \"Allen Avenue\",\n  \"accountName\": \"Apex Industries Ltd\",\n  \"accountNumber\": \"0123456789\",\n  \"sortCodeOrBic\": \"058152052\",\n  \"authorisedSignatory\": \"Alice Admin\",\n  \"relationshipManager\": \"Ngozi Eze\",\n  \"dateOpened\": \"2024-02-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "B5 Update Bank Account - 200 OK",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/bank-accounts/{{bankAccountId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "bank-accounts",
+                    "{{bankAccountId}}"
+                  ]
+                },
+                "description": "Type, currency and opening balance can't change. PUT /{id}/status with DORMANT keeps the account in historic statements but stops new entries (409 ACCOUNT_NOT_ACTIVE).",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"bankName\": \"Guaranty Trust Bank\",\n  \"branch\": \"Allen Avenue\",\n  \"accountName\": \"Apex Industries Ltd\",\n  \"accountNumber\": \"0123456789\",\n  \"sortCodeOrBic\": \"058152052\",\n  \"authorisedSignatory\": \"Alice Admin\",\n  \"relationshipManager\": \"Ngozi Eze\",\n  \"dateOpened\": \"2024-02-01\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{bankAccountId}}\",\n    \"code\": \"BA-1\",\n    \"bankName\": \"Guaranty Trust Bank\",\n    \"branch\": \"Allen Avenue\",\n    \"accountName\": \"Apex Industries Ltd\",\n    \"accountNumber\": \"0123456789\",\n    \"accountNumberMasked\": \"\\u2022\\u2022\\u2022\\u2022 6789\",\n    \"accountType\": \"COLLECTIONS\",\n    \"currencyCode\": \"NGN\",\n    \"sortCodeOrBic\": \"058152052\",\n    \"authorisedSignatory\": \"Alice Admin\",\n    \"relationshipManager\": \"Ngozi Eze\",\n    \"dateOpened\": \"2024-02-01\",\n    \"openingBalance\": 2000000.0,\n    \"openingBalanceDate\": \"2026-10-01\",\n    \"currentBalance\": 2000000.0,\n    \"locationId\": null,\n    \"locationName\": null,\n    \"status\": \"ACTIVE\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "B6 Post Manual Bank Entry",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/bank-accounts/{{bankAccountId}}/manual-entries",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "bank-accounts",
+                "{{bankAccountId}}",
+                "manual-entries"
+              ]
+            },
+            "description": "Bank charges, interest and reconciling items that appear on the real bank statement. A DEBIT needs an active expense category. entryDate can be back-dated (not before the opening balance date, not in the future); the statement still reads in date order.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entryType\": \"DEBIT\",\n  \"amount\": 1500,\n  \"entryDate\": \"{{today}}\",\n  \"description\": \"SMS alert and maintenance fee\",\n  \"expenseCategoryId\": \"{{bankChargesCategoryId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('manualEntryRef', json.data.reference);",
+                  "    pm.test('balance reduced', () => pm.expect(json.data.balanceAfter).to.eql(1998500));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "B6 Post Manual Bank Entry - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/bank-accounts/{{bankAccountId}}/manual-entries",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "bank-accounts",
+                    "{{bankAccountId}}",
+                    "manual-entries"
+                  ]
+                },
+                "description": "Bank charges, interest and reconciling items that appear on the real bank statement. A DEBIT needs an active expense category. entryDate can be back-dated (not before the opening balance date, not in the future); the statement still reads in date order.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"entryType\": \"DEBIT\",\n  \"amount\": 1500,\n  \"entryDate\": \"{{today}}\",\n  \"description\": \"SMS alert and maintenance fee\",\n  \"expenseCategoryId\": \"{{bankChargesCategoryId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{manualEntryId}}\",\n    \"reference\": \"MAN-1\",\n    \"entryType\": \"DEBIT\",\n    \"amount\": 1500.0,\n    \"balanceAfter\": 1998500.0,\n    \"entryDate\": \"2026-10-12\",\n    \"description\": \"SMS alert and maintenance fee\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "B7 Post Manual Bank Entry (error: debit without category)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/bank-accounts/{{bankAccountId}}/manual-entries",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "bank-accounts",
+                "{{bankAccountId}}",
+                "manual-entries"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entryType\": \"DEBIT\",\n  \"amount\": 500,\n  \"entryDate\": \"{{today}}\",\n  \"description\": \"Unclassified charge\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 400 VALIDATION_FAILED', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('VALIDATION_FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "B7 Post Manual Bank Entry (error: debit without category) - 400 Bad Request",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/bank-accounts/{{bankAccountId}}/manual-entries",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "bank-accounts",
+                    "{{bankAccountId}}",
+                    "manual-entries"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"entryType\": \"DEBIT\",\n  \"amount\": 500,\n  \"entryDate\": \"{{today}}\",\n  \"description\": \"Unclassified charge\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"VALIDATION_FAILED\",\n    \"message\": \"Request validation failed\",\n    \"details\": {\n      \"expenseCategoryId\": \"is required for a debit\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "B8 Bank Statement",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/bank-accounts/{{bankAccountId}}/statement?period=THIS_MONTH",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "bank-accounts",
+                "{{bankAccountId}}",
+                "statement"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "THIS_MONTH"
+                }
+              ]
+            },
+            "description": "Perm accounting.read. Entries in date order with the balance after each. from/to or period (TODAY, THIS_WEEK, THIS_MONTH, LAST_MONTH, …); none = this month to date. q matches reference, description words and amounts. Filters: entryType, sourceType, amount, expenseCategoryId. summary: account header, period, openingBalance (before from), closingBalance (up to to), totalCredits, totalDebits. POST …/statement/search takes the advanced filter body.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('closing balance matches the last running balance', () => pm.expect(json.data.summary.closingBalance).to.eql(json.data.items[json.data.items.length - 1].balance));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "B8 Bank Statement - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/bank-accounts/{{bankAccountId}}/statement?period=THIS_MONTH",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "bank-accounts",
+                    "{{bankAccountId}}",
+                    "statement"
+                  ],
+                  "query": [
+                    {
+                      "key": "period",
+                      "value": "THIS_MONTH"
+                    }
+                  ]
+                },
+                "description": "Perm accounting.read. Entries in date order with the balance after each. from/to or period (TODAY, THIS_WEEK, THIS_MONTH, LAST_MONTH, …); none = this month to date. q matches reference, description words and amounts. Filters: entryType, sourceType, amount, expenseCategoryId. summary: account header, period, openingBalance (before from), closingBalance (up to to), totalCredits, totalDebits. POST …/statement/search takes the advanced filter body.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": \"{{openingEntryId}}\",\n        \"date\": \"2026-10-12\",\n        \"reference\": \"BA-1\",\n        \"description\": \"Opening balance\",\n        \"type\": \"Credit\",\n        \"credit\": 2000000.0,\n        \"debit\": null,\n        \"balance\": 2000000.0,\n        \"sourceType\": \"OPENING\",\n        \"expenseCategoryName\": null,\n        \"createdAt\": \"2026-10-01T10:15:30Z\"\n      },\n      {\n        \"id\": \"{{manualEntryId}}\",\n        \"date\": \"2026-10-12\",\n        \"reference\": \"MAN-1\",\n        \"description\": \"SMS alert and maintenance fee\",\n        \"type\": \"Debit\",\n        \"credit\": null,\n        \"debit\": 1500.0,\n        \"balance\": 1998500.0,\n        \"sourceType\": \"MANUAL\",\n        \"expenseCategoryName\": \"Bank Charges\",\n        \"createdAt\": \"2026-10-01T10:15:30Z\"\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 2,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": {\n      \"account\": {\n        \"id\": \"{{bankAccountId}}\",\n        \"code\": \"BA-1\",\n        \"bankName\": \"Guaranty Trust Bank\",\n        \"accountName\": \"Apex Industries Ltd\",\n        \"accountNumberMasked\": \"\\u2022\\u2022\\u2022\\u2022 6789\",\n        \"accountType\": \"COLLECTIONS\",\n        \"currencyCode\": \"NGN\",\n        \"branch\": \"Allen Avenue\",\n        \"signatory\": \"Alice Admin\",\n        \"status\": \"ACTIVE\"\n      },\n      \"period\": {\n        \"from\": \"2026-10-01\",\n        \"to\": \"2026-10-31\"\n      },\n      \"openingBalance\": 0.0,\n      \"closingBalance\": 1998500.0,\n      \"totalCredits\": 2000000.0,\n      \"totalDebits\": 1500.0\n    },\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "B9 Bank Statement Filters",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/bank-accounts/statement/filters",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "bank-accounts",
+                "statement",
+                "filters"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "B9 Bank Statement Filters - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/bank-accounts/statement/filters",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "bank-accounts",
+                    "statement",
+                    "filters"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"fields\": [\n      {\n        \"key\": \"entryType\",\n        \"label\": \"Type\",\n        \"type\": \"ENUM\",\n        \"operators\": [\n          \"eq\",\n          \"ne\",\n          \"in\",\n          \"not_in\",\n          \"is_null\",\n          \"is_not_null\"\n        ],\n        \"options\": [\n          {\n            \"value\": \"CREDIT\",\n            \"label\": \"Credit\"\n          },\n          {\n            \"value\": \"DEBIT\",\n            \"label\": \"Debit\"\n          }\n        ],\n        \"lookup\": null,\n        \"facetable\": true,\n        \"sortable\": false,\n        \"qualifierAliases\": []\n      }\n    ],\n    \"collections\": [],\n    \"primaryDate\": \"entryDate\",\n    \"defaultSort\": [],\n    \"periodPresets\": [\n      \"TODAY\",\n      \"YESTERDAY\",\n      \"THIS_WEEK\"\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "B10 Bank Account Lookup",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/bank-accounts/lookup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "bank-accounts",
+                "lookup"
+              ]
+            },
+            "description": "Picker; active accounts unless active=false.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "B10 Bank Account Lookup - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/bank-accounts/lookup",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "bank-accounts",
+                    "lookup"
+                  ]
+                },
+                "description": "Picker; active accounts unless active=false.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{bankAccountId}}\",\n      \"code\": \"BA-1\",\n      \"label\": \"Guaranty Trust Bank \\u00b7 Apex Industries Ltd\",\n      \"sublabel\": \"\\u2022\\u2022\\u2022\\u2022 6789 \\u00b7 NGN\",\n      \"status\": \"ACTIVE\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "C1 Register Petty Cash Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/cash-accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "cash-accounts"
+              ]
+            },
+            "description": "Perm accounting.cash-accounts.manage. kind TILL (a cashier's drawer), PETTY_CASH or VAULT. locationId = a showroom or factory (not a storage area); leave it out for head office. floatLimit is for petty cash only; posTerminalRef and posSettlementBankAccountId for tills only. Code, kind and location never change. Uses the showroom from folder 16.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"PC-IKJ\",\n  \"name\": \"Ikeja Petty Cash\",\n  \"kind\": \"PETTY_CASH\",\n  \"locationId\": \"{{showroomId}}\",\n  \"openingBalance\": 150000,\n  \"floatLimit\": 300000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('pettyCashAccountId', json.data.id);",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "C1 Register Petty Cash Account - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/cash-accounts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "cash-accounts"
+                  ]
+                },
+                "description": "Perm accounting.cash-accounts.manage. kind TILL (a cashier's drawer), PETTY_CASH or VAULT. locationId = a showroom or factory (not a storage area); leave it out for head office. floatLimit is for petty cash only; posTerminalRef and posSettlementBankAccountId for tills only. Code, kind and location never change. Uses the showroom from folder 16.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"code\": \"PC-IKJ\",\n  \"name\": \"Ikeja Petty Cash\",\n  \"kind\": \"PETTY_CASH\",\n  \"locationId\": \"{{showroomId}}\",\n  \"openingBalance\": 150000,\n  \"floatLimit\": 300000\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{pettyCashAccountId}}\",\n    \"code\": \"PC-IKJ\",\n    \"name\": \"Ikeja Petty Cash\",\n    \"kind\": \"PETTY_CASH\",\n    \"locationId\": \"{{showroomId}}\",\n    \"locationName\": \"Showroom Ikeja\",\n    \"currencyCode\": \"NGN\",\n    \"openingBalance\": 150000.0,\n    \"currentBalance\": 150000.0,\n    \"floatLimit\": 300000.0,\n    \"belowFloat\": false,\n    \"posTerminalRef\": null,\n    \"posSettlementBankAccountId\": null,\n    \"posSettlementBankCode\": null,\n    \"status\": \"ACTIVE\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "C2 Register Till",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/cash-accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "cash-accounts"
+              ]
+            },
+            "description": "Card payments taken on terminal T-55 settle into the bank account given.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"TILL-IKJ-01\",\n  \"name\": \"Ikeja Till 1\",\n  \"kind\": \"TILL\",\n  \"locationId\": \"{{showroomId}}\",\n  \"posTerminalRef\": \"T-55\",\n  \"posSettlementBankAccountId\": \"{{bankAccountId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('tillAccountId', json.data.id);",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "C2 Register Till - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/cash-accounts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "cash-accounts"
+                  ]
+                },
+                "description": "Card payments taken on terminal T-55 settle into the bank account given.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"code\": \"TILL-IKJ-01\",\n  \"name\": \"Ikeja Till 1\",\n  \"kind\": \"TILL\",\n  \"locationId\": \"{{showroomId}}\",\n  \"posTerminalRef\": \"T-55\",\n  \"posSettlementBankAccountId\": \"{{bankAccountId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{tillAccountId}}\",\n    \"code\": \"TILL-IKJ-01\",\n    \"name\": \"Ikeja Till 1\",\n    \"kind\": \"TILL\",\n    \"locationId\": \"{{showroomId}}\",\n    \"locationName\": \"Showroom Ikeja\",\n    \"currencyCode\": \"NGN\",\n    \"openingBalance\": 0.0,\n    \"currentBalance\": 0.0,\n    \"floatLimit\": null,\n    \"belowFloat\": false,\n    \"posTerminalRef\": \"T-55\",\n    \"posSettlementBankAccountId\": \"{{bankAccountId}}\",\n    \"posSettlementBankCode\": \"BA-1\",\n    \"status\": \"ACTIVE\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "C3 Register Cash Account (error: float limit on a till)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/cash-accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "cash-accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"TILL-IKJ-02\",\n  \"name\": \"Ikeja Till 2\",\n  \"kind\": \"TILL\",\n  \"locationId\": \"{{showroomId}}\",\n  \"floatLimit\": 50000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 400 VALIDATION_FAILED', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('VALIDATION_FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "C3 Register Cash Account (error: float limit on a till) - 400 Bad Request",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/cash-accounts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "cash-accounts"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"code\": \"TILL-IKJ-02\",\n  \"name\": \"Ikeja Till 2\",\n  \"kind\": \"TILL\",\n  \"locationId\": \"{{showroomId}}\",\n  \"floatLimit\": 50000\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"VALIDATION_FAILED\",\n    \"message\": \"Request validation failed\",\n    \"details\": {\n      \"floatLimit\": \"only petty-cash accounts have a float limit\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "C4 List Cash Accounts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/cash-accounts?locationId={{showroomId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "cash-accounts"
+              ],
+              "query": [
+                {
+                  "key": "locationId",
+                  "value": "{{showroomId}}"
+                }
+              ]
+            },
+            "description": "Perm accounting.read. Unpaged. Filters: q (code, name, terminal), kind, locationId, status, belowFloat (petty cash under half its float limit). Head-office accounts are visible only to users not tied to a location.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "C4 List Cash Accounts - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/cash-accounts?locationId={{showroomId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "cash-accounts"
+                  ],
+                  "query": [
+                    {
+                      "key": "locationId",
+                      "value": "{{showroomId}}"
+                    }
+                  ]
+                },
+                "description": "Perm accounting.read. Unpaged. Filters: q (code, name, terminal), kind, locationId, status, belowFloat (petty cash under half its float limit). Head-office accounts are visible only to users not tied to a location.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{pettyCashAccountId}}\",\n      \"code\": \"PC-IKJ\",\n      \"name\": \"Ikeja Petty Cash\",\n      \"kind\": \"PETTY_CASH\",\n      \"locationId\": \"{{showroomId}}\",\n      \"locationName\": \"Showroom Ikeja\",\n      \"currencyCode\": \"NGN\",\n      \"openingBalance\": 150000.0,\n      \"currentBalance\": 150000.0,\n      \"floatLimit\": 300000.0,\n      \"belowFloat\": false,\n      \"posTerminalRef\": null,\n      \"posSettlementBankAccountId\": null,\n      \"posSettlementBankCode\": null,\n      \"status\": \"ACTIVE\",\n      \"createdAt\": \"2026-10-01T10:15:30Z\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "C5 Update Cash Account",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/cash-accounts/{{pettyCashAccountId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "cash-accounts",
+                "{{pettyCashAccountId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ikeja Petty Cash Box\",\n  \"floatLimit\": 250000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "C5 Update Cash Account - 200 OK",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/cash-accounts/{{pettyCashAccountId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "cash-accounts",
+                    "{{pettyCashAccountId}}"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Ikeja Petty Cash Box\",\n  \"floatLimit\": 250000\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{pettyCashAccountId}}\",\n    \"code\": \"PC-IKJ\",\n    \"name\": \"Ikeja Petty Cash Box\",\n    \"kind\": \"PETTY_CASH\",\n    \"locationId\": \"{{showroomId}}\",\n    \"locationName\": \"Showroom Ikeja\",\n    \"currencyCode\": \"NGN\",\n    \"openingBalance\": 150000.0,\n    \"currentBalance\": 150000.0,\n    \"floatLimit\": 250000.0,\n    \"belowFloat\": false,\n    \"posTerminalRef\": null,\n    \"posSettlementBankAccountId\": null,\n    \"posSettlementBankCode\": null,\n    \"status\": \"ACTIVE\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "C6 Record Cash Count",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/cash-accounts/{{pettyCashAccountId}}/cash-counts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "cash-accounts",
+                "{{pettyCashAccountId}}",
+                "cash-counts"
+              ]
+            },
+            "description": "Perm accounting.cash-accounts.manage. A difference from the book balance is posted as a CASH_COUNT_ADJUSTMENT (in for a surplus, out for a shortage) and notifies Management; note is required when there is a difference.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"countedAmount\": 149000,\n  \"countDate\": \"{{today}}\",\n  \"note\": \"One \\u20a61,000 receipt missing\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('shortage posted', () => pm.expect(json.data.variance).to.eql(-1000));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "C6 Record Cash Count - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/cash-accounts/{{pettyCashAccountId}}/cash-counts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "cash-accounts",
+                    "{{pettyCashAccountId}}",
+                    "cash-counts"
+                  ]
+                },
+                "description": "Perm accounting.cash-accounts.manage. A difference from the book balance is posted as a CASH_COUNT_ADJUSTMENT (in for a surplus, out for a shortage) and notifies Management; note is required when there is a difference.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"countedAmount\": 149000,\n  \"countDate\": \"{{today}}\",\n  \"note\": \"One \\u20a61,000 receipt missing\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"account\": {\n      \"id\": \"{{pettyCashAccountId}}\",\n      \"code\": \"PC-IKJ\",\n      \"name\": \"Ikeja Petty Cash Box\",\n      \"kind\": \"PETTY_CASH\",\n      \"locationId\": \"{{showroomId}}\",\n      \"locationName\": \"Showroom Ikeja\",\n      \"currencyCode\": \"NGN\",\n      \"openingBalance\": 150000.0,\n      \"currentBalance\": 149000.0,\n      \"floatLimit\": 250000.0,\n      \"belowFloat\": false,\n      \"posTerminalRef\": null,\n      \"posSettlementBankAccountId\": null,\n      \"posSettlementBankCode\": null,\n      \"status\": \"ACTIVE\",\n      \"createdAt\": \"2026-10-01T10:15:30Z\"\n    },\n    \"bookBalance\": 150000.0,\n    \"countedAmount\": 149000.0,\n    \"variance\": -1000.0,\n    \"adjustmentReference\": \"CC-1\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "C7 Deactivate Cash Account (error: still holds cash)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/cash-accounts/{{pettyCashAccountId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "cash-accounts",
+                "{{pettyCashAccountId}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"INACTIVE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 409 ACCOUNT_HAS_BALANCE', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('ACCOUNT_HAS_BALANCE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "C7 Deactivate Cash Account (error: still holds cash) - 409 Conflict",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/cash-accounts/{{pettyCashAccountId}}/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "cash-accounts",
+                    "{{pettyCashAccountId}}",
+                    "status"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"INACTIVE\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"ACCOUNT_HAS_BALANCE\",\n    \"message\": \"Account PC-IKJ still holds 149000.00; empty it before deactivating\",\n    \"details\": {\n      \"account\": \"PC-IKJ\",\n      \"balance\": \"149000.00\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "C8 Cash Inflow/Outflow Statement",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/cash-flow?locationId={{showroomId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "cash-flow"
+              ],
+              "query": [
+                {
+                  "key": "locationId",
+                  "value": "{{showroomId}}"
+                }
+              ]
+            },
+            "description": "Perm accounting.read. Every cash movement across the accounts in scope, in date order, with a running balance over all of them (the PRD's Date / Remark / In-Flow / Out-Flow / Balance, plus reference and account). Scope: locationId (a user tied to one location always gets their own; none = company-wide), cashAccountId, kind. from/to or period; none = this month to date. Filters: direction, sourceType, expenseCategoryId, amount; q matches reference, remark words and amounts. POST /cash-flow/search takes the advanced body; GET /cash-flow/filters lists the filters.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('closing cash = opening + in - out', () => { const s = json.data.summary; pm.expect(Math.round((s.openingCash + s.totalInflow - s.totalOutflow) * 100)).to.eql(Math.round(s.closingCash * 100)); });",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "C8 Cash Inflow/Outflow Statement - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/cash-flow?locationId={{showroomId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "cash-flow"
+                  ],
+                  "query": [
+                    {
+                      "key": "locationId",
+                      "value": "{{showroomId}}"
+                    }
+                  ]
+                },
+                "description": "Perm accounting.read. Every cash movement across the accounts in scope, in date order, with a running balance over all of them (the PRD's Date / Remark / In-Flow / Out-Flow / Balance, plus reference and account). Scope: locationId (a user tied to one location always gets their own; none = company-wide), cashAccountId, kind. from/to or period; none = this month to date. Filters: direction, sourceType, expenseCategoryId, amount; q matches reference, remark words and amounts. POST /cash-flow/search takes the advanced body; GET /cash-flow/filters lists the filters.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"sn\": 1,\n        \"id\": \"{{cashEntryId}}\",\n        \"date\": \"2026-10-12\",\n        \"reference\": \"PC-IKJ\",\n        \"remark\": \"Opening balance\",\n        \"inflow\": 150000.0,\n        \"outflow\": null,\n        \"balance\": 150000.0,\n        \"accountCode\": \"PC-IKJ\",\n        \"accountName\": \"Ikeja Petty Cash Box\",\n        \"kind\": \"PETTY_CASH\",\n        \"sourceType\": \"OPENING\",\n        \"expenseCategoryName\": null\n      },\n      {\n        \"sn\": 2,\n        \"id\": \"{{cashEntryId}}\",\n        \"date\": \"2026-10-12\",\n        \"reference\": \"CC-1\",\n        \"remark\": \"Cash count shortage: One \\u20a61,000 receipt missing\",\n        \"inflow\": null,\n        \"outflow\": 1000.0,\n        \"balance\": 149000.0,\n        \"accountCode\": \"PC-IKJ\",\n        \"accountName\": \"Ikeja Petty Cash Box\",\n        \"kind\": \"PETTY_CASH\",\n        \"sourceType\": \"CASH_COUNT_ADJUSTMENT\",\n        \"expenseCategoryName\": null\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 2,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": {\n      \"scope\": {\n        \"locationId\": \"{{showroomId}}\",\n        \"locationName\": \"Showroom Ikeja\",\n        \"accounts\": [\n          {\n            \"id\": \"{{pettyCashAccountId}}\",\n            \"code\": \"PC-IKJ\",\n            \"name\": \"Ikeja Petty Cash Box\",\n            \"kind\": \"PETTY_CASH\"\n          },\n          {\n            \"id\": \"{{tillAccountId}}\",\n            \"code\": \"TILL-IKJ-01\",\n            \"name\": \"Ikeja Till 1\",\n            \"kind\": \"TILL\"\n          }\n        ]\n      },\n      \"period\": {\n        \"from\": \"2026-10-01\",\n        \"to\": \"2026-10-12\"\n      },\n      \"openingCash\": 0.0,\n      \"totalInflow\": 150000.0,\n      \"totalOutflow\": 1000.0,\n      \"closingCash\": 149000.0\n    },\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "C9 Cash Flow Filters",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/cash-flow/filters",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "cash-flow",
+                "filters"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "C9 Cash Flow Filters - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/cash-flow/filters",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "cash-flow",
+                    "filters"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"fields\": [\n      {\n        \"key\": \"direction\",\n        \"label\": \"Direction\",\n        \"type\": \"ENUM\",\n        \"operators\": [\n          \"eq\",\n          \"ne\",\n          \"in\",\n          \"not_in\",\n          \"is_null\",\n          \"is_not_null\"\n        ],\n        \"options\": [\n          {\n            \"value\": \"IN\",\n            \"label\": \"In-flow\"\n          },\n          {\n            \"value\": \"OUT\",\n            \"label\": \"Out-flow\"\n          }\n        ],\n        \"lookup\": null,\n        \"facetable\": true,\n        \"sortable\": false,\n        \"qualifierAliases\": []\n      }\n    ],\n    \"collections\": [],\n    \"primaryDate\": \"entryDate\",\n    \"defaultSort\": [],\n    \"periodPresets\": [\n      \"TODAY\",\n      \"YESTERDAY\",\n      \"THIS_WEEK\"\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "D1 Current Exchange Rates",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/exchange-rates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "exchange-rates"
+              ]
+            },
+            "description": "One row per tracked currency (module setting accounting.fx.currencies: USD, GBP, EUR, CNY, ZAR, GHS by default). Rates are naira per unit. freshness: Current (published today) or Stale. Readable with accounting.read, invoicing.invoice.read or cashier.sales.read.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "D1 Current Exchange Rates - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/exchange-rates",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "exchange-rates"
+                  ]
+                },
+                "description": "One row per tracked currency (module setting accounting.fx.currencies: USD, GBP, EUR, CNY, ZAR, GHS by default). Rates are naira per unit. freshness: Current (published today) or Stale. Readable with accounting.read, invoicing.invoice.read or cashier.sales.read.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"code\": \"USD\",\n      \"currency\": \"US Dollar\",\n      \"symbol\": \"$\",\n      \"buy\": null,\n      \"sell\": null,\n      \"spread\": null,\n      \"previousBuy\": null,\n      \"move\": null,\n      \"movePct\": null,\n      \"updatedAt\": null,\n      \"updatedBy\": null,\n      \"freshness\": null\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "D2 Publish Exchange Rates",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/exchange-rates/publish",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "exchange-rates",
+                "publish"
+              ]
+            },
+            "description": "Perm accounting.fx.manage. Any subset of the tracked currencies; sellRate must not be below buyRate (400 INVALID_RATE). Rates are append-only: transactions store the rate they used, so publishing never changes history.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rates\": [\n    {\n      \"currencyCode\": \"USD\",\n      \"buyRate\": 1505.5,\n      \"sellRate\": 1525.0\n    },\n    {\n      \"currencyCode\": \"GBP\",\n      \"buyRate\": 1910.0,\n      \"sellRate\": 1945.0\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('one publication with both rates', () => pm.expect(json.data.rates.length).to.eql(2));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "D2 Publish Exchange Rates - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/exchange-rates/publish",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "exchange-rates",
+                    "publish"
+                  ]
+                },
+                "description": "Perm accounting.fx.manage. Any subset of the tracked currencies; sellRate must not be below buyRate (400 INVALID_RATE). Rates are append-only: transactions store the rate they used, so publishing never changes history.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"rates\": [\n    {\n      \"currencyCode\": \"USD\",\n      \"buyRate\": 1505.5,\n      \"sellRate\": 1525.0\n    },\n    {\n      \"currencyCode\": \"GBP\",\n      \"buyRate\": 1910.0,\n      \"sellRate\": 1945.0\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{fxPublicationId}}\",\n    \"ref\": \"FX-1\",\n    \"publishedAt\": \"2026-10-01T10:15:30Z\",\n    \"publishedBy\": \"Alice Admin\",\n    \"rates\": [\n      {\n        \"id\": \"{{fxRateId}}\",\n        \"currencyCode\": \"USD\",\n        \"buyRate\": 1505.5,\n        \"sellRate\": 1525.0\n      },\n      {\n        \"id\": \"{{fxRateId}}\",\n        \"currencyCode\": \"GBP\",\n        \"buyRate\": 1910.0,\n        \"sellRate\": 1945.0\n      }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "D3 Publish Exchange Rates (error: untracked currency)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/exchange-rates/publish",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "exchange-rates",
+                "publish"
+              ]
+            },
+            "description": "Track more currencies with the module setting accounting.fx.currencies (Settings > module settings).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rates\": [\n    {\n      \"currencyCode\": \"JPY\",\n      \"buyRate\": 10.2,\n      \"sellRate\": 10.6\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 400 CURRENCY_NOT_TRACKED', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('CURRENCY_NOT_TRACKED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "D3 Publish Exchange Rates (error: untracked currency) - 400 Bad Request",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/exchange-rates/publish",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "exchange-rates",
+                    "publish"
+                  ]
+                },
+                "description": "Track more currencies with the module setting accounting.fx.currencies (Settings > module settings).",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"rates\": [\n    {\n      \"currencyCode\": \"JPY\",\n      \"buyRate\": 10.2,\n      \"sellRate\": 10.6\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"CURRENCY_NOT_TRACKED\",\n    \"message\": \"JPY is not a tracked currency\",\n    \"details\": {\n      \"currency\": \"JPY\",\n      \"tracked\": \"USD,GBP,EUR,CNY,ZAR,GHS\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "D4 Exchange Rate History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/exchange-rates/history?currencyCode=USD",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "exchange-rates",
+                "history"
+              ],
+              "query": [
+                {
+                  "key": "currencyCode",
+                  "value": "USD"
+                }
+              ]
+            },
+            "description": "Paged, newest first. Filters: currencyCode, publishedBy, buyRate, from/to (publishedAt); q matches the FX-n reference.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "D4 Exchange Rate History - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/exchange-rates/history?currencyCode=USD",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "exchange-rates",
+                    "history"
+                  ],
+                  "query": [
+                    {
+                      "key": "currencyCode",
+                      "value": "USD"
+                    }
+                  ]
+                },
+                "description": "Paged, newest first. Filters: currencyCode, publishedBy, buyRate, from/to (publishedAt); q matches the FX-n reference.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": \"{{fxRateId}}\",\n        \"publicationRef\": \"FX-1\",\n        \"currencyCode\": \"USD\",\n        \"buyRate\": 1505.5,\n        \"sellRate\": 1525.0,\n        \"publishedAt\": \"2026-10-01T10:15:30Z\",\n        \"publishedBy\": \"Alice Admin\"\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": null,\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "E1 Global Search: Bank Entry by Reference",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/search?q={{manualEntryRef}}&types=bank-transaction",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{manualEntryRef}}"
+                },
+                {
+                  "key": "types",
+                  "value": "bank-transaction"
+                }
+              ]
+            },
+            "description": "The header search finds a bank entry by its exact reference (perm accounting.read), within the accounts the caller can see.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('the entry is found', () => pm.expect(json.data.groups.find(g => g.type === 'bank-transaction').hits.length).to.eql(1));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "E1 Global Search: Bank Entry by Reference - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/search?q={{manualEntryRef}}&types=bank-transaction",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "search"
+                  ],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": "{{manualEntryRef}}"
+                    },
+                    {
+                      "key": "types",
+                      "value": "bank-transaction"
+                    }
+                  ]
+                },
+                "description": "The header search finds a bank entry by its exact reference (perm accounting.read), within the accounts the caller can see.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"groups\": [\n      {\n        \"type\": \"bank-transaction\",\n        \"label\": \"Bank transactions\",\n        \"hits\": [\n          {\n            \"type\": \"bank-transaction\",\n            \"id\": \"{{manualEntryId}}\",\n            \"title\": \"MAN-1\",\n            \"subtitle\": \"BA-1 \\u00b7 debit \\u20a61,500.00 \\u00b7 2026-10-12\",\n            \"ref\": \"MAN-1\",\n            \"route\": \"/account/bank-accounts/{{bankAccountId}}/statement?q=MAN-1\"\n          }\n        ],\n        \"more\": false,\n        \"moreRoute\": \"/account/bank-accounts?q=MAN-1\"\n      }\n    ],\n    \"timedOut\": []\n  }\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Finance & Accounting, slice 1 (backend docs/07): the money ledgers. A expense categories, B bank accounts, manual entries and the Bank Statement, C cash accounts (petty cash, tills), cash counts and the Cash Inflow/Outflow Statement, D exchange rates, E global search. Run after folder 16 (it uses the showroom created there) and 12 (for the today variable). Captured variables: bankChargesCategoryId, expenseCategoryId, bankAccountId, manualEntryRef, pettyCashAccountId, tillAccountId."
     }
   ]
 }

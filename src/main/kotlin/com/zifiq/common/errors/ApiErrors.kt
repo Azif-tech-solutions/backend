@@ -221,4 +221,16 @@ object ApiErrors {
     /** DUPLICATE_NAME with the existing field's id, so "Add custom field" can reuse it (docs/06 §4.5). */
     fun duplicateCustomField(label: String, existingId: java.util.UUID) = ApiException(HttpStatus.CONFLICT, ErrorCode.DUPLICATE_NAME, "A custom field called '$label' already exists", mapOf("name" to label, "existingId" to existingId.toString()))
     fun customFieldNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.CUSTOM_FIELD_NOT_FOUND, "Custom field not found")
+
+    // ---- Finance & Accounting (docs/07 §7) ----
+    fun duplicateAccountNumber(bank: String, number: String) = ApiException(HttpStatus.CONFLICT, ErrorCode.DUPLICATE_ACCOUNT_NUMBER, "Account $number at $bank is already registered", mapOf("bankName" to bank))
+    fun accountNotActive(code: String) = ApiException(HttpStatus.CONFLICT, ErrorCode.ACCOUNT_NOT_ACTIVE, "Account $code is not active and can't take new transactions", mapOf("account" to code))
+    fun accountHasBalance(code: String, balance: java.math.BigDecimal) = ApiException(HttpStatus.CONFLICT, ErrorCode.ACCOUNT_HAS_BALANCE, "Account $code still holds ${balance.toPlainString()}; empty it before deactivating", mapOf("account" to code, "balance" to balance.toPlainString()))
+    fun insufficientCash(code: String, available: java.math.BigDecimal, requested: java.math.BigDecimal) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.INSUFFICIENT_CASH, "Not enough cash in $code: ${available.toPlainString()} available, ${requested.toPlainString()} requested", mapOf("account" to code, "available" to available.toPlainString(), "requested" to requested.toPlainString()))
+    fun expenseCategoryInactive(name: String) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.EXPENSE_CATEGORY_INACTIVE, "The expense category '$name' is inactive", mapOf("category" to name))
+    fun currencyNotTracked(code: String, tracked: Collection<String>) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.CURRENCY_NOT_TRACKED, "$code is not a tracked currency", mapOf("currency" to code, "tracked" to tracked.joinToString(",")))
+    fun invalidRate(code: String, reason: String) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_RATE, "$code: $reason", mapOf("currency" to code, "reason" to reason))
+    fun bankAccountNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.BANK_ACCOUNT_NOT_FOUND, "Bank account not found")
+    fun cashAccountNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.CASH_ACCOUNT_NOT_FOUND, "Cash account not found")
+    fun expenseCategoryNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.EXPENSE_CATEGORY_NOT_FOUND, "Expense category not found")
 }

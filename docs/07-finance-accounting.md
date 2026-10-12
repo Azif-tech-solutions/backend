@@ -1,10 +1,10 @@
 # 07 — Finance & Accounting Module
 
-Status: **design finalized, not yet implemented** (VAT/HSN/ISIC classification in this package is already shipped — V5 — and is extended, not redesigned)
+Status: **slice 1 of 3 implemented** (2026-10-12: the money ledgers — §2.1–2.4, §2.11, §4.1–4.5, §4.16, §5.3, §5.5; see §12). Slice 2 (petty cash, running costs, funds awaiting, lodgements) and slice 3 (receipts, tenderable, wallet money, other income, VAT per location) follow. VAT/HSN/ISIC classification in this package is already shipped — V5 — and is extended, not redesigned.
 Owner package: `com.zifiq.account` (substrate module — exposes `com.zifiq.account.spi`)
 Depends on: `platform`, `common`, `inventory` (OPEN), `customers :: spi`
 Depended on by: `invoicing` (invoice payments post here), `cashier` (every POS payment posts here), `communication` (commission payouts), `history`, `reports`, `dashboard`, `ai`.
-Migration: `V11__finance_accounting_module.sql`
+Migration: `V11__finance_accounting_ledgers.sql` (slice 1); slices 2 and 3 add `V11_1`, `V11_2`
 Replaces: the mock `AccountService`/`AccountController`/`AccountDto.kt` (`getCashFlow`, `getBankStatement`, `getPettyCashStatement`, `recordOperatingCost`, `registerBankAccount`, `topUpPettyCash`) and `process`'s mock exchange rates.
 
 ---
@@ -862,3 +862,24 @@ Implements doc 03 §4–§5: advanced `POST …/search` bodies, `/filters` metad
 - Funds Awaiting: received > sent → 400; partial without reason → 400; partial with reason → destination credited received only, shortfall event emitted.
 - Cashier lists receipts → only their own; Accounts → all at their location.
 - Newman folder "14 - Finance & Accounting" covering every endpoint above.
+
+## 12. Implementation notes — slice 1 (V11)
+
+What shipped: bank accounts and the bank ledger, cash accounts and the cash ledger (`MoneyLedgerRepository.postBank/postCash`), manual bank entries, cash counts, the Bank Statement, the Cash Inflow/Outflow Statement, expense categories (seeded per tenant), exchange rates, the `CashAccounts` / `BankAccounts` / `ExchangeRates` spi, and the `bank-transaction` global-search provider. Where it differs from the design above:
+
+- **Running balances are computed in date order.** Statement rows are ordered `(entry_date, created_at, id)` and each row's balance is the sum of the account's (or scope's) entries up to it, so a back-dated entry (bank interest found at month end) still reads correctly. `balance_after` keeps the balance at posting time and backs the cash `>= 0` check. Manual entries and counts may be back-dated, but not into the future and not before the account's opening balance date.
+- **Offset paging, not keyset.** The shared paging has no keyset mode yet; statements use the standard `page`/`size`.
+- **Default period.** With no `from`/`to`/`period`, the Bank Statement and Cash Inflow/Outflow cover the current month to date.
+- **Response shape.** Both statements are a normal paged list; the header values are in `summary`: Bank Statement `{ account, period, openingBalance, closingBalance, totalCredits, totalDebits }`; cash flow `{ scope: { locationId, locationName, accounts }, period, openingCash, totalInflow, totalOutflow, closingCash }`. Cash-flow scope parameters (`locationId`, `cashAccountId`, `kind`) are applied before the row filters (`direction`, `sourceType`, `expenseCategoryId`, `amount`). Filter metadata: `GET /bank-accounts/statement/filters`, `GET /cash-flow/filters`; advanced bodies: `POST /bank-accounts/{id}/statement/search`, `POST /cash-flow/search`.
+- **`spentThisMonth`** is read from the two ledgers (bank debits and cash out tagged with the category, less credits/ins from reversals) rather than from running costs and petty cash payments, so slice 2's documents count automatically once they post.
+- **`accounting.fx.currencies`** is a list of ISO codes (`STRING_LIST`), chosen from a built-in table of 20 currencies that supplies names and symbols; the default is the six in §2.11.
+- **Codes:** bank accounts `BA-n`, manual entries `MAN-n`, cash counts `CC-n`, rate publications `FX-n`, expense categories `EX-n` (the ten seeded categories are `EX-1`…`EX-10`, and the sequence continues at `EX-11`). Cash account codes are entered and stored upper-case.
+- **`expense_categories.created_by_user_id` is nullable**: the seeded categories have no creator.
+- **Currencies:** bank accounts are NGN unless `DOMICILIARY` (then a tracked currency is required); cash accounts are NGN or a tracked currency.
+- **`belowFloat`** = a petty-cash balance under half its float limit.
+- **Cash-count variance alerts** go to holders of `platform.activity.read` at the location (Administrator and Management by default), excluding the person who counted.
+- **Location scope:** users tied to one location see only that location's bank and cash accounts; head-office accounts (`location_id` null) only to everyone else. A restricted user's cash flow is always their own location.
+- **`accounting.manage` is kept until slice 2**, which replaces the last mock endpoints it guards (`/petty-cash/statement`, `/operating-costs`, `/petty-cash/top-up`). Slice 1 removed the mock `/cashflow`, `/bank-statement/{accountNumber}` and mock `POST /bank-accounts`.
+- **New permissions** (V11): `accounting.bank.manage`, `accounting.cash-accounts.manage`, `accounting.expense-categories.manage`, `accounting.fx.manage` — Administrator and Accounts Personnel.
+- Tests: `AccountLedgersIntegrationTest` (7, including the concurrent-payout race and ledger integrity). Newman folder **"17 - Finance & Accounting"** (29 requests).
+
