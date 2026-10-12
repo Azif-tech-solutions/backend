@@ -250,4 +250,12 @@ object ApiErrors {
     fun runningCostNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.RUNNING_COST_NOT_FOUND, "Running cost not found")
     fun disbursementNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.DISBURSEMENT_NOT_FOUND, "Fund disbursement not found")
     fun lodgementNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.LODGEMENT_NOT_FOUND, "Cash lodgement not found")
+    fun refundChannelNotSupported(channel: String) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.REFUND_CHANNEL_NOT_SUPPORTED, "A refund can't be paid by $channel; use cash, a fund transfer or the wallet", mapOf("channel" to channel))
+    fun useInvoicePayment() = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.USE_INVOICE_PAYMENT, "Settling an invoice from the wallet is an invoice payment (method WALLET), not a withdrawal")
+    fun otpMismatch(reason: String) = ApiException(HttpStatus.FORBIDDEN, ErrorCode.OTP_MISMATCH, "This OTP was issued for a different withdrawal: $reason")
+    fun otpAlreadyUsed() = ApiException(HttpStatus.FORBIDDEN, ErrorCode.OTP_REQUIRED, "This OTP has already authorised a withdrawal; request a new one")
+    fun vatSettingExistsForDate(date: java.time.LocalDate) = ApiException(HttpStatus.CONFLICT, ErrorCode.VAT_SETTING_EXISTS_FOR_DATE, "A VAT setting already takes effect on $date for this location", mapOf("effectiveFrom" to date.toString()))
+    fun receiptNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.RECEIPT_NOT_FOUND, "Receipt not found")
+    fun walletFundingNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.WALLET_FUNDING_NOT_FOUND, "Wallet funding not found")
+    fun withdrawalNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.WITHDRAWAL_NOT_FOUND, "Wallet withdrawal not found")
 }

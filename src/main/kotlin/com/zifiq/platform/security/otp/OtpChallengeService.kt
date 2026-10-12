@@ -13,6 +13,7 @@ import com.zifiq.platform.security.otp.dto.OtpChallengeRequest
 import com.zifiq.platform.security.otp.dto.OtpChallengeSummary
 import com.zifiq.platform.security.otp.dto.OtpIssueResponse
 import com.zifiq.platform.security.otp.dto.OtpVerifyResponse
+import com.zifiq.platform.security.otp.dto.VerifiedChallenge
 import com.zifiq.platform.security.otp.model.OtpChallengesTable
 import com.zifiq.platform.tenancy.TenantScopedTransaction
 import java.security.SecureRandom
@@ -46,6 +47,7 @@ class OtpChallengeService(
             it[OtpChallengesTable.requestedByUserId] = actor.userId
             it[OtpChallengesTable.purpose] = command.purpose
             it[OtpChallengesTable.targetReference] = command.targetReference
+            it[OtpChallengesTable.context] = com.zifiq.common.json.Json.write(command.context)
             it[OtpChallengesTable.status] = "AWAITING"
             it[OtpChallengesTable.createdAt] = Instant.now()
         }.value
@@ -165,5 +167,25 @@ class OtpChallengeService(
             .andWhere { OtpChallengesTable.status eq "USED" }
             .limit(1)
             .any()
+    }
+
+    /**
+     * Like [isVerified], but returns what the challenge was issued for, so the gated action can check
+     * it matches (a code issued for ₦50,000 must not authorise ₦500,000). Runs in the caller's transaction.
+     */
+    fun verifiedChallenge(challengeId: UUID, purpose: String): VerifiedChallenge? {
+        val actor = currentActorProvider.current()
+        return OtpChallengesTable.selectAll()
+            .andWhere { OtpChallengesTable.id eq challengeId }
+            .andWhere { OtpChallengesTable.tenantId eq actor.tenantId }
+            .andWhere { OtpChallengesTable.purpose eq purpose }
+            .andWhere { OtpChallengesTable.requestedByUserId eq actor.userId }
+            .andWhere { OtpChallengesTable.status eq "USED" }
+            .firstOrNull()
+            ?.let { row ->
+                @Suppress("UNCHECKED_CAST")
+                val context = com.zifiq.common.json.Json.mapper.readValue(row[OtpChallengesTable.context], Map::class.java) as Map<String, Any?>
+                VerifiedChallenge(row[OtpChallengesTable.id].value, row[OtpChallengesTable.purpose], row[OtpChallengesTable.targetReference], context)
+            }
     }
 }

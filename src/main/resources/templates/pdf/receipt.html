@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title th:text="${receipt.ref}">RCT-1</title>
+    <style>
+        @page { size: A5; margin: 14mm 12mm 16mm 12mm;
+                @bottom-center { content: "Page " counter(page) " of " counter(pages); font-family: 'Noto Sans'; font-size: 7.5pt; color: #666; } }
+        body { font-family: 'Noto Sans'; font-size: 9pt; color: #1a1a1a; }
+        .header { display: table; width: 100%; border-bottom: 2px solid #1a1a1a; padding-bottom: 6pt; }
+        .header .left, .header .right { display: table-cell; vertical-align: top; }
+        .header .right { text-align: right; }
+        .logo { max-height: 34pt; max-width: 120pt; margin-bottom: 3pt; }
+        .company { font-size: 12.5pt; font-weight: 700; }
+        .muted { color: #555; }
+        .doc-title { font-size: 11pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5pt; }
+        .ref { font-size: 12pt; font-weight: 700; }
+        table.meta { width: 100%; margin-top: 10pt; border-collapse: collapse; }
+        table.meta td { border: 1px solid #ccc; padding: 4pt 6pt; vertical-align: top; }
+        table.meta td.label { width: 34%; background: #f4f4f4; font-size: 8pt; text-transform: uppercase; color: #555; letter-spacing: 0.3pt; }
+        .amount { margin-top: 12pt; text-align: right; font-size: 15pt; font-weight: 700; }
+        .stamp { display: inline-block; margin-top: 10pt; padding: 3pt 10pt; border: 2px solid #1a6b2a; color: #1a6b2a; font-weight: 700; text-transform: uppercase; }
+        .stamp.pending { border-color: #9a6400; color: #9a6400; }
+        .stamp.void { border-color: #b02a2a; color: #b02a2a; }
+        .duplicate { position: fixed; top: 80mm; left: 0; width: 100%; text-align: center; font-size: 34pt; font-weight: 700;
+                     color: #d23c3c; opacity: 0.18; transform: rotate(-28deg); }
+        .footer { margin-top: 16pt; font-size: 7.5pt; color: #555; border-top: 1px solid #ddd; padding-top: 5pt; }
+    </style>
+</head>
+<body>
+<div class="duplicate" th:if="${duplicate}">DUPLICATE COPY</div>
+
+<div class="header">
+    <div class="left">
+        <img class="logo" th:if="${logo != null}" th:src="${logo}" alt="logo"/>
+        <div class="company" th:text="${company.tradingName}">Company</div>
+        <div class="muted" th:text="${company.streetAddress}">Address</div>
+        <div class="muted"><span th:text="${company.phone}">Phone</span><span th:if="${company.email != null}" th:text="' · ' + ${company.email}"> · email</span></div>
+        <div class="muted" th:if="${company.tin != null}" th:text="'TIN ' + ${company.tin}">TIN</div>
+    </div>
+    <div class="right">
+        <div class="doc-title" th:text="${title}">Payment Receipt</div>
+        <div class="ref" th:text="${receipt.ref}">RCT-1</div>
+        <div class="muted" th:text="${receivedAt}">date</div>
+    </div>
+</div>
+
+<table class="meta">
+    <tr><td class="label">Received from</td><td th:text="${receipt.customerName != null ? receipt.customerName : 'Walk-in'}">Customer</td></tr>
+    <tr><td class="label">For</td><td th:text="${receipt.sourceRef}">TXN-1</td></tr>
+    <tr th:if="${receipt.description != null}"><td class="label">Description</td><td th:text="${receipt.description}">Description</td></tr>
+    <tr><td class="label">Paid by</td><td th:text="${channel}">Cash</td></tr>
+    <tr th:if="${receipt.payerReference != null}"><td class="label">Reference</td><td th:text="${receipt.payerReference}">TRF-1</td></tr>
+    <tr th:if="${receipt.receivingBank != null}"><td class="label">Bank</td><td th:text="${receipt.receivingBank}">BA-1</td></tr>
+    <tr th:if="${receipt.locationName != null}"><td class="label">Location</td><td th:text="${receipt.locationName}">Showroom</td></tr>
+    <tr th:if="${receipt.till != null}"><td class="label">Till</td><td th:text="${receipt.till}">TILL-1</td></tr>
+    <tr><td class="label">Cashier</td><td th:text="${receipt.cashier}">Cashier</td></tr>
+</table>
+
+<div class="amount" th:text="${amount}">₦0.00</div>
+<div><span class="stamp" th:classappend="${stampClass}" th:text="${stamp}">Paid</span></div>
+<div th:if="${receipt.voidReason != null}" class="muted" th:text="'Voided: ' + ${receipt.voidReason}">Voided</div>
+
+<div class="footer">
+    <div th:if="${company.documentFooter != null}" th:text="${company.documentFooter}">Footer</div>
+    <div th:text="'Printed ' + ${printedAt}">Printed</div>
+</div>
+</body>
+</html>

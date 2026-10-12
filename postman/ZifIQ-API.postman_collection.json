@@ -2485,7 +2485,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"53953df4-27d6-48ca-a9be-df1069560082\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"57856f40-0b2f-40f9-899d-ec2b29812bdc\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -2576,7 +2576,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"65a19a2e-8278-4d6b-8002-5ceb6b658974\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"d776f9e3-99d6-43b4-87ac-fd30a8b0744d\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -31441,9 +31441,2799 @@
               "body": "{\n  \"data\": {\n    \"groups\": [\n      {\n        \"type\": \"bank-transaction\",\n        \"label\": \"Bank transactions\",\n        \"hits\": [\n          {\n            \"type\": \"bank-transaction\",\n            \"id\": \"{{manualEntryId}}\",\n            \"title\": \"MAN-1\",\n            \"subtitle\": \"BA-1 \\u00b7 debit \\u20a61,500.00 \\u00b7 2026-10-12\",\n            \"ref\": \"MAN-1\",\n            \"route\": \"/account/bank-accounts/{{bankAccountId}}/statement?q=MAN-1\"\n          }\n        ],\n        \"more\": false,\n        \"moreRoute\": \"/account/bank-accounts?q=MAN-1\"\n      }\n    ],\n    \"timedOut\": []\n  }\n}"
             }
           ]
+        },
+        {
+          "name": "K1 Fund Dealer Wallet (cash)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/wallet-fundings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "wallet-fundings"
+              ]
+            },
+            "description": "Perm accounting.wallet.fund (Cashiers have it). WALLET for Authorised Dealers, DEPOSIT for Special Customers (400 BALANCE_TYPE_NOT_ALLOWED otherwise). Creates a receipt (RCT-n) and the funding (WF-n). CASH (into cashAccountId, a till or vault at locationId) credits the wallet at once; POS, FUND_TRANSFER and CHEQUE wait until Accounts confirms the receipt — a dealer can't spend money that hasn't been verified.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{dealerId}}\",\n  \"balanceType\": \"WALLET\",\n  \"channel\": \"CASH\",\n  \"amount\": 75000,\n  \"locationId\": \"{{showroomId}}\",\n  \"cashAccountId\": \"{{tillAccountId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('walletFundingId', json.data.id);",
+                  "    pm.collectionVariables.set('fundingReceiptId', json.data.receiptId);",
+                  "    pm.test('cash is credited at once', () => pm.expect(json.data.status).to.eql('CONFIRMED'));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "K1 Fund Dealer Wallet (cash) - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/wallet-fundings",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "wallet-fundings"
+                  ]
+                },
+                "description": "Perm accounting.wallet.fund (Cashiers have it). WALLET for Authorised Dealers, DEPOSIT for Special Customers (400 BALANCE_TYPE_NOT_ALLOWED otherwise). Creates a receipt (RCT-n) and the funding (WF-n). CASH (into cashAccountId, a till or vault at locationId) credits the wallet at once; POS, FUND_TRANSFER and CHEQUE wait until Accounts confirms the receipt — a dealer can't spend money that hasn't been verified.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"customerId\": \"{{dealerId}}\",\n  \"balanceType\": \"WALLET\",\n  \"channel\": \"CASH\",\n  \"amount\": 75000,\n  \"locationId\": \"{{showroomId}}\",\n  \"cashAccountId\": \"{{tillAccountId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{walletFundingId}}\",\n    \"ref\": \"WF-1\",\n    \"date\": \"2026-10-01T10:15:30Z\",\n    \"customerId\": \"{{dealerId}}\",\n    \"customerCode\": \"DLR-1\",\n    \"customerName\": \"Okafor & Sons Distribution\",\n    \"balanceType\": \"WALLET\",\n    \"channel\": \"CASH\",\n    \"amount\": 75000.0,\n    \"locationId\": \"{{showroomId}}\",\n    \"locationName\": \"Showroom Ikeja\",\n    \"receiptId\": \"{{fundingReceiptId}}\",\n    \"receiptRef\": \"RCT-1\",\n    \"confirmationStatus\": \"NOT_REQUIRED\",\n    \"status\": \"CONFIRMED\",\n    \"createdBy\": \"Alice Admin\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "K2 Fund Dealer Wallet (fund transfer, awaits confirmation)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/wallet-fundings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "wallet-fundings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{dealerId}}\",\n  \"balanceType\": \"WALLET\",\n  \"channel\": \"FUND_TRANSFER\",\n  \"amount\": 200000,\n  \"locationId\": \"{{showroomId}}\",\n  \"receivingBankAccountId\": \"{{bankAccountId}}\",\n  \"payerReference\": \"NIP-000123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('pendingReceiptId', json.data.receiptId);",
+                  "    pm.test('waits for Accounts', () => pm.expect(json.data.status).to.eql('AWAITING_CONFIRMATION'));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "K2 Fund Dealer Wallet (fund transfer, awaits confirmation) - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/wallet-fundings",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "wallet-fundings"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"customerId\": \"{{dealerId}}\",\n  \"balanceType\": \"WALLET\",\n  \"channel\": \"FUND_TRANSFER\",\n  \"amount\": 200000,\n  \"locationId\": \"{{showroomId}}\",\n  \"receivingBankAccountId\": \"{{bankAccountId}}\",\n  \"payerReference\": \"NIP-000123\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{walletFundingId}}\",\n    \"ref\": \"WF-2\",\n    \"date\": \"2026-10-01T10:15:30Z\",\n    \"customerId\": \"{{dealerId}}\",\n    \"customerCode\": \"DLR-1\",\n    \"customerName\": \"Okafor & Sons Distribution\",\n    \"balanceType\": \"WALLET\",\n    \"channel\": \"FUND_TRANSFER\",\n    \"amount\": 200000.0,\n    \"locationId\": \"{{showroomId}}\",\n    \"locationName\": \"Showroom Ikeja\",\n    \"receiptId\": \"{{pendingReceiptId}}\",\n    \"receiptRef\": \"RCT-2\",\n    \"confirmationStatus\": \"PENDING\",\n    \"status\": \"AWAITING_CONFIRMATION\",\n    \"createdBy\": \"Alice Admin\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "K3 Fund Wallet (error: not a dealer)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/wallet-fundings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "wallet-fundings"
+              ]
+            },
+            "description": "A Special Customer is funded with balanceType DEPOSIT instead.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{specialId}}\",\n  \"balanceType\": \"WALLET\",\n  \"channel\": \"CASH\",\n  \"amount\": 1000,\n  \"locationId\": \"{{showroomId}}\",\n  \"cashAccountId\": \"{{tillAccountId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 400 BALANCE_TYPE_NOT_ALLOWED', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('BALANCE_TYPE_NOT_ALLOWED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "K3 Fund Wallet (error: not a dealer) - 400 Bad Request",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/wallet-fundings",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "wallet-fundings"
+                  ]
+                },
+                "description": "A Special Customer is funded with balanceType DEPOSIT instead.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"customerId\": \"{{specialId}}\",\n  \"balanceType\": \"WALLET\",\n  \"channel\": \"CASH\",\n  \"amount\": 1000,\n  \"locationId\": \"{{showroomId}}\",\n  \"cashAccountId\": \"{{tillAccountId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"BALANCE_TYPE_NOT_ALLOWED\",\n    \"message\": \"Only Authorised Dealers can fund a wallet directly; other customers' wallets hold return credits\",\n    \"details\": {}\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "K4 Confirmation Queue (POS / Fund Transfer Confirmation)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/receipts?confirmationStatus=PENDING&channel=POS,FUND_TRANSFER,CHEQUE",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "receipts"
+              ],
+              "query": [
+                {
+                  "key": "confirmationStatus",
+                  "value": "PENDING"
+                },
+                {
+                  "key": "channel",
+                  "value": "POS,FUND_TRANSFER,CHEQUE"
+                }
+              ]
+            },
+            "description": "Perm accounting.receipts.read (a Cashier sees only receipts they took). The screen's Pending tab; Approved and Declined tabs filter confirmationStatus. Filters: locationId, cashAccountId, cashierUserId, channel, kind, confirmationStatus, status, sourceType, customerId, receivingBankAccountId, incomeCategory, pendingOlderThanHours, amount, from/to (receivedAt); q matches receipt, source (INV-…, TXN-…), payer and terminal references, customer.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "K4 Confirmation Queue (POS / Fund Transfer Confirmation) - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/receipts?confirmationStatus=PENDING&channel=POS,FUND_TRANSFER,CHEQUE",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "receipts"
+                  ],
+                  "query": [
+                    {
+                      "key": "confirmationStatus",
+                      "value": "PENDING"
+                    },
+                    {
+                      "key": "channel",
+                      "value": "POS,FUND_TRANSFER,CHEQUE"
+                    }
+                  ]
+                },
+                "description": "Perm accounting.receipts.read (a Cashier sees only receipts they took). The screen's Pending tab; Approved and Declined tabs filter confirmationStatus. Filters: locationId, cashAccountId, cashierUserId, channel, kind, confirmationStatus, status, sourceType, customerId, receivingBankAccountId, incomeCategory, pendingOlderThanHours, amount, from/to (receivedAt); q matches receipt, source (INV-…, TXN-…), payer and terminal references, customer.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": \"{{pendingReceiptId}}\",\n        \"ref\": \"RCT-2\",\n        \"kind\": \"RECEIPT\",\n        \"receivedAt\": \"2026-10-01T10:15:30Z\",\n        \"locationId\": \"{{showroomId}}\",\n        \"locationName\": \"Showroom Ikeja\",\n        \"cashAccountId\": null,\n        \"till\": null,\n        \"cashierUserId\": \"{{userId}}\",\n        \"cashier\": \"Alice Admin\",\n        \"customerId\": \"{{dealerId}}\",\n        \"customerName\": \"Okafor & Sons Distribution\",\n        \"channel\": \"FUND_TRANSFER\",\n        \"amount\": 200000.0,\n        \"sourceModule\": \"account\",\n        \"sourceType\": \"WALLET_FUNDING\",\n        \"sourceRef\": \"WF-2\",\n        \"incomeCategory\": null,\n        \"description\": null,\n        \"receivingBankAccountId\": \"{{bankAccountId}}\",\n        \"receivingBank\": \"BA-1 Guaranty Trust Bank\",\n        \"terminalRef\": null,\n        \"payerReference\": \"NIP-000123\",\n        \"confirmationStatus\": \"PENDING\",\n        \"reviewedBy\": null,\n        \"reviewedAt\": null,\n        \"declineNote\": null,\n        \"status\": \"ISSUED\",\n        \"voidReason\": null\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": {\n      \"count\": 1,\n      \"totalByChannel\": {\n        \"FUND_TRANSFER\": 200000.0\n      },\n      \"pendingCount\": 1,\n      \"pendingValue\": 200000.0\n    },\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "K5 Confirmation Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/receipts/confirmation-stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "receipts",
+                "confirmation-stats"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "K5 Confirmation Stats - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/receipts/confirmation-stats",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "receipts",
+                    "confirmation-stats"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"pendingCount\": 1,\n    \"pendingValue\": 200000.0,\n    \"approvedToday\": 0,\n    \"declinedToday\": 0\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "K6 Approve Receipt",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/receipts/{{pendingReceiptId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "receipts",
+                "{{pendingReceiptId}}",
+                "approve"
+              ]
+            },
+            "description": "Perm accounting.receipts.confirm, at the receipt's location. The bank is credited now; for a wallet/deposit funding the wallet is credited too. POST …/decline {note} records that nothing arrived: nothing is posted, a funding is never credited, and the cashier is notified.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('approved', () => pm.expect(json.data.confirmationStatus).to.eql('APPROVED'));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "K6 Approve Receipt - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/receipts/{{pendingReceiptId}}/approve",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "receipts",
+                    "{{pendingReceiptId}}",
+                    "approve"
+                  ]
+                },
+                "description": "Perm accounting.receipts.confirm, at the receipt's location. The bank is credited now; for a wallet/deposit funding the wallet is credited too. POST …/decline {note} records that nothing arrived: nothing is posted, a funding is never credited, and the cashier is notified.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{pendingReceiptId}}\",\n    \"ref\": \"RCT-2\",\n    \"kind\": \"RECEIPT\",\n    \"receivedAt\": \"2026-10-01T10:15:30Z\",\n    \"locationId\": \"{{showroomId}}\",\n    \"locationName\": \"Showroom Ikeja\",\n    \"cashAccountId\": null,\n    \"till\": null,\n    \"cashierUserId\": \"{{userId}}\",\n    \"cashier\": \"Alice Admin\",\n    \"customerId\": \"{{dealerId}}\",\n    \"customerName\": \"Okafor & Sons Distribution\",\n    \"channel\": \"FUND_TRANSFER\",\n    \"amount\": 200000.0,\n    \"sourceModule\": \"account\",\n    \"sourceType\": \"WALLET_FUNDING\",\n    \"sourceRef\": \"WF-2\",\n    \"incomeCategory\": null,\n    \"description\": null,\n    \"receivingBankAccountId\": \"{{bankAccountId}}\",\n    \"receivingBank\": \"BA-1 Guaranty Trust Bank\",\n    \"terminalRef\": null,\n    \"payerReference\": \"NIP-000123\",\n    \"confirmationStatus\": \"APPROVED\",\n    \"reviewedBy\": \"Alice Admin\",\n    \"reviewedAt\": \"2026-10-01T10:15:30Z\",\n    \"declineNote\": null,\n    \"status\": \"ISSUED\",\n    \"voidReason\": null\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "K7 Approve Receipt (error: already decided)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/receipts/{{pendingReceiptId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "receipts",
+                "{{pendingReceiptId}}",
+                "approve"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 409 ALREADY_DECIDED', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('ALREADY_DECIDED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "K7 Approve Receipt (error: already decided) - 409 Conflict",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/receipts/{{pendingReceiptId}}/approve",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "receipts",
+                    "{{pendingReceiptId}}",
+                    "approve"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"ALREADY_DECIDED\",\n    \"message\": \"This receipt has already been decided\",\n    \"details\": {}\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "K8 List Wallet Fundings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/wallet-fundings?customerId={{dealerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "wallet-fundings"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{dealerId}}"
+                }
+              ]
+            },
+            "description": "Perm accounting.read. Filters: customerId, balanceType, status, channel, locationId, amount, from/to.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "K8 List Wallet Fundings - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/wallet-fundings?customerId={{dealerId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "wallet-fundings"
+                  ],
+                  "query": [
+                    {
+                      "key": "customerId",
+                      "value": "{{dealerId}}"
+                    }
+                  ]
+                },
+                "description": "Perm accounting.read. Filters: customerId, balanceType, status, channel, locationId, amount, from/to.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": \"{{walletFundingId}}\",\n        \"ref\": \"WF-1\",\n        \"date\": \"2026-10-01T10:15:30Z\",\n        \"customerId\": \"{{dealerId}}\",\n        \"customerCode\": \"DLR-1\",\n        \"customerName\": \"Okafor & Sons Distribution\",\n        \"balanceType\": \"WALLET\",\n        \"channel\": \"CASH\",\n        \"amount\": 75000.0,\n        \"locationId\": \"{{showroomId}}\",\n        \"locationName\": \"Showroom Ikeja\",\n        \"receiptId\": \"{{fundingReceiptId}}\",\n        \"receiptRef\": \"RCT-1\",\n        \"confirmationStatus\": \"NOT_REQUIRED\",\n        \"status\": \"CONFIRMED\",\n        \"createdBy\": \"Alice Admin\"\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": {\n      \"total\": 275000.0,\n      \"confirmed\": 275000.0,\n      \"awaiting\": 0.0\n    },\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "K9 Print Receipt",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/receipts/{{fundingReceiptId}}/receipt.pdf",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "receipts",
+                "{{fundingReceiptId}}",
+                "receipt.pdf"
+              ]
+            },
+            "description": "A5 receipt with the company header and logo from Settings, the channel, amount and a PAID / PENDING CONFIRMATION / DECLINED / VOID stamp; \"DUPLICATE COPY\" once it has been reprinted. Every receipt is also in the document registry (GET /api/v1/documents).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('response is a PDF', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/pdf'));"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "K9 Print Receipt - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/receipts/{{fundingReceiptId}}/receipt.pdf",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "receipts",
+                    "{{fundingReceiptId}}",
+                    "receipt.pdf"
+                  ]
+                },
+                "description": "A5 receipt with the company header and logo from Settings, the channel, amount and a PAID / PENDING CONFIRMATION / DECLINED / VOID stamp; \"DUPLICATE COPY\" once it has been reprinted. Every receipt is also in the document registry (GET /api/v1/documents).",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "%PDF-1.7 ... (binary PDF)"
+            }
+          ]
+        },
+        {
+          "name": "L1 Request Withdrawal OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/otp/challenges",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "otp",
+                "challenges"
+              ]
+            },
+            "description": "A dealer-requested withdrawal needs an Admin-issued code for that dealer (targetReference = the customer id) and that exact amount (context.amount).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purpose\": \"WALLET_WITHDRAWAL\",\n  \"targetReference\": \"{{dealerId}}\",\n  \"context\": {\n    \"amount\": 20000,\n    \"targetLabel\": \"Okafor & Sons Distribution\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('withdrawalOtpId', json.data.challengeId);",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "L1 Request Withdrawal OTP - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/otp/challenges",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "otp",
+                    "challenges"
+                  ]
+                },
+                "description": "A dealer-requested withdrawal needs an Admin-issued code for that dealer (targetReference = the customer id) and that exact amount (context.amount).",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"purpose\": \"WALLET_WITHDRAWAL\",\n  \"targetReference\": \"{{dealerId}}\",\n  \"context\": {\n    \"amount\": 20000,\n    \"targetLabel\": \"Okafor & Sons Distribution\"\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"challengeId\": \"{{withdrawalOtpId}}\",\n    \"status\": \"AWAITING\",\n    \"expiresAt\": null\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "L2 Issue Withdrawal OTP (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/otp/challenges/{{withdrawalOtpId}}/issue",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "otp",
+                "challenges",
+                "{{withdrawalOtpId}}",
+                "issue"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('withdrawalOtpCode', json.data.code);",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "L2 Issue Withdrawal OTP (Admin) - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/otp/challenges/{{withdrawalOtpId}}/issue",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "otp",
+                    "challenges",
+                    "{{withdrawalOtpId}}",
+                    "issue"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"challengeId\": \"{{withdrawalOtpId}}\",\n    \"code\": \"{{withdrawalOtpCode}}\",\n    \"expiresAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "L3 Verify Withdrawal OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/otp/challenges/{{withdrawalOtpId}}/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "otp",
+                "challenges",
+                "{{withdrawalOtpId}}",
+                "verify"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{withdrawalOtpCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "L3 Verify Withdrawal OTP - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/otp/challenges/{{withdrawalOtpId}}/verify",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "otp",
+                    "challenges",
+                    "{{withdrawalOtpId}}",
+                    "verify"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"code\": \"{{withdrawalOtpCode}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"verified\": true\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "L4 Withdraw (error: amount differs from the OTP)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/wallet-withdrawals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "wallet-withdrawals"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{dealerId}}\",\n  \"balanceType\": \"WALLET\",\n  \"reason\": \"DEALER_REQUEST\",\n  \"amount\": 30000,\n  \"payoutKind\": \"BANK\",\n  \"payoutBankAccountId\": \"{{bankAccountId}}\",\n  \"otpChallengeId\": \"{{withdrawalOtpId}}\",\n  \"withdrawalDate\": \"{{today}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 403 OTP_MISMATCH', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('OTP_MISMATCH');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "L4 Withdraw (error: amount differs from the OTP) - 403 Forbidden",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/wallet-withdrawals",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "wallet-withdrawals"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"customerId\": \"{{dealerId}}\",\n  \"balanceType\": \"WALLET\",\n  \"reason\": \"DEALER_REQUEST\",\n  \"amount\": 30000,\n  \"payoutKind\": \"BANK\",\n  \"payoutBankAccountId\": \"{{bankAccountId}}\",\n  \"otpChallengeId\": \"{{withdrawalOtpId}}\",\n  \"withdrawalDate\": \"{{today}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"OTP_MISMATCH\",\n    \"message\": \"This OTP was issued for a different withdrawal: it was issued for \\u20a620,000.00, not \\u20a630,000.00\",\n    \"details\": {}\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "L5 Withdraw From Dealer Wallet",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/wallet-withdrawals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "wallet-withdrawals"
+              ]
+            },
+            "description": "Perm accounting.wallet.withdraw for DEALER_REQUEST and DEPOSIT_REFUND (money paid out: payoutKind CASH or BANK); accounting.wallet.recover for EXCESS_COMMISSION_RECOVERY and OVER_CREDIT_CORRECTION (payoutKind NONE, authorisedByUserId required). A dealer request needs the verified OTP (403 OTP_REQUIRED / OTP_MISMATCH), usable once. The balance never goes negative (400 INSUFFICIENT_WALLET_BALANCE). \"Settle an outstanding invoice\" is an invoice payment by wallet, not a withdrawal (400 USE_INVOICE_PAYMENT).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{dealerId}}\",\n  \"balanceType\": \"WALLET\",\n  \"reason\": \"DEALER_REQUEST\",\n  \"amount\": 20000,\n  \"payoutKind\": \"BANK\",\n  \"payoutBankAccountId\": \"{{bankAccountId}}\",\n  \"paidVia\": \"Transfer to Access 0123456789\",\n  \"otpChallengeId\": \"{{withdrawalOtpId}}\",\n  \"withdrawalDate\": \"{{today}}\",\n  \"locationId\": \"{{showroomId}}\",\n  \"note\": \"Dealer request by phone\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('withdrawalId', json.data.id);",
+                  "    pm.test('OTP verified', () => pm.expect(json.data.otp).to.eql('Verified'));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "L5 Withdraw From Dealer Wallet - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/wallet-withdrawals",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "wallet-withdrawals"
+                  ]
+                },
+                "description": "Perm accounting.wallet.withdraw for DEALER_REQUEST and DEPOSIT_REFUND (money paid out: payoutKind CASH or BANK); accounting.wallet.recover for EXCESS_COMMISSION_RECOVERY and OVER_CREDIT_CORRECTION (payoutKind NONE, authorisedByUserId required). A dealer request needs the verified OTP (403 OTP_REQUIRED / OTP_MISMATCH), usable once. The balance never goes negative (400 INSUFFICIENT_WALLET_BALANCE). \"Settle an outstanding invoice\" is an invoice payment by wallet, not a withdrawal (400 USE_INVOICE_PAYMENT).",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"customerId\": \"{{dealerId}}\",\n  \"balanceType\": \"WALLET\",\n  \"reason\": \"DEALER_REQUEST\",\n  \"amount\": 20000,\n  \"payoutKind\": \"BANK\",\n  \"payoutBankAccountId\": \"{{bankAccountId}}\",\n  \"paidVia\": \"Transfer to Access 0123456789\",\n  \"otpChallengeId\": \"{{withdrawalOtpId}}\",\n  \"withdrawalDate\": \"{{today}}\",\n  \"locationId\": \"{{showroomId}}\",\n  \"note\": \"Dealer request by phone\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{withdrawalId}}\",\n    \"ref\": \"WW-1\",\n    \"date\": \"2026-10-12\",\n    \"customerId\": \"{{dealerId}}\",\n    \"customerCode\": \"DLR-1\",\n    \"customer\": \"Okafor & Sons Distribution\",\n    \"balanceType\": \"WALLET\",\n    \"initiatedBy\": \"DEALER\",\n    \"reason\": \"DEALER_REQUEST\",\n    \"balanceBefore\": 275000.0,\n    \"amount\": 20000.0,\n    \"balanceAfter\": 255000.0,\n    \"payoutKind\": \"BANK\",\n    \"payoutAccount\": \"BA-1\",\n    \"paidVia\": \"Transfer to Access 0123456789\",\n    \"otp\": \"Verified\",\n    \"authorisedBy\": null,\n    \"processedBy\": \"Alice Admin\",\n    \"auditStatus\": \"COMPLETED\",\n    \"reversalReason\": null,\n    \"note\": \"Dealer request by phone\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "L6 List Wallet Withdrawals",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/wallet-withdrawals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "wallet-withdrawals"
+              ]
+            },
+            "description": "Perm accounting.read. Filters: customerId, reason, initiatedBy, payoutKind, auditStatus, processedBy, otpVerified, amount, from/to.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "L6 List Wallet Withdrawals - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/wallet-withdrawals",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "wallet-withdrawals"
+                  ]
+                },
+                "description": "Perm accounting.read. Filters: customerId, reason, initiatedBy, payoutKind, auditStatus, processedBy, otpVerified, amount, from/to.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": \"{{withdrawalId}}\",\n        \"ref\": \"WW-1\",\n        \"date\": \"2026-10-12\",\n        \"customerId\": \"{{dealerId}}\",\n        \"customerCode\": \"DLR-1\",\n        \"customer\": \"Okafor & Sons Distribution\",\n        \"balanceType\": \"WALLET\",\n        \"initiatedBy\": \"DEALER\",\n        \"reason\": \"DEALER_REQUEST\",\n        \"balanceBefore\": 275000.0,\n        \"amount\": 20000.0,\n        \"balanceAfter\": 255000.0,\n        \"payoutKind\": \"BANK\",\n        \"payoutAccount\": \"BA-1\",\n        \"paidVia\": \"Transfer to Access 0123456789\",\n        \"otp\": \"Verified\",\n        \"authorisedBy\": null,\n        \"processedBy\": \"Alice Admin\",\n        \"auditStatus\": \"COMPLETED\",\n        \"reversalReason\": null,\n        \"note\": \"Dealer request by phone\",\n        \"createdAt\": \"2026-10-01T10:15:30Z\"\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": {\n      \"totalWithdrawn\": 20000.0,\n      \"dealerInitiated\": 20000.0,\n      \"companyInitiated\": 0.0\n    },\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "L7 Flag Withdrawal for Review",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/wallet-withdrawals/{{withdrawalId}}/audit-status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "wallet-withdrawals",
+                "{{withdrawalId}}",
+                "audit-status"
+              ]
+            },
+            "description": "Perm accounting.wallet.recover. POST …/reverse {reason} credits the balance back and returns the payout.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"auditStatus\": \"UNDER_REVIEW\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "L7 Flag Withdrawal for Review - 200 OK",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/wallet-withdrawals/{{withdrawalId}}/audit-status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "wallet-withdrawals",
+                    "{{withdrawalId}}",
+                    "audit-status"
+                  ]
+                },
+                "description": "Perm accounting.wallet.recover. POST …/reverse {reason} credits the balance back and returns the payout.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"auditStatus\": \"UNDER_REVIEW\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{withdrawalId}}\",\n    \"ref\": \"WW-1\",\n    \"date\": \"2026-10-12\",\n    \"customerId\": \"{{dealerId}}\",\n    \"customerCode\": \"DLR-1\",\n    \"customer\": \"Okafor & Sons Distribution\",\n    \"balanceType\": \"WALLET\",\n    \"initiatedBy\": \"DEALER\",\n    \"reason\": \"DEALER_REQUEST\",\n    \"balanceBefore\": 275000.0,\n    \"amount\": 20000.0,\n    \"balanceAfter\": 255000.0,\n    \"payoutKind\": \"BANK\",\n    \"payoutAccount\": \"BA-1\",\n    \"paidVia\": \"Transfer to Access 0123456789\",\n    \"otp\": \"Verified\",\n    \"authorisedBy\": null,\n    \"processedBy\": \"Alice Admin\",\n    \"auditStatus\": \"UNDER_REVIEW\",\n    \"reversalReason\": null,\n    \"note\": \"Dealer request by phone\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "L8 Withdraw (error: invoice settlement)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/wallet-withdrawals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "wallet-withdrawals"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{dealerId}}\",\n  \"balanceType\": \"WALLET\",\n  \"reason\": \"INVOICE_SETTLEMENT\",\n  \"amount\": 1000,\n  \"payoutKind\": \"NONE\",\n  \"withdrawalDate\": \"{{today}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 400 USE_INVOICE_PAYMENT', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('USE_INVOICE_PAYMENT');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "L8 Withdraw (error: invoice settlement) - 400 Bad Request",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/wallet-withdrawals",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "wallet-withdrawals"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"customerId\": \"{{dealerId}}\",\n  \"balanceType\": \"WALLET\",\n  \"reason\": \"INVOICE_SETTLEMENT\",\n  \"amount\": 1000,\n  \"payoutKind\": \"NONE\",\n  \"withdrawalDate\": \"{{today}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"USE_INVOICE_PAYMENT\",\n    \"message\": \"Settling an invoice from the wallet is an invoice payment (method WALLET), not a withdrawal\",\n    \"details\": {}\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "M1 Tenderable: Payable",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/tenderable/payable?locationId={{showroomId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "tenderable",
+                "payable"
+              ],
+              "query": [
+                {
+                  "key": "locationId",
+                  "value": "{{showroomId}}"
+                }
+              ]
+            },
+            "description": "Perm accounting.tenderable.read. One row per cashier per day: ftf (transfers and cheques), cash, pos, wallet, deposit, refund and total. Pending and declined receipts are shown apart and never counted in the total.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "M1 Tenderable: Payable - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/tenderable/payable?locationId={{showroomId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "tenderable",
+                    "payable"
+                  ],
+                  "query": [
+                    {
+                      "key": "locationId",
+                      "value": "{{showroomId}}"
+                    }
+                  ]
+                },
+                "description": "Perm accounting.tenderable.read. One row per cashier per day: ftf (transfers and cheques), cash, pos, wallet, deposit, refund and total. Pending and declined receipts are shown apart and never counted in the total.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"date\": \"2026-10-12\",\n      \"cashierUserId\": \"{{userId}}\",\n      \"cashier\": \"Alice Admin\",\n      \"ftf\": 200000.0,\n      \"cash\": 75000.0,\n      \"pos\": 0.0,\n      \"wallet\": 0.0,\n      \"deposit\": 0.0,\n      \"refund\": 0.0,\n      \"total\": 275000.0,\n      \"pendingConfirmation\": 0.0,\n      \"declined\": 0.0\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "M2 Tenderable: General Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/tenderable/general-report",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "tenderable",
+                "general-report"
+              ]
+            },
+            "description": "Per cashier for the period (locationId, from, to), with grand totals. GET /tenderable/receipts is the Receipt Track (the receipts list).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "M2 Tenderable: General Report - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/tenderable/general-report",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "tenderable",
+                    "general-report"
+                  ]
+                },
+                "description": "Per cashier for the period (locationId, from, to), with grand totals. GET /tenderable/receipts is the Receipt Track (the receipts list).",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"period\": {\n      \"from\": null,\n      \"to\": null\n    },\n    \"rows\": [\n      {\n        \"cashierUserId\": \"{{userId}}\",\n        \"cashier\": \"Alice Admin\",\n        \"daysActive\": 1,\n        \"ftf\": 200000.0,\n        \"cash\": 75000.0,\n        \"pos\": 0.0,\n        \"wallet\": 0.0,\n        \"deposit\": 0.0,\n        \"refund\": 0.0,\n        \"total\": 275000.0\n      }\n    ],\n    \"totals\": {\n      \"cashierUserId\": \"00000000-0000-0000-0000-000000000000\",\n      \"cashier\": \"All cashiers\",\n      \"daysActive\": 1,\n      \"ftf\": 200000.0,\n      \"cash\": 75000.0,\n      \"pos\": 0.0,\n      \"wallet\": 0.0,\n      \"deposit\": 0.0,\n      \"refund\": 0.0,\n      \"total\": 275000.0\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "M3 Tenderable: Wallet Funds",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/tenderable/wallet-funds?customerId={{dealerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "tenderable",
+                "wallet-funds"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{dealerId}}"
+                }
+              ]
+            },
+            "description": "Dealers' wallet fundings plus the return credits Customers posted for them (method \"Return credit\").",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "M3 Tenderable: Wallet Funds - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/tenderable/wallet-funds?customerId={{dealerId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "tenderable",
+                    "wallet-funds"
+                  ],
+                  "query": [
+                    {
+                      "key": "customerId",
+                      "value": "{{dealerId}}"
+                    }
+                  ]
+                },
+                "description": "Dealers' wallet fundings plus the return credits Customers posted for them (method \"Return credit\").",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"ref\": \"WF-2\",\n        \"date\": \"2026-10-01T10:15:30Z\",\n        \"customerId\": \"{{dealerId}}\",\n        \"dealer\": \"DLR-1 Okafor & Sons Distribution\",\n        \"method\": \"Fund transfer\",\n        \"bank\": \"BA-1 Guaranty Trust Bank\",\n        \"amount\": 200000.0,\n        \"confirmedBy\": \"Alice Admin\",\n        \"status\": \"Confirmed\"\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": {\n      \"total\": 275000.0,\n      \"confirmed\": 275000.0,\n      \"awaiting\": 0.0\n    },\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "N1 Record Other Income",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/other-income",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "other-income"
+              ]
+            },
+            "description": "Perm accounting.receipts.record. By-product and scrap sales, rent, interest received and other money that isn't a sale, invoice payment or wallet funding. incomeCategory BY_PRODUCT_SALES, SCRAP_SALES, RENTAL, INTEREST or OTHER; the usual channel rules apply (POS / transfer / cheque wait for confirmation).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"locationId\": \"{{showroomId}}\",\n  \"incomeCategory\": \"SCRAP_SALES\",\n  \"channel\": \"CASH\",\n  \"amount\": 18000,\n  \"cashAccountId\": \"{{tillAccountId}}\",\n  \"payerName\": \"Mile 12 scrap dealers\",\n  \"description\": \"Sale of damaged pallets\",\n  \"receivedDate\": \"{{today}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('otherIncomeId', json.data.id);",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "N1 Record Other Income - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/other-income",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "other-income"
+                  ]
+                },
+                "description": "Perm accounting.receipts.record. By-product and scrap sales, rent, interest received and other money that isn't a sale, invoice payment or wallet funding. incomeCategory BY_PRODUCT_SALES, SCRAP_SALES, RENTAL, INTEREST or OTHER; the usual channel rules apply (POS / transfer / cheque wait for confirmation).",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"locationId\": \"{{showroomId}}\",\n  \"incomeCategory\": \"SCRAP_SALES\",\n  \"channel\": \"CASH\",\n  \"amount\": 18000,\n  \"cashAccountId\": \"{{tillAccountId}}\",\n  \"payerName\": \"Mile 12 scrap dealers\",\n  \"description\": \"Sale of damaged pallets\",\n  \"receivedDate\": \"{{today}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{otherIncomeId}}\",\n    \"ref\": \"RCT-3\",\n    \"kind\": \"RECEIPT\",\n    \"receivedAt\": \"2026-10-01T10:15:30Z\",\n    \"locationId\": \"{{showroomId}}\",\n    \"locationName\": \"Showroom Ikeja\",\n    \"cashAccountId\": \"{{tillAccountId}}\",\n    \"till\": \"TILL-IKJ-01\",\n    \"cashierUserId\": \"{{userId}}\",\n    \"cashier\": \"Alice Admin\",\n    \"customerId\": null,\n    \"customerName\": \"Mile 12 scrap dealers\",\n    \"channel\": \"CASH\",\n    \"amount\": 18000.0,\n    \"sourceModule\": \"account\",\n    \"sourceType\": \"OTHER_INCOME\",\n    \"sourceRef\": \"RCT-3\",\n    \"incomeCategory\": \"SCRAP_SALES\",\n    \"description\": \"Sale of damaged pallets\",\n    \"receivingBankAccountId\": null,\n    \"receivingBank\": null,\n    \"terminalRef\": null,\n    \"payerReference\": null,\n    \"confirmationStatus\": \"NOT_REQUIRED\",\n    \"reviewedBy\": null,\n    \"reviewedAt\": null,\n    \"declineNote\": null,\n    \"status\": \"ISSUED\",\n    \"voidReason\": null\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "N2 List Other Income",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/other-income?incomeCategory=SCRAP_SALES",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "other-income"
+              ],
+              "query": [
+                {
+                  "key": "incomeCategory",
+                  "value": "SCRAP_SALES"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "N2 List Other Income - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/other-income?incomeCategory=SCRAP_SALES",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "other-income"
+                  ],
+                  "query": [
+                    {
+                      "key": "incomeCategory",
+                      "value": "SCRAP_SALES"
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": \"{{otherIncomeId}}\",\n        \"ref\": \"RCT-3\",\n        \"kind\": \"RECEIPT\",\n        \"receivedAt\": \"2026-10-01T10:15:30Z\",\n        \"locationId\": \"{{showroomId}}\",\n        \"locationName\": \"Showroom Ikeja\",\n        \"cashAccountId\": null,\n        \"till\": null,\n        \"cashierUserId\": \"{{userId}}\",\n        \"cashier\": \"Alice Admin\",\n        \"customerId\": \"{{dealerId}}\",\n        \"customerName\": \"Okafor & Sons Distribution\",\n        \"channel\": \"CASH\",\n        \"amount\": 18000.0,\n        \"sourceModule\": \"account\",\n        \"sourceType\": \"OTHER_INCOME\",\n        \"sourceRef\": \"WF-2\",\n        \"incomeCategory\": \"SCRAP_SALES\",\n        \"description\": null,\n        \"receivingBankAccountId\": \"{{bankAccountId}}\",\n        \"receivingBank\": \"BA-1 Guaranty Trust Bank\",\n        \"terminalRef\": null,\n        \"payerReference\": \"NIP-000123\",\n        \"confirmationStatus\": \"NOT_REQUIRED\",\n        \"reviewedBy\": null,\n        \"reviewedAt\": null,\n        \"declineNote\": null,\n        \"status\": \"ISSUED\",\n        \"voidReason\": null\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": {\n      \"count\": 1,\n      \"totalByChannel\": {\n        \"CASH\": 18000.0\n      },\n      \"pendingCount\": 0,\n      \"pendingValue\": 0.0\n    },\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "N3 Void Other Income",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/receipts/{{otherIncomeId}}/void",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "receipts",
+                "{{otherIncomeId}}",
+                "void"
+              ]
+            },
+            "description": "Perm accounting.receipts.void. Wallet/deposit fundings and other income are voided here, undoing what they posted (a spent wallet funding can't be: 400 INSUFFICIENT_WALLET_BALANCE); sales and invoice payments are voided in their own modules (409 REVERSE_IN_SOURCE_MODULE).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Recorded twice\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "N3 Void Other Income - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/receipts/{{otherIncomeId}}/void",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "receipts",
+                    "{{otherIncomeId}}",
+                    "void"
+                  ]
+                },
+                "description": "Perm accounting.receipts.void. Wallet/deposit fundings and other income are voided here, undoing what they posted (a spent wallet funding can't be: 400 INSUFFICIENT_WALLET_BALANCE); sales and invoice payments are voided in their own modules (409 REVERSE_IN_SOURCE_MODULE).",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Recorded twice\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{otherIncomeId}}\",\n    \"ref\": \"RCT-3\",\n    \"kind\": \"RECEIPT\",\n    \"receivedAt\": \"2026-10-01T10:15:30Z\",\n    \"locationId\": \"{{showroomId}}\",\n    \"locationName\": \"Showroom Ikeja\",\n    \"cashAccountId\": null,\n    \"till\": null,\n    \"cashierUserId\": \"{{userId}}\",\n    \"cashier\": \"Alice Admin\",\n    \"customerId\": \"{{dealerId}}\",\n    \"customerName\": \"Okafor & Sons Distribution\",\n    \"channel\": \"CASH\",\n    \"amount\": 18000.0,\n    \"sourceModule\": \"account\",\n    \"sourceType\": \"OTHER_INCOME\",\n    \"sourceRef\": \"WF-2\",\n    \"incomeCategory\": \"SCRAP_SALES\",\n    \"description\": null,\n    \"receivingBankAccountId\": \"{{bankAccountId}}\",\n    \"receivingBank\": \"BA-1 Guaranty Trust Bank\",\n    \"terminalRef\": null,\n    \"payerReference\": \"NIP-000123\",\n    \"confirmationStatus\": \"NOT_REQUIRED\",\n    \"reviewedBy\": null,\n    \"reviewedAt\": null,\n    \"declineNote\": null,\n    \"status\": \"VOIDED\",\n    \"voidReason\": \"Recorded twice\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "O1 VAT per Location",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/vat-control/locations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "vat-control",
+                "locations"
+              ]
+            },
+            "description": "Perm accounting.read. Each showroom/factory's VAT in force today and any scheduled change; disabledCount drives the screen's warning.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "O1 VAT per Location - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/vat-control/locations",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "vat-control",
+                    "locations"
+                  ]
+                },
+                "description": "Perm accounting.read. Each showroom/factory's VAT in force today and any scheduled change; disabledCount drives the screen's warning.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"disabledCount\": 0,\n    \"locations\": [\n      {\n        \"locationId\": \"{{showroomId}}\",\n        \"code\": \"SHR-1\",\n        \"name\": \"Showroom Ikeja\",\n        \"type\": \"SHOWROOM\",\n        \"registration\": null,\n        \"rate\": 7.5,\n        \"enabled\": true,\n        \"effectiveFrom\": \"2026-10-12\",\n        \"updatedBy\": \"Alice Admin\",\n        \"scheduled\": null\n      }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "O2 Schedule a VAT Change",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/vat-control/locations/{{showroomId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "vat-control",
+                "locations",
+                "{{showroomId}}"
+              ]
+            },
+            "description": "Perm accounting.vat.manage. effectiveFrom today or later (past periods keep the VAT they were charged at); one change per location per date (409 VAT_SETTING_EXISTS_FOR_DATE). Today's change applies at once; later ones apply on their date. A showroom with collection disabled charges no output VAT.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vatEnabled\": true,\n  \"vatRate\": 10,\n  \"vatRegistrationNumber\": \"NG-VAT-4471029\",\n  \"effectiveFrom\": \"2030-01-01\",\n  \"note\": \"Rate review\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "O2 Schedule a VAT Change - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/vat-control/locations/{{showroomId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "vat-control",
+                    "locations",
+                    "{{showroomId}}"
+                  ]
+                },
+                "description": "Perm accounting.vat.manage. effectiveFrom today or later (past periods keep the VAT they were charged at); one change per location per date (409 VAT_SETTING_EXISTS_FOR_DATE). Today's change applies at once; later ones apply on their date. A showroom with collection disabled charges no output VAT.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"vatEnabled\": true,\n  \"vatRate\": 10,\n  \"vatRegistrationNumber\": \"NG-VAT-4471029\",\n  \"effectiveFrom\": \"2030-01-01\",\n  \"note\": \"Rate review\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"disabledCount\": 0,\n    \"locations\": [\n      {\n        \"locationId\": \"{{showroomId}}\",\n        \"code\": \"SHR-1\",\n        \"name\": \"Showroom Ikeja\",\n        \"type\": \"SHOWROOM\",\n        \"registration\": null,\n        \"rate\": 7.5,\n        \"enabled\": true,\n        \"effectiveFrom\": \"2026-10-12\",\n        \"updatedBy\": \"Alice Admin\",\n        \"scheduled\": {\n          \"rate\": 10.0,\n          \"enabled\": true,\n          \"effectiveFrom\": \"2030-01-01\"\n        }\n      }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "O3 Schedule a VAT Change (error: same date)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/vat-control/locations/{{showroomId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "vat-control",
+                "locations",
+                "{{showroomId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vatEnabled\": true,\n  \"vatRate\": 12,\n  \"effectiveFrom\": \"2030-01-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 409 VAT_SETTING_EXISTS_FOR_DATE', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('VAT_SETTING_EXISTS_FOR_DATE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "O3 Schedule a VAT Change (error: same date) - 409 Conflict",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/vat-control/locations/{{showroomId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "vat-control",
+                    "locations",
+                    "{{showroomId}}"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"vatEnabled\": true,\n  \"vatRate\": 12,\n  \"effectiveFrom\": \"2030-01-01\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"VAT_SETTING_EXISTS_FOR_DATE\",\n    \"message\": \"A VAT setting already takes effect on 2030-01-01 for this location\",\n    \"details\": {\n      \"effectiveFrom\": \"2030-01-01\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "O4 VAT History for a Location",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/account/vat-control/locations/{{showroomId}}/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "account",
+                "vat-control",
+                "locations",
+                "{{showroomId}}",
+                "history"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "O4 VAT History for a Location - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/account/vat-control/locations/{{showroomId}}/history",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "account",
+                    "vat-control",
+                    "locations",
+                    "{{showroomId}}",
+                    "history"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{vatSettingId}}\",\n      \"enabled\": true,\n      \"rate\": 10.0,\n      \"registration\": \"NG-VAT-4471029\",\n      \"effectiveFrom\": \"2030-01-01\",\n      \"note\": \"Rate review\",\n      \"updatedBy\": \"Alice Admin\",\n      \"createdAt\": \"2026-10-01T10:15:30Z\",\n      \"state\": \"Scheduled\"\n    }\n  ]\n}"
+            }
+          ]
         }
       ],
-      "description": "Finance & Accounting (backend docs/in-progress/07): A expense categories, B bank accounts, manual entries and the Bank Statement, C cash accounts (petty cash, tills), cash counts and the Cash Inflow/Outflow Statement, D exchange rates, E global search, F petty cash (fund, pay, history, statement, send to a branch and accept), G running costs (draft, submit, approve, reverse), H funds sent to a branch and confirmed, I cash lodgements, J search. Run after folder 16 (it uses the showroom created there) and 12 (for the today variable). Captured variables: bankChargesCategoryId, expenseCategoryId, bankAccountId, manualEntryRef, pettyCashAccountId, tillAccountId, pettyFundingId, pettyPaymentId, allocationId, runningCostId, runningCostRef, draftCostId, branchBankAccountId, disbursementId, lodgementId."
+      "description": "Finance & Accounting (backend docs/in-progress/07): A expense categories, B bank accounts, manual entries and the Bank Statement, C cash accounts (petty cash, tills), cash counts and the Cash Inflow/Outflow Statement, D exchange rates, E global search, F petty cash (fund, pay, history, statement, send to a branch and accept), G running costs (draft, submit, approve, reverse), H funds sent to a branch and confirmed, I cash lodgements, J search, K wallet funding and the receipt confirmation queue, L OTP-gated wallet withdrawals, M tenderable, N other income, O VAT per location. Run after folder 16 (it uses the showroom created there) and 12 (for the today variable). Captured variables: bankChargesCategoryId, expenseCategoryId, bankAccountId, manualEntryRef, pettyCashAccountId, tillAccountId, pettyFundingId, pettyPaymentId, allocationId, runningCostId, runningCostRef, draftCostId, branchBankAccountId, disbursementId, lodgementId, walletFundingId, fundingReceiptId, pendingReceiptId, withdrawalOtpId, withdrawalOtpCode, withdrawalId, otherIncomeId. Uses dealerId and specialId from folder 12."
     }
   ]
 }

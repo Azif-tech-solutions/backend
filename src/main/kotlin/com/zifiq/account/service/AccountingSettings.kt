@@ -43,10 +43,21 @@ class AccountingSettings : ModuleSettingProvider {
             type = SettingType.BOOLEAN,
             default = true,
         ),
+        SettingDefinition(
+            key = NOTIFY_PER_RECEIPT_CHANNELS,
+            module = "accounting",
+            label = "Receipt channels that notify Accounts one by one (card receipts are too frequent; they show as a count on the dashboard)",
+            type = SettingType.STRING_LIST,
+            default = listOf("FUND_TRANSFER", "CHEQUE"),
+            options = listOf("POS", "FUND_TRANSFER", "CHEQUE"),
+        ),
     )
 
     companion object {
         const val TRACKED_CURRENCIES = "accounting.fx.currencies"
         const val ADMIN_SELF_APPROVAL = "accounting.runningCost.allowSelfApprovalForAdmin"
+        const val NOTIFY_PER_RECEIPT_CHANNELS = "accounting.receipts.notifyPerReceiptChannels"
+        /** Owned by Customers (CustomersSettings); read here by key. */
+        const val WITHDRAWAL_OTP_REQUIRED = "customers.wallet.withdrawalOtpRequired"
     }
 }

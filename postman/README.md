@@ -80,11 +80,13 @@ the later Inventory folders see the default.
 
 ## Testing Finance & Accounting (folder 17)
 
-Folder **17 - Finance & Accounting** (59 requests) covers slices 1 and 2: expense
-categories, bank accounts with manual entries and the Bank Statement, cash
-accounts with cash counts and the Cash Inflow/Outflow Statement, exchange
-rates (A–E), then petty cash, running costs, funds sent to a branch and cash
-lodgements (F–J). Run it after folder 16 (it registers its petty
+Folder **17 - Finance & Accounting** (86 requests) covers the whole module:
+expense categories, bank accounts with manual entries and the Bank Statement,
+cash accounts with cash counts and the Cash Inflow/Outflow Statement and
+exchange rates (A–E); petty cash, running costs, funds sent to a branch and
+cash lodgements (F–J); wallet funding and the receipt confirmation queue,
+OTP-gated withdrawals, tenderable, other income and VAT per location (K–O).
+Sections K and L use the dealer and special customer created in folder 12. Run it after folder 16 (it registers its petty
 cash and till at the showroom created there) in the same run as folder 12,
 which sets the `today` variable.
 
@@ -199,7 +201,7 @@ npx newman run postman/ZifIQ-API.postman_collection.json -e postman/ZifIQ-Dev.po
   --folder "01 - Auth" --folder "12 - Customers"
 ```
 
-A clean full run reports `292/292` requests and `360/360` assertions
+A clean full run reports `319/319` requests and `392/392` assertions
 passing. Several requests are *deliberately* run against a state that makes
 them fail. These are not bugs: they demonstrate real error paths on purpose,
 so each gets its own status + error-code assertion instead of the generic

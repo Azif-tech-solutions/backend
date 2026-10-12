@@ -1,10 +1,10 @@
 # 07 — Finance & Accounting Module
 
-Status: **slices 1 and 2 of 3 implemented** (2026-10-12). Slice 1, the money ledgers: §2.1–2.4, §2.11, §4.1–4.5, §4.16, §5.3, §5.5 (see §12). Slice 2, spending: §2.5–2.6, §2.8–2.9, §4.6–4.9, §4.14–4.15 (see §13). Slice 3 (receipts, tenderable, wallet money, other income, VAT per location) follows. VAT/HSN/ISIC classification in this package is already shipped — V5 — and is extended, not redesigned.
+Status: **implemented** (2026-10-12, in three slices). Slice 1, the money ledgers: §2.1–2.4, §2.11, §4.1–4.5, §4.16, §5.3, §5.5 (see §12). Slice 2, spending: §2.5–2.6, §2.8–2.9, §4.6–4.9, §4.14–4.15 (see §13). Slice 3, money received: §2.7, §2.10, §2.12, §4.10–4.13, §4.17–4.18, §5.1–5.2, §5.4 (see §14). Not yet: `CommissionPayouts` (§5.6, arrives with doc 12) and `AccountQueries` (§5.7, with docs 10 and 13). VAT/HSN/ISIC classification in this package is already shipped — V5 — and is extended, not redesigned.
 Owner package: `com.zifiq.account` (substrate module — exposes `com.zifiq.account.spi`)
 Depends on: `platform`, `common`, `inventory` (OPEN), `customers :: spi`
 Depended on by: `invoicing` (invoice payments post here), `cashier` (every POS payment posts here), `communication` (commission payouts), `history`, `reports`, `dashboard`, `ai`.
-Migration: `V11__finance_accounting_ledgers.sql` (slice 1), `V11_1__finance_accounting_spending.sql` (slice 2); slice 3 adds `V11_2`
+Migrations: `V11__finance_accounting_ledgers.sql` (slice 1), `V11_1__finance_accounting_spending.sql` (slice 2), `V11_2__finance_accounting_receipts.sql` (slice 3)
 Replaces: the mock `AccountService`/`AccountController`/`AccountDto.kt` (`getCashFlow`, `getBankStatement`, `getPettyCashStatement`, `recordOperatingCost`, `registerBankAccount`, `topUpPettyCash`) and `process`'s mock exchange rates.
 
 ---
@@ -899,4 +899,23 @@ What shipped: petty cash fundings, payments, the Payment History and the Petty C
 - **Removed:** `accounting.manage` (catalog and role grants), the mock `/petty-cash/top-up` and `/operating-costs`, the mock `GET /petty-cash/statement` (the real one has the same path), and Process's mock exchange rates (`/api/v1/process/exchange-rates`).
 - **New permissions** (V11_1): `accounting.petty-cash.fund/pay/respond`, `accounting.running-costs.submit/approve`, `accounting.funds.send/confirm`, `accounting.lodgements.manage/confirm`, granted as in §3.
 - Tests: `AccountSpendingIntegrationTest` (8). Newman folder "17 - Finance & Accounting", sections F–J (30 more requests, 59 in all).
+
+## 14. Implementation notes — slice 3 (V11_2)
+
+What shipped: payment receipts with the POS / Fund Transfer / cheque confirmation queue, voiding and the printable receipt; wallet and deposit funding; OTP-gated dealer withdrawals, deposit refunds and company recoveries with review and reversal; Tenderable; other income; VAT Control per location with scheduled changes; the `MoneyLedger`, `Receipts` and `VatRates` spi; the `receipt` global-search provider. Where it differs from the design above:
+
+- **Receipt writing is shared.** `ReceiptWriter` records receipts and refunds and applies the channel rules; documents paid by a receipt react to its approval, decline or void through `ReceiptSourceHandler` (wallet fundings implement it). The spi, the confirmation screen and wallet funding share one code path without a dependency cycle.
+- **POS receipts store their settlement bank when recorded**: the till's `pos_settlement_bank_account_id`, else `receivingBankAccountId`; neither → `400 INVALID_PAYING_ACCOUNT`. Approval credits that account.
+- **Cashier "own" scoping:** callers without `accounting.read` (a cashier holding only `accounting.receipts.read`) see only receipts they took — in lists, the confirmation stats and single reads.
+- **Voids:** here only `WALLET_FUNDING`, `DEPOSIT_FUNDING` and `OTHER_INCOME` receipts; anything else → `409 REVERSE_IN_SOURCE_MODULE` (its module calls `MoneyLedger.voidReceipt`, which also checks the caller owns it). A void undoes the cash or bank posting and the wallet credit (refused when spent: `400 INSUFFICIENT_WALLET_BALANCE`) and marks the registry document voided. A voided cash receipt posts cash OUT with source `RECEIPT` (the cash ledger has no `RECEIPT_REVERSED`); a refund by transfer posts bank `DEPOSIT_REFUND` or `RECEIPT_REVERSED`.
+- **Schema additions:** `payment_receipts` gained `description` and `income_category` (`pr_other_income_category`: required exactly for `OTHER_INCOME`); `wallet_fundings` and `wallet_withdrawals` snapshot `customer_code`; `wallet_fundings.status` gained `VOIDED`; `wallet_withdrawals` gained reversal fields and `ww_payout_account`; `ww_otp_once` makes an OTP authorise one withdrawal only.
+- **OTP context (doc 03 §9.4) now exists:** `otp_challenges.context jsonb`; `POST /api/v1/otp/challenges` accepts `context` (e.g. `{ "amount": 120000, "targetLabel": "…" }`); `OtpChallengeService.verifiedChallenge` returns it. A dealer withdrawal checks target = customer id and `context.amount` = amount (`403 OTP_MISMATCH`), and that the code wasn't used before (`403 OTP_REQUIRED`).
+- **Withdrawal permissions** are checked per reason in the service (the endpoint admits holders of either): dealer reasons need `accounting.wallet.withdraw`, company ones `accounting.wallet.recover`, and `authorisedByUserId` must hold `accounting.wallet.recover`.
+- **Settings:** `customers.wallet.withdrawalOtpRequired` (default true) is registered by Customers, the module it governs; Account reads it by key. `accounting.receipts.notifyPerReceiptChannels` chooses from POS, FUND_TRANSFER, CHEQUE.
+- **Tenderable:** `ftf` includes cheques. Payable and General Report are unpaged; Wallet Funds pages in memory over fundings plus Customers' dealer return credits (`CustomerQueries.ledgerEntries`). Receipt Track is the receipts list.
+- **Other income:** a receipt whose `source_ref` is its own `RCT-n` and `source_id` its own id; `GET /other-income` is the receipts list narrowed to `OTHER_INCOME` (filter `incomeCategory`).
+- **Printable receipt:** A5, template `templates/pdf/receipt.html`, company header and logo from `settings::spi` (`account` now also depends on `settings :: spi`); every receipt is registered as a `RECEIPT` document and linked to its PDF.
+- **VAT per location:** `location_vat_settings` was backfilled from each showroom/factory's current values, effective from its creation date. Scheduled changes are applied by an hourly job (`zifiq.account.vat-cron`, default `0 7 * * * *`); `VatRates.forLocation` reads the settings directly (right even before the job runs), resolves an area to its showroom, and falls back to the location's own values when it has no setting.
+- **New permissions** (V11_2): `accounting.receipts.read/confirm/void/record`, `accounting.wallet.fund/withdraw/recover`, `accounting.tenderable.read`, granted as in §3.
+- Tests: `AccountReceiptsIntegrationTest` (6). Newman folder "17 - Finance & Accounting", sections K–O (27 more requests, 86 in all).
 

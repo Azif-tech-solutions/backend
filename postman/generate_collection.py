@@ -2266,6 +2266,184 @@ ep(A, "E1 Global Search: Bank Entry by Reference", "GET", "/api/v1/search",
           "pm.test('the entry is found', () => pm.expect(json.data.groups.find(g => g.type === 'bank-transaction').hits.length).to.eql(1));"],
    desc="The header search finds a bank entry by its exact reference (perm accounting.read), within the accounts the caller can see.")
 
+RECEIPT = {"id": "{{pendingReceiptId}}", "ref": "RCT-2", "kind": "RECEIPT", "receivedAt": NOW, "locationId": "{{showroomId}}", "locationName": "Showroom Ikeja",
+           "cashAccountId": None, "till": None, "cashierUserId": "{{userId}}", "cashier": "Alice Admin", "customerId": "{{dealerId}}",
+           "customerName": "Okafor & Sons Distribution", "channel": "FUND_TRANSFER", "amount": 200000.00, "sourceModule": "account",
+           "sourceType": "WALLET_FUNDING", "sourceRef": "WF-2", "incomeCategory": None, "description": None, "receivingBankAccountId": "{{bankAccountId}}",
+           "receivingBank": "BA-1 Guaranty Trust Bank", "terminalRef": None, "payerReference": "NIP-000123", "confirmationStatus": "PENDING",
+           "reviewedBy": None, "reviewedAt": None, "declineNote": None, "status": "ISSUED", "voidReason": None}
+WFUND = {"id": "{{walletFundingId}}", "ref": "WF-1", "date": NOW, "customerId": "{{dealerId}}", "customerCode": "DLR-1", "customerName": "Okafor & Sons Distribution",
+         "balanceType": "WALLET", "channel": "CASH", "amount": 75000.00, "locationId": "{{showroomId}}", "locationName": "Showroom Ikeja",
+         "receiptId": "{{fundingReceiptId}}", "receiptRef": "RCT-1", "confirmationStatus": "NOT_REQUIRED", "status": "CONFIRMED", "createdBy": "Alice Admin"}
+WITHDRAWAL = {"id": "{{withdrawalId}}", "ref": "WW-1", "date": "2026-10-12", "customerId": "{{dealerId}}", "customerCode": "DLR-1",
+              "customer": "Okafor & Sons Distribution", "balanceType": "WALLET", "initiatedBy": "DEALER", "reason": "DEALER_REQUEST",
+              "balanceBefore": 275000.00, "amount": 20000.00, "balanceAfter": 255000.00, "payoutKind": "BANK", "payoutAccount": "BA-1",
+              "paidVia": "Transfer to Access 0123456789", "otp": "Verified", "authorisedBy": None, "processedBy": "Alice Admin",
+              "auditStatus": "COMPLETED", "reversalReason": None, "note": "Dealer request by phone", "createdAt": NOW}
+PAGED = lambda items, summary=None: {"data": {"items": items, "page": 0, "size": 50, "totalItems": len(items), "totalPages": 1, "totalIsEstimate": False,
+                                              "facets": None, "summary": summary, "meta": {"appliedFilters": {}, "ignoredQualifiers": [], "suggestions": [], "matches": {}}}}
+
+ep(A, "K1 Fund Dealer Wallet (cash)", "POST", "/api/v1/account/wallet-fundings",
+   body={"customerId": "{{dealerId}}", "balanceType": "WALLET", "channel": "CASH", "amount": 75000, "locationId": "{{showroomId}}", "cashAccountId": "{{tillAccountId}}"},
+   resp={"data": WFUND},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('walletFundingId', json.data.id);", "pm.collectionVariables.set('fundingReceiptId', json.data.receiptId);",
+          "pm.test('cash is credited at once', () => pm.expect(json.data.status).to.eql('CONFIRMED'));"],
+   desc="Perm accounting.wallet.fund (Cashiers have it). WALLET for Authorised Dealers, DEPOSIT for Special Customers (400 BALANCE_TYPE_NOT_ALLOWED otherwise). "
+        "Creates a receipt (RCT-n) and the funding (WF-n). CASH (into cashAccountId, a till or vault at locationId) credits the wallet at once; "
+        "POS, FUND_TRANSFER and CHEQUE wait until Accounts confirms the receipt — a dealer can't spend money that hasn't been verified.")
+
+ep(A, "K2 Fund Dealer Wallet (fund transfer, awaits confirmation)", "POST", "/api/v1/account/wallet-fundings",
+   body={"customerId": "{{dealerId}}", "balanceType": "WALLET", "channel": "FUND_TRANSFER", "amount": 200000, "locationId": "{{showroomId}}",
+         "receivingBankAccountId": "{{bankAccountId}}", "payerReference": "NIP-000123"},
+   resp={"data": dict(WFUND, ref="WF-2", channel="FUND_TRANSFER", amount=200000.00, receiptId="{{pendingReceiptId}}", receiptRef="RCT-2",
+                      confirmationStatus="PENDING", status="AWAITING_CONFIRMATION")},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('pendingReceiptId', json.data.receiptId);",
+          "pm.test('waits for Accounts', () => pm.expect(json.data.status).to.eql('AWAITING_CONFIRMATION'));"])
+
+ep(A, "K3 Fund Wallet (error: not a dealer)", "POST", "/api/v1/account/wallet-fundings",
+   body={"customerId": "{{specialId}}", "balanceType": "WALLET", "channel": "CASH", "amount": 1000, "locationId": "{{showroomId}}", "cashAccountId": "{{tillAccountId}}"},
+   status=400, status_text="Bad Request",
+   resp={"error": {"code": "BALANCE_TYPE_NOT_ALLOWED", "message": "Only Authorised Dealers can fund a wallet directly; other customers' wallets hold return credits", "details": {}}},
+   expect_error={"status": 400, "code": "BALANCE_TYPE_NOT_ALLOWED"},
+   desc="A Special Customer is funded with balanceType DEPOSIT instead.")
+
+ep(A, "K4 Confirmation Queue (POS / Fund Transfer Confirmation)", "GET", "/api/v1/account/receipts",
+   query=[{"key": "confirmationStatus", "value": "PENDING"}, {"key": "channel", "value": "POS,FUND_TRANSFER,CHEQUE"}],
+   resp=PAGED([RECEIPT], {"count": 1, "totalByChannel": {"FUND_TRANSFER": 200000.00}, "pendingCount": 1, "pendingValue": 200000.00}),
+   desc="Perm accounting.receipts.read (a Cashier sees only receipts they took). The screen's Pending tab; Approved and Declined tabs filter confirmationStatus. "
+        "Filters: locationId, cashAccountId, cashierUserId, channel, kind, confirmationStatus, status, sourceType, customerId, receivingBankAccountId, "
+        "incomeCategory, pendingOlderThanHours, amount, from/to (receivedAt); q matches receipt, source (INV-…, TXN-…), payer and terminal references, customer.")
+
+ep(A, "K5 Confirmation Stats", "GET", "/api/v1/account/receipts/confirmation-stats",
+   resp={"data": {"pendingCount": 1, "pendingValue": 200000.00, "approvedToday": 0, "declinedToday": 0}})
+
+ep(A, "K6 Approve Receipt", "POST", "/api/v1/account/receipts/{{pendingReceiptId}}/approve",
+   resp={"data": dict(RECEIPT, confirmationStatus="APPROVED", reviewedBy="Alice Admin", reviewedAt=NOW)},
+   tests=["const json = pm.response.json();", "pm.test('approved', () => pm.expect(json.data.confirmationStatus).to.eql('APPROVED'));"],
+   desc="Perm accounting.receipts.confirm, at the receipt's location. The bank is credited now; for a wallet/deposit funding the wallet is credited too. "
+        "POST …/decline {note} records that nothing arrived: nothing is posted, a funding is never credited, and the cashier is notified.")
+
+ep(A, "K7 Approve Receipt (error: already decided)", "POST", "/api/v1/account/receipts/{{pendingReceiptId}}/approve",
+   status=409, status_text="Conflict",
+   resp={"error": {"code": "ALREADY_DECIDED", "message": "This receipt has already been decided", "details": {}}},
+   expect_error={"status": 409, "code": "ALREADY_DECIDED"})
+
+ep(A, "K8 List Wallet Fundings", "GET", "/api/v1/account/wallet-fundings", query=[{"key": "customerId", "value": "{{dealerId}}"}],
+   resp=PAGED([WFUND], {"total": 275000.00, "confirmed": 275000.00, "awaiting": 0.00}),
+   desc="Perm accounting.read. Filters: customerId, balanceType, status, channel, locationId, amount, from/to.")
+
+ep(A, "K9 Print Receipt", "GET", "/api/v1/account/receipts/{{fundingReceiptId}}/receipt.pdf", pdf=True,
+   desc="A5 receipt with the company header and logo from Settings, the channel, amount and a PAID / PENDING CONFIRMATION / DECLINED / VOID stamp; "
+        "\"DUPLICATE COPY\" once it has been reprinted. Every receipt is also in the document registry (GET /api/v1/documents).")
+
+ep(A, "L1 Request Withdrawal OTP", "POST", "/api/v1/otp/challenges",
+   body={"purpose": "WALLET_WITHDRAWAL", "targetReference": "{{dealerId}}", "context": {"amount": 20000, "targetLabel": "Okafor & Sons Distribution"}},
+   resp={"data": {"challengeId": "{{withdrawalOtpId}}", "status": "AWAITING", "expiresAt": None}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('withdrawalOtpId', json.data.challengeId);"],
+   desc="A dealer-requested withdrawal needs an Admin-issued code for that dealer (targetReference = the customer id) and that exact amount (context.amount).")
+
+ep(A, "L2 Issue Withdrawal OTP (Admin)", "POST", "/api/v1/otp/challenges/{{withdrawalOtpId}}/issue",
+   resp={"data": {"challengeId": "{{withdrawalOtpId}}", "code": "{{withdrawalOtpCode}}", "expiresAt": NOW}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('withdrawalOtpCode', json.data.code);"])
+
+ep(A, "L3 Verify Withdrawal OTP", "POST", "/api/v1/otp/challenges/{{withdrawalOtpId}}/verify",
+   body={"code": "{{withdrawalOtpCode}}"}, resp={"data": {"verified": True}})
+
+ep(A, "L4 Withdraw (error: amount differs from the OTP)", "POST", "/api/v1/account/wallet-withdrawals",
+   body={"customerId": "{{dealerId}}", "balanceType": "WALLET", "reason": "DEALER_REQUEST", "amount": 30000, "payoutKind": "BANK",
+         "payoutBankAccountId": "{{bankAccountId}}", "otpChallengeId": "{{withdrawalOtpId}}", "withdrawalDate": "{{today}}"},
+   status=403, status_text="Forbidden",
+   resp={"error": {"code": "OTP_MISMATCH", "message": "This OTP was issued for a different withdrawal: it was issued for ₦20,000.00, not ₦30,000.00", "details": {}}},
+   expect_error={"status": 403, "code": "OTP_MISMATCH"})
+
+ep(A, "L5 Withdraw From Dealer Wallet", "POST", "/api/v1/account/wallet-withdrawals",
+   body={"customerId": "{{dealerId}}", "balanceType": "WALLET", "reason": "DEALER_REQUEST", "amount": 20000, "payoutKind": "BANK",
+         "payoutBankAccountId": "{{bankAccountId}}", "paidVia": "Transfer to Access 0123456789", "otpChallengeId": "{{withdrawalOtpId}}",
+         "withdrawalDate": "{{today}}", "locationId": "{{showroomId}}", "note": "Dealer request by phone"},
+   resp={"data": WITHDRAWAL},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('withdrawalId', json.data.id);",
+          "pm.test('OTP verified', () => pm.expect(json.data.otp).to.eql('Verified'));"],
+   desc="Perm accounting.wallet.withdraw for DEALER_REQUEST and DEPOSIT_REFUND (money paid out: payoutKind CASH or BANK); accounting.wallet.recover for "
+        "EXCESS_COMMISSION_RECOVERY and OVER_CREDIT_CORRECTION (payoutKind NONE, authorisedByUserId required). A dealer request needs the verified OTP "
+        "(403 OTP_REQUIRED / OTP_MISMATCH), usable once. The balance never goes negative (400 INSUFFICIENT_WALLET_BALANCE). "
+        "\"Settle an outstanding invoice\" is an invoice payment by wallet, not a withdrawal (400 USE_INVOICE_PAYMENT).")
+
+ep(A, "L6 List Wallet Withdrawals", "GET", "/api/v1/account/wallet-withdrawals",
+   resp=PAGED([WITHDRAWAL], {"totalWithdrawn": 20000.00, "dealerInitiated": 20000.00, "companyInitiated": 0.00}),
+   desc="Perm accounting.read. Filters: customerId, reason, initiatedBy, payoutKind, auditStatus, processedBy, otpVerified, amount, from/to.")
+
+ep(A, "L7 Flag Withdrawal for Review", "PUT", "/api/v1/account/wallet-withdrawals/{{withdrawalId}}/audit-status",
+   body={"auditStatus": "UNDER_REVIEW"}, resp={"data": dict(WITHDRAWAL, auditStatus="UNDER_REVIEW")},
+   desc="Perm accounting.wallet.recover. POST …/reverse {reason} credits the balance back and returns the payout.")
+
+ep(A, "L8 Withdraw (error: invoice settlement)", "POST", "/api/v1/account/wallet-withdrawals",
+   body={"customerId": "{{dealerId}}", "balanceType": "WALLET", "reason": "INVOICE_SETTLEMENT", "amount": 1000, "payoutKind": "NONE", "withdrawalDate": "{{today}}"},
+   status=400, status_text="Bad Request",
+   resp={"error": {"code": "USE_INVOICE_PAYMENT", "message": "Settling an invoice from the wallet is an invoice payment (method WALLET), not a withdrawal", "details": {}}},
+   expect_error={"status": 400, "code": "USE_INVOICE_PAYMENT"})
+
+ep(A, "M1 Tenderable: Payable", "GET", "/api/v1/account/tenderable/payable", query=[{"key": "locationId", "value": "{{showroomId}}"}],
+   resp={"data": [{"date": "2026-10-12", "cashierUserId": "{{userId}}", "cashier": "Alice Admin", "ftf": 200000.00, "cash": 75000.00, "pos": 0.00,
+                   "wallet": 0.00, "deposit": 0.00, "refund": 0.00, "total": 275000.00, "pendingConfirmation": 0.00, "declined": 0.00}]},
+   desc="Perm accounting.tenderable.read. One row per cashier per day: ftf (transfers and cheques), cash, pos, wallet, deposit, refund and total. "
+        "Pending and declined receipts are shown apart and never counted in the total.")
+
+ep(A, "M2 Tenderable: General Report", "GET", "/api/v1/account/tenderable/general-report",
+   resp={"data": {"period": {"from": None, "to": None}, "rows": [{"cashierUserId": "{{userId}}", "cashier": "Alice Admin", "daysActive": 1, "ftf": 200000.00,
+                  "cash": 75000.00, "pos": 0.00, "wallet": 0.00, "deposit": 0.00, "refund": 0.00, "total": 275000.00}],
+                  "totals": {"cashierUserId": "00000000-0000-0000-0000-000000000000", "cashier": "All cashiers", "daysActive": 1, "ftf": 200000.00,
+                             "cash": 75000.00, "pos": 0.00, "wallet": 0.00, "deposit": 0.00, "refund": 0.00, "total": 275000.00}}},
+   desc="Per cashier for the period (locationId, from, to), with grand totals. GET /tenderable/receipts is the Receipt Track (the receipts list).")
+
+ep(A, "M3 Tenderable: Wallet Funds", "GET", "/api/v1/account/tenderable/wallet-funds", query=[{"key": "customerId", "value": "{{dealerId}}"}],
+   resp=PAGED([{"ref": "WF-2", "date": NOW, "customerId": "{{dealerId}}", "dealer": "DLR-1 Okafor & Sons Distribution", "method": "Fund transfer",
+                "bank": "BA-1 Guaranty Trust Bank", "amount": 200000.00, "confirmedBy": "Alice Admin", "status": "Confirmed"}],
+              {"total": 275000.00, "confirmed": 275000.00, "awaiting": 0.00}),
+   desc="Dealers' wallet fundings plus the return credits Customers posted for them (method \"Return credit\").")
+
+ep(A, "N1 Record Other Income", "POST", "/api/v1/account/other-income",
+   body={"locationId": "{{showroomId}}", "incomeCategory": "SCRAP_SALES", "channel": "CASH", "amount": 18000, "cashAccountId": "{{tillAccountId}}",
+         "payerName": "Mile 12 scrap dealers", "description": "Sale of damaged pallets", "receivedDate": "{{today}}"},
+   resp={"data": dict(RECEIPT, id="{{otherIncomeId}}", ref="RCT-3", cashAccountId="{{tillAccountId}}", till="TILL-IKJ-01", customerId=None,
+                      customerName="Mile 12 scrap dealers", channel="CASH", amount=18000.00, sourceType="OTHER_INCOME", sourceRef="RCT-3",
+                      incomeCategory="SCRAP_SALES", description="Sale of damaged pallets", receivingBankAccountId=None, receivingBank=None,
+                      payerReference=None, confirmationStatus="NOT_REQUIRED")},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('otherIncomeId', json.data.id);"],
+   desc="Perm accounting.receipts.record. By-product and scrap sales, rent, interest received and other money that isn't a sale, invoice payment or wallet funding. "
+        "incomeCategory BY_PRODUCT_SALES, SCRAP_SALES, RENTAL, INTEREST or OTHER; the usual channel rules apply (POS / transfer / cheque wait for confirmation).")
+
+ep(A, "N2 List Other Income", "GET", "/api/v1/account/other-income", query=[{"key": "incomeCategory", "value": "SCRAP_SALES"}],
+   resp=PAGED([dict(RECEIPT, id="{{otherIncomeId}}", ref="RCT-3", channel="CASH", amount=18000.00, sourceType="OTHER_INCOME", incomeCategory="SCRAP_SALES",
+                    confirmationStatus="NOT_REQUIRED")], {"count": 1, "totalByChannel": {"CASH": 18000.00}, "pendingCount": 0, "pendingValue": 0.00}))
+
+ep(A, "N3 Void Other Income", "POST", "/api/v1/account/receipts/{{otherIncomeId}}/void", body={"reason": "Recorded twice"},
+   resp={"data": dict(RECEIPT, id="{{otherIncomeId}}", ref="RCT-3", channel="CASH", amount=18000.00, sourceType="OTHER_INCOME", incomeCategory="SCRAP_SALES",
+                      confirmationStatus="NOT_REQUIRED", status="VOIDED", voidReason="Recorded twice")},
+   desc="Perm accounting.receipts.void. Wallet/deposit fundings and other income are voided here, undoing what they posted (a spent wallet funding can't be: "
+        "400 INSUFFICIENT_WALLET_BALANCE); sales and invoice payments are voided in their own modules (409 REVERSE_IN_SOURCE_MODULE).")
+
+ep(A, "O1 VAT per Location", "GET", "/api/v1/account/vat-control/locations",
+   resp={"data": {"disabledCount": 0, "locations": [{"locationId": "{{showroomId}}", "code": "SHR-1", "name": "Showroom Ikeja", "type": "SHOWROOM",
+                  "registration": None, "rate": 7.50, "enabled": True, "effectiveFrom": "2026-10-12", "updatedBy": "Alice Admin", "scheduled": None}]}},
+   desc="Perm accounting.read. Each showroom/factory's VAT in force today and any scheduled change; disabledCount drives the screen's warning.")
+
+ep(A, "O2 Schedule a VAT Change", "POST", "/api/v1/account/vat-control/locations/{{showroomId}}",
+   body={"vatEnabled": True, "vatRate": 10, "vatRegistrationNumber": "NG-VAT-4471029", "effectiveFrom": "2030-01-01", "note": "Rate review"},
+   resp={"data": {"disabledCount": 0, "locations": [{"locationId": "{{showroomId}}", "code": "SHR-1", "name": "Showroom Ikeja", "type": "SHOWROOM",
+                  "registration": None, "rate": 7.50, "enabled": True, "effectiveFrom": "2026-10-12", "updatedBy": "Alice Admin",
+                  "scheduled": {"rate": 10.00, "enabled": True, "effectiveFrom": "2030-01-01"}}]}},
+   desc="Perm accounting.vat.manage. effectiveFrom today or later (past periods keep the VAT they were charged at); one change per location per date "
+        "(409 VAT_SETTING_EXISTS_FOR_DATE). Today's change applies at once; later ones apply on their date. A showroom with collection disabled charges no output VAT.")
+
+ep(A, "O3 Schedule a VAT Change (error: same date)", "POST", "/api/v1/account/vat-control/locations/{{showroomId}}",
+   body={"vatEnabled": True, "vatRate": 12, "effectiveFrom": "2030-01-01"}, status=409, status_text="Conflict",
+   resp={"error": {"code": "VAT_SETTING_EXISTS_FOR_DATE", "message": "A VAT setting already takes effect on 2030-01-01 for this location", "details": {"effectiveFrom": "2030-01-01"}}},
+   expect_error={"status": 409, "code": "VAT_SETTING_EXISTS_FOR_DATE"})
+
+ep(A, "O4 VAT History for a Location", "GET", "/api/v1/account/vat-control/locations/{{showroomId}}/history",
+   resp={"data": [{"id": "{{vatSettingId}}", "enabled": True, "rate": 10.00, "registration": "NG-VAT-4471029", "effectiveFrom": "2030-01-01", "note": "Rate review",
+                   "updatedBy": "Alice Admin", "createdAt": NOW, "state": "Scheduled"}]})
+
 def pm_url(path, query):
     full = "{{baseUrl}}" + path
     parts = [p for p in path.split("/") if p]
@@ -2365,10 +2543,12 @@ FOLDER_DESCRIPTIONS = {
         "Finance & Accounting (backend docs/in-progress/07): A expense categories, B bank accounts, manual entries and the Bank Statement, "
         "C cash accounts (petty cash, tills), cash counts and the Cash Inflow/Outflow Statement, D exchange rates, E global search, "
         "F petty cash (fund, pay, history, statement, send to a branch and accept), G running costs (draft, submit, approve, reverse), "
-        "H funds sent to a branch and confirmed, I cash lodgements, J search. "
+        "H funds sent to a branch and confirmed, I cash lodgements, J search, K wallet funding and the receipt confirmation queue, "
+        "L OTP-gated wallet withdrawals, M tenderable, N other income, O VAT per location. "
         "Run after folder 16 (it uses the showroom created there) and 12 (for the today variable). "
         "Captured variables: bankChargesCategoryId, expenseCategoryId, bankAccountId, manualEntryRef, pettyCashAccountId, tillAccountId, pettyFundingId, "
-        "pettyPaymentId, allocationId, runningCostId, runningCostRef, draftCostId, branchBankAccountId, disbursementId, lodgementId."
+        "pettyPaymentId, allocationId, runningCostId, runningCostRef, draftCostId, branchBankAccountId, disbursementId, lodgementId, walletFundingId, "
+        "fundingReceiptId, pendingReceiptId, withdrawalOtpId, withdrawalOtpCode, withdrawalId, otherIncomeId. Uses dealerId and specialId from folder 12."
     ),
     "05 - Settings": (
         "Settings (backend docs/06): A company profile and logo, B onboarding, C module settings, D custom fields, E settings search. "

@@ -24,10 +24,18 @@ class CustomersSettings : ModuleSettingProvider {
             type = SettingType.BOOLEAN,
             default = true,
         ),
+        SettingDefinition(
+            key = WITHDRAWAL_OTP_REQUIRED,
+            module = "customers",
+            label = "Dealer-requested wallet withdrawals need an Admin-issued OTP",
+            type = SettingType.BOOLEAN,
+            default = true,
+        ),
     )
 
     companion object {
         const val CORRESPONDENT_REGIONS = "customers.correspondent.regions"
         const val TEMPORARY_MATCH_BY_PHONE = "customers.temporary.matchByPhone"
+        const val WITHDRAWAL_OTP_REQUIRED = "customers.wallet.withdrawalOtpRequired"
     }
 }
