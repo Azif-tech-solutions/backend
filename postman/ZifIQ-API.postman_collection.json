@@ -2485,7 +2485,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"57856f40-0b2f-40f9-899d-ec2b29812bdc\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"b8c568d8-ffc0-44a2-b165-fff9b34d1676\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -2576,7 +2576,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"d776f9e3-99d6-43b4-87ac-fd30a8b0744d\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"ecb3836c-a541-4ff3-987a-f286d75a7451\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -6632,7 +6632,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": {\n    \"id\": \"{{rawMaterialId}}\",\n    \"locationId\": \"{{factoryId}}\",\n    \"itemType\": \"RAW_MATERIAL\",\n    \"code\": \"ITM-1\",\n    \"name\": \"Cocoa Powder\",\n    \"categoryId\": \"{{categoryId}}\",\n    \"brand\": null,\n    \"unitOfMeasureId\": \"{{unitId}}\",\n    \"reorderLevel\": 10.0,\n    \"barcode\": null,\n    \"landingCost\": 5.0,\n    \"markupCost\": null,\n    \"vatCategoryId\": \"{{standardRateVatCategoryId}}\",\n    \"hsnSectionId\": \"{{hsnSectionId}}\",\n    \"isicSectionId\": \"{{isicSectionId}}\",\n    \"status\": \"ACTIVE\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+              "body": "{\n  \"data\": {\n    \"id\": \"{{rawMaterialId}}\",\n    \"locationId\": \"{{factoryId}}\",\n    \"itemType\": \"RAW_MATERIAL\",\n    \"code\": \"ITM-1\",\n    \"name\": \"Cocoa Powder\",\n    \"categoryId\": \"{{categoryId}}\",\n    \"brand\": null,\n    \"unitOfMeasureId\": \"{{unitId}}\",\n    \"reorderLevel\": 10.0,\n    \"barcode\": null,\n    \"landingCost\": 5.0,\n    \"markupCost\": null,\n    \"vatCategoryId\": \"{{standardRateVatCategoryId}}\",\n    \"hsnSectionId\": \"{{hsnSectionId}}\",\n    \"isicSectionId\": \"{{isicSectionId}}\",\n    \"status\": \"ACTIVE\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\",\n    \"quantityOnHand\": 0.0\n  }\n}"
             }
           ]
         },
@@ -6746,7 +6746,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": {\n    \"id\": \"{{finishedProductId}}\",\n    \"locationId\": \"{{factoryId}}\",\n    \"itemType\": \"FINISHED_PRODUCT\",\n    \"code\": \"ITM-2\",\n    \"name\": \"Premium Blend\",\n    \"categoryId\": null,\n    \"brand\": null,\n    \"unitOfMeasureId\": \"{{unitId}}\",\n    \"reorderLevel\": 5.0,\n    \"barcode\": null,\n    \"landingCost\": null,\n    \"markupCost\": null,\n    \"vatCategoryId\": \"{{standardRateVatCategoryId}}\",\n    \"hsnSectionId\": \"{{hsnSectionId}}\",\n    \"isicSectionId\": \"{{isicSectionId}}\",\n    \"status\": \"ACTIVE\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+              "body": "{\n  \"data\": {\n    \"id\": \"{{finishedProductId}}\",\n    \"locationId\": \"{{factoryId}}\",\n    \"itemType\": \"FINISHED_PRODUCT\",\n    \"code\": \"ITM-2\",\n    \"name\": \"Premium Blend\",\n    \"categoryId\": null,\n    \"brand\": null,\n    \"unitOfMeasureId\": \"{{unitId}}\",\n    \"reorderLevel\": 5.0,\n    \"barcode\": null,\n    \"landingCost\": null,\n    \"markupCost\": null,\n    \"vatCategoryId\": \"{{standardRateVatCategoryId}}\",\n    \"hsnSectionId\": \"{{hsnSectionId}}\",\n    \"isicSectionId\": \"{{isicSectionId}}\",\n    \"status\": \"ACTIVE\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\",\n    \"quantityOnHand\": 0.0\n  }\n}"
             }
           ]
         },
@@ -6773,6 +6773,7 @@
                 }
               ]
             },
+            "description": "The item register for a location. quantityOnHand is the stock at locationId (including its storage areas); without locationId it is the total across every location you can see. Filters: locationId (the items' home location), itemType, status.",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -6790,6 +6791,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('every item carries its quantity on hand', () => json.data.forEach(i => pm.expect(i.quantityOnHand).to.be.a('number')));",
+                  "}",
                   "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
                 ]
               }
@@ -6819,6 +6824,7 @@
                     }
                   ]
                 },
+                "description": "The item register for a location. quantityOnHand is the stock at locationId (including its storage areas); without locationId it is the total across every location you can see. Filters: locationId (the items' home location), itemType, status.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -6840,7 +6846,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{rawMaterialId}}\",\n      \"locationId\": \"{{factoryId}}\",\n      \"itemType\": \"RAW_MATERIAL\",\n      \"code\": \"ITM-1\",\n      \"name\": \"Cocoa Powder\",\n      \"categoryId\": \"{{categoryId}}\",\n      \"brand\": null,\n      \"unitOfMeasureId\": \"{{unitId}}\",\n      \"reorderLevel\": 10.0,\n      \"barcode\": null,\n      \"landingCost\": 5.0,\n      \"markupCost\": null,\n      \"vatCategoryId\": \"{{standardRateVatCategoryId}}\",\n      \"hsnSectionId\": \"{{hsnSectionId}}\",\n      \"isicSectionId\": \"{{isicSectionId}}\",\n      \"status\": \"ACTIVE\",\n      \"createdAt\": \"2026-10-01T10:15:30Z\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{rawMaterialId}}\",\n      \"locationId\": \"{{factoryId}}\",\n      \"itemType\": \"RAW_MATERIAL\",\n      \"code\": \"ITM-1\",\n      \"name\": \"Cocoa Powder\",\n      \"categoryId\": \"{{categoryId}}\",\n      \"brand\": null,\n      \"unitOfMeasureId\": \"{{unitId}}\",\n      \"reorderLevel\": 10.0,\n      \"barcode\": null,\n      \"landingCost\": 5.0,\n      \"markupCost\": null,\n      \"vatCategoryId\": \"{{standardRateVatCategoryId}}\",\n      \"hsnSectionId\": \"{{hsnSectionId}}\",\n      \"isicSectionId\": \"{{isicSectionId}}\",\n      \"status\": \"ACTIVE\",\n      \"createdAt\": \"2026-10-01T10:15:30Z\",\n      \"quantityOnHand\": 0.0\n    }\n  ]\n}"
             }
           ]
         },
@@ -6954,7 +6960,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": {\n    \"id\": \"{{rawMaterialId}}\",\n    \"locationId\": \"{{factoryId}}\",\n    \"itemType\": \"RAW_MATERIAL\",\n    \"code\": \"ITM-1\",\n    \"name\": \"Cocoa Powder\",\n    \"categoryId\": \"{{categoryId}}\",\n    \"brand\": null,\n    \"unitOfMeasureId\": \"{{unitId}}\",\n    \"reorderLevel\": 10.0,\n    \"barcode\": null,\n    \"landingCost\": 5.0,\n    \"markupCost\": null,\n    \"vatCategoryId\": \"{{standardRateVatCategoryId}}\",\n    \"hsnSectionId\": \"{{hsnSectionId}}\",\n    \"isicSectionId\": \"{{isicSectionId}}\",\n    \"status\": \"SUSPENDED\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+              "body": "{\n  \"data\": {\n    \"id\": \"{{rawMaterialId}}\",\n    \"locationId\": \"{{factoryId}}\",\n    \"itemType\": \"RAW_MATERIAL\",\n    \"code\": \"ITM-1\",\n    \"name\": \"Cocoa Powder\",\n    \"categoryId\": \"{{categoryId}}\",\n    \"brand\": null,\n    \"unitOfMeasureId\": \"{{unitId}}\",\n    \"reorderLevel\": 10.0,\n    \"barcode\": null,\n    \"landingCost\": 5.0,\n    \"markupCost\": null,\n    \"vatCategoryId\": \"{{standardRateVatCategoryId}}\",\n    \"hsnSectionId\": \"{{hsnSectionId}}\",\n    \"isicSectionId\": \"{{isicSectionId}}\",\n    \"status\": \"SUSPENDED\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\",\n    \"quantityOnHand\": 0.0\n  }\n}"
             }
           ]
         },

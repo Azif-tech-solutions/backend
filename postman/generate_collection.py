@@ -495,7 +495,7 @@ ep("07 - Inventory Stock", "Register Raw Material", "POST", "/api/v1/inventory/s
                   "name": "Cocoa Powder", "categoryId": "{{categoryId}}", "brand": None, "unitOfMeasureId": "{{unitId}}",
                   "reorderLevel": 10.000, "barcode": None, "landingCost": 5.00, "markupCost": None,
                   "vatCategoryId": "{{standardRateVatCategoryId}}", "hsnSectionId": "{{hsnSectionId}}", "isicSectionId": "{{isicSectionId}}",
-                  "status": "ACTIVE", "createdAt": NOW}},
+                  "status": "ACTIVE", "createdAt": NOW, "quantityOnHand": 0.000}},
    tests=["const json = pm.response.json();", "pm.collectionVariables.set('rawMaterialId', json.data.id);"],
    desc="itemType is one of FINISHED_PRODUCT, RAW_MATERIAL, IN_HOUSE_RECIPE, OUTSOURCED. vatCategoryId/hsnSectionId/isicSectionId are required on every product -- run 04 - VAT Control first (List VAT Categories, List HSN Sections, List ISIC Sections, Select Tenant VAT Categories) to populate these variables. vatCategoryId must be one the active tenant has activated, or this returns 400 VAT_CATEGORY_NOT_ACTIVE.")
 
@@ -508,7 +508,7 @@ ep("07 - Inventory Stock", "Register Finished Product", "POST", "/api/v1/invento
                   "name": "Premium Blend", "categoryId": None, "brand": None, "unitOfMeasureId": "{{unitId}}",
                   "reorderLevel": 5.000, "barcode": None, "landingCost": None, "markupCost": None,
                   "vatCategoryId": "{{standardRateVatCategoryId}}", "hsnSectionId": "{{hsnSectionId}}", "isicSectionId": "{{isicSectionId}}",
-                  "status": "ACTIVE", "createdAt": NOW}},
+                  "status": "ACTIVE", "createdAt": NOW, "quantityOnHand": 0.000}},
    tests=["const json = pm.response.json();", "pm.collectionVariables.set('finishedProductId', json.data.id);"])
 
 ep("07 - Inventory Stock", "List Stock Items", "GET", "/api/v1/inventory/stock-items",
@@ -517,7 +517,11 @@ ep("07 - Inventory Stock", "List Stock Items", "GET", "/api/v1/inventory/stock-i
                    "name": "Cocoa Powder", "categoryId": "{{categoryId}}", "brand": None, "unitOfMeasureId": "{{unitId}}",
                    "reorderLevel": 10.000, "barcode": None, "landingCost": 5.00, "markupCost": None,
                    "vatCategoryId": "{{standardRateVatCategoryId}}", "hsnSectionId": "{{hsnSectionId}}", "isicSectionId": "{{isicSectionId}}",
-                   "status": "ACTIVE", "createdAt": NOW}]})
+                   "status": "ACTIVE", "createdAt": NOW, "quantityOnHand": 0.000}]},
+   tests=["const json = pm.response.json();",
+          "pm.test('every item carries its quantity on hand', () => json.data.forEach(i => pm.expect(i.quantityOnHand).to.be.a('number')));"],
+   desc="The item register for a location. quantityOnHand is the stock at locationId (including its storage areas); without locationId it is "
+        "the total across every location you can see. Filters: locationId (the items' home location), itemType, status.")
 
 ep("07 - Inventory Stock", "Update Stock Item Status", "PUT", "/api/v1/inventory/stock-items/{{rawMaterialId}}/status",
    body={"status": "SUSPENDED"},
@@ -525,7 +529,7 @@ ep("07 - Inventory Stock", "Update Stock Item Status", "PUT", "/api/v1/inventory
                   "name": "Cocoa Powder", "categoryId": "{{categoryId}}", "brand": None, "unitOfMeasureId": "{{unitId}}",
                   "reorderLevel": 10.000, "barcode": None, "landingCost": 5.00, "markupCost": None,
                   "vatCategoryId": "{{standardRateVatCategoryId}}", "hsnSectionId": "{{hsnSectionId}}", "isicSectionId": "{{isicSectionId}}",
-                  "status": "SUSPENDED", "createdAt": NOW}})
+                  "status": "SUSPENDED", "createdAt": NOW, "quantityOnHand": 0.000}})
 
 ep("07 - Inventory Stock", "Reactivate Stock Item", "PUT", "/api/v1/inventory/stock-items/{{rawMaterialId}}/status",
    body={"status": "ACTIVE"},

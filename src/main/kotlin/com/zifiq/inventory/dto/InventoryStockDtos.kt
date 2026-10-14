@@ -54,6 +54,12 @@ data class StockItemSummary(
     val isicSectionId: UUID?,
     val status: String,
     val createdAt: Instant,
+    /**
+     * Stock on hand: at the requested location (including its storage areas) when the list is
+     * filtered by locationId, otherwise across every location the caller can see; for a single
+     * item (register/status change), at its home location.
+     */
+    val quantityOnHand: BigDecimal,
 )
 
 // ---- Stock Refill ----

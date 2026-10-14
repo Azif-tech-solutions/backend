@@ -22,12 +22,15 @@ import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
+import com.zifiq.platform.tenancy.LocationHierarchy
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
+import org.jetbrains.exposed.sql.sum
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
 import org.springframework.stereotype.Service
 
-private fun rowToStockItemSummary(row: ResultRow) = StockItemSummary(
+private fun rowToStockItemSummary(row: ResultRow, quantityOnHand: BigDecimal) = StockItemSummary(
     id = row[StockItemsTable.id].value,
     locationId = row[StockItemsTable.locationId],
     itemType = row[StockItemsTable.itemType],
@@ -45,7 +48,23 @@ private fun rowToStockItemSummary(row: ResultRow) = StockItemSummary(
     isicSectionId = row[StockItemsTable.isicSectionId],
     status = row[StockItemsTable.status],
     createdAt = row[StockItemsTable.createdAt],
+    quantityOnHand = quantityOnHand,
 )
+
+/**
+ * Stock on hand per item, summed over [locationIds] (null = every location). Runs in the caller's
+ * transaction; items with no balance row are absent (treat as zero).
+ */
+private fun quantitiesOnHand(tenantId: UUID, itemIds: Collection<UUID>, locationIds: Collection<UUID>?): Map<UUID, BigDecimal> {
+    if (itemIds.isEmpty()) return emptyMap()
+    val total = StockBalancesTable.quantityOnHand.sum()
+    return StockBalancesTable.select(StockBalancesTable.stockItemId, total)
+        .andWhere { StockBalancesTable.tenantId eq tenantId }
+        .andWhere { StockBalancesTable.stockItemId inList itemIds }
+        .apply { if (locationIds != null) andWhere { StockBalancesTable.locationId inList locationIds } }
+        .groupBy(StockBalancesTable.stockItemId)
+        .associate { it[StockBalancesTable.stockItemId].value to (it[total] ?: BigDecimal.ZERO) }
+}
 
 @Service
 class InventoryStockService(
@@ -69,7 +88,10 @@ class InventoryStockService(
             if (effectiveLocationId != null) query.andWhere { StockItemsTable.locationId inList effectiveLocationId }
             if (itemType != null) query.andWhere { StockItemsTable.itemType eq itemType }
             if (status != null) query.andWhere { StockItemsTable.status eq status }
-            query.orderBy(StockItemsTable.name).map(::rowToStockItemSummary)
+            val rows = query.orderBy(StockItemsTable.name).toList()
+            // At the requested location (and its areas); with no filter, everywhere the caller can see.
+            val quantities = quantitiesOnHand(tenantId, rows.map { it[StockItemsTable.id].value }, effectiveLocationId ?: locationAccessService.allowedLocationIds())
+            rows.map { rowToStockItemSummary(it, quantities[it[StockItemsTable.id].value] ?: BigDecimal.ZERO) }
         }
 
     fun registerStockItem(request: StockItemRequest): StockItemSummary = tenantScopedTransaction.execute {
@@ -112,7 +134,7 @@ class InventoryStockService(
             type = "inventory.stock-item.registered", aggregateType = "stock-item", aggregateId = id, aggregateRef = code,
             summary = "Stock item $code registered — ${request.name.trim()}", payload = mapOf("itemType" to request.itemType), locationId = request.locationId,
         )
-        StockItemsTable.selectAll().andWhere { StockItemsTable.id eq id }.single().let(::rowToStockItemSummary)
+        singleSummary(id)
     }
 
     fun updateStockItemStatus(id: UUID, status: String): StockItemSummary = tenantScopedTransaction.execute {
@@ -129,7 +151,15 @@ class InventoryStockService(
             type = "inventory.stock-item.status-changed", aggregateType = "stock-item", aggregateId = id, aggregateRef = existing[StockItemsTable.code],
             summary = "Stock item ${existing[StockItemsTable.code]} ${status.lowercase()}", payload = mapOf("status" to status), locationId = existing[StockItemsTable.locationId],
         )
-        StockItemsTable.selectAll().andWhere { StockItemsTable.id eq id }.single().let(::rowToStockItemSummary)
+        singleSummary(id)
+    }
+
+    /** One item, with its stock at its home location (and that location's areas). */
+    private fun singleSummary(id: UUID): StockItemSummary {
+        val row = StockItemsTable.selectAll().andWhere { StockItemsTable.id eq id }.single()
+        val home = row[StockItemsTable.locationId]
+        val quantity = quantitiesOnHand(row[StockItemsTable.tenantId].value, listOf(id), locationHierarchy.withAreas(home))[id] ?: BigDecimal.ZERO
+        return rowToStockItemSummary(row, quantity)
     }
 
     private fun requireActiveItem(itemId: UUID): ResultRow {
