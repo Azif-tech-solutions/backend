@@ -56,3 +56,8 @@ zifiq:
     # Separates environments sharing a bucket, e.g. "dev/".
     key-prefix: ${ZIFIQ_STORAGE_KEY_PREFIX:}
     download-url-ttl: ${ZIFIQ_STORAGE_DOWNLOAD_URL_TTL:5m}
+  invoicing:
+    sandbox:
+      # POST /api/v1/invoicing/sandbox/invoices: raise invoices from made-up sales until Sales & POS
+      # (docs/09) exists to issue real ones. Set ZIFIQ_INVOICING_SANDBOX=false to switch it off.
+      enabled: ${ZIFIQ_INVOICING_SANDBOX:true}

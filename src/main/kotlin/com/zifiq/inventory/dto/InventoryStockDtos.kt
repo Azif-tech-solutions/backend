@@ -164,3 +164,25 @@ data class ReOrderRow(
     val quantityOnHand: BigDecimal,
     val reorderLevel: BigDecimal,
 )
+
+// ---- NRS classification (docs/08 §2.1) ----
+
+/** PATCH: an omitted field is unchanged; an empty string clears it. */
+data class StockItemClassificationRequest(
+    @field:jakarta.validation.constraints.Size(max = 10) val hsnCode: String? = null,
+    @field:jakarta.validation.constraints.Size(max = 4) val isicCode: String? = null,
+    @field:jakarta.validation.constraints.Size(max = 10) val nrsUnitCode: String? = null,
+    val isService: Boolean? = null,
+)
+
+data class StockItemClassification(
+    val id: UUID,
+    val code: String,
+    val name: String,
+    val hsnSectionCode: String?,
+    val hsnCode: String?,
+    val isicSectionCode: String?,
+    val isicCode: String?,
+    val nrsUnitCode: String?,
+    val isService: Boolean,
+)

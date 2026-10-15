@@ -90,6 +90,17 @@ Sections K and L use the dealer and special customer created in folder 12. Run i
 cash and till at the showroom created there) in the same run as folder 12,
 which sets the `today` variable.
 
+## Testing Electronic Invoicing (folder 18)
+
+Folder **18 - Electronic Invoicing** (28 requests) covers slice 1: NRS
+classification on a stock item (A), raising invoices (B), history, search,
+detail, PDF and pickers (C), drafts (D), and void and void-and-reissue (E).
+Until Sales & POS exists, invoices are raised through the temporary sandbox
+endpoint `POST /api/v1/invoicing/sandbox/invoices`, which calls the same
+issuing code POS will. It uses the finished product from folder 06, the
+dealer and special customer from folder 12 and the showrooms from folder 16,
+so run it after those in the same run.
+
 ## Testing the Customers module (folder 12)
 
 Folder **12 - Customers** covers every Customers endpoint (64 requests). It
@@ -201,7 +212,7 @@ npx newman run postman/ZifIQ-API.postman_collection.json -e postman/ZifIQ-Dev.po
   --folder "01 - Auth" --folder "12 - Customers"
 ```
 
-A clean full run reports `319/319` requests and `392/392` assertions
+A clean full run reports `347/347` requests and `430/430` assertions
 passing. Several requests are *deliberately* run against a state that makes
 them fail. These are not bugs: they demonstrate real error paths on purpose,
 so each gets its own status + error-code assertion instead of the generic

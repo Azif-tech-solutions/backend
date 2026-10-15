@@ -2448,6 +2448,221 @@ ep(A, "O4 VAT History for a Location", "GET", "/api/v1/account/vat-control/locat
    resp={"data": [{"id": "{{vatSettingId}}", "enabled": True, "rate": 10.00, "registration": "NG-VAT-4471029", "effectiveFrom": "2030-01-01", "note": "Rate review",
                    "updatedBy": "Alice Admin", "createdAt": NOW, "state": "Scheduled"}]})
 
+# ============================== ELECTRONIC INVOICING (docs/08, slice 1) ==============================
+I = "18 - Electronic Invoicing"
+
+INVOICE_LINE = {"id": "6d1f0c2e-1b7a-4a8e-9f61-3d2a1c9b7e01", "lineNo": 1, "stockItemId": "{{finishedProductId}}", "code": "ITM-2", "name": "Citrus Drink 50cl",
+                "quantity": 12.000, "unit": "Cartons", "nrsUnitCode": None, "unitPrice": 4100.00, "discountAmount": 0.00, "discountRate": None,
+                "lineNet": 49200.00, "vatCategory": "STANDARD_RATE", "nrsTaxCategory": "STANDARD_VAT", "vatRate": 7.50, "vatAmount": 3690.00,
+                "lineTotal": 52890.00, "isService": False, "hsnCode": None, "hsnSectionCode": "VI",
+                "productCategory": "Products of the chemical or allied industries", "isicCode": None, "serviceCategory": None}
+
+INVOICE = {"id": "{{invoiceId}}", "number": "INV-1", "status": "ISSUED", "displayStatus": "Issued", "invoiceTypeCode": "381", "invoiceKind": "B2C",
+           "issueDate": "2026-10-15", "issueTime": "11:42:05", "dueDate": "2026-11-14", "paymentTermsDays": 30, "paymentTermsNote": None, "daysOverdue": 0,
+           "issuedBy": "Alice Admin", "issuedAt": NOW, "createdAt": NOW, "showroom": {"id": "{{showroomId}}", "name": "Showroom Ikeja"},
+           "issuer": {"tradingName": "Apex Industries", "legalName": None, "tin": None, "vatRegistrationNumber": None, "nrsBusinessId": None,
+                      "email": None, "phone": "08030000000", "address": "Lagos", "locationName": "Showroom Ikeja", "locationAddress": None},
+           "buyer": {"customerId": "{{dealerId}}", "code": "DLR-1", "name": "Okafor & Sons Distribution", "type": "AUTHORISED_DEALER", "email": None,
+                     "phone": "+2348031234567", "tin": None, "businessDescription": None, "address": None, "stateCode": "NG-LA", "lgaCode": None, "countryCode": "NG"},
+           "lines": [INVOICE_LINE],
+           "totals": {"lineExtension": 49200.00, "discount": 0.00, "vat": 3690.00, "total": 52890.00, "paid": 0.00, "credited": 0.00, "balance": 52890.00,
+                      "pendingConfirmation": 0.00},
+           "vat": {"enabled": True, "rate": 7.50},
+           "linked": {"sourceType": "POS_SALE", "sourceRef": "SBX-1", "proForma": None, "waybills": [], "payments": [], "creditNotes": [],
+                      "reissueOf": None, "replacedBy": None},
+           "delivery": {"status": "No email on file", "lastAttemptAt": None, "recipient": None},
+           "regulatory": {"irn": None, "cryptographicStampId": None, "qrCode": None, "accessPointSubmission": "Not in this phase", "nrsSubmissionStatus": "NOT_SUBMITTED"},
+           "voidReason": None, "voidedBy": None, "voidedAt": None}
+
+INVOICE_ROW = {"id": "{{invoiceId}}", "number": "INV-1", "status": "ISSUED", "displayStatus": "Issued", "issued": "2026-10-15", "due": "2026-11-14",
+               "customerId": "{{dealerId}}", "customer": "Okafor & Sons Distribution", "customerType": "AUTHORISED_DEALER", "locationId": "{{showroomId}}",
+               "showroom": "Showroom Ikeja", "sourceType": "POS_SALE", "source": "POS sale", "sourceRef": "SBX-1", "proForma": None, "waybills": [],
+               "total": 52890.00, "paid": 0.00, "credited": 0.00, "balance": 52890.00, "daysOverdue": 0, "delivery": "No email on file"}
+
+INVOICE_SUMMARY = {"invoicesOnFile": 3, "combinedValue": 105780.00, "outstanding": 105780.00, "overdue": 0.00, "fromProForma": 1, "fromPos": 2, "withWaybills": 0}
+
+SAVE_INVOICE = lambda var: ["const json = pm.response.json();", f"pm.collectionVariables.set('{var}', json.data.id);"]
+
+ep(I, "A1 Get Stock Item Classification", "GET", "/api/v1/inventory/stock-items/{{finishedProductId}}/classification",
+   resp={"data": {"id": "{{finishedProductId}}", "code": "ITM-2", "name": "Citrus Drink 50cl", "hsnSectionCode": "VI", "hsnCode": None,
+                  "isicSectionCode": "C", "isicCode": None, "nrsUnitCode": None, "isService": False}},
+   desc="Perm accounting.vat.manage, inventory.stock.manage or inventory.stock.read. The item's HS and ISIC sections plus the optional granular "
+        "codes that go on NRS invoice lines (docs/08 §2.1).")
+
+ep(I, "A2 Set NRS Unit Code", "PATCH", "/api/v1/inventory/stock-items/{{finishedProductId}}/classification",
+   body={"nrsUnitCode": "10", "isService": False},
+   resp={"data": {"id": "{{finishedProductId}}", "code": "ITM-2", "name": "Citrus Drink 50cl", "hsnSectionCode": "VI", "hsnCode": None,
+                  "isicSectionCode": "C", "isicCode": None, "nrsUnitCode": "10", "isService": False}},
+   desc="Perm accounting.vat.manage or inventory.stock.manage. PATCH: an omitted field is unchanged, \"\" clears it. hsnCode (goods) and isicCode "
+        "(services) are optional because V6 only sample-seeds those lists; an invoice line falls back to the item's section.")
+
+ep(I, "A3 Set HS Code (error: other section)", "PATCH", "/api/v1/inventory/stock-items/{{finishedProductId}}/classification",
+   body={"hsnCode": "0101.21"}, status=400, status_text="Bad Request",
+   resp={"error": {"code": "HSN_SECTION_MISMATCH", "message": "The HS/ISIC code's section must match the item's classification section", "details": {}}},
+   expect_error={"status": 400, "code": "HSN_SECTION_MISMATCH"},
+   desc="0101.21 (live horses) is in HS section I; this item is in section VI.")
+
+ep(I, "B1 Issue Invoice (sandbox POS sale)", "POST", "/api/v1/invoicing/sandbox/invoices",
+   body={"sourceType": "POS_SALE", "locationId": "{{showroomId}}", "customerId": "{{dealerId}}",
+         "lines": [{"stockItemId": "{{finishedProductId}}", "quantity": 12, "unitPrice": 4100}]},
+   resp={"data": INVOICE},
+   tests=SAVE_INVOICE("invoiceId") + ["pm.collectionVariables.set('invoiceNumber', json.data.number);",
+                                      "pm.collectionVariables.set('invoiceSourceRef', json.data.linked.sourceRef);",
+                                      "pm.test('numbered INV-n', () => pm.expect(json.data.number).to.match(/^INV-\\d+$/));",
+                                      "pm.test('total = net + VAT', () => pm.expect(json.data.totals.total).to.eql(json.data.totals.lineExtension + json.data.totals.vat));"],
+   desc="Test support until Sales & POS (docs/09) exists: it assembles the lines and calls the InvoiceIssuer spi, which this endpoint stands in for. "
+        "Perm invoicing.invoice.issue; off when ZIFIQ_INVOICING_SANDBOX=false. sourceRef defaults to SBX-n. "
+        "Issuing assigns the next gap-free INV number in the same transaction, snapshots the company profile, showroom and buyer, and prices VAT per line: "
+        "the showroom's rate for Standard-Rate items while it collects VAT, 0 for zero-rated and exempt items. Each line is rounded on its own and the "
+        "totals are sums of lines. Payment terms default to invoicing.defaultPaymentTermsDays (30).")
+
+ep(I, "B2 Issue Invoice to a Walk-in", "POST", "/api/v1/invoicing/sandbox/invoices",
+   body={"locationId": "{{showroomId}}", "walkInBuyer": {"name": "Ada Obi", "phone": "08031234567", "email": "ada@example.com"},
+         "paymentTermsDays": 0, "lines": [{"stockItemId": "{{finishedProductId}}", "quantity": 2, "unitPrice": 4100, "discountRate": 5}]},
+   resp={"data": dict(INVOICE, id="{{walkInInvoiceId}}", number="INV-2", dueDate="2026-10-15", paymentTermsDays=0,
+                      buyer={"customerId": None, "code": None, "name": "Ada Obi", "type": None, "email": "ada@example.com", "phone": "08031234567", "tin": None,
+                             "businessDescription": None, "address": None, "stateCode": None, "lgaCode": None, "countryCode": "NG"},
+                      lines=[dict(INVOICE_LINE, quantity=2.000, discountAmount=410.00, discountRate=5.0000, lineNet=7790.00, vatAmount=584.25, lineTotal=8374.25)],
+                      totals={"lineExtension": 7790.00, "discount": 410.00, "vat": 584.25, "total": 8374.25, "paid": 0.00, "credited": 0.00, "balance": 8374.25,
+                              "pendingConfirmation": 0.00},
+                      delivery={"status": "Not sent", "lastAttemptAt": None, "recipient": "ada@example.com"})},
+   tests=SAVE_INVOICE("walkInInvoiceId"),
+   desc="Exactly one of customerId or walkInBuyer. A buyer with a TIN makes the invoice B2B, otherwise B2C. "
+        "discountRate (%) is turned into the line's discountAmount; a discount can't exceed the line value.")
+
+ep(I, "B3 Save a Draft (sandbox pro-forma)", "POST", "/api/v1/invoicing/sandbox/invoices",
+   body={"sourceType": "PRO_FORMA", "asDraft": True, "locationId": "{{showroomId}}", "customerId": "{{specialId}}",
+         "lines": [{"stockItemId": "{{finishedProductId}}", "quantity": 20, "unitPrice": 4000}]},
+   resp={"data": dict(INVOICE, id="{{draftInvoiceId}}", number=None, status="DRAFT", displayStatus="Draft", issueDate=None, issueTime=None, dueDate=None,
+                      issuedBy=None, issuedAt=None, linked=dict(INVOICE["linked"], sourceType="PRO_FORMA", sourceRef="SBX-3", proForma="SBX-3"))},
+   tests=SAVE_INVOICE("draftInvoiceId") + ["pm.test('a draft has no number', () => pm.expect(json.data.number).to.eql(null));"],
+   desc="A pro-forma converted to a draft. Drafts carry no number, so discarding one never leaves a gap in the INV sequence.")
+
+ep(I, "B4 Issue (error: not a showroom)", "POST", "/api/v1/invoicing/sandbox/invoices",
+   body={"locationId": "{{factoryId}}", "customerId": "{{dealerId}}", "lines": [{"stockItemId": "{{finishedProductId}}", "quantity": 1, "unitPrice": 4100}]},
+   status=400, status_text="Bad Request",
+   resp={"error": {"code": "INVALID_LOCATION", "message": "Invoices are issued by a showroom", "details": {}}},
+   expect_error={"status": 400, "code": "INVALID_LOCATION"},
+   desc="Invoices are issued by a showroom that is trading: a factory or storage area gives 400 INVALID_LOCATION, a showroom pending opening "
+        "or suspended 409 LOCATION_NOT_TRADING / LOCATION_SUSPENDED.")
+
+ep(I, "B5 Issue (error: discount above line value)", "POST", "/api/v1/invoicing/sandbox/invoices",
+   body={"locationId": "{{showroomId}}", "customerId": "{{dealerId}}",
+         "lines": [{"stockItemId": "{{finishedProductId}}", "quantity": 1, "unitPrice": 4100, "discountAmount": 5000}]},
+   status=400, status_text="Bad Request",
+   resp={"error": {"code": "DISCOUNT_EXCEEDS_LINE", "message": "A line discount can't exceed the line value", "details": {}}},
+   expect_error={"status": 400, "code": "DISCOUNT_EXCEEDS_LINE"})
+
+ep(I, "C1 Invoice History", "GET", "/api/v1/invoicing/invoices", query=[{"key": "facets", "value": "status,sourceType"}],
+   resp=PAGED([INVOICE_ROW], INVOICE_SUMMARY),
+   tests=["const json = pm.response.json();", "pm.test('has the summary header', () => pm.expect(json.data.summary).to.have.property('invoicesOnFile'));"],
+   desc="Perm invoicing.invoice.read; location-scoped (a single-location user never sees another showroom's invoices). status takes DRAFT, ISSUED, "
+        "PARTIALLY_PAID, PAID, OVERDUE, VOID. The derived ones are computed in SQL from payments, credit notes, the due date and invoicing.paidTolerance, "
+        "so they filter, facet and sort like stored columns. Other filters: customerId, customerType, locationId, sourceType, invoiceKind, issueDate/dueDate "
+        "(from, to, period), total, paid, balance, daysOverdue, issuedBy, correspondentId, vatEnabled, hasWaybills, hasReplacement. "
+        "q matches the number (a bare 4031 finds INV-4031), the source/pro-forma reference, buyer name, phone, TIN or e-mail. "
+        "Sort issuedAt (default, newest first), number, total, balance, dueDate, daysOverdue, buyerName.")
+
+ep(I, "C2 Invoice History: Issued & Unpaid", "GET", "/api/v1/invoicing/invoices",
+   query=[{"key": "status", "value": "ISSUED"}, {"key": "customerId", "value": "{{dealerId}}"}], resp=PAGED([INVOICE_ROW], INVOICE_SUMMARY))
+
+ep(I, "C3 Search Invoices (advanced body)", "POST", "/api/v1/invoicing/invoices/search",
+   body={"q": "{{invoiceNumber}}", "filter": {"all": [{"field": "total", "op": "gte", "value": 1000}, {"field": "status", "op": "in", "value": ["ISSUED", "OVERDUE"]}]},
+         "sort": [{"field": "total", "dir": "desc"}], "summary": True},
+   resp=PAGED([INVOICE_ROW], INVOICE_SUMMARY),
+   tests=["const json = pm.response.json();", "pm.test('finds the invoice by number', () => pm.expect(json.data.items[0].id).to.eql(pm.collectionVariables.get('invoiceId')));"])
+
+ep(I, "C4 Invoice Filters", "GET", "/api/v1/invoicing/invoices/filters",
+   resp={"data": {"fields": [{"key": "status", "label": "Status", "type": "ENUM",
+                              "options": [{"value": "DRAFT", "label": "Draft"}, {"value": "ISSUED", "label": "Issued"}, {"value": "PARTIALLY_PAID", "label": "Partially Paid"},
+                                          {"value": "PAID", "label": "Paid"}, {"value": "OVERDUE", "label": "Overdue"}, {"value": "VOID", "label": "Void"}]}]}})
+
+ep(I, "C5 Get Invoice", "GET", "/api/v1/invoicing/invoices/{{invoiceId}}", resp={"data": INVOICE},
+   desc="Lines with their VAT treatment and NRS classification, totals, the issuer and buyer as snapshotted at issue, linked documents (source, "
+        "pro-forma, waybills; payments and credit notes arrive with slice 2) and the reserved NRS identifiers (always null this phase).")
+
+ep(I, "C6 Invoice PDF", "GET", "/api/v1/invoicing/invoices/{{invoiceId}}/invoice.pdf", pdf=True,
+   desc="A4 Tax Invoice rendered from the same data as C5. Drafts and voided invoices are stamped; reprints through the document registry say DUPLICATE COPY. "
+        "Footer: not transmitted to the NRS/FIRS Merchant-Buyer Solution this phase.")
+
+ep(I, "C7 Invoice Picker (open only)", "GET", "/api/v1/invoicing/invoices/lookup",
+   query=[{"key": "customerId", "value": "{{dealerId}}"}, {"key": "openOnly", "value": "true"}],
+   resp={"data": [{"id": "{{invoiceId}}", "number": "INV-1", "customerId": "{{dealerId}}", "customer": "Okafor & Sons Distribution", "issued": "2026-10-15",
+                   "total": 52890.00, "balance": 52890.00, "displayStatus": "Issued", "label": "INV-1 · Okafor & Sons Distribution · ₦52,890.00"}]})
+
+ep(I, "C8 Invoice for a Sale or Pro-forma Reference", "GET", "/api/v1/invoicing/invoices/lookup-source",
+   query=[{"key": "ref", "value": "{{invoiceSourceRef}}"}], resp={"data": INVOICE_ROW},
+   desc="Resolves a TXN-/PF- reference to its invoice: the live one, else the most recent voided one.")
+
+ep(I, "D1 Edit Draft Header", "PUT", "/api/v1/invoicing/invoices/{{draftInvoiceId}}",
+   body={"paymentTermsDays": 14, "paymentTermsNote": "Net 14 days", "buyerEmail": "accounts@gracefoods.ng"},
+   resp={"data": dict(INVOICE, id="{{draftInvoiceId}}", number=None, status="DRAFT", displayStatus="Draft", paymentTermsDays=14, paymentTermsNote="Net 14 days")},
+   desc="Perm invoicing.invoice.issue. Header only: planned issue date, terms, due date, note, buyer e-mail. Lines come from the source (change the pro-forma).")
+
+ep(I, "D2 Issue Draft", "POST", "/api/v1/invoicing/invoices/{{draftInvoiceId}}/issue", body={},
+   resp={"data": dict(INVOICE, id="{{draftInvoiceId}}", number="INV-3", paymentTermsDays=14, paymentTermsNote="Net 14 days", dueDate="2026-10-29")},
+   tests=["const json = pm.response.json();", "pm.test('issued with a number', () => pm.expect(json.data.number).to.match(/^INV-\\d+$/));"],
+   desc="Re-validates as at issue (customer still active, showroom trading, items active), recomputes VAT at the issue date's rate with prices kept, "
+        "assigns the next number. Body optional: issueDate (default today; not in the future or before the source date), paymentTermsDays, dueDate, buyerEmail.")
+
+ep(I, "D3 Issue Draft (error: already issued)", "POST", "/api/v1/invoicing/invoices/{{draftInvoiceId}}/issue", body={},
+   status=409, status_text="Conflict",
+   resp={"error": {"code": "INVOICE_NOT_DRAFT", "message": "This invoice is already issued; only a draft can be changed or issued", "details": {}}},
+   expect_error={"status": 409, "code": "INVOICE_NOT_DRAFT"})
+
+ep(I, "D4 Save Another Draft", "POST", "/api/v1/invoicing/sandbox/invoices",
+   body={"sourceType": "PRO_FORMA", "asDraft": True, "locationId": "{{showroomId}}", "customerId": "{{specialId}}",
+         "lines": [{"stockItemId": "{{finishedProductId}}", "quantity": 5, "unitPrice": 4000}]},
+   resp={"data": dict(INVOICE, id="{{discardDraftId}}", number=None, status="DRAFT", displayStatus="Draft")},
+   tests=SAVE_INVOICE("discardDraftId"))
+
+ep(I, "D5 Discard Draft", "DELETE", "/api/v1/invoicing/invoices/{{discardDraftId}}",
+   resp={"data": {"id": "{{discardDraftId}}", "deleted": True}},
+   desc="Perm invoicing.invoice.issue. The only invoice delete: a draft has no number. Emits invoicing.invoice.discarded, which Sales & POS will use to "
+        "cancel the pro-forma and release its reservation.")
+
+ep(I, "D6 Get Discarded Draft (error: gone)", "GET", "/api/v1/invoicing/invoices/{{discardDraftId}}",
+   status=404, status_text="Not Found", resp={"error": {"code": "INVOICE_NOT_FOUND", "message": "Invoice not found", "details": {}}},
+   expect_error={"status": 404, "code": "INVOICE_NOT_FOUND"})
+
+ep(I, "E1 Void (error: reason too short)", "POST", "/api/v1/invoicing/invoices/{{walkInInvoiceId}}/void", body={"reason": "Wrong"},
+   status=400, status_text="Bad Request",
+   resp={"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"reason": "explain the void in at least 10 characters"}}},
+   expect_error={"status": 400, "code": "VALIDATION_FAILED"})
+
+ep(I, "E2 Void Invoice", "POST", "/api/v1/invoicing/invoices/{{walkInInvoiceId}}/void", body={"reason": "Raised against the wrong sale"},
+   resp={"data": dict(INVOICE, id="{{walkInInvoiceId}}", status="VOID", displayStatus="Void", voidReason="Raised against the wrong sale",
+                      voidedBy="Alice Admin", voidedAt=NOW)},
+   tests=["const json = pm.response.json();", "pm.test('voided', () => pm.expect(json.data.status).to.eql('VOID'));"],
+   desc="Perm invoicing.invoice.void. A reason of 10+ characters. Only while nothing is paid or credited (409 INVOICE_HAS_PAYMENTS: refund or credit first, "
+        "or void and reissue). The invoice is kept, shown as Void with its reason; the registry document is marked voided. Voiding an invoice doesn't reverse "
+        "the sale or its stock (a sale void in Sales & POS does, and voids the invoice through the spi).")
+
+ep(I, "E3 Void Again (error: not issued)", "POST", "/api/v1/invoicing/invoices/{{walkInInvoiceId}}/void", body={"reason": "Raised against the wrong sale"},
+   status=409, status_text="Conflict", resp={"error": {"code": "INVOICE_NOT_ISSUED", "message": "This invoice is not issued", "details": {}}},
+   expect_error={"status": 409, "code": "INVOICE_NOT_ISSUED"})
+
+ep(I, "E4 Void and Reissue to Another Customer", "POST", "/api/v1/invoicing/invoices/{{invoiceId}}/void",
+   body={"reason": "Billed to the wrong customer at the till", "reissue": {"customerId": "{{specialId}}"}},
+   resp={"data": dict(INVOICE, id="{{reissuedInvoiceId}}", number="INV-4",
+                      linked=dict(INVOICE["linked"], reissueOf={"id": "{{invoiceId}}", "number": "INV-1"}))},
+   tests=SAVE_INVOICE("reissuedInvoiceId") + [
+       "pm.test('replacement links back to the voided invoice', () => pm.expect(json.data.linked.reissueOf.id).to.eql(pm.collectionVariables.get('invoiceId')));"],
+   desc="Voids the invoice and issues a replacement for the same sale with a new number; both point at each other (reissueOf / replacedBy). "
+        "reissue takes customerId or walkInBuyer, and buyerEmail. Corrected quantities or prices come from Sales & POS through the spi. "
+        "Returns the replacement.")
+
+ep(I, "E5 Voided Invoices", "GET", "/api/v1/invoicing/invoices/voided",
+   resp=PAGED([{"id": "{{invoiceId}}", "number": "INV-1", "voidReason": "Billed to the wrong customer at the till", "customer": "Okafor & Sons Distribution",
+                "issued": "2026-10-15", "total": 52890.00, "voidedBy": "Alice Admin", "voidedAt": NOW, "replacedById": "{{reissuedInvoiceId}}", "replacedBy": "INV-4"}],
+              {"count": 2, "value": 61264.25}))
+
+ep(I, "E6 Global Search: Invoice", "GET", "/api/v1/search", query=[{"key": "q", "value": "{{invoiceNumber}}"}, {"key": "types", "value": "invoice"}],
+   resp={"data": {"q": "INV-1", "groups": [{"type": "invoice", "label": "Invoices", "hits": [
+       {"type": "invoice", "id": "{{invoiceId}}", "title": "INV-1", "subtitle": "Okafor & Sons Distribution · ₦52,890.00 · Void", "ref": "INV-1",
+        "route": "/invoicing/invoices/{{invoiceId}}"}], "more": False, "moreRoute": "/invoicing/invoices?q=INV-1"}]}},
+   desc="Global search provider invoice (perm invoicing.invoice.read).")
+
 def pm_url(path, query):
     full = "{{baseUrl}}" + path
     parts = [p for p in path.split("/") if p]
@@ -2543,6 +2758,13 @@ def pm_request_item(e, with_examples=True):
     return item
 
 FOLDER_DESCRIPTIONS = {
+    "18 - Electronic Invoicing": (
+        "Electronic Invoicing (backend docs/08), slice 1: A NRS classification on a stock item, B raising invoices through the sandbox endpoint "
+        "(which stands in for Sales & POS until docs/09 exists), C history, search, detail, PDF and pickers, D drafts (edit, issue, discard), "
+        "E void and void-and-reissue, voided list and global search. Payments, credit notes, e-mail delivery, receivables and the Debtors List follow in slice 2. "
+        "Run after folders 06 (factoryId, finishedProductId), 12 (dealerId, specialId) and 16 (showroomId). "
+        "Captured variables: invoiceId, invoiceNumber, invoiceSourceRef, walkInInvoiceId, draftInvoiceId, discardDraftId, reissuedInvoiceId."
+    ),
     "17 - Finance & Accounting": (
         "Finance & Accounting (backend docs/in-progress/07): A expense categories, B bank accounts, manual entries and the Bank Statement, "
         "C cash accounts (petty cash, tills), cash counts and the Cash Inflow/Outflow Statement, D exchange rates, E global search, "
@@ -2605,12 +2827,13 @@ def build_collection():
         "driverId", "transfer2Id", "transfer2LineId", "scheduledPriceId",
         "showroomId", "showroomName", "pendingShowroomId", "floorAreaId", "warehouseAreaId", "coldRoomId", "entryId", "directItemId",
         "outsourcedItemId", "showroomTransferId", "showroomTransferLineId", "returnId", "dealerReturnId",
+        "invoiceId", "invoiceNumber", "invoiceSourceRef", "walkInInvoiceId", "draftInvoiceId", "discardDraftId", "reissuedInvoiceId",
     ]
 
     collection = {
         "info": {
             "name": "ZifIQ Backend API",
-            "description": "Local test collection for the ZifIQ Kotlin/Spring Boot backend -- covers only the modules with real persistence and business logic (Auth, Tenants & Members, OTP, VAT Control, Settings, Factory Setup, Factory Production, Factory Trading, Inventory Stock, Inventory Operations, NRS Reference Data, Customers). The remaining scaffolded modules (Account, AI, Barcode, Cashier, History, Invoicing, Menu, Process Guide, Showroom) still return hardcoded mock data server-side and are intentionally excluded until they're built out for real. Run folders top-to-bottom in order (01 through 12) -- each request's Tests script captures IDs/tokens into collection variables that later requests reuse, so the whole collection can be run end-to-end with Postman's Collection Runner with no manual edits. See docs/00-02 in the backend repo for the full design spec these endpoints implement.",
+            "description": "Test collection for the ZifIQ Kotlin/Spring Boot backend: every module with real persistence and business logic (Auth, Tenants & Members, OTP, VAT Control, Settings, Factory, Inventory, NRS Reference Data, Customers, Documents & Files, Showroom, Finance & Accounting, Electronic Invoicing). Modules still returning mock data (AI, Barcode, Cashier, History, Menu, Process Guide) are left out until they are built. Run the folders top to bottom, 01 through 18: each request's Tests script captures IDs and tokens into collection variables that later requests reuse, so the whole collection runs end to end in the Collection Runner or Newman with no manual edits. See docs/ in the backend repo for the design each module implements.",
             "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
         },
         "auth": BEARER_AUTH,

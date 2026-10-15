@@ -35,6 +35,11 @@ object StockItemsTable : UUIDTable("stock_items") {
     // Null only for DIRECT_ENTRY items (third-party goods entered at a showroom; docs/05 §2.2).
     val hsnSectionId = uuid("hsn_section_id").nullable()
     val isicSectionId = uuid("isic_section_id").nullable()
+    // Granular NRS classification (V12, docs/08 §2.1): all optional — an invoice line falls back to the section.
+    val hsnCode = varchar("hsn_code", 10).nullable()
+    val isicCode = varchar("isic_code", 4).nullable()
+    val nrsUnitCode = varchar("nrs_unit_code", 10).nullable()
+    val isService = bool("is_service").default(false)
     val status = varchar("status", 20).default("ACTIVE")
     val createdByUserId = reference("created_by_user_id", AppUsersTable)
     val createdAt = timestamp("created_at")

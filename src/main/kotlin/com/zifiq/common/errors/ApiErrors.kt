@@ -258,4 +258,12 @@ object ApiErrors {
     fun receiptNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.RECEIPT_NOT_FOUND, "Receipt not found")
     fun walletFundingNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.WALLET_FUNDING_NOT_FOUND, "Wallet funding not found")
     fun withdrawalNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.WITHDRAWAL_NOT_FOUND, "Wallet withdrawal not found")
+    fun invoiceNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.INVOICE_NOT_FOUND, "Invoice not found")
+    fun invoiceNotDraft() = ApiException(HttpStatus.CONFLICT, ErrorCode.INVOICE_NOT_DRAFT, "This invoice is already issued; only a draft can be changed or issued")
+    fun invoiceNotIssued() = ApiException(HttpStatus.CONFLICT, ErrorCode.INVOICE_NOT_ISSUED, "This invoice is not issued")
+    fun invoiceExistsForSource(ref: String) = ApiException(HttpStatus.CONFLICT, ErrorCode.INVOICE_EXISTS_FOR_SOURCE, "A live invoice already exists for $ref", mapOf("sourceRef" to ref))
+    fun invoiceHasPayments() = ApiException(HttpStatus.CONFLICT, ErrorCode.INVOICE_HAS_PAYMENTS, "This invoice has payments or credit notes: refund or credit it first, or void and reissue")
+    fun reissueBelowPaid() = ApiException(HttpStatus.CONFLICT, ErrorCode.REISSUE_BELOW_PAID, "The replacement's total is less than what has already been paid; issue a credit note instead")
+    fun discountExceedsLine() = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.DISCOUNT_EXCEEDS_LINE, "A line discount can't exceed the line value")
+    fun hsnSectionMismatch() = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.HSN_SECTION_MISMATCH, "The HS/ISIC code's section must match the item's classification section")
 }
