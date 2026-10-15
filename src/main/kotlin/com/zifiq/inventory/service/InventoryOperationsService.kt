@@ -133,6 +133,7 @@ class InventoryOperationsService(
 
         request.lines.zip(fromLocations).forEach { (line, from) ->
             StockTransferLinesTable.insert {
+                it[StockTransferLinesTable.tenantId] = actor.tenantId
                 it[StockTransferLinesTable.stockTransferId] = transferId
                 it[StockTransferLinesTable.stockItemId] = line.stockItemId
                 it[StockTransferLinesTable.qtySent] = line.quantity

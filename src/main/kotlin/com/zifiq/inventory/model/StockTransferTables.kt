@@ -25,6 +25,7 @@ object StockTransfersTable : UUIDTable("stock_transfers") {
 }
 
 object StockTransferLinesTable : UUIDTable("stock_transfer_lines") {
+    val tenantId = reference("tenant_id", TenantsTable)
     val stockTransferId = reference("stock_transfer_id", StockTransfersTable)
     val stockItemId = reference("stock_item_id", StockItemsTable)
     val qtySent = decimal("qty_sent", 14, 3)

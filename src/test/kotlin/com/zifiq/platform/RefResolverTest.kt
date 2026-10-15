@@ -21,8 +21,8 @@ import org.springframework.web.bind.annotation.RestController
 
 /**
  * Every record a response points at comes back with its details (`{ id, code, name, … }`), however
- * deeply it is nested — one query per kind — and tenant records only ever under the request's own
- * tenant (row-level security).
+ * deeply it is nested — one query per kind. A record outside the caller's tenant (or a user who isn't
+ * a member of it) is never shown: the field is null, not even the id leaves the server.
  */
 class RefResolverTest : PostgresIntegrationTest() {
     data class Row(val ref: String, val recordedBy: UserRef, val approvedBy: UserRef?, val location: Ref?)
@@ -51,6 +51,7 @@ class RefResolverTest : PostgresIntegrationTest() {
             exec("insert into app_users (id, email, display_name) values ('$alice', 'alice-$alice@test.com', 'Alice Admin'), ('$bola', 'bola-$bola@test.com', 'Bola Cashier')")
             exec("insert into tenants (id, name) values ('$tenantA', 'Ref A'), ('$tenantB', 'Ref B')")
             exec("select set_config('app.tenant_id', '$tenantA', true)")
+            exec("insert into tenant_memberships (tenant_id, user_id) values ('$tenantA', '$alice'), ('$tenantA', '$bola')")
             exec("insert into locations (id, tenant_id, type, code, name, created_by_user_id) values ('$ikeja', '$tenantA', 'SHOWROOM', 'SHR-RF', 'Showroom Ikeja', '$alice')")
         }
         MockMvcBuilders.standaloneSetup(Probe()).setControllerAdvice(RefResolver(database, context, TenantScopedTransaction(database, context), emptyList())).build()
@@ -87,11 +88,13 @@ class RefResolverTest : PostgresIntegrationTest() {
     }
 
     @Test
-    fun `another tenant's record is never described - only its id is echoed`() {
+    fun `another tenant's records and users are never shown - not even their ids`() {
         context.set(tenantB)
         mvc.perform(get("/page"))
-            .andExpect(jsonPath("$.data.items[0].location.id").value(ikeja.toString()))
-            .andExpect(jsonPath("$.data.items[0].location.name").value(nullValue()))
-            .andExpect(jsonPath("$.data.items[0].location.code").value(nullValue()))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.items[0].location").value(nullValue()))
+            .andExpect(jsonPath("$.data.items[0].recordedBy").value(nullValue()))
+            .andExpect(jsonPath("$.data.items[0].approvedBy").value(nullValue()))
+            .andExpect(jsonPath("$.data.items[0].ref").value("R-1"))
     }
 }

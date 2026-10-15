@@ -1,5 +1,9 @@
 package com.zifiq.platform.directory
 
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.JoinType
+import com.zifiq.platform.tenancy.model.TenantMembershipsTable
 import com.fasterxml.jackson.core.JsonGenerator
 import com.fasterxml.jackson.databind.SerializerProvider
 import com.fasterxml.jackson.databind.annotation.JsonSerialize
@@ -56,6 +60,14 @@ enum class RefKind {
 open class Ref(val kind: RefKind, val id: UUID) {
     @Volatile
     internal var details: Map<String, Any?>? = null
+
+    /**
+     * True only once the record was found within the caller's tenant. A reference that isn't —
+     * unresolved, another tenant's record, a user who isn't a member — is written as `null`: not even
+     * its id leaves the server.
+     */
+    @Volatile
+    internal var visible: Boolean = false
 
     /** A detail of the record (e.g. `"name"`), after resolution; null until resolved or for an unknown record. */
     operator fun get(field: String): Any? = details?.get(field)
@@ -115,9 +127,14 @@ fun <R : Ref> ref(id: UUID?, of: (UUID) -> R): R? = id?.let(of)
 
 class RefSerializer : StdSerializer<Ref>(Ref::class.java) {
     override fun serialize(value: Ref, generator: JsonGenerator, provider: SerializerProvider) {
+        val details = value.details
+        if (!value.visible || details == null) {
+            generator.writeNull()
+            return
+        }
         generator.writeStartObject()
         generator.writeStringField("id", value.id.toString())
-        (value.details ?: Refs.emptyDetails(value.kind)).forEach { (field, detail) -> provider.defaultSerializeField(field, detail, generator) }
+        details.forEach { (field, detail) -> provider.defaultSerializeField(field, detail, generator) }
         generator.writeEndObject()
     }
 }
@@ -150,8 +167,20 @@ open class TableRefLoader(
 
 /** Users, locations and roles: the records platform owns. */
 class PlatformRefLoaders {
+    /** Only members of the caller's tenant: app_users is platform-wide, so a user is described only through this tenant's membership. */
     @Component
-    class Users : TableRefLoader(RefKind.USER, AppUsersTable, "name" to AppUsersTable.displayName, "email" to AppUsersTable.email)
+    class Users : RefLoader {
+        override val kind = RefKind.USER
+        override val fields = listOf("name", "email")
+
+        override fun load(ids: Set<UUID>): Map<UUID, Map<String, Any?>> {
+            val tenant = TenantScopedTransaction.rlsTenantOrNull() ?: return emptyMap()
+            return AppUsersTable.join(TenantMembershipsTable, JoinType.INNER, AppUsersTable.id, TenantMembershipsTable.userId)
+                .select(AppUsersTable.id, AppUsersTable.displayName, AppUsersTable.email)
+                .where { (AppUsersTable.id inList ids) and (TenantMembershipsTable.tenantId eq tenant) }
+                .associate { it[AppUsersTable.id].value to mapOf("name" to it[AppUsersTable.displayName], "email" to it[AppUsersTable.email]) }
+        }
+    }
 
     @Component
     class Locations : TableRefLoader(RefKind.LOCATION, LocationsTable, "code" to LocationsTable.code, "name" to LocationsTable.name, "type" to LocationsTable.type)
@@ -182,13 +211,15 @@ object Refs {
 
     internal fun fill(refs: List<Ref>) {
         refs.groupBy { it.kind }.forEach { (kind, ofKind) ->
-            val loader = loaders[kind] ?: return@forEach
-            val found = loader.load(ofKind.map { it.id }.toSet())
-            ofKind.forEach { it.details = found[it.id] ?: emptyDetails(kind) }
+            val loader = loaders[kind]
+            val found = loader?.load(ofKind.map { it.id }.toSet()).orEmpty()
+            ofKind.forEach {
+                val details = found[it.id]
+                it.details = details ?: emptyMap()
+                it.visible = details != null
+            }
         }
     }
-
-    internal fun emptyDetails(kind: RefKind): Map<String, Any?> = loaders[kind]?.fields.orEmpty().associateWith { null }
 
     private val fieldsByClass = ConcurrentHashMap<Class<*>, List<Field>>()
 

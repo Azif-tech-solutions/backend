@@ -72,6 +72,7 @@ class ProductionService(
 
         request.ingredients.forEach { ingredient ->
             RecipeIngredientsTable.insert {
+                it[RecipeIngredientsTable.tenantId] = actor.tenantId
                 it[RecipeIngredientsTable.recipeId] = id
                 it[RecipeIngredientsTable.rawMaterialStockItemId] = ingredient.rawMaterialStockItemId
                 it[RecipeIngredientsTable.quantity] = ingredient.quantity

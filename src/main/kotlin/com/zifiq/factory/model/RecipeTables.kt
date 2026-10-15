@@ -23,6 +23,7 @@ object RecipesTable : UUIDTable("recipes") {
 }
 
 object RecipeIngredientsTable : UUIDTable("recipe_ingredients") {
+    val tenantId = reference("tenant_id", TenantsTable)
     val recipeId = reference("recipe_id", RecipesTable)
     val rawMaterialStockItemId = reference("raw_material_stock_item_id", StockItemsTable)
     val quantity = decimal("quantity", 14, 3)

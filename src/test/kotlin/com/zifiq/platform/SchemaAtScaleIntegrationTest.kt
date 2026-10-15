@@ -52,11 +52,52 @@ class SchemaAtScaleIntegrationTest : PostgresIntegrationTest() {
         val unindexed = transaction(database) {
             TransactionManager.current().exec(
                 "select c.conrelid::regclass || '.' || a.attname from pg_constraint c " +
-                    "join pg_attribute a on a.attrelid = c.conrelid and a.attnum = c.conkey[1] " +
-                    "where c.contype = 'f' and array_length(c.conkey, 1) = 1 and c.confrelid::regclass::text in (${deletable.joinToString { "'$it'" }}) " +
-                    "and not exists (select 1 from pg_index i where i.indrelid = c.conrelid and i.indkey[0] = c.conkey[1])",
+                    // The referencing column is the key's last one (a tenant-scoped key is (tenant_id, x_id), V14_9);
+                    // an index leading with it, or with (tenant_id, it), serves the delete's check.
+                    "join pg_attribute a on a.attrelid = c.conrelid and a.attnum = c.conkey[array_length(c.conkey, 1)] " +
+                    "where c.contype = 'f' and c.confrelid::regclass::text in (${deletable.joinToString { "'$it'" }}) " +
+                    "and not exists (select 1 from pg_index i where i.indrelid = c.conrelid and (i.indkey[0] = a.attnum " +
+                    "or (i.indkey[1] = a.attnum and i.indkey[0] = (select attnum from pg_attribute where attrelid = c.conrelid and attname = 'tenant_id'))))",
             ) { rs -> generateSequence { if (rs.next()) rs.getString(1) else null }.toList() }!!
         }
         assertThat(unindexed).isEmpty()
+    }
+
+    @Test
+    fun `every reference between tenant records is tenant-scoped`() {
+        // A single-column foreign key between two tenant tables would let a row point at another tenant's
+        // record (foreign-key checks ignore row-level security). They are (tenant_id, x_id) keys (V14_9).
+        val crossable = transaction(database) {
+            TransactionManager.current().exec(
+                "select c.conrelid::regclass || '.' || c.conname from pg_constraint c " +
+                    "where c.contype = 'f' and array_length(c.conkey, 1) = 1 and c.confrelid <> 'tenants'::regclass " +
+                    "and exists (select 1 from pg_attribute where attrelid = c.conrelid and attname = 'tenant_id' and not attisdropped) " +
+                    "and exists (select 1 from pg_attribute where attrelid = c.confrelid and attname = 'tenant_id' and not attisdropped)",
+            ) { rs -> generateSequence { if (rs.next()) rs.getString(1) else null }.toList() }!!
+        }
+        assertThat(crossable).describedAs("single-column foreign keys between tenant tables").isEmpty()
+    }
+
+    @Test
+    fun `a row can never point at another tenant's record`() {
+        val user = UUID.randomUUID()
+        val tenantA = UUID.randomUUID()
+        val tenantB = UUID.randomUUID()
+        val showroomOfB = UUID.randomUUID()
+        transaction(database) {
+            exec("insert into app_users (id, email, display_name) values ('$user', 'iso-fk-$user@test.com', 'Iso')")
+            exec("insert into tenants (id, name) values ('$tenantA', 'FK A'), ('$tenantB', 'FK B')")
+            exec("select set_config('app.tenant_id', '$tenantB', true)")
+            exec("insert into locations (id, tenant_id, type, code, name, created_by_user_id) values ('$showroomOfB', '$tenantB', 'SHOWROOM', 'FKB-1', 'B showroom', '$user')")
+        }
+        // Tenant A knows B's location id (say, guessed): pointing a cash account at it is refused by the database.
+        val refused = runCatching {
+            transaction(database) {
+                exec("select set_config('app.tenant_id', '$tenantA', true)")
+                exec("insert into cash_accounts (tenant_id, code, name, kind, location_id, opening_balance, created_by_user_id) " +
+                    "values ('$tenantA', 'TILL-X', 'Cross till', 'TILL', '$showroomOfB', 0, '$user')")
+            }
+        }
+        assertThat(refused.exceptionOrNull()?.message).contains("violates foreign key constraint")
     }
 }

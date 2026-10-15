@@ -47,7 +47,9 @@ class TenantScopedTransaction(
          * `app.tenant_id` by [execute]). In-process caches of tenant data key on this, so a cached
          * value can only ever be served to the tenant whose RLS scope produced it.
          */
-        fun rlsTenant(): UUID = TransactionManager.current().getUserData(RLS_TENANT)
-            ?: throw IllegalStateException("Not inside a tenant-scoped transaction")
+        fun rlsTenant(): UUID = rlsTenantOrNull() ?: throw IllegalStateException("Not inside a tenant-scoped transaction")
+
+        /** The same, or null outside a tenant-scoped transaction. */
+        fun rlsTenantOrNull(): UUID? = TransactionManager.currentOrNull()?.getUserData(RLS_TENANT)
     }
 }
