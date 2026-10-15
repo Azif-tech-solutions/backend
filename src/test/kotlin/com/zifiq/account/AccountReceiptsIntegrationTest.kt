@@ -1,5 +1,6 @@
 package com.zifiq.account
 
+import com.zifiq.common.paging.PageRequest
 import com.zifiq.account.dto.BankAccountRequest
 import com.zifiq.account.dto.CashAccountRequest
 import com.zifiq.account.dto.LocationVatRequest
@@ -334,13 +335,13 @@ class AccountReceiptsIntegrationTest : PostgresIntegrationTest() {
         assertThat(pending.confirmationStatus).isEqualTo("PENDING")
 
         signIn(accounts)
-        val row = tenderable.payable(ikeja, cashier, today, today).single()
+        val row = tenderable.payable(ikeja, cashier, today, today, PageRequest.of(0, 50)).items.single()
         assertThat(row.cash).isEqualByComparingTo("40000")
         assertThat(row.pos).isEqualByComparingTo("0")
         assertThat(row.pendingConfirmation).isEqualByComparingTo("15000")
         assertThat(row.total).isEqualByComparingTo("40000")
         assertThat(tenderable.generalReport(ikeja, today, today).totals!!.total).isEqualByComparingTo("40000")
-        assertThat(tenderable.walletFunds(dealer, today, today, null, null).items.map { it.status }).contains("Confirmed", "Awaiting confirmation")
+        assertThat(tenderable.walletFunds(dealer, today, today, PageRequest.of(0, 50)).items.map { it.status }).contains("Confirmed", "Awaiting confirmation")
 
         val rent = receipts.recordOtherIncome(OtherIncomeRequest(null, "RENTAL", "CASH", BigDecimal("120000"), cashAccountId = vault, payerName = "Tenant: Shop 4",
             description = "October rent", receivedDate = today))

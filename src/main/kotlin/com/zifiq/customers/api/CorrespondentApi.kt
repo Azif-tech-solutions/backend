@@ -1,5 +1,6 @@
 package com.zifiq.customers.api
 
+import com.zifiq.common.paging.PageParams
 import com.zifiq.common.paging.PageResult
 import com.zifiq.customers.dto.CorrespondentAssignRequest
 import com.zifiq.customers.dto.CorrespondentDeassignRequest
@@ -24,7 +25,7 @@ interface CorrespondentApi {
     @Operation(summary = "Register a correspondent (and assign in one step when region + locationId are given)")
     fun create(request: CorrespondentRequest): ApiEnvelope<CorrespondentDetail>
 
-    @Operation(summary = "List correspondents (unpaged): q, status, region, locationId, userLinked, hasCustomers, sort")
+    @Operation(summary = "List correspondents (paged): q, status, region, locationId, userLinked, hasCustomers, sort (name, customerCount, dealerCount, assignedAt)")
     fun list(
         q: String?,
         status: Set<String>?,
@@ -33,7 +34,8 @@ interface CorrespondentApi {
         userLinked: Boolean?,
         hasCustomers: Boolean?,
         sort: String?,
-    ): ApiEnvelope<List<CorrespondentSummary>>
+        paging: PageParams,
+    ): ApiEnvelope<PageResult<CorrespondentSummary>>
 
     @Operation(summary = "Correspondent picker")
     fun lookup(q: String?, assignedOnly: Boolean): ApiEnvelope<List<CorrespondentSummary>>

@@ -1,5 +1,7 @@
 package com.zifiq.account.api
 
+import org.springdoc.core.annotations.ParameterObject
+import com.zifiq.common.paging.PageParams
 import com.zifiq.account.dto.AllocationRejectRequest
 import com.zifiq.account.dto.CashLodgementRequest
 import com.zifiq.account.dto.CashLodgementRow
@@ -84,8 +86,8 @@ interface PettyCashApi {
     @Operation(summary = "Filters the payment history accepts")
     fun paymentHistoryFilters(): ApiEnvelope<FilterMetadata>
 
-    @Operation(summary = "Petty Cash Statement for one box (or every box at a location): ledger, funding, utilisation by category")
-    fun statement(pettyCashAccountId: UUID?, locationId: UUID?, from: LocalDate?, to: LocalDate?): ApiEnvelope<PettyCashStatementView>
+    @Operation(summary = "Petty Cash Statement for one box (or every box at a location): ledger (paged), funding, utilisation by category")
+    fun statement(pettyCashAccountId: UUID?, locationId: UUID?, from: LocalDate?, to: LocalDate?, paging: PageParams): ApiEnvelope<PettyCashStatementView>
 
     @Operation(summary = "Send petty cash to a branch; the source pays now and the branch accepts or rejects")
     fun sendAllocation(request: PettyCashAllocationRequest): ApiEnvelope<PettyCashAllocationRow>
@@ -160,7 +162,8 @@ class PettyCashController(private val pettyCash: PettyCashService) : PettyCashAp
         @RequestParam(required = false) locationId: UUID?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate?,
-    ) = ApiEnvelope(pettyCash.statement(pettyCashAccountId, locationId, from, to))
+        @ParameterObject paging: PageParams,
+    ) = ApiEnvelope(pettyCash.statement(pettyCashAccountId, locationId, from, to, paging.toRequest()))
 
     @PostMapping("/allocations")
     @PreAuthorize(FUND)

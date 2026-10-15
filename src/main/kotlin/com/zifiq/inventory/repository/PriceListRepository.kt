@@ -40,12 +40,13 @@ class PriceListRepository {
 
     fun currentPrices(stockItemIds: Collection<UUID>, date: LocalDate): Map<UUID, PriceRef> {
         if (stockItemIds.isEmpty()) return emptyMap()
+        // DISTINCT ON keeps each item's latest price on or before [date]; older prices never leave the database.
         return StockItemPricesTable.selectAll()
+            .withDistinctOn(StockItemPricesTable.stockItemId)
             .where { (StockItemPricesTable.stockItemId inList stockItemIds) and (StockItemPricesTable.effectiveFrom lessEq date) }
-            .orderBy(StockItemPricesTable.effectiveFrom to SortOrder.DESC)
+            .orderBy(StockItemPricesTable.stockItemId to SortOrder.ASC, StockItemPricesTable.effectiveFrom to SortOrder.DESC, StockItemPricesTable.id to SortOrder.DESC)
             .map(::toRef)
-            .groupBy { it.stockItemId }
-            .mapValues { (_, prices) -> prices.first() }
+            .associateBy { it.stockItemId }
     }
 
     private fun toRef(row: org.jetbrains.exposed.sql.ResultRow) = PriceRef(

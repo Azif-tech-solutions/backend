@@ -42,6 +42,9 @@ class InvoiceSupport(
     /** A balance at or below this counts as settled (absorbs VAT rounding). */
     fun tolerance(): BigDecimal = moduleSettings.decimal(InvoicingSettings.PAID_TOLERANCE)
 
+    /** The derived-status expressions (open, balance, display status, …) for this request's tolerance and date. */
+    internal fun expressions() = InvoiceExpressions(tolerance(), today())
+
     fun defaultTermsDays(): Int = moduleSettings.int(InvoicingSettings.DEFAULT_PAYMENT_TERMS_DAYS)
 
     /** Null = every location; otherwise the user's location (and its areas). */

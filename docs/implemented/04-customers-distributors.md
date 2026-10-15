@@ -555,7 +555,8 @@ Implements doc 03 §4–§5. Every paged list below also accepts `POST <list>/se
 ### Reclassifications — `GET /api/v1/customers/reclassifications` [paged] · list_key `customers.reclassifications`
 `q`: customer code REFERENCE, customer name TRIGRAM, note FULLTEXT. Filters: `customerId`, `direction`, `fromType`, `toType`, `reason`, `status`, `effectiveFrom` range, `authorisedBy`. Facets: `direction`, `status`, `reason`. Sort: `effectiveFrom desc`; `createdAt`.
 
-### Correspondents — `GET /api/v1/customers/correspondents` (unpaged, ≤ a few hundred rows; filters applied server-side) · list_key `customers.correspondents`
+### Correspondents — `GET /api/v1/customers/correspondents` [paged] · list_key `customers.correspondents`
+Each correspondent's `customerCount` / `dealerCount` (live customers, dealers among them) are columns on the correspondent row, kept by a trigger on `customers` (V14_2), so filtering by `hasCustomers` and sorting by the counts never count customers at request time.
 `q`: `code` REFERENCE, `name` TRIGRAM, `phone` PHONE, `email` CODE, `responsibilities` FULLTEXT. Filters: `status` multi, `region` multi, `locationId`, `userLinked`, `hasCustomers`, `assignedAt` range. Facets: `status`, `region`. Sort: `name`; `customerCount`, `dealerCount`, `assignedAt`. `GET /{id}/customers` uses the Customers spec above with `correspondentId` fixed.
 
 ### Dealer categories (unpaged)

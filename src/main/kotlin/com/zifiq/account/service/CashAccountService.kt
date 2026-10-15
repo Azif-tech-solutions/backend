@@ -238,9 +238,12 @@ class CashAccountService(
         val base = (CashTransactionsTable.tenantId eq support.tenantId()) and (CashTransactionsTable.cashAccountId inList scopeIds.ifEmpty { listOf(NO_ACCOUNT) })
         val condition = listOfNotNull(base, flowSearch.condition(parsed), flowFilters.fromParams(params, context), flowFilters.fromJson(request.filter, context)).allOf()!!
 
-        val balance = runningBalance(scopeIds)
-        val joined = CashTransactionsTable.join(CashAccountsTable, JoinType.INNER, CashTransactionsTable.cashAccountId, CashAccountsTable.id)
-        val query = joined.select(CashTransactionsTable.columns + CashAccountsTable.code + CashAccountsTable.name + CashAccountsTable.kind + balance).where(condition)
+        val inPeriod = listOfNotNull(base, from?.let { CashTransactionsTable.entryDate greaterEq it }, to?.let { CashTransactionsTable.entryDate lessEq it }).allOf()!!
+        val opening = from?.let { LedgerSql.cashNet(base and (CashTransactionsTable.entryDate less it)) } ?: BigDecimal.ZERO
+        val balances = LedgerSql.cashBalances(inPeriod)
+        val joined = CashTransactionsTable.join(balances.alias, JoinType.INNER, CashTransactionsTable.id, balances.id)
+            .join(CashAccountsTable, JoinType.INNER, CashTransactionsTable.cashAccountId, CashAccountsTable.id)
+        val query = joined.select(CashTransactionsTable.columns + CashAccountsTable.code + CashAccountsTable.name + CashAccountsTable.kind + balances.column).where(condition)
             .orderBy(CashTransactionsTable.entryDate to SortOrder.ASC, CashTransactionsTable.createdAt to SortOrder.ASC, CashTransactionsTable.id to SortOrder.ASC)
         val pageRequest = PageRequest.of(request.page, request.size)
         val page = Paging.fetch(query, pageRequest) { it }
@@ -255,7 +258,7 @@ class CashAccountService(
                 remark = row[CashTransactionsTable.remark],
                 inflow = if (inflow) row[CashTransactionsTable.amount] else null,
                 outflow = if (inflow) null else row[CashTransactionsTable.amount],
-                balance = Money.round(BigDecimal(row[balance].toString())),
+                balance = balances.after(row, opening),
                 accountCode = row[CashAccountsTable.code],
                 accountName = row[CashAccountsTable.name],
                 kind = row[CashAccountsTable.kind],
@@ -265,7 +268,6 @@ class CashAccountService(
         }
 
         val summary = if (request.summary) {
-            val inPeriod = listOfNotNull(base, from?.let { CashTransactionsTable.entryDate greaterEq it }, to?.let { CashTransactionsTable.entryDate lessEq it }).allOf()!!
             mapOf(
                 "scope" to mapOf(
                     "locationId" to location,
@@ -273,10 +275,10 @@ class CashAccountService(
                     "accounts" to scopeAccounts.map { mapOf("id" to it[CashAccountsTable.id].value, "code" to it[CashAccountsTable.code], "name" to it[CashAccountsTable.name], "kind" to it[CashAccountsTable.kind]) },
                 ),
                 "period" to mapOf("from" to from, "to" to to),
-                "openingCash" to Money.round(from?.let { net(base and (CashTransactionsTable.entryDate less it)) } ?: BigDecimal.ZERO),
+                "openingCash" to Money.round(opening),
                 "totalInflow" to total(inPeriod, "IN"),
                 "totalOutflow" to total(inPeriod, "OUT"),
-                "closingCash" to Money.round(net(if (to == null) base else base and (CashTransactionsTable.entryDate lessEq to))),
+                "closingCash" to LedgerSql.cashNet(if (to == null) base else base and (CashTransactionsTable.entryDate lessEq to)),
             )
         } else null
         page.withItems(items).copy(summary = summary, meta = PageMeta(ignoredQualifiers = parsed.ignoredQualifiers))
@@ -367,18 +369,6 @@ class CashAccountService(
         ),
         qualifiers = flowFilters,
     )
-
-    /** Cash across every account in scope after each row, in date order. */
-    private fun runningBalance(scopeIds: List<UUID>) = RawExpression<BigDecimal>({
-        +"(SELECT coalesce(sum(CASE WHEN c2.direction = 'IN' THEN c2.amount ELSE -c2.amount END), 0) FROM cash_transactions c2 WHERE c2.cash_account_id IN ("
-        scopeIds.ifEmpty { listOf(NO_ACCOUNT) }.forEachIndexed { index, id -> if (index > 0) +", "; registerArgument(org.jetbrains.exposed.sql.UUIDColumnType(), id) }
-        +") AND (c2.entry_date, c2.created_at, c2.id) <= (cash_transactions.entry_date, cash_transactions.created_at, cash_transactions.id))"
-    })
-
-    private fun net(condition: Op<Boolean>): BigDecimal {
-        val net = RawExpression<BigDecimal>({ +"coalesce(sum(CASE WHEN "; +CashTransactionsTable.direction; +" = 'IN' THEN "; +CashTransactionsTable.amount; +" ELSE -"; +CashTransactionsTable.amount; +" END), 0)" })
-        return BigDecimal(CashTransactionsTable.select(net).where(condition).single()[net].toString())
-    }
 
     private fun total(condition: Op<Boolean>, direction: String): BigDecimal {
         val sum = Sum(CashTransactionsTable.amount, DecimalColumnType(16, 2))

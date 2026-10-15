@@ -1,5 +1,6 @@
 package com.zifiq.invoicing.service
 
+import com.zifiq.common.sql.Aggregates
 import com.zifiq.platform.directory.Names
 import com.zifiq.settings.spi.logoDataUri
 import com.zifiq.common.money.Money
@@ -204,12 +205,11 @@ class CreditNoteService(
             )
         }
         val summary = if (request.summary) {
-            val all = joined().select(CreditNotesTable.total, CreditNotesTable.excessRefunded).where(condition).toList()
-            mapOf(
-                "count" to all.size,
-                "total" to all.fold(BigDecimal.ZERO) { s, it -> s + it[CreditNotesTable.total] }.setScale(2),
-                "excessToWallets" to all.fold(BigDecimal.ZERO) { s, it -> s + it[CreditNotesTable.excessRefunded] }.setScale(2),
-            )
+            val count = Aggregates.count()
+            val total = Aggregates.sum(CreditNotesTable.total)
+            val excess = Aggregates.sum(CreditNotesTable.excessRefunded)
+            val row = joined().select(count, total, excess).where(condition).single()
+            mapOf("count" to Aggregates.long(row, count), "total" to Aggregates.money(row, total), "excessToWallets" to Aggregates.money(row, excess))
         } else null
         val facets = request.facets.take(Facets.MAX_FACETS).associateWith { key ->
             if (key != "reason") throw ApiErrors.invalidFilter(key, "Not a facet", listOf("reason"))

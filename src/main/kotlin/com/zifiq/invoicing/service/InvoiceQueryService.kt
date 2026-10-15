@@ -17,6 +17,8 @@ import com.zifiq.common.paging.PageResult
 import com.zifiq.common.search.RawExpression
 import com.zifiq.common.search.RawOp
 import com.zifiq.common.search.allOf
+import com.zifiq.common.search.equalsText
+import com.zifiq.common.sql.Aggregates
 import com.zifiq.customers.spi.CustomerDirectory
 import com.zifiq.invoicing.dto.BuyerBlock
 import com.zifiq.invoicing.dto.CreditNoteRef
@@ -123,8 +125,10 @@ class InvoiceQueryService(
             )
         }
         val summary = if (request.summary) {
-            val all = listing.joined().select(InvoicesTable.taxInclusiveAmount).where(page.condition).toList()
-            mapOf("count" to all.size, "value" to Money.round(all.fold(BigDecimal.ZERO) { s, it -> s + it[InvoicesTable.taxInclusiveAmount] }))
+            val count = Aggregates.count()
+            val value = Aggregates.sum(InvoicesTable.taxInclusiveAmount)
+            val row = listing.joined().select(count, value).where(page.condition).single()
+            mapOf("count" to Aggregates.long(row, count), "value" to Aggregates.money(row, value))
         } else null
         page.result.withItems(items).copy(summary = summary, meta = PageMeta(ignoredQualifiers = page.ignoredQualifiers))
     }
@@ -148,20 +152,19 @@ class InvoiceQueryService(
             )
         }
         val summary = if (request.summary) {
-            val count = RawExpression<Long>({ +"count(*)" })
-            fun countOf(code: String) = RawExpression<Long>({ +"count(*) filter (where "; +d.delivery; +" = '$code')" })
-            val sent = countOf("SENT")
-            val failed = countOf("FAILED")
-            val noEmail = countOf("NO_EMAIL")
-            val noEmailValue = RawExpression<BigDecimal>({ +"coalesce(sum("; +InvoicesTable.taxInclusiveAmount; +") filter (where "; +d.delivery; +" = 'NO_EMAIL'), 0)" })
+            val count = Aggregates.count()
+            val sent = Aggregates.count(d.delivery.equalsText("SENT"))
+            val failed = Aggregates.count(d.delivery.equalsText("FAILED"))
+            val noEmail = Aggregates.count(d.delivery.equalsText("NO_EMAIL"))
+            val noEmailValue = Aggregates.sum(InvoicesTable.taxInclusiveAmount, d.delivery.equalsText("NO_EMAIL"))
             val row = listing.joined().select(count, sent, failed, noEmail, noEmailValue).where(page.condition).single()
-            val issued = (row[count] as Number).toLong()
-            val delivered = (row[sent] as Number).toLong()
+            val issued = Aggregates.long(row, count)
+            val delivered = Aggregates.long(row, sent)
             mapOf(
                 "issued" to issued, "delivered" to delivered,
                 "deliveredPct" to if (issued == 0L) BigDecimal.ZERO.setScale(1) else BigDecimal(delivered * 100).divide(BigDecimal(issued), 1, java.math.RoundingMode.HALF_UP),
-                "failed" to (row[failed] as Number).toLong(), "noEmailCount" to (row[noEmail] as Number).toLong(),
-                "noEmailValue" to Money.round(row[noEmailValue] as BigDecimal),
+                "failed" to Aggregates.long(row, failed), "noEmailCount" to Aggregates.long(row, noEmail),
+                "noEmailValue" to Aggregates.money(row, noEmailValue),
             )
         } else null
         page.result.withItems(items).copy(summary = summary, facets = listing.facets(request, page, d).ifEmpty { null }, meta = PageMeta(ignoredQualifiers = page.ignoredQualifiers))
@@ -251,19 +254,18 @@ class InvoiceQueryService(
     // ---- Internals (caller's transaction) ----
 
     private fun summary(condition: Op<Boolean>, d: InvoiceExpressions): Map<String, Any?> {
-        val count = RawExpression<Long>({ +"count(*)" })
-        val combined = RawExpression<BigDecimal>({ +"coalesce(sum(case when "; +InvoicesTable.status; +" = 'ISSUED' then "; +InvoicesTable.taxInclusiveAmount; +" end), 0)" })
-        val outstanding = RawExpression<BigDecimal>({ +"coalesce(sum(case when "; +d.open; +" then ("; +d.balance; +") end), 0)" })
-        val overdue = RawExpression<BigDecimal>({ +"coalesce(sum(case when ("; +d.displayStatus; +") = 'OVERDUE' then ("; +d.balance; +") end), 0)" })
-        val fromProForma = RawExpression<Long>({ +"count(*) filter (where "; +InvoicesTable.sourceType; +" = 'PRO_FORMA')" })
-        val fromPos = RawExpression<Long>({ +"count(*) filter (where "; +InvoicesTable.sourceType; +" = 'POS_SALE')" })
-        val withWaybills = RawExpression<Long>({ +"count(*) filter (where "; +d.hasWaybills; +")" })
+        val count = Aggregates.count()
+        val combined = Aggregates.sum(InvoicesTable.taxInclusiveAmount, InvoicesTable.status eq "ISSUED")
+        val outstanding = Aggregates.sum(d.balance, d.open)
+        val overdue = Aggregates.sum(d.balance, d.displayStatus.equalsText("OVERDUE"))
+        val fromProForma = Aggregates.count(InvoicesTable.sourceType eq "PRO_FORMA")
+        val fromPos = Aggregates.count(InvoicesTable.sourceType eq "POS_SALE")
+        val withWaybills = Aggregates.count(d.hasWaybills)
         val row = listing.joined().select(count, combined, outstanding, overdue, fromProForma, fromPos, withWaybills).where(condition).single()
-        fun money(e: Expression<*>) = Money.round(row[e] as BigDecimal)
-        fun long(e: Expression<*>) = (row[e] as Number).toLong()
         return mapOf(
-            "invoicesOnFile" to long(count), "combinedValue" to money(combined), "outstanding" to money(outstanding), "overdue" to money(overdue),
-            "fromProForma" to long(fromProForma), "fromPos" to long(fromPos), "withWaybills" to long(withWaybills),
+            "invoicesOnFile" to Aggregates.long(row, count), "combinedValue" to Aggregates.money(row, combined),
+            "outstanding" to Aggregates.money(row, outstanding), "overdue" to Aggregates.money(row, overdue),
+            "fromProForma" to Aggregates.long(row, fromProForma), "fromPos" to Aggregates.long(row, fromPos), "withWaybills" to Aggregates.long(row, withWaybills),
         )
     }
 

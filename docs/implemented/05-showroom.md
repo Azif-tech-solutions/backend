@@ -495,6 +495,7 @@ Query: `groupBy` = `CATEGORY` | `PARENT_PRODUCT` (variants of one product, doc 0
 Stock card rows: every ledger entry of any member item in range: `{ sn, date, itemCode, itemName, remark, qtyIn, qtyOut, qtyRemain }` (running group total). Bin card rows: daily totals `{ sn, date, qtyIn, qtyOut, balance }`. Header: `{ group: { type, id, name, brand }, members: [ { stockItemId, code, name, unit } ], openingBalance, totalReceived, totalIssued, closingBalance }`. Mixed units in one group (e.g. Cartons and Pieces) → `400 GROUP_MIXED_UNITS` with details (summing them would be meaningless). This endpoint also serves Factory's "Stock Card (GP)" / "Bin Card (GP)" nav items (doc 02 shipped only the single-item card).
 
 ### 4.11 Comprehensive Stock Report (showroom) — `GET /api/v1/showroom/reports/comprehensive-stock` [paged]
+Built as one SQL query over the live balances (or the ledger summed to `asAt`) joined to items and locations: filters, `q` (code, barcode, name), sort, paging and the summary totals all run in the database; the selling price is the price in force on `asAt` (`StockSql.retailPriceAt`).
 
 Perm `showroom.stock.read`. Query: `locationId` (showroom; required unless the caller is ALL_LOCATIONS, in which case null = every showroom), `areaId`, `source` (`FINISHED_PRODUCT`|`OUTSOURCED`|`DIRECT_ENTRY`, repeatable), `categoryId`, `asAt` (date; default today), `includeZero` (default false), `q`.
 `asAt = today` reads `stock_balances`; an earlier date sums `stock_ledger_entries` up to that date (same as the Stock Card opening balance).

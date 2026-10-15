@@ -156,4 +156,8 @@ select :'tenant', :'admin', 'INFO', 'Seeded notification ' || g, 'Body ' || g, '
        now() - ((g % 365) || ' days')::interval, case when g % 3 = 0 then null else now() end
 from generate_series(1, 200000) g;
 
+-- The Debtors List read model is kept by an invoices trigger, which replica mode skips: rebuild it
+-- from the seeded invoices (only once V14 has created it).
+select debtor_balances_rebuild(:'tenant') from pg_proc where proname = 'debtor_balances_rebuild';
+
 analyze;

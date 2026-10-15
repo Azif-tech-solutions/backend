@@ -1,5 +1,11 @@
 package com.zifiq.customers.service
 
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
+import org.jetbrains.exposed.sql.Expression
+import com.zifiq.common.paging.PagingPolicy
+import com.zifiq.common.paging.Paging
+import com.zifiq.common.paging.PageResult
+import com.zifiq.common.paging.PageRequest
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.phone.PhoneNumbers
 import com.zifiq.common.search.RawOp
@@ -222,10 +228,14 @@ class CorrespondentService(
     // ---- Reads ----
 
     /**
-     * Unpaged (a tenant has at most a few hundred correspondents). Single-location users see
-     * correspondents reporting to their location plus unassigned ones (who report nowhere yet).
+     * The register, one page at a time; filters, sorting and counts all in SQL (the counts are columns
+     * kept by a trigger, V14_2). Single-location users see correspondents reporting to their location
+     * plus unassigned ones (who report nowhere yet).
      */
-    fun list(q: String?, statuses: Set<String>, regions: Set<String>, locationId: UUID?, userLinked: Boolean?, hasCustomers: Boolean?, sort: String?): List<CorrespondentSummary> = tx.execute {
+    fun list(
+        q: String?, statuses: Set<String>, regions: Set<String>, locationId: UUID?, userLinked: Boolean?, hasCustomers: Boolean?, sort: String?,
+        paging: PageRequest,
+    ): PageResult<CorrespondentSummary> = tx.execute {
         val parsed = searchSpec.parse(q)
         val parts = mutableListOf<Op<Boolean>>(CorrespondentsTable.tenantId eq support.tenantId())
         locationAccess.resolveFilter(locationId)?.let { scoped ->
@@ -235,31 +245,34 @@ class CorrespondentService(
         if (statuses.isNotEmpty()) parts += CorrespondentsTable.status inList statuses.map { it.uppercase() }
         if (regions.isNotEmpty()) parts += CorrespondentsTable.region inList regions
         userLinked?.let { parts += if (it) RawOp { +CorrespondentsTable.userId; +" IS NOT NULL" } else RawOp { +CorrespondentsTable.userId; +" IS NULL" } }
+        hasCustomers?.let { parts += if (it) CorrespondentsTable.customerCount greater 0 else CorrespondentsTable.customerCount eq 0 }
         searchSpec.condition(parsed)?.let { parts += it }
-        val counts = customerCounts()
-
-        val rows = joined.selectAll().where(parts.allOf()!!)
-            .orderBy(*(searchSpec.rank(parsed) + (CorrespondentsTable.name to SortOrder.ASC)).toTypedArray())
-            .map { toSummary(it, counts) }
-            .filter { hasCustomers == null || (it.customerCount > 0) == hasCustomers }
-        when (sort?.substringBefore(',')) {
-            null, "", "name" -> rows
-            "customerCount" -> rows.sortedByDescending { it.customerCount }
-            "dealerCount" -> rows.sortedByDescending { it.dealerCount }
-            "assignedAt" -> rows.sortedByDescending { it.assignedAt }
+        val order: List<Pair<Expression<*>, SortOrder>> = when (sort?.substringBefore(',')) {
+            null, "", "name" -> searchSpec.rank(parsed) + (CorrespondentsTable.name to SortOrder.ASC)
+            "customerCount" -> listOf(CorrespondentsTable.customerCount to SortOrder.DESC, CorrespondentsTable.name to SortOrder.ASC)
+            "dealerCount" -> listOf(CorrespondentsTable.dealerCount to SortOrder.DESC, CorrespondentsTable.name to SortOrder.ASC)
+            "assignedAt" -> listOf(CorrespondentsTable.assignedAt to SortOrder.DESC_NULLS_LAST, CorrespondentsTable.name to SortOrder.ASC)
             else -> throw ApiErrors.invalidSortField(sort, listOf("name", "customerCount", "dealerCount", "assignedAt"))
         }
+        val query = joined.selectAll().where(parts.allOf()!!).orderBy(*(order + (CorrespondentsTable.id to SortOrder.ASC)).toTypedArray())
+        Paging.fetch(query, paging, ::toSummary)
     }
 
     fun getDetail(id: UUID): CorrespondentDetail = tx.execute { detail(id) }
 
     /** Picker: `{ id, code, name, region, status }` rows, assigned only by default. */
     fun lookup(q: String?, assignedOnly: Boolean): List<CorrespondentSummary> =
-        list(q, if (assignedOnly) setOf("ASSIGNED") else emptySet(), emptySet(), null, null, null, null).take(50)
+        list(q, if (assignedOnly) setOf("ASSIGNED") else emptySet(), emptySet(), null, null, null, null, PageRequest.of(0, PagingPolicy.LOOKUP_MAX)).items
 
     // ---- spi ----
 
     override fun get(id: UUID): CorrespondentRef = toRef(row(id))
+
+    override fun names(ids: Collection<UUID>): Map<UUID, String> =
+        if (ids.isEmpty()) emptyMap()
+        else CorrespondentsTable.select(CorrespondentsTable.id, CorrespondentsTable.name)
+            .where { (CorrespondentsTable.tenantId eq tenantContext.requireTenantId()) and (CorrespondentsTable.id inList ids.toSet()) }
+            .associate { it[CorrespondentsTable.id].value to it[CorrespondentsTable.name] }
 
     override fun creditableFor(customerId: UUID): CorrespondentRef? {
         val correspondentId = CustomersTable.select(CustomersTable.correspondentId)
@@ -319,20 +332,7 @@ class CorrespondentService(
                     createdAt = it[CorrespondentAssignmentHistoryTable.createdAt],
                 )
             }
-        return CorrespondentDetail(toSummary(row, customerCounts(id)), history)
-    }
-
-    /** correspondentId → (customers, dealers), live customers only. */
-    private fun customerCounts(only: UUID? = null): Map<UUID, Pair<Long, Long>> {
-        val count = CustomersTable.id.count()
-        var condition = (CustomersTable.tenantId eq support.tenantId()) and (CustomersTable.status neq CustomerStatus.REMOVED.name) and
-            RawOp { +CustomersTable.correspondentId; +" IS NOT NULL" }
-        only?.let { condition = condition and (CustomersTable.correspondentId eq it) }
-        val rows = CustomersTable.select(CustomersTable.correspondentId, CustomersTable.type, count).where(condition)
-            .groupBy(CustomersTable.correspondentId, CustomersTable.type).toList()
-        return rows.groupBy { it[CustomersTable.correspondentId]!! }.mapValues { (_, group) ->
-            group.sumOf { it[count] } to group.filter { it[CustomersTable.type] == CustomerType.AUTHORISED_DEALER.name }.sumOf { it[count] }
-        }
+        return CorrespondentDetail(toSummary(row), history)
     }
 
     private fun history(id: UUID, action: String, region: String?, locationId: UUID?, effectiveFrom: LocalDate, note: String?) {
@@ -367,11 +367,9 @@ class CorrespondentService(
         )
     }
 
-    private fun toSummary(row: ResultRow, counts: Map<UUID, Pair<Long, Long>>): CorrespondentSummary {
-        val id = row[CorrespondentsTable.id].value
-        val (customerCount, dealerCount) = counts[id] ?: (0L to 0L)
+    private fun toSummary(row: ResultRow): CorrespondentSummary {
         return CorrespondentSummary(
-            id = id,
+            id = row[CorrespondentsTable.id].value,
             code = row[CorrespondentsTable.code],
             name = row[CorrespondentsTable.name],
             phone = row[CorrespondentsTable.phone],
@@ -381,8 +379,8 @@ class CorrespondentService(
             locationName = row.getOrNull(LocationsTable.name),
             status = row[CorrespondentsTable.status],
             assignedAt = row[CorrespondentsTable.assignedAt],
-            customerCount = customerCount,
-            dealerCount = dealerCount,
+            customerCount = row[CorrespondentsTable.customerCount].toLong(),
+            dealerCount = row[CorrespondentsTable.dealerCount].toLong(),
             responsibilities = row[CorrespondentsTable.responsibilities],
             userLinked = row[CorrespondentsTable.userId] != null,
         )

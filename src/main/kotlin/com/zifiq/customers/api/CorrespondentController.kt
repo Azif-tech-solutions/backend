@@ -1,5 +1,7 @@
 package com.zifiq.customers.api
 
+import org.springdoc.core.annotations.ParameterObject
+import com.zifiq.common.paging.PageParams
 import com.zifiq.common.filter.ListSearchRequest
 import com.zifiq.common.paging.PageResult
 import com.zifiq.customers.dto.CorrespondentAssignRequest
@@ -52,8 +54,9 @@ class CorrespondentController(
         @RequestParam(required = false) userLinked: Boolean?,
         @RequestParam(required = false) hasCustomers: Boolean?,
         @RequestParam(required = false) sort: String?,
-    ): ApiEnvelope<List<CorrespondentSummary>> =
-        ApiEnvelope(correspondentService.list(q, status.orEmpty(), region.orEmpty(), locationId, userLinked, hasCustomers, sort))
+        @ParameterObject paging: PageParams,
+    ): ApiEnvelope<PageResult<CorrespondentSummary>> =
+        ApiEnvelope(correspondentService.list(q, status.orEmpty(), region.orEmpty(), locationId, userLinked, hasCustomers, sort, paging.toRequest()))
 
     @GetMapping("/lookup")
     @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'customers.read')")

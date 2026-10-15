@@ -1,5 +1,12 @@
 package com.zifiq.account.service
 
+import org.jetbrains.exposed.sql.Op
+import org.jetbrains.exposed.sql.JoinType
+import org.jetbrains.exposed.sql.Expression
+import com.zifiq.platform.identity.model.AppUsersTable
+import com.zifiq.common.paging.Paging
+import com.zifiq.common.search.RawExpression
+import com.zifiq.common.sql.Aggregates
 import com.zifiq.platform.directory.Names
 import com.zifiq.account.spi.Channel
 import com.zifiq.common.money.Money
@@ -71,49 +78,63 @@ class TenderableService(
         val total: BigDecimal get() = ftf + cash + pos + wallet + deposit - refund
     }
 
-    /** One row per cashier per day. */
-    fun payable(locationId: UUID?, cashierUserId: UUID?, from: LocalDate?, to: LocalDate?): List<TenderablePayableRow> = tx.execute {
-        val zone = support.moduleSettings().zone()
-        val rows = receipts(locationId, cashierUserId, from, to)
-        val names = Names.users(rows.map { it[PaymentReceiptsTable.cashierUserId] })
-        rows.groupBy { LocalDate.ofInstant(it[PaymentReceiptsTable.receivedAt], zone) to it[PaymentReceiptsTable.cashierUserId] }
-            .map { (key, group) ->
-                val t = takings(group)
-                TenderablePayableRow(key.first, key.second, names[key.second], t.ftf, t.cash, t.pos, t.wallet, t.deposit, t.refund, Money.round(t.total), t.pending, t.declined)
-            }
-            .sortedWith(compareByDescending<TenderablePayableRow> { it.date }.thenBy { it.cashier ?: "" })
+    /** One row per cashier per day, newest day first, a page at a time; every total is an SQL aggregate. */
+    fun payable(locationId: UUID?, cashierUserId: UUID?, from: LocalDate?, to: LocalDate?, paging: PageRequest): PageResult<TenderablePayableRow> = tx.execute {
+        val t = TakingsColumns()
+        val day = day()
+        val query = PaymentReceiptsTable.join(AppUsersTable, JoinType.LEFT, PaymentReceiptsTable.cashierUserId, AppUsersTable.id)
+            .select(listOf(day, PaymentReceiptsTable.cashierUserId, AppUsersTable.displayName) + t.all)
+            .where(receipts(locationId, cashierUserId, from, to))
+            .groupBy(day, PaymentReceiptsTable.cashierUserId, AppUsersTable.displayName)
+            .orderBy(day to SortOrder.DESC, AppUsersTable.displayName to SortOrder.ASC_NULLS_LAST, PaymentReceiptsTable.cashierUserId to SortOrder.ASC)
+        Paging.fetch(query, paging) { row ->
+            val k = t.read(row)
+            TenderablePayableRow(LocalDate.parse(row[day]), row[PaymentReceiptsTable.cashierUserId], row[AppUsersTable.displayName],
+                k.ftf, k.cash, k.pos, k.wallet, k.deposit, k.refund, Money.round(k.total), k.pending, k.declined)
+        }
     }
 
-    /** Per cashier for the period, with grand totals. */
+    /** Per cashier for the period, with grand totals: two aggregate queries. */
     fun generalReport(locationId: UUID?, from: LocalDate?, to: LocalDate?): TenderableGeneralReport = tx.execute {
-        val zone = support.moduleSettings().zone()
-        val rows = receipts(locationId, null, from, to)
-        val names = Names.users(rows.map { it[PaymentReceiptsTable.cashierUserId] })
-        val perCashier = rows.groupBy { it[PaymentReceiptsTable.cashierUserId] }.map { (cashier, group) ->
-            val t = takings(group)
-            TenderableGeneralRow(cashier, names[cashier], group.map { LocalDate.ofInstant(it[PaymentReceiptsTable.receivedAt], zone) }.distinct().size,
-                t.ftf, t.cash, t.pos, t.wallet, t.deposit, t.refund, Money.round(t.total))
-        }.sortedBy { it.cashier ?: "" }
-        val all = takings(rows)
-        val totals = if (rows.isEmpty()) null else TenderableGeneralRow(UUID(0, 0), "All cashiers",
-            rows.map { LocalDate.ofInstant(it[PaymentReceiptsTable.receivedAt], zone) }.distinct().size,
-            all.ftf, all.cash, all.pos, all.wallet, all.deposit, all.refund, Money.round(all.total))
+        val t = TakingsColumns()
+        val days = RawExpression<Long>({ +"count(distinct "; +day(); +")" })
+        val count = Aggregates.count()
+        val condition = receipts(locationId, null, from, to)
+        val perCashier = PaymentReceiptsTable.join(AppUsersTable, JoinType.LEFT, PaymentReceiptsTable.cashierUserId, AppUsersTable.id)
+            .select(listOf(PaymentReceiptsTable.cashierUserId, AppUsersTable.displayName, days) + t.all)
+            .where(condition)
+            .groupBy(PaymentReceiptsTable.cashierUserId, AppUsersTable.displayName)
+            .orderBy(AppUsersTable.displayName to SortOrder.ASC_NULLS_FIRST, PaymentReceiptsTable.cashierUserId to SortOrder.ASC)
+            .map { row ->
+                val k = t.read(row)
+                TenderableGeneralRow(row[PaymentReceiptsTable.cashierUserId], row[AppUsersTable.displayName], Aggregates.long(row, days).toInt(),
+                    k.ftf, k.cash, k.pos, k.wallet, k.deposit, k.refund, Money.round(k.total))
+            }
+        val all = PaymentReceiptsTable.select(listOf(count, days) + t.all).where(condition).single()
+        val totals = if (Aggregates.long(all, count) == 0L) null else t.read(all).let { k ->
+            TenderableGeneralRow(UUID(0, 0), "All cashiers", Aggregates.long(all, days).toInt(), k.ftf, k.cash, k.pos, k.wallet, k.deposit, k.refund, Money.round(k.total))
+        }
         TenderableGeneralReport(mapOf("from" to from, "to" to to), perCashier, totals)
     }
 
-    /** Wallet Funds: dealers' fundings plus the return credits Customers posted for them, newest first. */
-    fun walletFunds(customerId: UUID?, from: LocalDate?, to: LocalDate?, page: Int?, size: Int?): PageResult<TenderableWalletFundRow> = tx.execute {
+    /**
+     * Wallet Funds: dealers' fundings plus the return credits Customers posted for them, newest first.
+     * The two sources are each read newest first up to the end of the requested page and merged, and
+     * their counts and totals are aggregates — neither source is ever loaded whole.
+     */
+    fun walletFunds(customerId: UUID?, from: LocalDate?, to: LocalDate?, paging: PageRequest): PageResult<TenderableWalletFundRow> = tx.execute {
         val zone = support.moduleSettings().zone()
-        val fundings = WalletFundingsTable.selectAll().where(
-            listOfNotNull(
-                WalletFundingsTable.tenantId eq support.tenantId(),
-                WalletFundingsTable.balanceType eq "WALLET",
-                customerId?.let { WalletFundingsTable.customerId eq it },
-                support.visibleLocations()?.let { WalletFundingsTable.locationId inList it },
-                from?.let { WalletFundingsTable.createdAt greaterEq it.atStartOfDay(zone).toInstant() },
-                to?.let { WalletFundingsTable.createdAt less it.plusDays(1).atStartOfDay(zone).toInstant() },
-            ).allOf()!!,
-        ).toList()
+        val upTo = (paging.offset + paging.size).toInt()
+        val fundingCondition = listOfNotNull(
+            WalletFundingsTable.tenantId eq support.tenantId(),
+            WalletFundingsTable.balanceType eq "WALLET",
+            customerId?.let { WalletFundingsTable.customerId eq it },
+            support.visibleLocations()?.let { WalletFundingsTable.locationId inList it },
+            from?.let { WalletFundingsTable.createdAt greaterEq it.atStartOfDay(zone).toInstant() },
+            to?.let { WalletFundingsTable.createdAt less it.plusDays(1).atStartOfDay(zone).toInstant() },
+        ).allOf()!!
+        val fundings = WalletFundingsTable.selectAll().where(fundingCondition)
+            .orderBy(WalletFundingsTable.createdAt to SortOrder.DESC, WalletFundingsTable.id to SortOrder.DESC).limit(upTo).toList()
         val receipts = PaymentReceiptsTable.selectAll().where { PaymentReceiptsTable.id inList fundings.map { it[WalletFundingsTable.paymentReceiptId] }.ifEmpty { listOf(UUID(0, 0)) } }
             .associateBy { it[PaymentReceiptsTable.id].value }
         val banks = BankAccountsTable.selectAll().where { BankAccountsTable.tenantId eq support.tenantId() }.associate { it[BankAccountsTable.id].value to "${it[BankAccountsTable.code]} ${it[BankAccountsTable.bankName]}" }
@@ -129,48 +150,69 @@ class TenderableService(
                 status = when (row[WalletFundingsTable.status]) { "CONFIRMED" -> "Confirmed"; "AWAITING_CONFIRMATION" -> "Awaiting confirmation"; "DECLINED" -> "Declined"; else -> "Voided" },
             )
         }
-        val returnCredits = customerQueries.ledgerEntries(LedgerEntriesFilter(customerIds = customerId?.let(::setOf), entryTypes = setOf(LedgerEntryType.RETURN_CREDIT), from = from, to = to))
-        val dealers = customerQueries.byIds(returnCredits.map { it.customerId }.distinct()).filter { it.type == CustomerType.AUTHORISED_DEALER }.map { it.id }.toSet()
-        val fromReturns = returnCredits.filter { it.customerId in dealers }.map {
+        val creditFilter = LedgerEntriesFilter(customerIds = customerId?.let(::setOf), entryTypes = setOf(LedgerEntryType.RETURN_CREDIT), from = from, to = to,
+            customerTypes = setOf(CustomerType.AUTHORISED_DEALER), newestFirst = true, limit = upTo)
+        val fromReturns = customerQueries.ledgerEntries(creditFilter).map {
             TenderableWalletFundRow(it.reference, it.createdAt, it.customerId, "${it.customerCode} ${it.customerName}", "Return credit", null, it.amount, null, "Confirmed")
         }
-        val all = (fromFundings + fromReturns).sortedByDescending { it.date }
-        val request = PageRequest.of(page, size)
-        val items = all.drop(request.offset.toInt()).take(request.size)
-        val confirmed = all.filter { it.status == "Confirmed" }.fold(BigDecimal.ZERO) { s, it -> s + it.amount }
-        val awaiting = all.filter { it.status == "Awaiting confirmation" }.fold(BigDecimal.ZERO) { s, it -> s + it.amount }
-        PageResult(items, request.page, request.size, all.size.toLong(), ((all.size + request.size - 1) / request.size), false,
-            summary = mapOf("total" to Money.round(confirmed + awaiting), "confirmed" to Money.round(confirmed), "awaiting" to Money.round(awaiting)))
+        val items = (fromFundings + fromReturns).sortedByDescending { it.date }.drop(paging.offset.toInt()).take(paging.size)
+
+        val fundingCount = Aggregates.count()
+        val confirmed = Aggregates.sum(WalletFundingsTable.amount, WalletFundingsTable.status eq "CONFIRMED")
+        val awaiting = Aggregates.sum(WalletFundingsTable.amount, WalletFundingsTable.status eq "AWAITING_CONFIRMATION")
+        val fundingTotals = WalletFundingsTable.select(fundingCount, confirmed, awaiting).where(fundingCondition).single()
+        val credits = customerQueries.ledgerTotal(creditFilter.copy(limit = null))
+        val totalItems = Aggregates.long(fundingTotals, fundingCount) + credits.count
+        val confirmedTotal = Aggregates.money(fundingTotals, confirmed) + credits.amount
+        val awaitingTotal = Aggregates.money(fundingTotals, awaiting)
+        PageResult(items, paging.page, paging.size, totalItems, ((totalItems + paging.size - 1) / paging.size).toInt(), false,
+            summary = mapOf("total" to Money.round(confirmedTotal + awaitingTotal), "confirmed" to Money.round(confirmedTotal), "awaiting" to awaitingTotal))
     }
 
-    private fun receipts(locationId: UUID?, cashierUserId: UUID?, from: LocalDate?, to: LocalDate?): List<ResultRow> {
+    /** The receipts a takings report covers: issued, in the caller's scope, in the period (tenant time zone). */
+    private fun receipts(locationId: UUID?, cashierUserId: UUID?, from: LocalDate?, to: LocalDate?): Op<Boolean> {
         val zone = support.moduleSettings().zone()
-        return PaymentReceiptsTable.selectAll().where(
-            listOfNotNull(
-                PaymentReceiptsTable.tenantId eq support.tenantId(),
-                PaymentReceiptsTable.status eq "ISSUED",
-                support.visibleLocations()?.let { PaymentReceiptsTable.locationId inList it },
-                support.resolveLocation(locationId)?.let { PaymentReceiptsTable.locationId eq it },
-                cashierUserId?.let { PaymentReceiptsTable.cashierUserId eq it },
-                from?.let { PaymentReceiptsTable.receivedAt greaterEq it.atStartOfDay(zone).toInstant() },
-                to?.let { PaymentReceiptsTable.receivedAt less it.plusDays(1).atStartOfDay(zone).toInstant() },
-            ).allOf()!!,
-        ).toList()
+        return listOfNotNull(
+            PaymentReceiptsTable.tenantId eq support.tenantId(),
+            PaymentReceiptsTable.status eq "ISSUED",
+            support.visibleLocations()?.let { PaymentReceiptsTable.locationId inList it },
+            support.resolveLocation(locationId)?.let { PaymentReceiptsTable.locationId eq it },
+            cashierUserId?.let { PaymentReceiptsTable.cashierUserId eq it },
+            from?.let { PaymentReceiptsTable.receivedAt greaterEq it.atStartOfDay(zone).toInstant() },
+            to?.let { PaymentReceiptsTable.receivedAt less it.plusDays(1).atStartOfDay(zone).toInstant() },
+        ).allOf()!!
     }
 
-    private fun takings(rows: List<ResultRow>): Takings {
-        fun sum(filter: (ResultRow) -> Boolean) = Money.round(rows.filter(filter).fold(BigDecimal.ZERO) { s, it -> s + it[PaymentReceiptsTable.amount] })
-        fun counted(row: ResultRow) = row[PaymentReceiptsTable.confirmationStatus] in setOf("NOT_REQUIRED", "APPROVED")
-        fun receipt(row: ResultRow, vararg channels: String) = row[PaymentReceiptsTable.kind] == "RECEIPT" && counted(row) && row[PaymentReceiptsTable.channel] in channels
-        return Takings(
-            ftf = sum { receipt(it, "FUND_TRANSFER", "CHEQUE") },
-            cash = sum { receipt(it, "CASH") },
-            pos = sum { receipt(it, "POS") },
-            wallet = sum { receipt(it, "WALLET") },
-            deposit = sum { receipt(it, "DEPOSIT") },
-            refund = sum { it[PaymentReceiptsTable.kind] == "REFUND" },
-            pending = sum { it[PaymentReceiptsTable.confirmationStatus] == "PENDING" },
-            declined = sum { it[PaymentReceiptsTable.confirmationStatus] == "DECLINED" },
+    /**
+     * The receipt's day in the tenant's time zone, as ISO text (a raw date comes back from JDBC as
+     * java.sql.Date). The zone is a literal, not a parameter, so GROUP BY sees the same expression
+     * as the select list; a ZoneId's id holds only letters, digits and `/_+-`.
+     */
+    private fun day(): Expression<String> {
+        val zone = support.moduleSettings().zone().id
+        require(zone.all { it.isLetterOrDigit() || it in "/_+-" }) { "Unexpected zone id" }
+        return RawExpression({ +"(timezone('$zone', "; +PaymentReceiptsTable.receivedAt; +"))::date::text" })
+    }
+
+    /** A cashier's takings by channel as aggregate columns. Pending and declined receipts are shown apart and never counted. */
+    private class TakingsColumns {
+        private val counted = PaymentReceiptsTable.confirmationStatus inList listOf("NOT_REQUIRED", "APPROVED")
+        private fun receipt(vararg channels: String): Op<Boolean> =
+            (PaymentReceiptsTable.kind eq "RECEIPT") and counted and (PaymentReceiptsTable.channel inList channels.toList())
+
+        private val ftf = Aggregates.sum(PaymentReceiptsTable.amount, receipt("FUND_TRANSFER", "CHEQUE"))
+        private val cash = Aggregates.sum(PaymentReceiptsTable.amount, receipt("CASH"))
+        private val pos = Aggregates.sum(PaymentReceiptsTable.amount, receipt("POS"))
+        private val wallet = Aggregates.sum(PaymentReceiptsTable.amount, receipt("WALLET"))
+        private val deposit = Aggregates.sum(PaymentReceiptsTable.amount, receipt("DEPOSIT"))
+        private val refund = Aggregates.sum(PaymentReceiptsTable.amount, PaymentReceiptsTable.kind eq "REFUND")
+        private val pending = Aggregates.sum(PaymentReceiptsTable.amount, PaymentReceiptsTable.confirmationStatus eq "PENDING")
+        private val declined = Aggregates.sum(PaymentReceiptsTable.amount, PaymentReceiptsTable.confirmationStatus eq "DECLINED")
+        val all: List<Expression<*>> = listOf(ftf, cash, pos, wallet, deposit, refund, pending, declined)
+
+        fun read(row: ResultRow) = Takings(
+            Aggregates.money(row, ftf), Aggregates.money(row, cash), Aggregates.money(row, pos), Aggregates.money(row, wallet),
+            Aggregates.money(row, deposit), Aggregates.money(row, refund), Aggregates.money(row, pending), Aggregates.money(row, declined),
         )
     }
 }

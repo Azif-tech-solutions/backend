@@ -1,5 +1,17 @@
 package com.zifiq.platform.identity
 
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.Op
+import com.zifiq.common.search.allOf
+import com.zifiq.common.search.SearchSpec
+import com.zifiq.common.search.SearchKind
+import com.zifiq.common.search.SearchField
+import com.zifiq.common.paging.Paging
+import com.zifiq.common.paging.PageResult
+import com.zifiq.common.paging.PageRequest
 import com.zifiq.platform.security.AccessCaches
 import com.zifiq.platform.accesscontrol.RoleAssignmentService
 import com.zifiq.platform.accesscontrol.model.TenantRolesTable
@@ -122,39 +134,61 @@ class MemberService(
         )
     }
 
-    fun listMembers(): List<MemberSummary> = tenantScopedTransaction.execute {
+    /**
+     * The tenant's members, a page at a time in name order. `q` matches name (trigram) or e-mail
+     * (prefix); `status` narrows to ACTIVE/SUSPENDED/INVITED. Roles and location scopes are read for
+     * the page's users only.
+     */
+    fun listMembers(q: String?, status: String?, paging: PageRequest): PageResult<MemberSummary> = tenantScopedTransaction.execute {
         val tenantId = currentActorProvider.current().tenantId
+        val parsed = q?.takeIf { it.isNotBlank() }?.let(MEMBER_SEARCH::parse)
+        val condition = listOfNotNull(
+            TenantMembershipsTable.tenantId eq tenantId,
+            status?.takeIf { it.isNotBlank() }?.let { TenantMembershipsTable.status eq it.uppercase() },
+            parsed?.let(MEMBER_SEARCH::condition),
+        ).allOf()!!
+        val rank = parsed?.let(MEMBER_SEARCH::rank).orEmpty()
+        val query = memberRows(condition).orderBy(*(rank + listOf(AppUsersTable.displayName to SortOrder.ASC, AppUsersTable.id to SortOrder.ASC)).toTypedArray())
+        val page = Paging.fetch(query, paging) { it }
+        page.withItems(summaries(tenantId, page.items))
+    }
 
+    private fun memberRows(condition: Op<Boolean>) = AppUsersTable
+        .join(TenantMembershipsTable, JoinType.INNER) { AppUsersTable.id eq TenantMembershipsTable.userId }
+        .selectAll()
+        .where(condition)
+
+    /** One member, read on its own (never by listing the tenant). */
+    private fun member(tenantId: UUID, userId: UUID): MemberSummary =
+        summaries(tenantId, memberRows((TenantMembershipsTable.tenantId eq tenantId) and (TenantMembershipsTable.userId eq userId)).toList())
+            .firstOrNull() ?: throw ApiErrors.memberNotFound()
+
+    private fun summaries(tenantId: UUID, rows: List<ResultRow>): List<MemberSummary> {
+        val userIds = rows.map { it[AppUsersTable.id].value }
+        if (userIds.isEmpty()) return emptyList()
         val roleByUser = UserRoleAssignmentsTable
             .join(TenantRolesTable, JoinType.INNER) { UserRoleAssignmentsTable.roleId eq TenantRolesTable.id }
             .select(UserRoleAssignmentsTable.userId, TenantRolesTable.id, TenantRolesTable.name)
-            .andWhere { UserRoleAssignmentsTable.tenantId eq tenantId }
+            .where { (UserRoleAssignmentsTable.tenantId eq tenantId) and (UserRoleAssignmentsTable.userId inList userIds) }
             .associate { it[UserRoleAssignmentsTable.userId].value to RoleRef(it[TenantRolesTable.id].value, it[TenantRolesTable.name]) }
-
         val locationByUser = UserLocationAssignmentsTable.selectAll()
-            .andWhere { UserLocationAssignmentsTable.tenantId eq tenantId }
+            .where { (UserLocationAssignmentsTable.tenantId eq tenantId) and (UserLocationAssignmentsTable.userId inList userIds) }
             .associate { it[UserLocationAssignmentsTable.userId].value to Pair(it[UserLocationAssignmentsTable.locationId], it[UserLocationAssignmentsTable.accessScope]) }
-
-        AppUsersTable
-            .join(TenantMembershipsTable, JoinType.INNER) { AppUsersTable.id eq TenantMembershipsTable.userId }
-            .selectAll()
-            .andWhere { TenantMembershipsTable.tenantId eq tenantId }
-            .orderBy(AppUsersTable.displayName)
-            .map { row ->
-                val userId = row[AppUsersTable.id].value
-                val location = locationByUser[userId]
-                MemberSummary(
-                    userId = userId,
-                    email = row[AppUsersTable.email],
-                    displayName = row[AppUsersTable.displayName],
-                    phone = null,
-                    status = row[TenantMembershipsTable.status],
-                    role = roleByUser[userId],
-                    locationId = location?.first,
-                    accessScope = location?.second ?: "ALL_LOCATIONS",
-                    invitedAt = row[TenantMembershipsTable.createdAt],
-                )
-            }
+        return rows.map { row ->
+            val userId = row[AppUsersTable.id].value
+            val location = locationByUser[userId]
+            MemberSummary(
+                userId = userId,
+                email = row[AppUsersTable.email],
+                displayName = row[AppUsersTable.displayName],
+                phone = null,
+                status = row[TenantMembershipsTable.status],
+                role = roleByUser[userId],
+                locationId = location?.first,
+                accessScope = location?.second ?: "ALL_LOCATIONS",
+                invitedAt = row[TenantMembershipsTable.createdAt],
+            )
+        }
     }
 
     fun updateStatus(userId: UUID, status: String): MemberSummary = tenantScopedTransaction.execute {
@@ -165,7 +199,7 @@ class MemberService(
             it[TenantMembershipsTable.status] = status
         }
         if (updated == 0) throw ApiErrors.memberNotFound()
-        listMembers().first { it.userId == userId }
+        member(tenantId, userId)
     }
 
     fun updateLocation(userId: UUID, locationId: UUID?): MemberSummary = tenantScopedTransaction.execute {
@@ -197,11 +231,20 @@ class MemberService(
                 it[UserLocationAssignmentsTable.assignedAt] = Instant.now()
             }
         }
-        listMembers().first { it.userId == userId }
+        member(actor.tenantId, userId)
     }
 
     private fun roleNameOf(roleId: UUID): String =
         TenantRolesTable.select(TenantRolesTable.name)
             .andWhere { TenantRolesTable.id eq roleId }
             .single()[TenantRolesTable.name]
+
+    private companion object {
+        val MEMBER_SEARCH = SearchSpec(
+            listOf(
+                SearchField(AppUsersTable.email, SearchKind.CODE, "E-mail"),
+                SearchField(AppUsersTable.displayName, SearchKind.TRIGRAM, "Name"),
+            ),
+        )
+    }
 }

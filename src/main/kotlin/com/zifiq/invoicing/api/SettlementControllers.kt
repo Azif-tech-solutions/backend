@@ -1,5 +1,7 @@
 package com.zifiq.invoicing.api
 
+import org.springdoc.core.annotations.ParameterObject
+import com.zifiq.common.paging.PageParams
 import com.zifiq.common.filter.FilterMetadata
 import com.zifiq.common.filter.ListSearchRequest
 import com.zifiq.common.paging.PageResult
@@ -117,8 +119,8 @@ interface ReceivablesApi {
     @Operation(summary = "Debtors List: one row per customer with an open balance; locationId, customerType, ageing, correspondentId, overLimitOnly, outstanding.gte/lte, q")
     fun debtors(query: MultiValueMap<String, String>): ApiEnvelope<PageResult<DebtorRow>>
 
-    @Operation(summary = "One debtor's account and invoice history; carries a warning when over the credit limit")
-    fun debtor(customerId: UUID, from: LocalDate?, to: LocalDate?, openOnly: Boolean): ApiEnvelope<DebtorDetail>
+    @Operation(summary = "One debtor's account and their invoice history (paged, newest first); carries a warning when over the credit limit")
+    fun debtor(customerId: UUID, from: LocalDate?, to: LocalDate?, openOnly: Boolean, paging: PageParams): ApiEnvelope<DebtorDetail>
 }
 
 @RestController
@@ -147,5 +149,6 @@ class ReceivablesController(private val receivables: ReceivablesService) : Recei
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate?,
         @RequestParam(defaultValue = "false") openOnly: Boolean,
-    ) = ApiEnvelope(receivables.debtor(customerId, from, to, openOnly))
+        @ParameterObject paging: PageParams,
+    ) = ApiEnvelope(receivables.debtor(customerId, from, to, openOnly, paging.toRequest()))
 }

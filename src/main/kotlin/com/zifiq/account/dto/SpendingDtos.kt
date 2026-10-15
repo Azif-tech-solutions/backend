@@ -1,5 +1,6 @@
 package com.zifiq.account.dto
 
+import com.zifiq.common.paging.PageResult
 import jakarta.validation.constraints.DecimalMin
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
@@ -124,7 +125,7 @@ data class PettyCashStatementSummary(
 data class PettyCashStatementView(
     val accounts: List<AccountBrief>,
     val period: Map<String, LocalDate?>,
-    val ledger: List<PettyCashLedgerLine>,
+    val ledger: PageResult<PettyCashLedgerLine>,
     val statement: PettyCashStatementSummary,
 )
 

@@ -1,5 +1,10 @@
 package com.zifiq.account.service
 
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.notLike
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.isNotNull
+import org.jetbrains.exposed.sql.max
+import org.jetbrains.exposed.sql.countDistinct
+import com.zifiq.common.sql.Aggregates
 import com.zifiq.platform.directory.Names
 import com.zifiq.common.money.Money
 import com.zifiq.account.dto.AccountBrief
@@ -279,12 +284,16 @@ class PettyCashService(
             )
         }
         val summary = if (request.summary) {
-            val live = joined.select(CashTransactionsTable.amount, CashTransactionsTable.expenseCategoryId).where(condition and RawOp { +"coalesce(pcp.status, oc.status) <> 'REVERSED'" }).toList()
+            val count = Aggregates.count()
+            val total = Aggregates.sum(CashTransactionsTable.amount)
+            val categoriesUsed = CashTransactionsTable.expenseCategoryId.countDistinct()
+            val largest = CashTransactionsTable.amount.max()
+            val row = joined.select(count, total, categoriesUsed, largest).where(condition and RawOp { +"coalesce(pcp.status, oc.status) <> 'REVERSED'" }).single()
             mapOf(
-                "paymentsMade" to live.size,
-                "totalPaidOut" to Money.round(live.fold(BigDecimal.ZERO) { sum, it -> sum + it[CashTransactionsTable.amount] }),
-                "categoriesUsed" to live.mapNotNull { it[CashTransactionsTable.expenseCategoryId] }.distinct().size,
-                "largestPayment" to Money.round(live.maxOfOrNull { it[CashTransactionsTable.amount] } ?: BigDecimal.ZERO),
+                "paymentsMade" to Aggregates.long(row, count),
+                "totalPaidOut" to Aggregates.money(row, total),
+                "categoriesUsed" to row[categoriesUsed],
+                "largestPayment" to Money.round(row[largest] ?: BigDecimal.ZERO),
             )
         } else null
         page.withItems(items).copy(summary = summary, meta = PageMeta(ignoredQualifiers = parsed.ignoredQualifiers))
@@ -295,11 +304,11 @@ class PettyCashService(
     // ---- Petty Cash Statement ----
 
     /**
-     * One petty-cash box (or every box at a location) over a period: the ledger with a running
+     * One petty-cash box (or every box at a location) over a period: the ledger (paged) with a running
      * balance, then the screen's statement — funding (opening + top-ups), utilisation by category,
      * closing balance and the share used. With no period it covers the current month to date.
      */
-    fun statement(pettyCashAccountId: UUID?, locationId: UUID?, from: LocalDate?, to: LocalDate?): PettyCashStatementView = tx.execute {
+    fun statement(pettyCashAccountId: UUID?, locationId: UUID?, from: LocalDate?, to: LocalDate?, paging: PageRequest): PettyCashStatementView = tx.execute {
         val periodFrom = from ?: support.today().withDayOfMonth(1)
         val periodTo = to ?: support.today()
         if (periodFrom.isAfter(periodTo)) throw ApiErrors.validationFailed(mapOf("from" to "is after 'to'"))
@@ -322,50 +331,61 @@ class PettyCashService(
         val ids = accounts.map { it.id }.ifEmpty { listOf(UUID(0, 0)) }
         val codes = accounts.associate { it.id to it.code }
         val inScope = (CashTransactionsTable.tenantId eq support.tenantId()) and (CashTransactionsTable.cashAccountId inList ids)
+        val inPeriod = inScope and (CashTransactionsTable.entryDate greaterEq periodFrom) and (CashTransactionsTable.entryDate lessEq periodTo)
+        val opening = LedgerSql.cashNet(inScope and (CashTransactionsTable.entryDate less periodFrom))
 
-        fun signed(row: ResultRow) = if (row[CashTransactionsTable.direction] == "IN") row[CashTransactionsTable.amount] else row[CashTransactionsTable.amount].negate()
-        val opening = CashTransactionsTable.selectAll().where(inScope and (CashTransactionsTable.entryDate less periodFrom)).fold(BigDecimal.ZERO) { sum, it -> sum + signed(it) }
-        val rows = CashTransactionsTable.selectAll().where(inScope and (CashTransactionsTable.entryDate greaterEq periodFrom) and (CashTransactionsTable.entryDate lessEq periodTo))
-            .orderBy(CashTransactionsTable.entryDate to SortOrder.ASC, CashTransactionsTable.createdAt to SortOrder.ASC, CashTransactionsTable.id to SortOrder.ASC).toList()
-        val categoryNames = categories.names(rows.mapNotNull { it[CashTransactionsTable.expenseCategoryId] })
-
-        var balance = opening
-        val ledger = rows.map { row ->
-            balance += signed(row)
+        val balances = LedgerSql.cashBalances(inPeriod)
+        val ledgerQuery = CashTransactionsTable.join(balances.alias, JoinType.INNER, CashTransactionsTable.id, balances.id)
+            .select(CashTransactionsTable.columns + balances.column).where(inPeriod)
+            .orderBy(CashTransactionsTable.entryDate to SortOrder.ASC, CashTransactionsTable.createdAt to SortOrder.ASC, CashTransactionsTable.id to SortOrder.ASC)
+        val ledgerPage = Paging.fetch(ledgerQuery, paging) { it }
+        val ledgerNames = categories.names(ledgerPage.items.mapNotNull { it[CashTransactionsTable.expenseCategoryId] })
+        val ledger = ledgerPage.withItems(ledgerPage.items.map { row ->
             val inflow = row[CashTransactionsTable.direction] == "IN"
             PettyCashLedgerLine(
                 date = row[CashTransactionsTable.entryDate],
                 ref = row[CashTransactionsTable.reference],
                 description = row[CashTransactionsTable.remark],
-                category = row[CashTransactionsTable.expenseCategoryId]?.let(categoryNames::get),
+                category = row[CashTransactionsTable.expenseCategoryId]?.let(ledgerNames::get),
                 direction = directionLabel(row[CashTransactionsTable.sourceType], inflow),
                 `in` = if (inflow) row[CashTransactionsTable.amount] else BigDecimal.ZERO.setScale(2),
                 out = if (inflow) BigDecimal.ZERO.setScale(2) else row[CashTransactionsTable.amount],
-                balance = Money.round(balance),
+                balance = balances.after(row, opening),
                 accountCode = codes[row[CashTransactionsTable.cashAccountId]] ?: "",
             )
-        }
+        })
 
         // Funding = money put into the box (top-ups and accepted allocations); utilisation = spending by category, net of reversals.
-        val fundingRows = rows.filter { it[CashTransactionsTable.direction] == "IN" && it[CashTransactionsTable.sourceType] in FUNDING_SOURCES && !it[CashTransactionsTable.remark].startsWith("Reversal of") }
-        val fundingTotal = fundingRows.fold(BigDecimal.ZERO) { sum, it -> sum + it[CashTransactionsTable.amount] }
-        val spending = rows.filter { it[CashTransactionsTable.expenseCategoryId] != null }
-        val byCategory = spending.groupBy { it[CashTransactionsTable.expenseCategoryId]!! }.map { (categoryId, entries) ->
-            val outs = entries.filter { it[CashTransactionsTable.direction] == "OUT" }
-            CategoryUtilisation(categoryNames[categoryId] ?: "", outs.size.toLong() - entries.count { it[CashTransactionsTable.direction] == "IN" }, Money.round(entries.fold(BigDecimal.ZERO) { sum, it -> sum - signed(it) }))
+        val funding = inPeriod and (CashTransactionsTable.direction eq "IN") and (CashTransactionsTable.sourceType inList FUNDING_SOURCES) and
+            (CashTransactionsTable.remark notLike "Reversal of%")
+        val fundingEntries = CashTransactionsTable.select(CashTransactionsTable.reference, CashTransactionsTable.entryDate, CashTransactionsTable.amount).where(funding)
+            .orderBy(CashTransactionsTable.entryDate to SortOrder.ASC, CashTransactionsTable.createdAt to SortOrder.ASC, CashTransactionsTable.id to SortOrder.ASC)
+            .map { FundingEntry(it[CashTransactionsTable.reference], it[CashTransactionsTable.entryDate], it[CashTransactionsTable.amount]) }
+        val fundingSum = Aggregates.sum(CashTransactionsTable.amount)
+        val fundingTotal = Aggregates.money(CashTransactionsTable.select(fundingSum).where(funding).single(), fundingSum)
+        val spent = Aggregates.sum(RawExpression<BigDecimal>({ +"-"; +LedgerSql.cashSigned }))
+        val payments = Aggregates.count(CashTransactionsTable.direction eq "OUT")
+        val refunds = Aggregates.count(CashTransactionsTable.direction eq "IN")
+        val perCategory = CashTransactionsTable.select(CashTransactionsTable.expenseCategoryId, spent, payments, refunds)
+            .where(inPeriod and CashTransactionsTable.expenseCategoryId.isNotNull())
+            .groupBy(CashTransactionsTable.expenseCategoryId).toList()
+        val categoryNames = categories.names(perCategory.mapNotNull { it[CashTransactionsTable.expenseCategoryId] })
+        val byCategory = perCategory.map {
+            CategoryUtilisation(categoryNames[it[CashTransactionsTable.expenseCategoryId]] ?: "", Aggregates.long(it, payments) - Aggregates.long(it, refunds), Aggregates.money(it, spent))
         }.filter { it.amount.signum() != 0 }.sortedByDescending { it.amount }
         val utilised = byCategory.fold(BigDecimal.ZERO) { sum, it -> sum + it.amount }
         val available = opening + fundingTotal
+        val closing = opening + LedgerSql.cashNet(inPeriod)
         val locationNames = Names.locations(accounts.mapNotNull { it.locationId })
         PettyCashStatementView(
             accounts = accounts.map { AccountBrief(it.id, it.code, it.name, it.locationId?.let(locationNames::get)) },
             period = mapOf("from" to periodFrom, "to" to periodTo),
             ledger = ledger,
             statement = PettyCashStatementSummary(
-                funding = PettyCashStatementSection(Money.round(opening), fundingRows.map { FundingEntry(it[CashTransactionsTable.reference], it[CashTransactionsTable.entryDate], it[CashTransactionsTable.amount]) }, Money.round(available)),
+                funding = PettyCashStatementSection(Money.round(opening), fundingEntries, Money.round(available)),
                 utilisationByCategory = byCategory,
                 totalUtilised = Money.round(utilised),
-                closingBalance = Money.round(balance),
+                closingBalance = Money.round(closing),
                 utilisedPct = if (available.signum() > 0) utilised.multiply(BigDecimal(100)).divide(available, 1, RoundingMode.HALF_UP) else BigDecimal.ZERO.setScale(1),
             ),
         )
@@ -441,12 +461,15 @@ class PettyCashService(
         val joined = allocationJoin()
         val page = Paging.fetch(joined.selectAll().where(condition).orderBy(*sort.toTypedArray()), PageRequest.of(request.page, request.size)) { it }
         val summary = if (request.summary) {
-            val all = joined.select(PettyCashAllocationsTable.status, PettyCashAllocationsTable.amount).where(condition).toList()
+            val pending = PettyCashAllocationsTable.status eq "PENDING"
+            val awaiting = Aggregates.count(pending)
+            val valuePending = Aggregates.sum(PettyCashAllocationsTable.amount, pending)
+            val accepted = Aggregates.sum(PettyCashAllocationsTable.amount, PettyCashAllocationsTable.status eq "ACCEPTED")
+            val rejected = Aggregates.count(PettyCashAllocationsTable.status eq "REJECTED")
+            val row = joined.select(awaiting, valuePending, accepted, rejected).where(condition).single()
             mapOf(
-                "awaitingCount" to all.count { it[PettyCashAllocationsTable.status] == "PENDING" },
-                "valuePending" to Money.round(all.filter { it[PettyCashAllocationsTable.status] == "PENDING" }.fold(BigDecimal.ZERO) { s, it -> s + it[PettyCashAllocationsTable.amount] }),
-                "acceptedValue" to Money.round(all.filter { it[PettyCashAllocationsTable.status] == "ACCEPTED" }.fold(BigDecimal.ZERO) { s, it -> s + it[PettyCashAllocationsTable.amount] }),
-                "rejectedCount" to all.count { it[PettyCashAllocationsTable.status] == "REJECTED" },
+                "awaitingCount" to Aggregates.long(row, awaiting), "valuePending" to Aggregates.money(row, valuePending),
+                "acceptedValue" to Aggregates.money(row, accepted), "rejectedCount" to Aggregates.long(row, rejected),
             )
         } else null
         page.withItems(toAllocationRows(page.items)).copy(summary = summary, meta = PageMeta(ignoredQualifiers = parsed.ignoredQualifiers))
@@ -530,15 +553,16 @@ class PettyCashService(
     /** The funding aside for one petty cash box. */
     private fun fundingAside(accountId: UUID): Map<String, Any?> {
         val account = moves.existing(false, accountId)
-        val entries = CashTransactionsTable.selectAll().where { (CashTransactionsTable.tenantId eq support.tenantId()) and (CashTransactionsTable.cashAccountId eq accountId) }.toList()
-        fun net(types: Set<String>, inflow: Boolean) = entries.filter { it[CashTransactionsTable.sourceType] in types }
-            .fold(BigDecimal.ZERO) { sum, it -> if ((it[CashTransactionsTable.direction] == "IN") == inflow) sum + it[CashTransactionsTable.amount] else sum - it[CashTransactionsTable.amount] }
-        val opening = entries.firstOrNull { it[CashTransactionsTable.sourceType] == "OPENING" }?.get(CashTransactionsTable.amount) ?: BigDecimal.ZERO
+        val opening = Aggregates.sum(CashTransactionsTable.amount, CashTransactionsTable.sourceType eq "OPENING")
+        val funded = Aggregates.sum(LedgerSql.cashSigned, CashTransactionsTable.sourceType inList FUNDING_SOURCES)
+        val spent = Aggregates.sum(RawExpression<BigDecimal>({ +"-"; +LedgerSql.cashSigned }), CashTransactionsTable.sourceType inList listOf("PETTY_CASH_PAYMENT", "RUNNING_COST"))
+        val row = CashTransactionsTable.select(opening, funded, spent)
+            .where { (CashTransactionsTable.tenantId eq support.tenantId()) and (CashTransactionsTable.cashAccountId eq accountId) }.single()
         return mapOf(
             "pettyCashAccountId" to accountId, "code" to account.code,
-            "openingBalance" to Money.round(opening),
-            "fundedToDate" to Money.round(net(FUNDING_SOURCES, inflow = true)),
-            "utilisedToDate" to Money.round(net(setOf("PETTY_CASH_PAYMENT", "RUNNING_COST"), inflow = false)),
+            "openingBalance" to Aggregates.money(row, opening),
+            "fundedToDate" to Aggregates.money(row, funded),
+            "utilisedToDate" to Aggregates.money(row, spent),
             "currentBalance" to account.balance,
         )
     }

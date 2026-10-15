@@ -1,6 +1,7 @@
 package com.zifiq.customers.service
 
 import com.zifiq.common.filter.ListSearchRequest
+import com.zifiq.common.paging.PageRequest
 import com.zifiq.platform.search.SearchHit
 import com.zifiq.platform.search.SearchProvider
 import org.springframework.stereotype.Component
@@ -43,7 +44,7 @@ class CorrespondentSearchProvider(
     override fun canSearch() = support.can("customers.read")
 
     override fun search(q: String, limit: Int): List<SearchHit> =
-        correspondentService.list(q, emptySet(), emptySet(), null, null, null, null).take(limit).map {
+        correspondentService.list(q, emptySet(), emptySet(), null, null, null, null, PageRequest.of(0, limit)).items.map {
             SearchHit(
                 type = type,
                 id = it.id,

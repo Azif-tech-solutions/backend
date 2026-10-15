@@ -1718,7 +1718,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/tenants/members",
+              "raw": "{{baseUrl}}/api/v1/tenants/members?q=&status=ACTIVE&page=0&size=50",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1727,8 +1727,27 @@
                 "v1",
                 "tenants",
                 "members"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": ""
+                },
+                {
+                  "key": "status",
+                  "value": "ACTIVE"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "50"
+                }
               ]
             },
+            "description": "Paged, name order. q matches name (trigram) or e-mail (prefix); status narrows (ACTIVE, SUSPENDED, INVITED).",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1758,7 +1777,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/tenants/members",
+                  "raw": "{{baseUrl}}/api/v1/tenants/members?q=&status=ACTIVE&page=0&size=50",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1767,8 +1786,27 @@
                     "v1",
                     "tenants",
                     "members"
+                  ],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": ""
+                    },
+                    {
+                      "key": "status",
+                      "value": "ACTIVE"
+                    },
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "50"
+                    }
                   ]
                 },
+                "description": "Paged, name order. q matches name (trigram) or e-mail (prefix); status narrows (ACTIVE, SUSPENDED, INVITED).",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -1790,7 +1828,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"userId\": \"{{userId}}\",\n      \"email\": \"admin@apex.com\",\n      \"displayName\": \"Alice Admin\",\n      \"phone\": null,\n      \"status\": \"ACTIVE\",\n      \"role\": {\n        \"id\": \"{{adminRoleId}}\",\n        \"name\": \"Administrator\"\n      },\n      \"locationId\": null,\n      \"accessScope\": \"ALL_LOCATIONS\",\n      \"invitedAt\": \"2026-10-01T10:15:30Z\"\n    },\n    {\n      \"userId\": \"{{memberUserId}}\",\n      \"email\": \"keeper@apex.com\",\n      \"displayName\": \"Kelvin Keeper\",\n      \"phone\": \"+2348000000000\",\n      \"status\": \"ACTIVE\",\n      \"role\": {\n        \"id\": \"{{stockKeeperRoleId}}\",\n        \"name\": \"Stock Keeper\"\n      },\n      \"locationId\": \"{{factoryId}}\",\n      \"accessScope\": \"SINGLE_LOCATION\",\n      \"invitedAt\": \"2026-10-01T10:15:30Z\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"userId\": \"{{userId}}\",\n        \"email\": \"admin@apex.com\",\n        \"displayName\": \"Alice Admin\",\n        \"phone\": null,\n        \"status\": \"ACTIVE\",\n        \"role\": {\n          \"id\": \"{{adminRoleId}}\",\n          \"name\": \"Administrator\"\n        },\n        \"locationId\": null,\n        \"accessScope\": \"ALL_LOCATIONS\",\n        \"invitedAt\": \"2026-10-01T10:15:30Z\"\n      },\n      {\n        \"userId\": \"{{memberUserId}}\",\n        \"email\": \"keeper@apex.com\",\n        \"displayName\": \"Kelvin Keeper\",\n        \"phone\": \"+2348000000000\",\n        \"status\": \"ACTIVE\",\n        \"role\": {\n          \"id\": \"{{stockKeeperRoleId}}\",\n          \"name\": \"Stock Keeper\"\n        },\n        \"locationId\": \"{{factoryId}}\",\n        \"accessScope\": \"SINGLE_LOCATION\",\n        \"invitedAt\": \"2026-10-01T10:15:30Z\"\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 2,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": null,\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
             }
           ]
         },
@@ -2540,7 +2578,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"004336a6-5fcd-429c-99a9-e493efef761d\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"3be6bfc5-5afc-4f7e-b22e-aabb3cb63544\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -2631,7 +2669,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"f9e8b92a-da11-4829-9491-34bd66c4605e\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"467bc682-325c-4ffc-921e-1eed2ea842b4\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -12545,7 +12583,7 @@
                 }
               ]
             },
-            "description": "Unpaged. Query: q (code, name, phone, e-mail, responsibilities), status (repeatable), region (repeatable), locationId, userLinked, hasCustomers, sort=name|customerCount|dealerCount|assignedAt.",
+            "description": "Paged (page, size). Query: q (code, name, phone, e-mail, responsibilities), status (repeatable), region (repeatable), locationId, userLinked, hasCustomers, sort=name|customerCount|dealerCount|assignedAt. customerCount/dealerCount are kept on the correspondent row, so sorting by them is a plain index read.",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -12592,7 +12630,7 @@
                     }
                   ]
                 },
-                "description": "Unpaged. Query: q (code, name, phone, e-mail, responsibilities), status (repeatable), region (repeatable), locationId, userLinked, hasCustomers, sort=name|customerCount|dealerCount|assignedAt.",
+                "description": "Paged (page, size). Query: q (code, name, phone, e-mail, responsibilities), status (repeatable), region (repeatable), locationId, userLinked, hasCustomers, sort=name|customerCount|dealerCount|assignedAt. customerCount/dealerCount are kept on the correspondent row, so sorting by them is a plain index read.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -12614,7 +12652,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{correspondentId}}\",\n      \"code\": \"CR-1\",\n      \"name\": \"Bisi Adeyemi\",\n      \"phone\": \"0802 123 4567\",\n      \"email\": null,\n      \"region\": \"Lagos Mainland\",\n      \"locationId\": \"{{customerLocationId}}\",\n      \"locationName\": \"Customer Home Plant\",\n      \"status\": \"ASSIGNED\",\n      \"assignedAt\": \"2026-10-08\",\n      \"customerCount\": 1,\n      \"dealerCount\": 1,\n      \"responsibilities\": \"Lagos dealers\",\n      \"userLinked\": false\n    },\n    {\n      \"id\": \"{{correspondent2Id}}\",\n      \"code\": \"CR-2\",\n      \"name\": \"Emeka Eze\",\n      \"phone\": \"0805 999 0000\",\n      \"email\": null,\n      \"region\": \"South West\",\n      \"locationId\": \"{{customerLocationId}}\",\n      \"locationName\": \"Customer Home Plant\",\n      \"status\": \"ASSIGNED\",\n      \"assignedAt\": \"2026-10-08\",\n      \"customerCount\": 0,\n      \"dealerCount\": 0,\n      \"responsibilities\": \"Ibadan and Abeokuta walk-in accounts\",\n      \"userLinked\": false\n    }\n  ]\n}"
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": \"{{correspondentId}}\",\n        \"code\": \"CR-1\",\n        \"name\": \"Bisi Adeyemi\",\n        \"phone\": \"0802 123 4567\",\n        \"email\": null,\n        \"region\": \"Lagos Mainland\",\n        \"locationId\": \"{{customerLocationId}}\",\n        \"locationName\": \"Customer Home Plant\",\n        \"status\": \"ASSIGNED\",\n        \"assignedAt\": \"2026-10-08\",\n        \"customerCount\": 1,\n        \"dealerCount\": 1,\n        \"responsibilities\": \"Lagos dealers\",\n        \"userLinked\": false\n      },\n      {\n        \"id\": \"{{correspondent2Id}}\",\n        \"code\": \"CR-2\",\n        \"name\": \"Emeka Eze\",\n        \"phone\": \"0805 999 0000\",\n        \"email\": null,\n        \"region\": \"South West\",\n        \"locationId\": \"{{customerLocationId}}\",\n        \"locationName\": \"Customer Home Plant\",\n        \"status\": \"ASSIGNED\",\n        \"assignedAt\": \"2026-10-08\",\n        \"customerCount\": 0,\n        \"dealerCount\": 0,\n        \"responsibilities\": \"Ibadan and Abeokuta walk-in accounts\",\n        \"userLinked\": false\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 2,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": null,\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
             }
           ]
         },
@@ -29046,7 +29084,7 @@
                 }
               ]
             },
-            "description": "Perm accounting.read. One box (pettyCashAccountId) or every box at a location (locationId), for from/to (default this month to date): the ledger with a running balance, funding (opening + top-ups and accepted allocations), utilisation by category net of reversals, closing balance and the share used.",
+            "description": "Perm accounting.read. One box (pettyCashAccountId) or every box at a location (locationId), for from/to (default this month to date): the ledger (paged: page, size) with a running balance, funding (opening + top-ups and accepted allocations), utilisation by category net of reversals, closing balance and the share used.",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -29094,7 +29132,7 @@
                     }
                   ]
                 },
-                "description": "Perm accounting.read. One box (pettyCashAccountId) or every box at a location (locationId), for from/to (default this month to date): the ledger with a running balance, funding (opening + top-ups and accepted allocations), utilisation by category net of reversals, closing balance and the share used.",
+                "description": "Perm accounting.read. One box (pettyCashAccountId) or every box at a location (locationId), for from/to (default this month to date): the ledger (paged: page, size) with a running balance, funding (opening + top-ups and accepted allocations), utilisation by category net of reversals, closing balance and the share used.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -29116,7 +29154,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": {\n    \"accounts\": [\n      {\n        \"id\": \"{{pettyCashAccountId}}\",\n        \"code\": \"PC-IKJ\",\n        \"name\": \"Ikeja Petty Cash Box\",\n        \"locationName\": \"Showroom Ikeja\"\n      }\n    ],\n    \"period\": {\n      \"from\": \"2026-10-01\",\n      \"to\": \"2026-10-12\"\n    },\n    \"ledger\": [\n      {\n        \"date\": \"2026-10-12\",\n        \"ref\": \"PCF-1\",\n        \"description\": \"Funding from BA-1 Guaranty Trust Bank \\u2014 PCF-1\",\n        \"category\": null,\n        \"direction\": \"Funding\",\n        \"in\": 50000.0,\n        \"out\": 0.0,\n        \"balance\": 199000.0,\n        \"accountCode\": \"PC-IKJ\"\n      }\n    ],\n    \"statement\": {\n      \"funding\": {\n        \"openingBalance\": 0.0,\n        \"entries\": [\n          {\n            \"ref\": \"PCF-1\",\n            \"date\": \"2026-10-12\",\n            \"amount\": 50000.0\n          }\n        ],\n        \"totalAvailable\": 50000.0\n      },\n      \"utilisationByCategory\": [],\n      \"totalUtilised\": 0.0,\n      \"closingBalance\": 199000.0,\n      \"utilisedPct\": 0.0\n    }\n  }\n}"
+              "body": "{\n  \"data\": {\n    \"accounts\": [\n      {\n        \"id\": \"{{pettyCashAccountId}}\",\n        \"code\": \"PC-IKJ\",\n        \"name\": \"Ikeja Petty Cash Box\",\n        \"locationName\": \"Showroom Ikeja\"\n      }\n    ],\n    \"period\": {\n      \"from\": \"2026-10-01\",\n      \"to\": \"2026-10-12\"\n    },\n    \"ledger\": {\n      \"items\": [\n        {\n          \"date\": \"2026-10-12\",\n          \"ref\": \"PCF-1\",\n          \"description\": \"Funding from BA-1 Guaranty Trust Bank \\u2014 PCF-1\",\n          \"category\": null,\n          \"direction\": \"Funding\",\n          \"in\": 50000.0,\n          \"out\": 0.0,\n          \"balance\": 199000.0,\n          \"accountCode\": \"PC-IKJ\"\n        }\n      ],\n      \"page\": 0,\n      \"size\": 50,\n      \"totalItems\": 1,\n      \"totalPages\": 1,\n      \"totalIsEstimate\": false,\n      \"facets\": null,\n      \"summary\": null,\n      \"meta\": {\n        \"appliedFilters\": {},\n        \"ignoredQualifiers\": [],\n        \"suggestions\": [],\n        \"matches\": {}\n      }\n    },\n    \"statement\": {\n      \"funding\": {\n        \"openingBalance\": 0.0,\n        \"entries\": [\n          {\n            \"ref\": \"PCF-1\",\n            \"date\": \"2026-10-12\",\n            \"amount\": 50000.0\n          }\n        ],\n        \"totalAvailable\": 50000.0\n      },\n      \"utilisationByCategory\": [],\n      \"totalUtilised\": 0.0,\n      \"closingBalance\": 199000.0,\n      \"utilisedPct\": 0.0\n    }\n  }\n}"
             }
           ]
         },
@@ -33300,7 +33338,7 @@
                 }
               ]
             },
-            "description": "Perm accounting.tenderable.read. One row per cashier per day: ftf (transfers and cheques), cash, pos, wallet, deposit, refund and total. Pending and declined receipts are shown apart and never counted in the total.",
+            "description": "Perm accounting.tenderable.read. One row per cashier per day, newest day first, paged (page, size): ftf (transfers and cheques), cash, pos, wallet, deposit, refund and total. Pending and declined receipts are shown apart and never counted in the total.",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -33348,7 +33386,7 @@
                     }
                   ]
                 },
-                "description": "Perm accounting.tenderable.read. One row per cashier per day: ftf (transfers and cheques), cash, pos, wallet, deposit, refund and total. Pending and declined receipts are shown apart and never counted in the total.",
+                "description": "Perm accounting.tenderable.read. One row per cashier per day, newest day first, paged (page, size): ftf (transfers and cheques), cash, pos, wallet, deposit, refund and total. Pending and declined receipts are shown apart and never counted in the total.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -33370,7 +33408,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"date\": \"2026-10-12\",\n      \"cashierUserId\": \"{{userId}}\",\n      \"cashier\": \"Alice Admin\",\n      \"ftf\": 200000.0,\n      \"cash\": 75000.0,\n      \"pos\": 0.0,\n      \"wallet\": 0.0,\n      \"deposit\": 0.0,\n      \"refund\": 0.0,\n      \"total\": 275000.0,\n      \"pendingConfirmation\": 0.0,\n      \"declined\": 0.0\n    }\n  ]\n}"
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"date\": \"2026-10-12\",\n        \"cashierUserId\": \"{{userId}}\",\n        \"cashier\": \"Alice Admin\",\n        \"ftf\": 200000.0,\n        \"cash\": 75000.0,\n        \"pos\": 0.0,\n        \"wallet\": 0.0,\n        \"deposit\": 0.0,\n        \"refund\": 0.0,\n        \"total\": 275000.0,\n        \"pendingConfirmation\": 0.0,\n        \"declined\": 0.0\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": null,\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
             }
           ]
         },
@@ -39621,7 +39659,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/invoicing/debtors/{{specialId}}?openOnly=false",
+              "raw": "{{baseUrl}}/api/v1/invoicing/debtors/{{specialId}}?openOnly=false&page=0&size=50",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -39636,10 +39674,18 @@
                 {
                   "key": "openOnly",
                   "value": "false"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "50"
                 }
               ]
             },
-            "description": "The customer's account and invoice history (from, to, openOnly). warning is set when they are over their credit limit; Sales & POS enforces it at the till.",
+            "description": "The customer's account and their invoice history, newest first and paged (from, to, openOnly, page, size). warning is set when they are over their credit limit; Sales & POS enforces it at the till.",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -39669,7 +39715,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/invoicing/debtors/{{specialId}}?openOnly=false",
+                  "raw": "{{baseUrl}}/api/v1/invoicing/debtors/{{specialId}}?openOnly=false&page=0&size=50",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -39684,10 +39730,18 @@
                     {
                       "key": "openOnly",
                       "value": "false"
+                    },
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "50"
                     }
                   ]
                 },
-                "description": "The customer's account and invoice history (from, to, openOnly). warning is set when they are over their credit limit; Sales & POS enforces it at the till.",
+                "description": "The customer's account and their invoice history, newest first and paged (from, to, openOnly, page, size). warning is set when they are over their credit limit; Sales & POS enforces it at the till.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -39709,7 +39763,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": {\n    \"customer\": {\n      \"customerId\": \"{{specialId}}\",\n      \"code\": \"CU-2\",\n      \"name\": \"Grace Foods\",\n      \"type\": \"SPECIAL_CUSTOMER\",\n      \"phone\": null,\n      \"locationId\": \"{{customerLocationId}}\",\n      \"showroom\": \"Lagos HQ\",\n      \"correspondentId\": null,\n      \"rep\": null,\n      \"openInvoices\": 1,\n      \"outstanding\": 73100.0,\n      \"creditLimit\": 0.0,\n      \"overLimit\": true,\n      \"oldestInvoiceDays\": 0,\n      \"ageing\": \"WITHIN_30\",\n      \"ageingLabel\": \"Within 30 days\",\n      \"lastPaymentAt\": null\n    },\n    \"account\": {\n      \"openInvoices\": 1,\n      \"lastPaymentAt\": null,\n      \"totalInvoiced\": 86000.0,\n      \"totalPaid\": 0.0,\n      \"totalCredited\": 12900.0,\n      \"outstanding\": 73100.0,\n      \"creditLimit\": 0.0,\n      \"overLimit\": true\n    },\n    \"transactions\": [\n      {\n        \"invoiceId\": \"{{draftInvoiceId}}\",\n        \"date\": \"2026-10-15\",\n        \"invoice\": \"INV-3\",\n        \"description\": \"Invoice from pro-forma SBX-3\",\n        \"value\": 86000.0,\n        \"paid\": 12900.0,\n        \"balance\": 73100.0,\n        \"dueDate\": \"2026-10-29\",\n        \"status\": \"Partially Paid\"\n      }\n    ],\n    \"warning\": \"Further credit sales should be withheld until the balance is brought within limit.\"\n  }\n}"
+              "body": "{\n  \"data\": {\n    \"customer\": {\n      \"customerId\": \"{{specialId}}\",\n      \"code\": \"CU-2\",\n      \"name\": \"Grace Foods\",\n      \"type\": \"SPECIAL_CUSTOMER\",\n      \"phone\": null,\n      \"locationId\": \"{{customerLocationId}}\",\n      \"showroom\": \"Lagos HQ\",\n      \"correspondentId\": null,\n      \"rep\": null,\n      \"openInvoices\": 1,\n      \"outstanding\": 73100.0,\n      \"creditLimit\": 0.0,\n      \"overLimit\": true,\n      \"oldestInvoiceDays\": 0,\n      \"ageing\": \"WITHIN_30\",\n      \"ageingLabel\": \"Within 30 days\",\n      \"lastPaymentAt\": null\n    },\n    \"account\": {\n      \"openInvoices\": 1,\n      \"lastPaymentAt\": null,\n      \"totalInvoiced\": 86000.0,\n      \"totalPaid\": 0.0,\n      \"totalCredited\": 12900.0,\n      \"outstanding\": 73100.0,\n      \"creditLimit\": 0.0,\n      \"overLimit\": true\n    },\n    \"transactions\": {\n      \"items\": [\n        {\n          \"invoiceId\": \"{{draftInvoiceId}}\",\n          \"date\": \"2026-10-15\",\n          \"invoice\": \"INV-3\",\n          \"description\": \"Invoice from pro-forma SBX-3\",\n          \"value\": 86000.0,\n          \"paid\": 12900.0,\n          \"balance\": 73100.0,\n          \"dueDate\": \"2026-10-29\",\n          \"status\": \"Partially Paid\"\n        }\n      ],\n      \"page\": 0,\n      \"size\": 50,\n      \"totalItems\": 1,\n      \"totalPages\": 1,\n      \"totalIsEstimate\": false,\n      \"facets\": null,\n      \"summary\": null,\n      \"meta\": {\n        \"appliedFilters\": {},\n        \"ignoredQualifiers\": [],\n        \"suggestions\": [],\n        \"matches\": {}\n      }\n    },\n    \"warning\": \"Further credit sales should be withheld until the balance is brought within limit.\"\n  }\n}"
             }
           ]
         },

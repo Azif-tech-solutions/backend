@@ -43,6 +43,7 @@ import java.time.LocalDate
 import java.util.UUID
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.DecimalColumnType
+import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
@@ -230,7 +231,11 @@ class BankAccountService(
         val base = (BankTransactionsTable.tenantId eq support.tenantId()) and (BankTransactionsTable.bankAccountId eq id)
         val condition = listOfNotNull(base, statementSearch.condition(parsed), statementFilters.fromParams(params, context), statementFilters.fromJson(request.filter, context)).allOf()!!
 
-        val query = BankTransactionsTable.select(BankTransactionsTable.columns + runningBalance).where(condition)
+        val inPeriod = listOfNotNull(base, from?.let { BankTransactionsTable.entryDate greaterEq it }, to?.let { BankTransactionsTable.entryDate lessEq it }).allOf()!!
+        val opening = from?.let { LedgerSql.bankNet(base and (BankTransactionsTable.entryDate less it)) } ?: BigDecimal.ZERO
+        val balances = LedgerSql.bankBalances(inPeriod)
+        val query = BankTransactionsTable.join(balances.alias, JoinType.INNER, BankTransactionsTable.id, balances.id)
+            .select(BankTransactionsTable.columns + balances.column).where(condition)
             .orderBy(BankTransactionsTable.entryDate to SortOrder.ASC, BankTransactionsTable.createdAt to SortOrder.ASC, BankTransactionsTable.id to SortOrder.ASC)
         val page = Paging.fetch(query, PageRequest.of(request.page, request.size)) { it }
         val categoryNames = categories.names(page.items.mapNotNull { it[BankTransactionsTable.expenseCategoryId] })
@@ -244,7 +249,7 @@ class BankAccountService(
                 type = if (credit) "Credit" else "Debit",
                 credit = if (credit) row[BankTransactionsTable.amount] else null,
                 debit = if (credit) null else row[BankTransactionsTable.amount],
-                balance = Money.round(BigDecimal(row[runningBalance].toString())),
+                balance = balances.after(row, opening),
                 sourceType = row[BankTransactionsTable.sourceType],
                 expenseCategoryName = row[BankTransactionsTable.expenseCategoryId]?.let(categoryNames::get),
                 createdAt = row[BankTransactionsTable.createdAt],
@@ -252,9 +257,7 @@ class BankAccountService(
         }
 
         val summary = if (request.summary) {
-            val opening = from?.let { netBefore(base, BankTransactionsTable.entryDate less it) } ?: BigDecimal.ZERO
-            val closing = netBefore(base, to?.let { BankTransactionsTable.entryDate lessEq it })
-            val inPeriod = listOfNotNull(base, from?.let { BankTransactionsTable.entryDate greaterEq it }, to?.let { BankTransactionsTable.entryDate lessEq it }).allOf()!!
+            val closing = LedgerSql.bankNet(if (to == null) base else base and (BankTransactionsTable.entryDate lessEq to))
             val masked = mask(account[BankAccountsTable.accountNumber])
             mapOf(
                 "account" to mapOf(
@@ -396,18 +399,6 @@ class BankAccountService(
         ),
         qualifiers = statementFilters,
     )
-
-    /** Balance after each row in date order: everything on the account up to and including it. */
-    private val runningBalance = RawExpression<BigDecimal>({
-        +"(SELECT coalesce(sum(CASE WHEN b2.entry_type = 'CREDIT' THEN b2.amount ELSE -b2.amount END), 0) FROM bank_transactions b2 "
-        +"WHERE b2.bank_account_id = bank_transactions.bank_account_id "
-        +"AND (b2.entry_date, b2.created_at, b2.id) <= (bank_transactions.entry_date, bank_transactions.created_at, bank_transactions.id))"
-    })
-
-    private fun netBefore(base: Op<Boolean>, bound: Op<Boolean>?): BigDecimal {
-        val net = RawExpression<BigDecimal>({ +"coalesce(sum(CASE WHEN "; +BankTransactionsTable.entryType; +" = 'CREDIT' THEN "; +BankTransactionsTable.amount; +" ELSE -"; +BankTransactionsTable.amount; +" END), 0)" })
-        return BigDecimal(BankTransactionsTable.select(net).where(if (bound == null) base else base and bound).single()[net].toString())
-    }
 
     private fun total(condition: Op<Boolean>, type: String): BigDecimal {
         val sum = Sum(BankTransactionsTable.amount, DecimalColumnType(16, 2))

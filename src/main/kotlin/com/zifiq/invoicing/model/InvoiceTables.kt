@@ -9,6 +9,7 @@ import org.jetbrains.exposed.sql.javatime.date
 import org.jetbrains.exposed.sql.javatime.time
 import org.jetbrains.exposed.sql.javatime.timestamp
 import org.jetbrains.exposed.sql.json.jsonb
+import java.util.UUID
 
 /**
  * Electronic Invoicing tables (V12__electronic_invoicing_module.sql). Lifecycle `status` is the only
@@ -174,4 +175,24 @@ object InvoiceDeliveriesTable : UUIDTable("invoice_deliveries") {
     val trigger = varchar("trigger", 20)
     val requestedByUserId = optReference("requested_by_user_id", AppUsersTable)
     val requestedAt = timestamp("requested_at")
+}
+
+/**
+ * The Debtors List read model (V14__debtor_balances.sql): one row per customer per showroom of their
+ * invoices, plus one per customer for all showrooms ([ALL_LOCATIONS]). Written only by the invoices
+ * trigger, never by application code.
+ */
+object DebtorBalancesTable : Table("debtor_balances") {
+    val tenantId = reference("tenant_id", TenantsTable)
+    val customerId = uuid("customer_id")
+    val locationId = uuid("location_id")
+    val openInvoices = integer("open_invoices")
+    val outstanding = decimal("outstanding", 16, 2)
+    val oldestOpenIssueDate = date("oldest_open_issue_date").nullable()
+    val lastPaymentAt = timestamp("last_payment_at").nullable()
+    val updatedAt = timestamp("updated_at")
+    override val primaryKey = PrimaryKey(tenantId, customerId, locationId)
+
+    /** The location key of a customer's all-showrooms row. */
+    val ALL_LOCATIONS: UUID = UUID(0, 0)
 }

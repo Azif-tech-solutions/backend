@@ -152,12 +152,14 @@ ep("02 - Tenants & Members", "Invite Member", "POST", "/api/v1/tenants/members",
    desc="Run Factory Setup > Create Factory first so {{factoryId}} is populated, or leave locationId null for ALL_LOCATIONS.")
 
 ep("02 - Tenants & Members", "List Members", "GET", "/api/v1/tenants/members",
-   resp={"data": [
+   query=[{"key": "q", "value": "", "disabled": True}, {"key": "status", "value": "ACTIVE", "disabled": True}, {"key": "page", "value": "0"}, {"key": "size", "value": "50"}],
+   desc="Paged, name order. q matches name (trigram) or e-mail (prefix); status narrows (ACTIVE, SUSPENDED, INVITED).",
+   resp=PAGED([
        {"userId": "{{userId}}", "email": "admin@apex.com", "displayName": "Alice Admin", "phone": None, "status": "ACTIVE",
         "role": {"id": "{{adminRoleId}}", "name": "Administrator"}, "locationId": None, "accessScope": "ALL_LOCATIONS", "invitedAt": NOW},
        {"userId": "{{memberUserId}}", "email": "keeper@apex.com", "displayName": "Kelvin Keeper", "phone": "+2348000000000", "status": "ACTIVE",
         "role": {"id": "{{stockKeeperRoleId}}", "name": "Stock Keeper"}, "locationId": "{{factoryId}}", "accessScope": "SINGLE_LOCATION", "invitedAt": NOW},
-   ]})
+   ]))
 
 ep("02 - Tenants & Members", "Update Member Status", "PUT", "/api/v1/tenants/members/{{memberUserId}}/status",
    body={"status": "SUSPENDED"},
@@ -965,9 +967,9 @@ ep(C, "C7 Get Correspondent", "GET", "/api/v1/customers/correspondents/{{corresp
 
 ep(C, "C8 List Correspondents", "GET", "/api/v1/customers/correspondents",
    query=[{"key": "status", "value": "ASSIGNED"}],
-   resp={"data": [CORR, CORR2]},
-   desc="Unpaged. Query: q (code, name, phone, e-mail, responsibilities), status (repeatable), region (repeatable), locationId, userLinked, hasCustomers, "
-        "sort=name|customerCount|dealerCount|assignedAt.")
+   resp=PAGED([CORR, CORR2]),
+   desc="Paged (page, size). Query: q (code, name, phone, e-mail, responsibilities), status (repeatable), region (repeatable), locationId, userLinked, hasCustomers, "
+        "sort=name|customerCount|dealerCount|assignedAt. customerCount/dealerCount are kept on the correspondent row, so sorting by them is a plain index read.")
 
 ep(C, "C9 Correspondent Lookup (picker)", "GET", "/api/v1/customers/correspondents/lookup",
    query=[{"key": "q", "value": "bisi"}, {"key": "assignedOnly", "value": "true"}],
@@ -2111,12 +2113,12 @@ ep(A, "F7 Petty Cash Payment History", "GET", "/api/v1/account/petty-cash/paymen
 ep(A, "F8 Petty Cash Statement", "GET", "/api/v1/account/petty-cash/statement", query=[{"key": "pettyCashAccountId", "value": "{{pettyCashAccountId}}"}],
    resp={"data": {"accounts": [{"id": "{{pettyCashAccountId}}", "code": "PC-IKJ", "name": "Ikeja Petty Cash Box", "locationName": "Showroom Ikeja"}],
                   "period": {"from": "2026-10-01", "to": "2026-10-12"},
-                  "ledger": [{"date": "2026-10-12", "ref": "PCF-1", "description": "Funding from BA-1 Guaranty Trust Bank — PCF-1", "category": None,
-                              "direction": "Funding", "in": 50000.00, "out": 0.00, "balance": 199000.00, "accountCode": "PC-IKJ"}],
+                  "ledger": PAGED([{"date": "2026-10-12", "ref": "PCF-1", "description": "Funding from BA-1 Guaranty Trust Bank — PCF-1", "category": None,
+                                    "direction": "Funding", "in": 50000.00, "out": 0.00, "balance": 199000.00, "accountCode": "PC-IKJ"}])["data"],
                   "statement": {"funding": {"openingBalance": 0.00, "entries": [{"ref": "PCF-1", "date": "2026-10-12", "amount": 50000.00}], "totalAvailable": 50000.00},
                                 "utilisationByCategory": [], "totalUtilised": 0.00, "closingBalance": 199000.00, "utilisedPct": 0.0}}},
    desc="Perm accounting.read. One box (pettyCashAccountId) or every box at a location (locationId), for from/to (default this month to date): "
-        "the ledger with a running balance, funding (opening + top-ups and accepted allocations), utilisation by category net of reversals, "
+        "the ledger (paged: page, size) with a running balance, funding (opening + top-ups and accepted allocations), utilisation by category net of reversals, "
         "closing balance and the share used.")
 
 ep(A, "F9 Send Petty Cash to a Branch", "POST", "/api/v1/account/petty-cash/allocations",
@@ -2385,9 +2387,9 @@ ep(A, "L8 Withdraw (error: invoice settlement)", "POST", "/api/v1/account/wallet
    expect_error={"status": 400, "code": "USE_INVOICE_PAYMENT"})
 
 ep(A, "M1 Tenderable: Payable", "GET", "/api/v1/account/tenderable/payable", query=[{"key": "locationId", "value": "{{showroomId}}"}],
-   resp={"data": [{"date": "2026-10-12", "cashierUserId": "{{userId}}", "cashier": "Alice Admin", "ftf": 200000.00, "cash": 75000.00, "pos": 0.00,
-                   "wallet": 0.00, "deposit": 0.00, "refund": 0.00, "total": 275000.00, "pendingConfirmation": 0.00, "declined": 0.00}]},
-   desc="Perm accounting.tenderable.read. One row per cashier per day: ftf (transfers and cheques), cash, pos, wallet, deposit, refund and total. "
+   resp=PAGED([{"date": "2026-10-12", "cashierUserId": "{{userId}}", "cashier": "Alice Admin", "ftf": 200000.00, "cash": 75000.00, "pos": 0.00,
+                 "wallet": 0.00, "deposit": 0.00, "refund": 0.00, "total": 275000.00, "pendingConfirmation": 0.00, "declined": 0.00}]),
+   desc="Perm accounting.tenderable.read. One row per cashier per day, newest day first, paged (page, size): ftf (transfers and cheques), cash, pos, wallet, deposit, refund and total. "
         "Pending and declined receipts are shown apart and never counted in the total.")
 
 ep(A, "M2 Tenderable: General Report", "GET", "/api/v1/account/tenderable/general-report",
@@ -2798,17 +2800,18 @@ ep(I, "I3 Debtors List", "GET", "/api/v1/invoicing/debtors",
         "(the customer's home showroom), customerType, ageing, correspondentId, overLimitOnly, outstanding.gte/lte, q (code, name, phone); sort outstanding "
         "(default), oldestInvoiceDays, name, lastPaymentAt.")
 
-ep(I, "I4 Debtor Account", "GET", "/api/v1/invoicing/debtors/{{specialId}}", query=[{"key": "openOnly", "value": "false"}],
+ep(I, "I4 Debtor Account", "GET", "/api/v1/invoicing/debtors/{{specialId}}", query=[{"key": "openOnly", "value": "false"}, {"key": "page", "value": "0"}, {"key": "size", "value": "50"}],
    resp={"data": {"customer": {"customerId": "{{specialId}}", "code": "CU-2", "name": "Grace Foods", "type": "SPECIAL_CUSTOMER", "phone": None,
                                "locationId": "{{customerLocationId}}", "showroom": "Lagos HQ", "correspondentId": None, "rep": None, "openInvoices": 1,
                                "outstanding": 73100.00, "creditLimit": 0.00, "overLimit": True, "oldestInvoiceDays": 0, "ageing": "WITHIN_30",
                                "ageingLabel": "Within 30 days", "lastPaymentAt": None},
                   "account": {"openInvoices": 1, "lastPaymentAt": None, "totalInvoiced": 86000.00, "totalPaid": 0.00, "totalCredited": 12900.00,
                               "outstanding": 73100.00, "creditLimit": 0.00, "overLimit": True},
-                  "transactions": [{"invoiceId": "{{draftInvoiceId}}", "date": "2026-10-15", "invoice": "INV-3", "description": "Invoice from pro-forma SBX-3",
-                                    "value": 86000.00, "paid": 12900.00, "balance": 73100.00, "dueDate": "2026-10-29", "status": "Partially Paid"}],
+                  "transactions": PAGED([{"invoiceId": "{{draftInvoiceId}}", "date": "2026-10-15", "invoice": "INV-3", "description": "Invoice from pro-forma SBX-3",
+                                          "value": 86000.00, "paid": 12900.00, "balance": 73100.00, "dueDate": "2026-10-29", "status": "Partially Paid"}])["data"],
                   "warning": "Further credit sales should be withheld until the balance is brought within limit."}},
-   desc="The customer's account and invoice history (from, to, openOnly). warning is set when they are over their credit limit; Sales & POS enforces it at the till.")
+   desc="The customer's account and their invoice history, newest first and paged (from, to, openOnly, page, size). warning is set when they are over their "
+        "credit limit; Sales & POS enforces it at the till.")
 
 ep(I, "J1 NRS Preview", "GET", "/api/v1/invoicing/invoices/{{draftInvoiceId}}/nrs-preview",
    resp={"data": {"ready": False, "missing": ["issuer.nrsBusinessId", "lines[1].hsn_code (fallback used)", "lines[1].price_unit"],

@@ -1,5 +1,8 @@
 package com.zifiq.invoicing.service
 
+import org.jetbrains.exposed.sql.SortOrder
+import com.zifiq.common.search.RawOp
+import com.zifiq.invoicing.model.DebtorBalancesTable
 import com.zifiq.common.money.Money
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.invoicing.dto.DraftHeaderRequest
@@ -144,19 +147,24 @@ class InvoiceService(
         }
     }
 
+    /** The customer's all-showrooms debtor row (kept by the invoices trigger, V14): one primary-key read. */
     override fun outstandingFor(customerId: UUID): BigDecimal =
-        openInvoicesFor(customerId).fold(BigDecimal.ZERO) { sum, it -> sum + it.balance }.setScale(2)
+        DebtorBalancesTable.select(DebtorBalancesTable.outstanding)
+            .where {
+                (DebtorBalancesTable.tenantId eq support.tenantId()) and (DebtorBalancesTable.customerId eq customerId) and
+                    (DebtorBalancesTable.locationId eq DebtorBalancesTable.ALL_LOCATIONS)
+            }
+            .firstOrNull()?.get(DebtorBalancesTable.outstanding)?.setScale(2) ?: BigDecimal.ZERO.setScale(2)
 
+    /** Oldest first (issue date, then issue time); only open invoices are read (invoices_customer_issued_idx). */
     override fun openInvoicesFor(customerId: UUID): List<OpenInvoiceRef> {
-        val tolerance = support.tolerance()
+        val d = support.expressions()
         return InvoicesTable.selectAll()
-            .where { (InvoicesTable.tenantId eq support.tenantId()) and (InvoicesTable.customerId eq customerId) and (InvoicesTable.status eq "ISSUED") }
-            .orderBy(InvoicesTable.issueDate)
-            .map { it to balanceOf(it) }
-            .filter { (_, balance) -> balance > tolerance }
-            .map { (row, balance) ->
+            .where { (InvoicesTable.tenantId eq support.tenantId()) and (InvoicesTable.customerId eq customerId) and (InvoicesTable.status eq "ISSUED") and RawOp { +d.open } }
+            .orderBy(InvoicesTable.issueDate to SortOrder.ASC, InvoicesTable.issuedAt to SortOrder.ASC, InvoicesTable.id to SortOrder.ASC)
+            .map { row ->
                 OpenInvoiceRef(row[InvoicesTable.id].value, row[InvoicesTable.number]!!, row[InvoicesTable.issueDate]!!, row[InvoicesTable.dueDate],
-                    row[InvoicesTable.taxInclusiveAmount], balance)
+                    row[InvoicesTable.taxInclusiveAmount], balanceOf(row))
             }
     }
 

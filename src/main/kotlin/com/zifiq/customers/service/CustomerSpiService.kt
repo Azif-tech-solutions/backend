@@ -1,5 +1,7 @@
 package com.zifiq.customers.service
 
+import com.zifiq.customers.spi.LedgerTotal
+import com.zifiq.common.sql.Aggregates
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.phone.PhoneNumbers
 import com.zifiq.common.search.RawOp
@@ -146,19 +148,36 @@ class CustomerSpiService(
         return support.query((CustomersTable.tenantId eq tenantContext.requireTenantId()) and (CustomersTable.id inList ids)).map(support::toRef)
     }
 
-    override fun ledgerEntries(filter: LedgerEntriesFilter): List<LedgerEntryView> {
+    private fun ledgerCondition(filter: LedgerEntriesFilter): Op<Boolean> {
         val parts = mutableListOf<Op<Boolean>>(CustomerLedgerEntriesTable.tenantId eq tenantContext.requireTenantId())
         filter.customerIds?.let { parts += CustomerLedgerEntriesTable.customerId inList it }
         filter.entryTypes?.let { types -> parts += CustomerLedgerEntriesTable.entryType inList types.map { it.name } }
         filter.sourceModule?.let { parts += CustomerLedgerEntriesTable.sourceModule eq it }
         filter.from?.let { parts += CustomerLedgerEntriesTable.entryDate greaterEq it }
         filter.to?.let { parts += CustomerLedgerEntriesTable.entryDate lessEq it }
-        return CustomerLedgerEntriesTable
-            .join(CustomersTable, JoinType.INNER, additionalConstraint = { RawOp { +CustomerLedgerEntriesTable.customerId; +" = "; +CustomersTable.id } })
+        filter.customerTypes?.let { types -> parts += CustomersTable.type inList types.map { it.name } }
+        return parts.allOf()!!
+    }
+
+    private fun ledgerJoin() = CustomerLedgerEntriesTable
+        .join(CustomersTable, JoinType.INNER, additionalConstraint = { RawOp { +CustomerLedgerEntriesTable.customerId; +" = "; +CustomersTable.id } })
+
+    override fun ledgerTotal(filter: LedgerEntriesFilter): LedgerTotal {
+        val count = Aggregates.count()
+        val amount = Aggregates.sum(CustomerLedgerEntriesTable.amount)
+        val row = ledgerJoin().select(count, amount).where(ledgerCondition(filter)).single()
+        return LedgerTotal(Aggregates.long(row, count), Aggregates.money(row, amount))
+    }
+
+    override fun ledgerEntries(filter: LedgerEntriesFilter): List<LedgerEntryView> {
+        val order = if (filter.newestFirst) SortOrder.DESC else SortOrder.ASC
+        val orderBy = if (filter.newestFirst) arrayOf(CustomerLedgerEntriesTable.entryDate to order, CustomerLedgerEntriesTable.createdAt to order, CustomerLedgerEntriesTable.id to order)
+        else arrayOf(CustomerLedgerEntriesTable.createdAt to order, CustomerLedgerEntriesTable.id to order)
+        return ledgerJoin()
             .selectAll()
-            .where(parts.allOf()!!)
-            .orderBy(CustomerLedgerEntriesTable.createdAt to SortOrder.ASC, CustomerLedgerEntriesTable.id to SortOrder.ASC)
-            .limit(MAX_REPORT_ROWS)
+            .where(ledgerCondition(filter))
+            .orderBy(*orderBy)
+            .limit(minOf(filter.limit ?: MAX_REPORT_ROWS, MAX_REPORT_ROWS))
             .map { row ->
                 val type = LedgerEntryType.valueOf(row[CustomerLedgerEntriesTable.entryType])
                 LedgerEntryView(

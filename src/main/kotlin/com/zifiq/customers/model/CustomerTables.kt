@@ -32,6 +32,9 @@ object CorrespondentsTable : UUIDTable("correspondents") {
     val responsibilities = varchar("responsibilities", 300).nullable()
     val status = varchar("status", 20)
     val assignedAt = date("assigned_at").nullable()
+    /** Live customers / dealers assigned to this rep, kept by the customers trigger (V14_2). Never written by application code. */
+    val customerCount = integer("customer_count")
+    val dealerCount = integer("dealer_count")
     val createdByUserId = uuid("created_by_user_id")
     val createdAt = timestamp("created_at")
 }

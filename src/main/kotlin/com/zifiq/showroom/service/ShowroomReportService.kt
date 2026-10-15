@@ -1,5 +1,9 @@
 package com.zifiq.showroom.service
 
+import org.jetbrains.exposed.sql.alias
+import org.jetbrains.exposed.sql.QueryAlias
+import org.jetbrains.exposed.sql.ColumnSet
+import com.zifiq.common.sql.Aggregates
 import com.zifiq.inventory.repository.StockSql
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.filter.FilterContext
@@ -24,7 +28,6 @@ import com.zifiq.inventory.model.StockItemsTable
 import com.zifiq.inventory.model.StockLedgerEntriesTable
 import com.zifiq.inventory.model.StockTransferLinesTable
 import com.zifiq.inventory.model.StockTransfersTable
-import com.zifiq.inventory.repository.PriceListRepository
 import com.zifiq.platform.events.DomainEvents
 import com.zifiq.platform.security.CurrentActorProvider
 import com.zifiq.platform.security.LocationAccessService
@@ -37,8 +40,6 @@ import com.zifiq.platform.tenancy.model.LocationsTable
 import com.zifiq.showroom.dto.ComprehensiveStockRow
 import com.zifiq.showroom.dto.TransferReportRow
 import java.math.BigDecimal
-import java.math.RoundingMode
-import java.text.Normalizer
 import java.time.LocalDate
 import java.util.UUID
 import org.jetbrains.exposed.sql.JoinType
@@ -62,7 +63,6 @@ class ShowroomReportService(
     private val permissionAuthorizer: PermissionAuthorizer,
     private val locationAccess: LocationAccessService,
     private val moduleSettings: ModuleSettings,
-    private val prices: PriceListRepository,
     private val hierarchy: LocationHierarchy,
     private val register: ShowroomRegisterService,
     private val domainEvents: DomainEvents,
@@ -73,8 +73,9 @@ class ShowroomReportService(
 
     /**
      * One row per item × area at the showroom(s) on [asAt] (today: live balances; earlier: the
-     * ledger up to that day). Cost columns are 0 for callers without cost visibility; the
-     * response's summary says which (`costVisible`), so the UI can hide them.
+     * ledger up to that day). Filtering, `q`, sorting, paging and the totals are one SQL query each,
+     * however many items and areas there are. Cost columns are 0 for callers without cost
+     * visibility; the response's summary says which (`costVisible`), so the UI can hide them.
      */
     fun comprehensiveStock(request: ListSearchRequest): PageResult<ComprehensiveStockRow> = tx.execute {
         fun param(name: String) = request.params[name]?.firstOrNull()?.takeIf { it.isNotBlank() }
@@ -108,58 +109,50 @@ class ShowroomReportService(
                 hierarchy.withAreas(showrooms)
             }
         }
-        val quantities: Map<Pair<UUID, UUID>, BigDecimal> = if (locations.isEmpty()) emptyMap() else if (!asAt.isBefore(today())) {
-            StockBalancesTable.selectAll().where { StockBalancesTable.locationId inList locations }
-                .associate { (it[StockBalancesTable.locationId] to it[StockBalancesTable.stockItemId].value) to it[StockBalancesTable.quantityOnHand] }
-        } else {
-            val net = Sum(RawExpression<BigDecimal>({ +StockLedgerEntriesTable.qtyIn; +" - "; +StockLedgerEntriesTable.qtyOut }), org.jetbrains.exposed.sql.DecimalColumnType(16, 3))
-            StockLedgerEntriesTable.select(StockLedgerEntriesTable.locationId, StockLedgerEntriesTable.stockItemId, net)
-                .where { (StockLedgerEntriesTable.locationId inList locations) and (StockLedgerEntriesTable.entryDate lessEq asAt) }
-                .groupBy(StockLedgerEntriesTable.locationId, StockLedgerEntriesTable.stockItemId)
-                .associate { (it[StockLedgerEntriesTable.locationId] to it[StockLedgerEntriesTable.stockItemId].value) to (it[net] ?: BigDecimal.ZERO) }
-        }.filterValues { includeZero || it.signum() != 0 }
-
-        val itemIds = quantities.keys.map { it.second }.toSet()
+        val visible = permissionAuthorizer.hasPermission(currentActorProvider.current().userId, "factory.costing.read")
+        val source = stockSource(locations.ifEmpty { setOf(UUID(0, 0)) }, asAt)
+        val qty = source.qty
         val categoryName = RawExpression<String>({ +"coalesce((select c.name from categories c where c.id = "; +StockItemsTable.categoryId; +"), 'Ungrouped')" })
         val unitName = StockSql.unitName(StockItemsTable.unitOfMeasureId)
-        val items = if (itemIds.isEmpty()) emptyMap() else StockItemsTable.select(StockItemsTable.columns + categoryName + unitName)
-            .where { StockItemsTable.id inList itemIds }.associateBy { it[StockItemsTable.id].value }
-        val locationRows = LocationsTable.selectAll().where { LocationsTable.id inList locations }.associateBy { it[LocationsTable.id].value }
-        val retail = prices.currentPrices(itemIds, asAt)
-        val visible = permissionAuthorizer.hasPermission(currentActorProvider.current().userId, "factory.costing.read")
-        val needle = request.q?.trim()?.takeIf { it.isNotEmpty() }?.let(::fold)
+        val area = RawExpression<String>({ +"(case when "; +LocationsTable.type; +" = 'STORAGE_AREA' then "; +LocationsTable.name; +" else 'Unallocated' end)" })
+        val price = StockSql.retailPriceAt(asAt)
+        val totalCost = RawExpression<BigDecimal>({ +"round(coalesce("; +StockItemsTable.landingCost; +", 0) * "; +qty; +", 2)" })
+        val retailValue = RawExpression<BigDecimal>({ +"round(coalesce("; +price; +", 0) * "; +qty; +", 2)" })
+        val parsed = request.q?.takeIf { it.isNotBlank() }?.let(STOCK_SEARCH::parse)
+        val condition = listOfNotNull(
+            StockItemsTable.tenantId eq tenantContext.requireTenantId(),
+            if (includeZero) null else RawOp { +qty; +" <> 0" },
+            sources.takeIf { it.isNotEmpty() }?.let { StockItemsTable.itemType inList it },
+            categoryIds.takeIf { it.isNotEmpty() }?.let { StockItemsTable.categoryId inList it },
+            parsed?.let(STOCK_SEARCH::condition),
+        ).allOf()!!
 
-        val all = quantities.entries.mapNotNull { (key, qty) ->
-            val (location, itemId) = key
-            val item = items[itemId] ?: return@mapNotNull null
-            val type = item[StockItemsTable.itemType]
-            if (sources.isNotEmpty() && type !in sources) return@mapNotNull null
-            if (categoryIds.isNotEmpty() && item[StockItemsTable.categoryId] !in categoryIds) return@mapNotNull null
-            if (needle != null && listOfNotNull(item[StockItemsTable.code], item[StockItemsTable.name], item[StockItemsTable.barcode]).none { fold(it).contains(needle) }) return@mapNotNull null
-            val place = locationRows.getValue(location)
-            val cost = item[StockItemsTable.landingCost] ?: BigDecimal.ZERO
-            val price = retail[itemId]?.retailPrice
+        val sortKey = request.sort.firstOrNull()
+        val dir = if (sortKey?.dir.equals("desc", ignoreCase = true)) SortOrder.DESC else SortOrder.ASC
+        val order: List<Pair<org.jetbrains.exposed.sql.Expression<*>, SortOrder>> = when (sortKey?.field) {
+            null, "group" -> listOf(categoryName to dir, StockItemsTable.name to dir, area to dir)
+            "qty" -> listOf(qty to dir)
+            "retailValue" -> listOf(retailValue to dir)
+            "totalCost" -> if (visible) listOf(totalCost to dir) else throw ApiErrors.invalidSortField("totalCost", listOf("group", "qty", "retailValue", "detail"))
+            "detail" -> listOf(StockItemsTable.name to dir)
+            else -> throw ApiErrors.invalidSortField(sortKey.field, listOf("group", "qty", "retailValue", "detail") + if (visible) listOf("totalCost") else emptyList())
+        }
+        val query = source.rows
+            .select(StockItemsTable.id, StockItemsTable.code, StockItemsTable.name, StockItemsTable.itemType, StockItemsTable.landingCost,
+                categoryName, unitName, area, source.location, qty, totalCost, price, retailValue)
+            .where(condition)
+            .orderBy(*(order + listOf(StockItemsTable.id to SortOrder.ASC, source.location to SortOrder.ASC)).toTypedArray())
+        val page = Paging.fetchNumbered(query, PageRequest.of(request.page, request.size)) { sn, row ->
+            val type = row[StockItemsTable.itemType]
             ComprehensiveStockRow(
-                ln = 0, stockItemId = itemId, code = item[StockItemsTable.code], detail = item[StockItemsTable.name], group = item[categoryName],
+                ln = sn, stockItemId = row[StockItemsTable.id].value, code = row[StockItemsTable.code], detail = row[StockItemsTable.name], group = row[categoryName],
                 source = SOURCE_LABELS[type] ?: type.lowercase().replace('_', ' ').replaceFirstChar(Char::titlecase),
-                locationId = location, area = if (place[LocationsTable.type] == "STORAGE_AREA") place[LocationsTable.name] else "Unallocated",
-                qty = qty, unit = item.getOrNull(unitName),
-                unitCost = if (visible) cost.setScale(2) else BigDecimal.ZERO.setScale(2),
-                totalCost = if (visible) (cost * qty).setScale(2, RoundingMode.HALF_UP) else BigDecimal.ZERO.setScale(2),
-                sellingPrice = price, retailValue = ((price ?: BigDecimal.ZERO) * qty).setScale(2, RoundingMode.HALF_UP),
+                locationId = row[source.location], area = row[area], qty = row[qty] ?: BigDecimal.ZERO, unit = row.getOrNull(unitName),
+                unitCost = if (visible) (row[StockItemsTable.landingCost] ?: BigDecimal.ZERO).setScale(2) else BigDecimal.ZERO.setScale(2),
+                totalCost = if (visible) row[totalCost] else BigDecimal.ZERO.setScale(2),
+                sellingPrice = row[price], retailValue = row[retailValue],
             )
         }
-        val sortKey = request.sort.firstOrNull()
-        val sorted = when (sortKey?.field) {
-            null, "group" -> all.sortedWith(compareBy({ it.group }, { it.detail }, { it.area }))
-            "qty" -> all.sortedBy { it.qty }
-            "retailValue" -> all.sortedBy { it.retailValue }
-            "totalCost" -> if (visible) all.sortedBy { it.totalCost } else throw ApiErrors.invalidSortField("totalCost", listOf("group", "qty", "retailValue", "detail"))
-            "detail" -> all.sortedBy { it.detail }
-            else -> throw ApiErrors.invalidSortField(sortKey.field, listOf("group", "qty", "retailValue", "detail") + if (visible) listOf("totalCost") else emptyList())
-        }.let { if (sortKey?.dir.equals("desc", ignoreCase = true)) it.reversed() else it }
-        val page = PageRequest.of(request.page, request.size)
-        val items0 = sorted.drop(page.offset.toInt()).take(page.size).mapIndexed { index, row -> row.copy(ln = page.offset.toInt() + index + 1) }
 
         if (visible) {
             domainEvents.record(
@@ -167,20 +160,58 @@ class ShowroomReportService(
                 aggregateRef = "showroom.comprehensive-stock", summary = "Comprehensive stock report with costs viewed", locationId = locationId,
             )
         }
-        PageResult(
-            items = items0, page = page.page, size = page.size, totalItems = sorted.size.toLong(),
-            totalPages = if (sorted.isEmpty()) 0 else (sorted.size + page.size - 1) / page.size, totalIsEstimate = false,
+        val lines = Aggregates.count()
+        val totalQuantity = Aggregates.sum(qty)
+        val stockValue = Aggregates.sum(totalCost)
+        val retailTotal = Aggregates.sum(retailValue)
+        val totals = source.rows.select(lines, totalQuantity, stockValue, retailTotal).where(condition).single()
+        val storageAreas = if (locations.isEmpty()) 0L
+        else LocationsTable.select(LocationsTable.id).where { (LocationsTable.id inList locations) and (LocationsTable.type eq "STORAGE_AREA") }.count()
+        page.copy(
             summary = mapOf(
-                "costVisible" to visible, "asAt" to asAt.toString(), "lineItems" to sorted.size,
-                "totalQuantity" to sorted.fold(BigDecimal.ZERO) { sum, row -> sum + row.qty },
-                "totalStockValue" to sorted.fold(BigDecimal.ZERO) { sum, row -> sum + row.totalCost },
-                "retailValue" to sorted.fold(BigDecimal.ZERO) { sum, row -> sum + row.retailValue },
-                "storageAreas" to locationRows.values.count { it[LocationsTable.type] == "STORAGE_AREA" },
+                "costVisible" to visible, "asAt" to asAt.toString(), "lineItems" to Aggregates.long(totals, lines),
+                "totalQuantity" to totals[totalQuantity],
+                "totalStockValue" to if (visible) Aggregates.money(totals, stockValue) else BigDecimal.ZERO.setScale(2),
+                "retailValue" to Aggregates.money(totals, retailTotal),
+                "storageAreas" to storageAreas,
             ),
         )
     }
 
-    private fun fold(text: String) = Normalizer.normalize(text, Normalizer.Form.NFD).replace(Regex("\\p{M}+"), "").lowercase()
+    /** Stock rows for the report: the live balances (as at today), or the ledger summed up to [asAt]; each joined to its item and location. */
+    private class StockSource(val rows: ColumnSet, val qty: org.jetbrains.exposed.sql.Expression<BigDecimal?>, val location: org.jetbrains.exposed.sql.Expression<UUID>)
+
+    private fun stockSource(locations: Set<UUID>, asAt: LocalDate): StockSource {
+        if (!asAt.isBefore(today())) {
+            val balances = StockBalancesTable.select(StockBalancesTable.locationId, StockBalancesTable.stockItemId, StockBalancesTable.quantityOnHand)
+                .where { StockBalancesTable.locationId inList locations }.alias("stock")
+            return joined(balances, balances[StockBalancesTable.locationId], balances[StockBalancesTable.stockItemId], balances[StockBalancesTable.quantityOnHand])
+        }
+        val net = StockSql.net().alias("qty")
+        val ledger = StockLedgerEntriesTable.select(StockLedgerEntriesTable.locationId, StockLedgerEntriesTable.stockItemId, net)
+            .where {
+                (StockLedgerEntriesTable.tenantId eq tenantContext.requireTenantId()) and (StockLedgerEntriesTable.locationId inList locations) and
+                    (StockLedgerEntriesTable.entryDate lessEq asAt)
+            }
+            .groupBy(StockLedgerEntriesTable.locationId, StockLedgerEntriesTable.stockItemId).alias("stock")
+        return joined(ledger, ledger[StockLedgerEntriesTable.locationId], ledger[StockLedgerEntriesTable.stockItemId], ledger[net])
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun joined(stock: QueryAlias, location: org.jetbrains.exposed.sql.Expression<UUID>, item: org.jetbrains.exposed.sql.Expression<*>, qty: org.jetbrains.exposed.sql.Expression<*>) =
+        StockSource(
+            stock.join(StockItemsTable, JoinType.INNER, item, StockItemsTable.id).join(LocationsTable, JoinType.INNER, location, LocationsTable.id),
+            qty as org.jetbrains.exposed.sql.Expression<BigDecimal?>, location,
+        )
+
+
+    private val STOCK_SEARCH = SearchSpec(
+        listOf(
+            SearchField(StockItemsTable.code, SearchKind.REFERENCE, "Code"),
+            SearchField(StockItemsTable.barcode, SearchKind.CODE, "Barcode"),
+            SearchField(StockItemsTable.name, SearchKind.TRIGRAM, "Name"),
+        ),
+    )
 
     // ---- General Transfer Report ----
 

@@ -1,5 +1,6 @@
 package com.zifiq.account
 
+import com.zifiq.common.paging.PageRequest
 import com.fasterxml.jackson.databind.node.BooleanNode
 import com.zifiq.account.dto.BankAccountRequest
 import com.zifiq.account.dto.CashAccountRequest
@@ -203,15 +204,15 @@ class AccountSpendingIntegrationTest : PostgresIntegrationTest() {
         assertThat(fuel.balanceAfter).isEqualByComparingTo("30000")
         assertThat(pettyCash.reversePayment(fuel.id, "Paid twice").status).isEqualTo("REVERSED")
 
-        val statement = pettyCash.statement(box, null, null, null)
+        val statement = pettyCash.statement(box, null, null, null, PageRequest.of(0, 50))
         assertThat(statement.statement.closingBalance).isEqualByComparingTo("42000")
         assertThat(statement.statement.utilisationByCategory.map { it.amount.toPlainString() }).containsExactly("8000.00")
         assertThat(statement.statement.totalUtilised).isEqualByComparingTo("8000")
-        assertThat(statement.ledger.last().balance).isEqualByComparingTo("42000")
+        assertThat(statement.ledger.items.last().balance).isEqualByComparingTo("42000")
 
         val history = pettyCash.paymentHistory(ListSearchRequest(params = mapOf("pettyCashAccountId" to listOf(box.toString()))))
         assertThat(history.items.map { it.source }.toSet()).containsExactly("Petty cash payment")
-        assertThat(history.summary!!["paymentsMade"]).isEqualTo(1)
+        assertThat(history.summary!!["paymentsMade"]).isEqualTo(1L)
         assertThat(history.items.single { it.ref == fuel.ref }.status).isEqualTo("REVERSED")
     }
 

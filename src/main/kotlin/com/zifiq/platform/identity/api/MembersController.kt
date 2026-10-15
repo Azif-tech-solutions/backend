@@ -1,5 +1,9 @@
 package com.zifiq.platform.identity.api
 
+import org.springframework.web.bind.annotation.RequestParam
+import org.springdoc.core.annotations.ParameterObject
+import com.zifiq.common.paging.PageResult
+import com.zifiq.common.paging.PageParams
 import com.zifiq.platform.api.ApiEnvelope
 import com.zifiq.platform.identity.MemberService
 import com.zifiq.platform.identity.dto.InviteMemberRequest
@@ -23,8 +27,11 @@ class MembersController(
 
     @GetMapping
     @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'iam.users.manage')")
-    override fun listMembers(): ApiEnvelope<List<MemberSummary>> =
-        ApiEnvelope(memberService.listMembers())
+    override fun listMembers(
+        @RequestParam(required = false) q: String?,
+        @RequestParam(required = false) status: String?,
+        @ParameterObject paging: PageParams,
+    ): ApiEnvelope<PageResult<MemberSummary>> = ApiEnvelope(memberService.listMembers(q, status, paging.toRequest()))
 
     @PutMapping("/{userId}/status")
     @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'iam.users.manage')")

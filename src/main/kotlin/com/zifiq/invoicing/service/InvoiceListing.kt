@@ -36,7 +36,7 @@ class InvoiceListing(private val support: InvoiceSupport) {
         val ignoredQualifiers: List<String>,
     )
 
-    internal fun expressions() = InvoiceExpressions(support.tolerance(), support.today())
+    internal fun expressions() = support.expressions()
 
     /** [extra] narrows the list for every purpose, facets included (e.g. "only VOID", "only open"). */
     internal fun page(request: ListSearchRequest, d: InvoiceExpressions, extra: Op<Boolean>? = null): Page {

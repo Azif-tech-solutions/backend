@@ -1,5 +1,7 @@
 package com.zifiq.account.api
 
+import org.springdoc.core.annotations.ParameterObject
+import com.zifiq.common.paging.PageParams
 import com.zifiq.account.dto.AuditStatusRequest
 import com.zifiq.account.dto.ConfirmationStats
 import com.zifiq.account.dto.DeclineRequest
@@ -224,14 +226,14 @@ class WalletMoneyController(private val wallets: WalletMoneyService) : WalletMon
 @Tag(name = "Account — tenderable", description = "What each cashier took, by channel (docs/07 §4.11)")
 @SecurityRequirement(name = "bearerAuth")
 interface TenderableApi {
-    @Operation(summary = "Payable: one row per cashier per day (pending and declined receipts shown apart, never in the total)")
-    fun payable(locationId: UUID?, cashierUserId: UUID?, from: LocalDate?, to: LocalDate?): ApiEnvelope<List<TenderablePayableRow>>
+    @Operation(summary = "Payable: one row per cashier per day, newest day first, paged (pending and declined receipts shown apart, never in the total)")
+    fun payable(locationId: UUID?, cashierUserId: UUID?, from: LocalDate?, to: LocalDate?, paging: PageParams): ApiEnvelope<PageResult<TenderablePayableRow>>
 
     @Operation(summary = "Receipt Track: the receipts list, for the Tenderable screen")
     fun receipts(query: MultiValueMap<String, String>): ApiEnvelope<PageResult<ReceiptRow>>
 
     @Operation(summary = "Wallet Funds: dealers' fundings and return credits")
-    fun walletFunds(customerId: UUID?, from: LocalDate?, to: LocalDate?, page: Int?, size: Int?): ApiEnvelope<PageResult<TenderableWalletFundRow>>
+    fun walletFunds(customerId: UUID?, from: LocalDate?, to: LocalDate?, paging: PageParams): ApiEnvelope<PageResult<TenderableWalletFundRow>>
 
     @Operation(summary = "General report: per cashier for the period, with totals")
     fun generalReport(locationId: UUID?, from: LocalDate?, to: LocalDate?): ApiEnvelope<TenderableGeneralReport>
@@ -247,7 +249,8 @@ class TenderableController(private val tenderable: TenderableService, private va
         @RequestParam(required = false) cashierUserId: UUID?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate?,
-    ) = ApiEnvelope(tenderable.payable(locationId, cashierUserId, from, to))
+        @ParameterObject paging: PageParams,
+    ) = ApiEnvelope(tenderable.payable(locationId, cashierUserId, from, to, paging.toRequest()))
 
     @GetMapping("/receipts")
     @PreAuthorize(TENDERABLE)
@@ -259,9 +262,8 @@ class TenderableController(private val tenderable: TenderableService, private va
         @RequestParam(required = false) customerId: UUID?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate?,
-        @RequestParam(required = false) page: Int?,
-        @RequestParam(required = false) size: Int?,
-    ) = ApiEnvelope(tenderable.walletFunds(customerId, from, to, page, size))
+        @ParameterObject paging: PageParams,
+    ) = ApiEnvelope(tenderable.walletFunds(customerId, from, to, paging.toRequest()))
 
     @GetMapping("/general-report")
     @PreAuthorize(TENDERABLE)

@@ -1,5 +1,6 @@
 package com.zifiq.customers
 
+import com.zifiq.common.paging.PageRequest
 import com.zifiq.common.errors.ErrorCode
 import com.zifiq.common.filter.ListSearchRequest
 import com.zifiq.customers.dto.CorrespondentRequest
@@ -305,6 +306,11 @@ class CustomersIntegrationTest : PostgresIntegrationTest() {
         assertThat(rep.correspondent.status).isEqualTo("ASSIGNED")
         val mine = ordinary("Rep Customer", "08038880000", correspondentId = rep.correspondent.id)
         val notMine = ordinary("Someone Else", "08038880001")
+
+        // The rep's customer count is kept on their row by the customers trigger (V14_2) and read in the paged register.
+        assertThat(correspondents.getDetail(rep.correspondent.id).correspondent.customerCount).isEqualTo(1)
+        val register = correspondents.list(null, emptySet(), emptySet(), null, null, hasCustomers = true, sort = "customerCount", paging = PageRequest.of(0, 50))
+        assertThat(register.items.single { it.id == rep.correspondent.id }.customerCount).isEqualTo(1)
 
         signIn(repUser)
         val visible = lists.list(ListSearchRequest(size = 200)).items.map { it.id }

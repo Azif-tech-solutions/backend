@@ -4,6 +4,7 @@ import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
+import org.jetbrains.exposed.sql.Table
 
 /*
  * The Customers module's published interface (docs/04 §5) — the only part of `customers` other
@@ -133,7 +134,14 @@ data class LedgerEntriesFilter(
     val sourceModule: String? = null,
     val from: LocalDate? = null,
     val to: LocalDate? = null,
+    val customerTypes: Set<CustomerType>? = null,
+    /** Newest first (entry date, then posting time) instead of posting order. */
+    val newestFirst: Boolean = false,
+    /** At most this many entries (a caller merging pages from several sources). */
+    val limit: Int? = null,
 )
+
+data class LedgerTotal(val count: Long, val amount: BigDecimal)
 
 interface CustomerDirectory {
     /** Throws CUSTOMER_NOT_FOUND. */
@@ -170,6 +178,9 @@ interface TemporaryCustomers {
 interface Correspondents {
     fun get(id: UUID): CorrespondentRef
 
+    /** Names of [ids] in one query (a page of rows that each show their rep). */
+    fun names(ids: Collection<UUID>): Map<UUID, String>
+
     /** The customer's correspondent if currently ASSIGNED, else null (only assigned reps earn credit). */
     fun creditableFor(customerId: UUID): CorrespondentRef?
 
@@ -187,4 +198,27 @@ interface CustomerActivity {
 interface CustomerQueries {
     fun byIds(ids: Collection<UUID>): List<CustomerRef>
     fun ledgerEntries(filter: LedgerEntriesFilter): List<LedgerEntryView>
+
+    /** How many entries match [filter] and their total amount, in one aggregate query. */
+    fun ledgerTotal(filter: LedgerEntriesFilter): LedgerTotal
+}
+
+/**
+ * Read-only columns of the customers table that other modules may join to in SQL, for lists that
+ * filter, search or sort their own rows by customer attributes (the Debtors List) without loading
+ * customers into memory. The Customers module owns the table and every write to it; these columns
+ * are a published contract, changed only together with their readers.
+ */
+object CustomerColumns : Table("customers") {
+    val id = uuid("id")
+    val tenantId = uuid("tenant_id")
+    val code = varchar("code", 20)
+    val type = varchar("type", 30)
+    val name = varchar("name", 200)
+    val phone = varchar("phone", 40).nullable()
+    val phoneE164 = varchar("phone_e164", 20).nullable()
+    val locationId = uuid("location_id").nullable()
+    val correspondentId = uuid("correspondent_id").nullable()
+    val creditLimit = decimal("credit_limit", 14, 2)
+    override val primaryKey = PrimaryKey(id)
 }

@@ -1,5 +1,6 @@
 package com.zifiq.invoicing
 
+import com.zifiq.common.paging.PageRequest
 import com.zifiq.account.dto.BankAccountRequest
 import com.zifiq.account.dto.CashAccountRequest
 import com.zifiq.account.repository.MoneyLedgerRepository
@@ -156,6 +157,7 @@ class InvoicingSettlementIntegrationTest : PostgresIntegrationTest() {
         emptyList(), registry, PdfRenderer(), profiles, notify, recipients)
     private val noCorrespondents = object : Correspondents {
         override fun get(id: UUID): CorrespondentRef = throw IllegalStateException("no correspondents in this test")
+        override fun names(ids: Collection<UUID>): Map<UUID, String> = emptyMap()
         override fun creditableFor(customerId: UUID): CorrespondentRef? = null
         override fun listAssigned(locationId: UUID?): List<CorrespondentRef> = emptyList()
     }
@@ -434,15 +436,16 @@ class InvoicingSettlementIntegrationTest : PostgresIntegrationTest() {
             .extracting("id").containsExactly(old.id)
 
         val debtors = receivables.debtors(ListSearchRequest(q = "CU-O$tag"))
-        val row = debtors.items.single()
+        val row = debtors.items.single { it.customerId == ordinary }
         assertThat(row.openInvoices).isEqualTo(3)
         assertThat(row.outstanding).isEqualByComparingTo("158670")
         assertThat(row.overLimit).isTrue()
         assertThat(row.ageing).isEqualTo("DAYS_31_60")
         assertThat(receivables.debtors(ListSearchRequest(params = mapOf("overLimitOnly" to listOf("true")))).items.map { it.customerId }).contains(ordinary)
-        val account = receivables.debtor(ordinary, null, null, openOnly = true)
+        val account = receivables.debtor(ordinary, null, null, openOnly = true, PageRequest.of(0, 2))
         assertThat(account.warning).isNotNull()
-        assertThat(account.transactions).hasSize(3)
+        assertThat(account.transactions.items).hasSize(2)
+        assertThat(account.transactions.totalItems).isEqualTo(3)
         assertThat(account.account.outstanding).isEqualByComparingTo("158670")
 
         // The sweep alerts once per overdue invoice and reminds by e-mail on the configured days (1, 7, 30).
@@ -454,6 +457,52 @@ class InvoicingSettlementIntegrationTest : PostgresIntegrationTest() {
         assertThat(events("invoicing.invoice.overdue", notDue.id)).isEqualTo(0)
         assertThat(count("select count(*) from invoice_deliveries where invoice_id = '${recent.id}' and trigger = 'OVERDUE_REMINDER'")).isEqualTo(1)
         assertThat(count("select count(*) from invoice_deliveries where invoice_id = '${old.id}' and trigger = 'OVERDUE_REMINDER'")).isEqualTo(0)
+    }
+
+    @Test
+    fun `the debtor read model follows issues, payments and the paid tolerance, and matches a rebuild`() {
+        signIn()
+        val till = till()
+        val first = issue()
+        val second = issue()
+        fun debtor() = receivables.debtors(ListSearchRequest(q = "CU-O$tag")).items.singleOrNull { it.customerId == ordinary }
+        assertThat(debtor()!!.openInvoices).isEqualTo(2)
+        assertThat(tx.execute { invoices.outstandingFor(ordinary) }).isEqualByComparingTo(first.total + second.total)
+        assertThat(tx.execute { invoices.openInvoicesFor(ordinary) }.map { it.id }).containsExactly(first.id, second.id)
+
+        cashPayment(first.id, first.total.toPlainString(), till)
+        assertThat(debtor()!!.openInvoices).isEqualTo(1)
+        assertThat(debtor()!!.outstanding).isEqualByComparingTo(second.total)
+        assertThat(debtor()!!.lastPaymentAt).isNotNull()
+
+        // 0.50 left is within the default paid tolerance (1.00): no longer a debtor.
+        cashPayment(second.id, (second.total - BigDecimal("0.50")).toPlainString(), till)
+        assertThat(debtor()).isNull()
+        assertThat(tx.execute { invoices.outstandingFor(ordinary) }).isEqualByComparingTo("0")
+
+        // A stricter tolerance makes the 0.50 open again: the change rebuilds the tenant's rows.
+        tx.execute { moduleSettings.set(InvoicingSettings.PAID_TOLERANCE, Json.mapper.valueToTree(BigDecimal("0.10")), admin) }
+        try {
+            assertThat(debtor()!!.outstanding).isEqualByComparingTo("0.50")
+        } finally {
+            tx.execute { moduleSettings.reset(InvoicingSettings.PAID_TOLERANCE) }
+        }
+        assertThat(debtor()).isNull()
+
+        // The SQL fallback tolerance is the module setting's default.
+        val default = InvoicingSettings().settings().single { it.key == InvoicingSettings.PAID_TOLERANCE }.default as BigDecimal
+        assertThat(count("select (invoicing_paid_tolerance('$tenantId') * 100)::bigint")).isEqualTo(default.movePointRight(2).toLong())
+
+        // What the trigger maintained row by row equals a set-based rebuild from the invoices.
+        val drift = tx.executeForTenant(tenantId) {
+            val t = TransactionManager.current()
+            val columns = "customer_id, location_id, open_invoices, outstanding, oldest_open_issue_date, last_payment_at"
+            t.exec("create temp table maintained on commit drop as select $columns from debtor_balances where open_invoices > 0 or last_payment_at is not null")
+            t.exec("select debtor_balances_rebuild('$tenantId')") { }
+            t.exec("select count(*) from ((select * from maintained except select $columns from debtor_balances where open_invoices > 0 or last_payment_at is not null) " +
+                "union all (select $columns from debtor_balances where open_invoices > 0 or last_payment_at is not null except select * from maintained)) d") { rs -> rs.next(); rs.getLong(1) }!!
+        }
+        assertThat(drift).isZero()
     }
 
     @Test

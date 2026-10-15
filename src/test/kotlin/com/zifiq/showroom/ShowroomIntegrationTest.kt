@@ -144,7 +144,7 @@ class ShowroomIntegrationTest : PostgresIntegrationTest() {
     private val wallets = WalletLedgerService(tenantContext, actors, events)
     private val returns = CustomerReturnService(tx, tenantContext, actors, authorizer, access, settings, sequences, ledger, prices, stockLocations, hierarchy,
         register, customerSpi, customerSpi, wallets, events, notify)
-    private val reports = ShowroomReportService(tx, tenantContext, actors, authorizer, access, settings, prices, hierarchy, register, events)
+    private val reports = ShowroomReportService(tx, tenantContext, actors, authorizer, access, settings, hierarchy, register, events)
     private val priceList = PriceListService(tx, tenantContext, actors, authorizer, access, settings, sequences, events, notify)
     private val today = LocalDate.now(ZoneId.of("Africa/Lagos"))
 

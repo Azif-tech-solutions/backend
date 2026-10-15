@@ -1,5 +1,6 @@
 package com.zifiq.invoicing.dto
 
+import com.zifiq.common.paging.PageResult
 import jakarta.validation.Valid
 import jakarta.validation.constraints.DecimalMin
 import jakarta.validation.constraints.Email
@@ -485,7 +486,7 @@ data class DebtorTransaction(
 data class DebtorDetail(
     val customer: DebtorRow,
     val account: DebtorAccount,
-    val transactions: List<DebtorTransaction>,
+    val transactions: PageResult<DebtorTransaction>,
     /** Set when the customer is over their credit limit (rule I13; enforced at the till by Sales & POS). */
     val warning: String?,
 )

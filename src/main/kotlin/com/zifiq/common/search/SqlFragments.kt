@@ -3,6 +3,7 @@ package com.zifiq.common.search
 import org.jetbrains.exposed.sql.Expression
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.QueryBuilder
+import org.jetbrains.exposed.sql.TextColumnType
 
 /**
  * Exposed 0.61 has no built-in operators for pg_trgm, unaccent or full-text search. These two
@@ -16,6 +17,10 @@ internal class RawOp(private val build: QueryBuilder.() -> Unit) : Op<Boolean>()
 internal class RawExpression<T>(private val build: QueryBuilder.() -> Unit) : Expression<T>() {
     override fun toQueryBuilder(queryBuilder: QueryBuilder) = queryBuilder.build()
 }
+
+/** `expression = value` for a derived text expression (a CASE label such as an invoice's display status), the value bound as a parameter. */
+internal fun Expression<out String?>.equalsText(value: String): Op<Boolean> =
+    RawOp { +"("; +this@equalsText; +" = "; registerArgument(TextColumnType(), value); +")" }
 
 /** Escapes LIKE/ILIKE metacharacters so user input matches literally (PostgreSQL's default escape is `\`). */
 internal fun escapeLike(value: String): String =
