@@ -1,5 +1,6 @@
 package com.zifiq.invoicing
 
+import com.zifiq.platform.companyProfiles
 import com.zifiq.common.paging.PageRequest
 import com.zifiq.account.dto.BankAccountRequest
 import com.zifiq.account.dto.CashAccountRequest
@@ -151,7 +152,7 @@ class InvoicingSettlementIntegrationTest : PostgresIntegrationTest() {
     private val customerSupport = CustomerSupport(actors, permissions, tenantContext)
     private val customerDirectory = CustomerSpiService(customerSupport, tenantContext,
         CustomerListService(customerSupport, tx, LocationAccessService(actors), CustomFieldValidator(tenantContext), moduleSettings), sequences, moduleSettings, events)
-    private val profiles = CompanyProfileService(tx, tenantContext, actors, events)
+    private val profiles = companyProfiles(tx, tenantContext, actors, events)
     private val walletLedger = WalletLedgerService(tenantContext, actors, events)
     private val receipts = ReceiptService(accountSupport, tx, ReceiptWriter(accountSupport, MoneyMoves(accountSupport, ledger), sequences, registry),
         emptyList(), registry, PdfRenderer(), profiles, notify, recipients)

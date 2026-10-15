@@ -25,8 +25,8 @@ object CompanyProfilesTable : Table("company_profiles") {
     val stateCode = varchar("state_code", 5).nullable()
     val lgaCode = varchar("lga_code", 10).nullable()
     val countryCode = varchar("country_code", 2)
-    val logo = binary("logo").nullable()
-    val logoContentType = varchar("logo_content_type", 20).nullable()
+    /** The logo in file storage (purpose `settings.company-logo`, V14_7). */
+    val logoFileId = uuid("logo_file_id").nullable()
     val logoUpdatedAt = timestamp("logo_updated_at").nullable()
     val documentFooter = varchar("document_footer", 500).nullable()
     val financialYearStartMonth = integer("financial_year_start_month")

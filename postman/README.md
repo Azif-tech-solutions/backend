@@ -80,10 +80,12 @@ query/body fields it accepts.
 
 Folder **05 - Settings** (19 requests) needs only **01 - Auth > Register Tenant**.
 Run it top to bottom: A company profile and logo, B onboarding, C module
-settings, D custom fields, E settings search. The logo upload uses
-`postman/fixtures/company-logo.png`; in the Postman app pick any PNG or JPEG
-under 512 KB for the `file` field. C4 resets the inventory OTP threshold so
-the later Inventory folders see the default.
+settings, D custom fields, E settings search. The logo goes to S3 storage, so
+the server needs storage configured (locally: S3Mock, see the main
+`README.md`). The uploads use `postman/fixtures/company-logo.png` and
+`company-logo.svg` (set Postman's working directory as in Setup step 3); the
+profile's `logoUrl` opens the image straight from storage. C4 resets the
+inventory OTP threshold so the later Inventory folders see the default.
 
 ## Testing Finance & Accounting (folder 17)
 

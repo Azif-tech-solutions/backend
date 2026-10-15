@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import java.security.MessageDigest
+import java.time.Duration
 import java.time.Instant
 import java.time.ZoneOffset
 import java.util.UUID
@@ -69,6 +70,10 @@ data class StoredFileView(
 
 data class FileDownload(val file: StoredFileView, val url: String, val expiresAt: Instant)
 
+data class FileLink(val url: String, val contentType: String, val expiresAt: Instant)
+
+class FileContent(val bytes: ByteArray, val contentType: String)
+
 data class FilePurposeView(val code: String, val label: String, val contentTypes: List<String>, val maxBytes: Long)
 
 /**
@@ -109,6 +114,7 @@ class FileService(
         if (kind == null || kind !in purpose.kinds) {
             throw ApiErrors.fileTypeNotAllowed(kind?.contentType ?: "unrecognised", purpose.kinds.map { it.contentType }.sorted())
         }
+        if (kind == FileKind.SVG) SvgSafety.problem(bytes)?.let { throw ApiErrors.fileUnsafe(it) }
 
         val id = UUID.randomUUID()
         val now = Instant.now()
@@ -153,6 +159,37 @@ class FileService(
         val url = storage.downloadUrl(row[StoredFilesTable.storageKey], row[StoredFilesTable.originalName], row[StoredFilesTable.contentType])
         FileDownload(view(row), url, Instant.now().plus(properties.downloadUrlTtl))
     }
+
+    // ---- For modules that own a file through their own records (caller's transaction; no permission checks) ----
+
+    /** A link that shows the file in place (an `<img>` source), valid for [ttl]; null when the file is gone or storage isn't configured. */
+    fun inlineLink(id: UUID, ttl: Duration): FileLink? {
+        if (!storage.configured) return null
+        val row = active(id) ?: return null
+        val url = storage.downloadUrl(row[StoredFilesTable.storageKey], row[StoredFilesTable.originalName], row[StoredFilesTable.contentType], inline = true, ttl = ttl)
+        return FileLink(url, row[StoredFilesTable.contentType], Instant.now().plus(ttl))
+    }
+
+    /** The file's bytes and type (e.g. a logo printed on a PDF); null when it is gone or storage isn't configured. */
+    fun content(id: UUID): FileContent? {
+        if (!storage.configured) return null
+        val row = active(id) ?: return null
+        return FileContent(storage.get(row[StoredFilesTable.storageKey]), row[StoredFilesTable.contentType])
+    }
+
+    /** Marks a file the owning record no longer uses as deleted (a replaced logo). */
+    fun retire(id: UUID) {
+        StoredFilesTable.update({ (StoredFilesTable.id eq id) and (StoredFilesTable.tenantId eq tenantContext.requireTenantId()) }) {
+            it[status] = "DELETED"
+            it[deletedByUserId] = currentActorProvider.current().userId
+            it[deletedAt] = Instant.now()
+        }
+    }
+
+    private fun active(id: UUID): ResultRow? =
+        StoredFilesTable.selectAll()
+            .where { (StoredFilesTable.id eq id) and (StoredFilesTable.tenantId eq tenantContext.requireTenantId()) and (StoredFilesTable.status eq "ACTIVE") }
+            .firstOrNull()
 
     /** Marks the file deleted (records are never hard-deleted, docs/03 §13). Uploader or a holder of the purpose's upload permission. */
     fun delete(id: UUID): StoredFileView = tx.execute {

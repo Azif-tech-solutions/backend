@@ -2,7 +2,6 @@ package com.zifiq.invoicing.service
 
 import com.zifiq.common.sql.Aggregates
 import com.zifiq.platform.directory.Names
-import com.zifiq.settings.spi.logoDataUri
 import com.zifiq.common.money.Money
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.filter.Facets

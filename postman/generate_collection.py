@@ -262,7 +262,7 @@ PROFILE = {
     "businessDescription": "Beverage manufacturing and distribution", "email": "info@apex.ng", "phone": "+234 803 412 7781",
     "website": "https://apex.ng", "streetAddress": "12 Industrial Way", "city": "Aba", "postalCode": "450001",
     "stateCode": "NG-AB", "stateName": "Abia", "lgaCode": "NG-AB-ANO", "lgaName": "Aba North", "countryCode": "NG",
-    "hasLogo": False, "logoUpdatedAt": None, "documentFooter": "Goods sold in good condition are not returnable except under our returns policy.",
+    "hasLogo": False, "logoUrl": None, "logoUrlExpiresAt": None, "logoContentType": None, "logoInDocuments": False, "logoUpdatedAt": None, "documentFooter": "Goods sold in good condition are not returnable except under our returns policy.",
     "financialYearStartMonth": 1, "nrsReadiness": {"ready": False, "missing": ["nrsBusinessId"]},
     "updatedBy": "Alice Admin", "updatedAt": NOW,
 }
@@ -298,19 +298,30 @@ ep(F, "A3 Update Company Profile (error: LGA not in state)", "PUT", "/api/v1/set
 
 ep(F, "A4 Upload Company Logo", "PUT", "/api/v1/settings/company/logo",
    form=[{"key": "file", "src": "postman/fixtures/company-logo.png"}],
-   resp={"data": dict(PROFILE, hasLogo=True, logoUpdatedAt=NOW)},
-   tests=["const json = pm.response.json();", "pm.test('logo is set', () => pm.expect(json.data.hasLogo).to.eql(true));"],
-   desc="multipart/form-data, part `file`: a PNG or JPEG of at most 512 KB. The type is checked from the file's content, not its name; "
-        "SVG is refused because it can carry script. Newman uses postman/fixtures/company-logo.png.")
+   resp={"data": dict(PROFILE, hasLogo=True, logoUrl="https://zifiq-files.s3.eu-north-1.amazonaws.com/tenants/{{tenantId}}/settings.company-logo/2026/10/{{logoFileId}}?X-Amz-Signature=...", logoUrlExpiresAt="2026-10-01T11:15:30Z",
+                      logoContentType="image/png", logoInDocuments=True, logoUpdatedAt=NOW)},
+   tests=["const json = pm.response.json();",
+          "pm.test('logo is set and linked from storage', () => { pm.expect(json.data.hasLogo).to.eql(true); pm.expect(json.data.logoUrl).to.be.a('string'); pm.expect(json.data.logoContentType).to.eql('image/png'); });"],
+   desc="multipart/form-data, part `file`: PNG, JPEG, WebP, AVIF or SVG of at most 1 MB, stored in S3 (purpose settings.company-logo). The type is "
+        "checked from the file's content, not its name; an SVG with script, event handlers, foreignObject, a DOCTYPE or links to other files "
+        "is refused (400 FILE_UNSAFE). The profile's logoUrl is a short-lived (1 h) S3 link that shows the image in place — use it as an "
+        "<img src>, and read the profile again for a fresh one. logoInDocuments is false for AVIF and WebP, which the PDF engine can't draw: "
+        "invoices and receipts then print the trading name. DELETE on the same path removes the logo (perm settings.manage). "
+        "Newman uses postman/fixtures/company-logo.png.")
 
-ep(F, "A5 Upload Company Logo (error: not an image)", "PUT", "/api/v1/settings/company/logo",
+ep(F, "A5 Upload Company Logo (SVG)", "PUT", "/api/v1/settings/company/logo",
+   form=[{"key": "file", "src": "postman/fixtures/company-logo.svg"}],
+   resp={"data": dict(PROFILE, hasLogo=True, logoUrl="https://zifiq-files.s3.eu-north-1.amazonaws.com/tenants/{{tenantId}}/settings.company-logo/2026/10/{{logoFileId}}?X-Amz-Signature=...", logoUrlExpiresAt="2026-10-01T11:15:30Z",
+                      logoContentType="image/svg+xml", logoInDocuments=True, logoUpdatedAt=NOW)},
+   tests=["const json = pm.response.json();",
+          "pm.test('the SVG replaced the PNG', () => { pm.expect(json.data.logoContentType).to.eql('image/svg+xml'); pm.expect(json.data.logoInDocuments).to.eql(true); });"],
+   desc="SVG logos are drawn as vectors on PDFs. Newman uses postman/fixtures/company-logo.svg.")
+
+ep(F, "A6 Upload Company Logo (error: not an image)", "PUT", "/api/v1/settings/company/logo",
    form=[{"key": "file", "src": "postman/fixtures/sample-attachment.pdf"}], status=400, status_text="Bad Request",
-   resp={"error": {"code": "INVALID_LOGO", "message": "The logo must be a PNG or JPEG image", "details": {}}},
-   expect_error={"status": 400, "code": "INVALID_LOGO"})
-
-ep(F, "A6 Get Company Logo", "GET", "/api/v1/settings/company/logo", binary="image/png",
-   desc="Streams the image with its own content type (cached privately for 5 minutes). 404 LOGO_NOT_SET when there is none. "
-        "DELETE on the same path removes it (perm settings.manage).")
+   resp={"error": {"code": "FILE_TYPE_NOT_ALLOWED", "message": "This kind of file (application/pdf) can't be uploaded here",
+                    "details": {"detected": "application/pdf", "allowed": "image/avif,image/jpeg,image/png,image/svg+xml,image/webp"}}},
+   expect_error={"status": 400, "code": "FILE_TYPE_NOT_ALLOWED"})
 
 ep(F, "B1 Get Onboarding Status", "GET", "/api/v1/settings/onboarding",
    resp={"data": {"completed": False, "completedAt": None, "steps": [
@@ -713,7 +724,15 @@ ep("09 - Factory Production", "List Production Runs", "GET", "/api/v1/factory/pr
 
 ep("09 - Factory Production", "Total Cost for Selected Recipes", "GET", "/api/v1/factory/production/total-cost",
    query=[{"key": "recipeIds", "value": "{{recipeId}}"}],
-   resp={"data": [{"recipeId": "{{recipeId}}", "recipeName": "Premium Blend Base", "qtyUsed": 50.000, "totalCost": 130.00}]})
+   resp={"data": [{"recipeId": "{{recipeId}}", "recipeName": "Premium Blend Base", "qtyUsed": 50.000, "totalCost": 130.00}]},
+   desc="Perm factory.costing.read. Quantity produced and total landing cost over every run costed from each recipe; recipeIds is repeatable "
+        "or comma-separated (at most 200). Every id must be a recipe of this tenant, else 404 RECIPE_NOT_FOUND.")
+
+ep("09 - Factory Production", "Total Cost for Selected Recipes (error: unknown recipe)", "GET", "/api/v1/factory/production/total-cost",
+   query=[{"key": "recipeIds", "value": "00000000-0000-4000-8000-000000000000"}], status=404, status_text="Not Found",
+   resp={"error": {"code": "RECIPE_NOT_FOUND", "message": "Recipe not found", "details": {}}},
+   expect_error={"status": 404, "code": "RECIPE_NOT_FOUND"},
+   desc="A recipe id that isn't this tenant's (another tenant's recipe is invisible under row-level security) answers 404, not 500.")
 
 ep("09 - Factory Production", "Register Special-Production Client", "POST", "/api/v1/factory/special-production/clients",
    body={"name": "Acme Contractors Ltd", "terms": "Net 30"},

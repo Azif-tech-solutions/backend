@@ -26,11 +26,11 @@ data class CompanyProfile(
     val stateName: String?,
     val lgaCode: String?,
     val countryCode: String,
-    /** PNG or JPEG bytes ([logoContentType] says which); null when no logo is set. */
-    val logo: ByteArray?,
-    val logoContentType: String?,
+    val hasLogo: Boolean,
     val documentFooter: String?,
-)
-
-/** The logo as a `data:` URI for HTML/PDF templates; null when no logo is set. */
-fun CompanyProfile.logoDataUri(): String? = logo?.let { "data:$logoContentType;base64," + java.util.Base64.getEncoder().encodeToString(it) }
+    /** Reads the logo for a document only when one is rendered (from storage, cached); see [logoDataUri]. */
+    private val documentLogo: () -> String? = { null },
+) {
+    /** The logo as a `data:` URI for HTML/PDF templates; null when none is set or the PDF engine can't draw its type. */
+    fun logoDataUri(): String? = documentLogo()
+}

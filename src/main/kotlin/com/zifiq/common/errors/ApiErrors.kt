@@ -141,6 +141,7 @@ object ApiErrors {
     fun documentNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.DOCUMENT_NOT_FOUND, "Document not found")
     fun storageNotConfigured() = ApiException(HttpStatus.SERVICE_UNAVAILABLE, ErrorCode.STORAGE_NOT_CONFIGURED, "File storage is not configured on this server")
     fun fileNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.FILE_NOT_FOUND, "File not found")
+    fun fileUnsafe(reason: String) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.FILE_UNSAFE, reason)
     fun fileTooLarge(maxBytes: Long) = ApiException(HttpStatus.PAYLOAD_TOO_LARGE, ErrorCode.FILE_TOO_LARGE, "The file is larger than ${maxBytes / (1024 * 1024)} MB", mapOf("maxBytes" to maxBytes.toString()))
     fun fileTypeNotAllowed(detected: String, allowed: Collection<String>) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.FILE_TYPE_NOT_ALLOWED, "This kind of file ($detected) can't be uploaded here", mapOf("detected" to detected, "allowed" to allowed.joinToString(",")))
     fun unknownFilePurpose(purpose: String, allowed: Collection<String>) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.UNKNOWN_FILE_PURPOSE, "Unknown file purpose '$purpose'", mapOf("allowed" to allowed.joinToString(",")))
@@ -221,8 +222,6 @@ object ApiErrors {
     fun ledgerEntryNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.LEDGER_ENTRY_NOT_FOUND, "Ledger entry not found")
 
     // ---- Settings (docs/06 §7) ----
-    fun invalidLogo(reason: String) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_LOGO, reason)
-    fun logoNotSet() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.LOGO_NOT_SET, "No company logo has been uploaded")
     fun onboardingIncomplete(missing: List<String>) = ApiException(HttpStatus.CONFLICT, ErrorCode.ONBOARDING_INCOMPLETE, "Complete the company details before finishing onboarding", mapOf("missing" to missing.joinToString(",")))
     fun optionInUse(option: String, count: Long) = ApiException(HttpStatus.CONFLICT, ErrorCode.OPTION_IN_USE, "The option '$option' is used by $count record(s) and can't be removed", mapOf("option" to option, "count" to count.toString()))
     fun fieldHasBlanks(count: Long) = ApiException(HttpStatus.CONFLICT, ErrorCode.FIELD_HAS_BLANKS, "$count record(s) have no value for this field, so it can't be made required yet", mapOf("count" to count.toString()))

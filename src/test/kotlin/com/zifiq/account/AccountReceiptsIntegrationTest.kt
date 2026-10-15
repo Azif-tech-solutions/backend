@@ -1,5 +1,6 @@
 package com.zifiq.account
 
+import com.zifiq.platform.companyProfiles
 import com.zifiq.common.paging.PageRequest
 import com.zifiq.account.dto.BankAccountRequest
 import com.zifiq.account.dto.CashAccountRequest
@@ -139,7 +140,7 @@ class AccountReceiptsIntegrationTest : PostgresIntegrationTest() {
     private val walletLedger = WalletLedgerService(tenantContext, actors, events)
     private val otp = OtpChallengeService(actors, tx, BCryptPasswordEncoder())
     private val wallets = WalletMoneyService(support, tx, writer, moves, sequences, customerDirectory, walletLedger, otp, permissions)
-    private val profiles = CompanyProfileService(tx, tenantContext, actors, events)
+    private val profiles = companyProfiles(tx, tenantContext, actors, events)
     private val receipts = ReceiptService(support, tx, writer, listOf(wallets), registry, PdfRenderer(), profiles, notify, recipients)
     private val tenderable = TenderableService(support, tx, customerDirectory)
     private val vat = LocationVatService(support, tx, database, notify)

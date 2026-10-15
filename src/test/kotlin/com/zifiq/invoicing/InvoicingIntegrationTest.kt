@@ -1,5 +1,6 @@
 package com.zifiq.invoicing
 
+import com.zifiq.platform.companyProfiles
 import com.zifiq.account.repository.MoneyLedgerRepository
 import com.zifiq.account.service.AccountSupport
 import com.zifiq.account.service.AccountingSettings
@@ -151,7 +152,7 @@ class InvoicingIntegrationTest : PostgresIntegrationTest() {
     private val customerSupport = CustomerSupport(actors, permissions, tenantContext)
     private val customerDirectory = CustomerSpiService(customerSupport, tenantContext,
         CustomerListService(customerSupport, tx, LocationAccessService(actors), CustomFieldValidator(tenantContext), moduleSettings), sequences, moduleSettings, events)
-    private val profiles = CompanyProfileService(tx, tenantContext, actors, events)
+    private val profiles = companyProfiles(tx, tenantContext, actors, events)
     private val support = InvoiceSupport(tenantContext, actors, permissions, LocationAccessService(actors), moduleSettings, events)
     private val builder = InvoiceBuilder(support, StockLocations(), vat, customerDirectory, profiles)
     private val listing = InvoiceListing(support)

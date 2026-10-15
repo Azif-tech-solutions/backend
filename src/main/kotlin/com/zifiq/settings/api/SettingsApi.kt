@@ -14,7 +14,6 @@ import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import java.util.UUID
-import org.springframework.http.ResponseEntity
 import org.springframework.web.multipart.MultipartFile
 
 @Tag(name = "Settings — company", description = "Company profile, logo and onboarding (docs/06 §4.1–4.3)")
@@ -26,11 +25,8 @@ interface CompanySettingsApi {
     @Operation(summary = "Replace the company profile (omitted optional fields are cleared)")
     fun update(request: CompanyProfileRequest): ApiEnvelope<CompanyProfileView>
 
-    @Operation(summary = "Upload the logo: PNG or JPEG, at most 512 KB, checked by content (multipart part 'file')")
+    @Operation(summary = "Upload the logo to file storage: PNG, JPEG, WebP, AVIF or SVG up to 1 MB, checked by content (multipart part 'file'); the profile's logoUrl links to it")
     fun uploadLogo(file: MultipartFile): ApiEnvelope<CompanyProfileView>
-
-    @Operation(summary = "The logo image (404 LOGO_NOT_SET when none)")
-    fun logo(): ResponseEntity<ByteArray>
 
     @Operation(summary = "Remove the logo")
     fun removeLogo(): ApiEnvelope<CompanyProfileView>

@@ -56,6 +56,12 @@ data class CompanyProfileView(
     val lgaName: String?,
     val countryCode: String,
     val hasLogo: Boolean,
+    /** A short-lived S3 link that shows the logo in place (`<img src>`); fetch the profile again for a fresh one after [logoUrlExpiresAt]. */
+    val logoUrl: String?,
+    val logoUrlExpiresAt: Instant?,
+    val logoContentType: String?,
+    /** False for AVIF and WebP, which the PDF engine can't draw: invoices, receipts and statements print the trading name instead. */
+    val logoInDocuments: Boolean,
     val logoUpdatedAt: Instant?,
     val documentFooter: String?,
     val financialYearStartMonth: Int,
@@ -63,9 +69,6 @@ data class CompanyProfileView(
     val updatedBy: String?,
     val updatedAt: Instant,
 )
-
-/** The logo bytes and their type, for the GET endpoint. */
-class CompanyLogo(val bytes: ByteArray, val contentType: String)
 
 // ---- Onboarding (docs/06 §4.3) ----
 

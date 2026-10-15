@@ -16,9 +16,7 @@ import com.zifiq.settings.service.OnboardingService
 import com.zifiq.settings.service.SettingsSearchService
 import jakarta.validation.Valid
 import java.util.UUID
-import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
-import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.multipart.MultipartFile
@@ -46,16 +44,6 @@ class CompanySettingsController(
     @PreAuthorize(MANAGE)
     override fun uploadLogo(@RequestParam("file") file: MultipartFile): ApiEnvelope<CompanyProfileView> =
         ApiEnvelope(profiles.setLogo(file.bytes, file.originalFilename ?: "logo"))
-
-    @GetMapping("/company/logo")
-    override fun logo(): ResponseEntity<ByteArray> {
-        val logo = profiles.logo()
-        return ResponseEntity.ok()
-            .contentType(MediaType.parseMediaType(logo.contentType))
-            .header(HttpHeaders.CACHE_CONTROL, "private, max-age=300")
-            .header("X-Content-Type-Options", "nosniff")
-            .body(logo.bytes)
-    }
 
     @DeleteMapping("/company/logo")
     @PreAuthorize(MANAGE)

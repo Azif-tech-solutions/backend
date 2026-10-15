@@ -241,7 +241,7 @@ class InvoiceBuilder(
                 "businessDescription" to company.businessDescription, "email" to company.email, "phone" to company.phone,
                 "address" to companyAddress, "streetAddress" to company.streetAddress, "city" to company.city, "postalCode" to company.postalCode,
                 "stateCode" to company.stateCode, "lgaCode" to company.lgaCode, "countryCode" to company.countryCode,
-                "documentFooter" to company.documentFooter, "logoPresent" to (company.logo != null),
+                "documentFooter" to company.documentFooter, "logoPresent" to company.hasLogo,
                 "locationName" to location[LocationsTable.name], "locationAddress" to locationAddress,
             ),
         )

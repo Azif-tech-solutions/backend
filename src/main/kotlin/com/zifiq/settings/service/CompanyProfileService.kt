@@ -5,15 +5,14 @@ import com.zifiq.common.phone.PhoneNumbers
 import com.zifiq.common.tax.NigeriaLgasTable
 import com.zifiq.common.tax.NigeriaStatesTable
 import com.zifiq.platform.events.DomainEvents
-import com.zifiq.platform.files.FileKind
-import com.zifiq.platform.files.FileTypeDetector
+import com.zifiq.platform.files.FileService
+import com.zifiq.platform.files.StoredFilesTable
 import com.zifiq.platform.identity.model.AppUsersTable
 import com.zifiq.platform.security.CurrentActorProvider
 import com.zifiq.platform.tenancy.TenantContext
 import com.zifiq.platform.tenancy.TenantProvisioner
 import com.zifiq.platform.tenancy.TenantScopedTransaction
 import com.zifiq.platform.tenancy.model.TenantsTable
-import com.zifiq.settings.dto.CompanyLogo
 import com.zifiq.settings.dto.CompanyProfileRequest
 import com.zifiq.settings.dto.CompanyProfileView
 import com.zifiq.settings.dto.NrsReadiness
@@ -40,6 +39,8 @@ class CompanyProfileService(
     private val tenantContext: TenantContext,
     private val currentActorProvider: CurrentActorProvider,
     private val domainEvents: DomainEvents,
+    private val files: FileService,
+    private val logos: CompanyLogos,
 ) : CompanyProfileProvider, TenantProvisioner {
 
     fun view(): CompanyProfileView = tx.execute { toView(row()) }
@@ -83,38 +84,37 @@ class CompanyProfileService(
         toView(after)
     }
 
-    /** PNG or JPEG ≤ 512 KB, recognised by its bytes rather than its declared type; SVG is refused (it can carry script). */
-    fun setLogo(bytes: ByteArray, fileName: String): CompanyProfileView = tx.execute {
-        if (bytes.isEmpty()) throw ApiErrors.invalidLogo("The file is empty")
-        if (bytes.size > MAX_LOGO_BYTES) throw ApiErrors.invalidLogo("The logo must be at most 512 KB")
-        val kind = FileTypeDetector.detect(bytes, fileName)
-        if (kind != FileKind.PNG && kind != FileKind.JPEG) throw ApiErrors.invalidLogo("The logo must be a PNG or JPEG image")
-        CompanyProfilesTable.update({ CompanyProfilesTable.tenantId eq tenantId() }) {
-            it[logo] = bytes
-            it[logoContentType] = kind.contentType
-            it[logoUpdatedAt] = Instant.now()
-            it[updatedByUserId] = userId()
-            it[updatedAt] = Instant.now()
-        }
-        record("settings.company.logo-updated", "Company logo updated", mapOf("contentType" to kind.contentType, "bytes" to bytes.size))
-        toView(row())
-    }
-
-    fun logo(): CompanyLogo = tx.execute {
-        val row = row()
-        val bytes = row[CompanyProfilesTable.logo] ?: throw ApiErrors.logoNotSet()
-        CompanyLogo(bytes, row[CompanyProfilesTable.logoContentType]!!)
-    }
-
-    fun removeLogo(): CompanyProfileView = tx.execute {
-        if (row()[CompanyProfilesTable.logo] != null) {
+    /**
+     * The logo goes to file storage (S3) under the `settings.company-logo` purpose: PNG, JPEG, WebP,
+     * AVIF or SVG up to 1 MB, recognised by its bytes; an SVG with script, event handlers or outside
+     * references is refused (FileService). The logo it replaces is marked deleted.
+     */
+    fun setLogo(bytes: ByteArray, fileName: String): CompanyProfileView {
+        val file = files.store(CompanyLogos.PURPOSE, fileName, bytes, linkedType = "company_profile", linkedId = tenantId())
+        return tx.execute {
+            val previous = row()[CompanyProfilesTable.logoFileId]
             CompanyProfilesTable.update({ CompanyProfilesTable.tenantId eq tenantId() }) {
-                it[logo] = null
-                it[logoContentType] = null
+                it[logoFileId] = file.id
                 it[logoUpdatedAt] = Instant.now()
                 it[updatedByUserId] = userId()
                 it[updatedAt] = Instant.now()
             }
+            previous?.let(files::retire)
+            record("settings.company.logo-updated", "Company logo updated", mapOf("contentType" to file.contentType, "bytes" to file.sizeBytes, "fileId" to file.id))
+            toView(row())
+        }
+    }
+
+    fun removeLogo(): CompanyProfileView = tx.execute {
+        val previous = row()[CompanyProfilesTable.logoFileId]
+        if (previous != null) {
+            CompanyProfilesTable.update({ CompanyProfilesTable.tenantId eq tenantId() }) {
+                it[logoFileId] = null
+                it[logoUpdatedAt] = Instant.now()
+                it[updatedByUserId] = userId()
+                it[updatedAt] = Instant.now()
+            }
+            files.retire(previous)
             record("settings.company.logo-updated", "Company logo removed", mapOf("removed" to true))
         }
         toView(row())
@@ -142,9 +142,9 @@ class CompanyProfileService(
             stateName = row[CompanyProfilesTable.stateCode]?.let(::stateName),
             lgaCode = row[CompanyProfilesTable.lgaCode],
             countryCode = row[CompanyProfilesTable.countryCode],
-            logo = row[CompanyProfilesTable.logo],
-            logoContentType = row[CompanyProfilesTable.logoContentType],
+            hasLogo = row[CompanyProfilesTable.logoFileId] != null,
             documentFooter = row[CompanyProfilesTable.documentFooter],
+            documentLogo = documentLogo(row[CompanyProfilesTable.logoFileId]),
         )
     }
 
@@ -182,6 +182,7 @@ class CompanyProfileService(
         val stateCode = row[CompanyProfilesTable.stateCode]
         val lgaCode = row[CompanyProfilesTable.lgaCode]
         val missing = NRS_FIELDS.filter { (_, column) -> row[column]?.toString().isNullOrBlank() }.map { it.first }
+        val logo = row[CompanyProfilesTable.logoFileId]?.let(logos::link)
         return CompanyProfileView(
             tradingName = row[CompanyProfilesTable.tradingName],
             legalName = row[CompanyProfilesTable.legalName],
@@ -201,7 +202,11 @@ class CompanyProfileService(
             lgaCode = lgaCode,
             lgaName = lgaCode?.let { code -> NigeriaLgasTable.select(NigeriaLgasTable.name).where { NigeriaLgasTable.code eq code }.firstOrNull()?.get(NigeriaLgasTable.name) },
             countryCode = row[CompanyProfilesTable.countryCode],
-            hasLogo = row[CompanyProfilesTable.logoContentType] != null,
+            hasLogo = logo != null,
+            logoUrl = logo?.url,
+            logoUrlExpiresAt = logo?.expiresAt,
+            logoContentType = logo?.contentType,
+            logoInDocuments = logo != null && CompanyLogos.inDocuments(logo.contentType),
             logoUpdatedAt = row[CompanyProfilesTable.logoUpdatedAt],
             documentFooter = row[CompanyProfilesTable.documentFooter],
             financialYearStartMonth = row[CompanyProfilesTable.financialYearStartMonth],
@@ -211,6 +216,16 @@ class CompanyProfileService(
             },
             updatedAt = row[CompanyProfilesTable.updatedAt],
         )
+    }
+
+    /** Loads the logo only when a document asks for it; the tenant is captured now, while the caller's transaction has it. */
+    private fun documentLogo(fileId: UUID?): () -> String? {
+        if (fileId == null) return { null }
+        val tenantId = tenantId()
+        return {
+            StoredFilesTable.select(StoredFilesTable.contentType).where { StoredFilesTable.id eq fileId }.firstOrNull()
+                ?.let { logos.dataUri(tenantId, fileId, it[StoredFilesTable.contentType]) }
+        }
     }
 
     private fun stateName(code: String): String? =
@@ -225,8 +240,6 @@ class CompanyProfileService(
     private fun String?.clean(): String? = this?.trim()?.ifEmpty { null }
 
     companion object {
-        const val MAX_LOGO_BYTES = 512 * 1024
-
         /** What a PUT can change, by API field name (for the change event). */
         private val PROFILE_FIELDS = listOf(
             "tradingName" to CompanyProfilesTable.tradingName, "legalName" to CompanyProfilesTable.legalName,

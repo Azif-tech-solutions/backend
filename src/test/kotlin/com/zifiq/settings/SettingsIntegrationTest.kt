@@ -1,5 +1,8 @@
 package com.zifiq.settings
 
+import com.zifiq.settings.service.CompanyLogos
+import com.zifiq.platform.InMemoryObjectStorage
+import com.zifiq.platform.companyProfiles
 import com.zifiq.common.errors.ErrorCode
 import com.zifiq.customers.service.CustomerAttributeUsage
 import com.zifiq.customers.service.CustomersSettings
@@ -86,7 +89,8 @@ class SettingsIntegrationTest : PostgresIntegrationTest() {
     private val permissions = PermissionAuthorizer(actors, tx)
     private val events = DomainEvents(tenantContext, actors)
     private val moduleSettings = ModuleSettings(listOf(PlatformSettings(), CustomersSettings(), InventorySettings()), tenantContext)
-    private val profiles = CompanyProfileService(tx, tenantContext, actors, events)
+    private val storage = InMemoryObjectStorage()
+    private val profiles = companyProfiles(tx, tenantContext, actors, events, storage)
     private val onboarding = OnboardingService(tx, tenantContext, profiles, events)
     private val moduleSettingsService = ModuleSettingsService(moduleSettings, tx, actors, events, permissions)
     private val fields = CustomFieldService(tx, tenantContext, actors, events, listOf(CustomerAttributeUsage(tenantContext)))
@@ -119,6 +123,12 @@ class SettingsIntegrationTest : PostgresIntegrationTest() {
         email = "Info@Zif.ng", phone = "0803 412 7781", website = "https://zif.ng", streetAddress = "32 Owonikoko Street",
         city = "Aba", stateCode = stateCode, lgaCode = lgaCode, documentFooter = "Thank you for your business.",
     )
+
+    private val SAFE_SVG = """<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><defs><linearGradient id="g"/></defs>""" +
+        """<rect width="10" height="10" fill="url(#g)" style="stroke: url('#g')"/></svg>"""
+
+    /** An AVIF file's `ftyp` box: major brand avif, compatible avif/mif1/miaf. */
+    private val AVIF = byteArrayOf(0, 0, 0, 0x1C) + "ftypavif".toByteArray() + byteArrayOf(0, 0, 0, 0) + "avifmif1miaf".toByteArray() + ByteArray(32)
 
     private val png = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A) + ByteArray(64) { it.toByte() }
 
@@ -157,21 +167,43 @@ class SettingsIntegrationTest : PostgresIntegrationTest() {
     }
 
     @Test
-    fun `the logo must really be a small PNG or JPEG, and can be removed`() {
+    fun `the logo is stored in file storage - PNG, JPEG, WebP, AVIF or a safe SVG - and the profile links to it`() {
         signIn(admin, profileTenant)
-        val svg = "<svg xmlns=\"http://www.w3.org/2000/svg\"><script>alert(1)</script></svg>".toByteArray()
-        failsWith { profiles.setLogo(svg, "logo.png") }.isEqualTo(ErrorCode.INVALID_LOGO)
-        failsWith { profiles.setLogo(png + ByteArray(CompanyProfileService.MAX_LOGO_BYTES), "big.png") }.isEqualTo(ErrorCode.INVALID_LOGO)
-        failsWith { profiles.logo() }.isEqualTo(ErrorCode.LOGO_NOT_SET)
+        failsWith { profiles.setLogo("%PDF-1.7 not a logo".toByteArray(), "logo.png") }.isEqualTo(ErrorCode.FILE_TYPE_NOT_ALLOWED)
+        failsWith { profiles.setLogo(png + ByteArray(CompanyLogos.MAX_BYTES.toInt()), "big.png") }.isEqualTo(ErrorCode.FILE_TOO_LARGE)
+        failsWith { profiles.setLogo("<svg xmlns=\"http://www.w3.org/2000/svg\"><script>alert(1)</script></svg>".toByteArray(), "logo.svg") }
+            .isEqualTo(ErrorCode.FILE_UNSAFE)
+        assertThat(profiles.view().hasLogo).isFalse()
 
-        assertThat(profiles.setLogo(png, "logo.bin").hasLogo).isTrue()
-        val logo = profiles.logo()
-        assertThat(logo.contentType).isEqualTo("image/png")
-        assertThat(logo.bytes).isEqualTo(png)
-        assertThat(tx.execute { profiles.get() }.logo).isEqualTo(png)
+        // PNG: stored in S3 under the tenant, linked inline from the profile, printed on documents.
+        val first = profiles.setLogo(png, "logo.bin")
+        assertThat(first.hasLogo).isTrue()
+        assertThat(first.logoContentType).isEqualTo("image/png")
+        assertThat(first.logoInDocuments).isTrue()
+        assertThat(first.logoUrl).startsWith("https://storage.test/tenants/$profileTenant/settings.company-logo/").endsWith("disposition=inline")
+        assertThat(storage.objects.values).anyMatch { it.contentEquals(png) }
+        assertThat(tx.execute { profiles.get().logoDataUri() }).startsWith("data:image/png;base64,")
 
-        assertThat(profiles.removeLogo().hasLogo).isFalse()
-        failsWith { profiles.logo() }.isEqualTo(ErrorCode.LOGO_NOT_SET)
+        // SVG: accepted when safe, and drawn on documents.
+        val svg = profiles.setLogo(SAFE_SVG.toByteArray(), "logo.svg")
+        assertThat(svg.logoContentType).isEqualTo("image/svg+xml")
+        assertThat(svg.logoInDocuments).isTrue()
+        assertThat(tx.execute { profiles.get().logoDataUri() }).startsWith("data:image/svg+xml;base64,")
+
+        // AVIF: accepted and shown in the app, but the PDF engine can't draw it, so documents print the name instead.
+        val avif = profiles.setLogo(AVIF, "logo.avif")
+        assertThat(avif.logoContentType).isEqualTo("image/avif")
+        assertThat(avif.logoInDocuments).isFalse()
+        assertThat(tx.execute { profiles.get().logoDataUri() }).isNull()
+        assertThat(tx.execute { profiles.get().hasLogo }).isTrue()
+
+        // Each replaced logo was retired, so only the current one is active.
+        assertThat(sql("select count(*) from stored_files where purpose = 'settings.company-logo' and status = 'ACTIVE'") { it.next(); it.getLong(1) }).isEqualTo(1)
+
+        val removed = profiles.removeLogo()
+        assertThat(removed.hasLogo).isFalse()
+        assertThat(removed.logoUrl).isNull()
+        assertThat(sql("select count(*) from stored_files where purpose = 'settings.company-logo' and status = 'ACTIVE'") { it.next(); it.getLong(1) }).isZero()
     }
 
     @Test

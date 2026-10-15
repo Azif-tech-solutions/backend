@@ -57,6 +57,16 @@ dependencies {
     // view integration, so the API still renders no server-side views (see .trivyignore) — and OpenHTMLtoPDF.
     implementation("org.thymeleaf:thymeleaf")
     implementation("io.github.openhtmltopdf:openhtmltopdf-pdfbox:${property("openhtmltopdfVersion")}")
+    // SVG company logos drawn as vectors on PDFs. Batik is pinned to its latest release (the module asks for 1.17).
+    implementation("io.github.openhtmltopdf:openhtmltopdf-svg-support:${property("openhtmltopdfVersion")}") {
+        // Batik drags in the 2009 xml-apis jar, which shadows the JDK's own javax.xml (no XXE-hardening constants).
+        exclude(group = "xml-apis", module = "xml-apis")
+    }
+    constraints {
+        listOf("batik-transcoder", "batik-codec", "batik-ext", "batik-anim", "batik-awt-util", "batik-bridge", "batik-css", "batik-dom",
+            "batik-gvt", "batik-parser", "batik-script", "batik-svg-dom", "batik-svggen", "batik-util", "batik-xml", "batik-constants", "batik-i18n", "batik-shared-resources")
+            .forEach { implementation("org.apache.xmlgraphics:$it:1.19") { because("latest Batik release; openhtmltopdf-svg-support 1.1.94 asks for 1.17") } }
+    }
     // File storage (docs/03 §8.4): S3 with the synchronous Apache HTTP client only; the async Netty
     // client is excluded because nothing uses it (smaller dependency and CVE surface).
     implementation(platform("software.amazon.awssdk:bom:${property("awsSdkVersion")}"))

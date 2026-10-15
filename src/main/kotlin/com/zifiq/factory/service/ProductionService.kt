@@ -1,5 +1,7 @@
 package com.zifiq.factory.service
 
+import com.zifiq.common.paging.PagingPolicy
+import com.zifiq.common.sql.Aggregates
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
@@ -314,21 +316,35 @@ class ProductionService(
             }
         }
 
+    /**
+     * Quantity produced and total landing cost per recipe, over every production run costed from it:
+     * one query for the recipes (404 RECIPE_NOT_FOUND when any id isn't this tenant's) and one SQL
+     * aggregate for the totals, however many runs there are.
+     */
     fun totalCostForRecipes(recipeIds: List<UUID>): List<RecipeCostAggregate> = tenantScopedTransaction.execute {
         val tenantId = currentActorProvider.current().tenantId
-        recipeIds.map { recipeId ->
-            val recipe = RecipesTable.selectAll().andWhere { RecipesTable.id eq recipeId }.single()
-            val runs = ProductionRunsTable
-                .join(ProductionCostingsTable, org.jetbrains.exposed.sql.JoinType.INNER) { ProductionRunsTable.productionCostingId eq ProductionCostingsTable.id }
-                .selectAll()
-                .andWhere { ProductionRunsTable.tenantId eq tenantId }
-                .andWhere { ProductionCostingsTable.recipeId eq recipeId }
-                .toList()
+        val ids = recipeIds.distinct()
+        if (ids.isEmpty()) throw ApiErrors.validationFailed(mapOf("recipeIds" to "Give at least one recipe id"))
+        if (ids.size > PagingPolicy.MAX_PAGE_SIZE) throw ApiErrors.validationFailed(mapOf("recipeIds" to "At most ${PagingPolicy.MAX_PAGE_SIZE} recipes at a time"))
+        val names = RecipesTable.select(RecipesTable.id, RecipesTable.name)
+            .where { (RecipesTable.tenantId eq tenantId) and (RecipesTable.id inList ids) }
+            .associate { it[RecipesTable.id].value to it[RecipesTable.name] }
+        if (names.size != ids.size) throw ApiErrors.recipeNotFound()
+        val qty = Aggregates.sum(ProductionRunsTable.quantityProduced)
+        val cost = Aggregates.sum(ProductionRunsTable.totalLandingCost)
+        val totals = ProductionRunsTable
+            .join(ProductionCostingsTable, org.jetbrains.exposed.sql.JoinType.INNER) { ProductionRunsTable.productionCostingId eq ProductionCostingsTable.id }
+            .select(ProductionCostingsTable.recipeId, qty, cost)
+            .where { (ProductionCostingsTable.tenantId eq tenantId) and (ProductionCostingsTable.recipeId inList ids) }
+            .groupBy(ProductionCostingsTable.recipeId)
+            .associateBy { it[ProductionCostingsTable.recipeId]?.value }
+        ids.map { id ->
+            val row = totals[id]
             RecipeCostAggregate(
-                recipeId = recipeId,
-                recipeName = recipe[RecipesTable.name],
-                qtyUsed = runs.fold(BigDecimal.ZERO) { acc, row -> acc + row[ProductionRunsTable.quantityProduced] },
-                totalCost = runs.fold(BigDecimal.ZERO) { acc, row -> acc + row[ProductionRunsTable.totalLandingCost] },
+                recipeId = id,
+                recipeName = names.getValue(id),
+                qtyUsed = row?.get(qty) ?: BigDecimal.ZERO,
+                totalCost = row?.let { Aggregates.money(it, cost) } ?: BigDecimal.ZERO.setScale(2),
             )
         }
     }

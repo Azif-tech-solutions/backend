@@ -9,6 +9,9 @@ enum class FileKind(val contentType: String, val extension: String) {
     PNG("image/png", "png"),
     JPEG("image/jpeg", "jpg"),
     WEBP("image/webp", "webp"),
+    AVIF("image/avif", "avif"),
+    /** Accepted only after [SvgSafety] finds no script, event handler or outside reference in it. */
+    SVG("image/svg+xml", "svg"),
     CSV("text/csv", "csv"),
     TEXT("text/plain", "txt"),
 }
@@ -23,10 +26,34 @@ object FileTypeDetector {
             startsWith(0xFF, 0xD8, 0xFF) -> FileKind.JPEG
             bytes.size >= 12 && startsWith(0x52, 0x49, 0x46, 0x46) &&
                 String(bytes, 8, 4, Charsets.US_ASCII) == "WEBP" -> FileKind.WEBP
+            isAvif(bytes) -> FileKind.AVIF
+            isSvg(bytes) -> FileKind.SVG
             isText(bytes) -> if (fileName.lowercase().endsWith(".csv")) FileKind.CSV else FileKind.TEXT
             else -> null
         }
     }
+
+    /** An ISO-BMFF `ftyp` box whose major or a compatible brand is `avif` (still image) or `avis` (sequence). */
+    private fun isAvif(bytes: ByteArray): Boolean {
+        if (bytes.size < 16 || String(bytes, 4, 4, Charsets.US_ASCII) != "ftyp") return false
+        val boxSize = ((bytes[0].toInt() and 0xFF) shl 24) or ((bytes[1].toInt() and 0xFF) shl 16) or ((bytes[2].toInt() and 0xFF) shl 8) or (bytes[3].toInt() and 0xFF)
+        val end = minOf(boxSize, bytes.size)
+        val brands = buildList {
+            add(String(bytes, 8, 4, Charsets.US_ASCII))
+            var at = 16
+            while (at + 4 <= end) { add(String(bytes, at, 4, Charsets.US_ASCII)); at += 4 }
+        }
+        return brands.any { it == "avif" || it == "avis" }
+    }
+
+    /** Text whose first element (after an XML declaration, comments or a DOCTYPE) is `<svg`. Whether it is safe is [SvgSafety]'s call. */
+    private fun isSvg(bytes: ByteArray): Boolean {
+        if (!isText(bytes)) return false
+        val head = String(bytes, 0, minOf(bytes.size, 4096), Charsets.UTF_8).trimStart('\uFEFF', ' ', '\t', '\r', '\n')
+        return SVG_ROOT.containsMatchIn(head)
+    }
+
+    private val SVG_ROOT = Regex("""^(<\?xml[^>]*\?>\s*)?(<!--.*?-->\s*|<!DOCTYPE[^>]*>\s*)*<svg[\s>/]""", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
 
     /** UTF-8 text with no control characters other than tab/CR/LF in the first 8 KB. */
     private fun isText(bytes: ByteArray): Boolean {

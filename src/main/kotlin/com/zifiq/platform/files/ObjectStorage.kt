@@ -36,8 +36,14 @@ interface ObjectStorage {
     val configured: Boolean
     fun put(key: String, bytes: ByteArray, contentType: String)
 
-    /** A short-lived link the browser downloads from directly; the API never streams the bytes. */
-    fun downloadUrl(key: String, fileName: String, contentType: String): String
+    /** The object's bytes, for server-side use (a logo printed on a PDF); clients download through [downloadUrl]. */
+    fun get(key: String): ByteArray
+
+    /**
+     * A short-lived link the browser loads from directly; the API never streams the bytes. [inline]
+     * shows it in place (an image on a page) instead of saving it; [ttl] defaults to `download-url-ttl`.
+     */
+    fun downloadUrl(key: String, fileName: String, contentType: String, inline: Boolean = false, ttl: Duration? = null): String
 }
 
 /**
@@ -93,23 +99,28 @@ class S3ObjectStorage(private val properties: StorageProperties) : ObjectStorage
         )
     }
 
-    override fun downloadUrl(key: String, fileName: String, contentType: String): String {
+    override fun get(key: String): ByteArray {
+        requireConfigured()
+        return client.getObjectAsBytes(GetObjectRequest.builder().bucket(properties.bucket).key(key).build()).asByteArray()
+    }
+
+    override fun downloadUrl(key: String, fileName: String, contentType: String, inline: Boolean, ttl: Duration?): String {
         requireConfigured()
         val request = GetObjectRequest.builder()
             .bucket(properties.bucket)
             .key(key)
             .responseContentType(contentType)
-            .responseContentDisposition(contentDisposition(fileName))
+            .responseContentDisposition(contentDisposition(fileName, inline))
             .build()
         return presigner.presignGetObject(
-            GetObjectPresignRequest.builder().signatureDuration(properties.downloadUrlTtl).getObjectRequest(request).build(),
+            GetObjectPresignRequest.builder().signatureDuration(ttl ?: properties.downloadUrlTtl).getObjectRequest(request).build(),
         ).url().toExternalForm()
     }
 
     /** RFC 6266: an ASCII fallback plus the exact UTF-8 name. */
-    private fun contentDisposition(fileName: String): String {
+    private fun contentDisposition(fileName: String, inline: Boolean): String {
         val ascii = fileName.map { if (it.code in 32..126 && it != '"' && it != '\\') it else '_' }.joinToString("")
         val encoded = java.net.URLEncoder.encode(fileName, Charsets.UTF_8).replace("+", "%20")
-        return "attachment; filename=\"$ascii\"; filename*=UTF-8''$encoded"
+        return "${if (inline) "inline" else "attachment"}; filename=\"$ascii\"; filename*=UTF-8''$encoded"
     }
 }

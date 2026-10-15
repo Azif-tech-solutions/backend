@@ -3,7 +3,6 @@ package com.zifiq.account.service
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.neq
 import com.zifiq.common.sql.Aggregates
 import com.zifiq.platform.directory.Names
-import com.zifiq.settings.spi.logoDataUri
 import com.zifiq.common.money.Money
 import com.zifiq.account.dto.ConfirmationStats
 import com.zifiq.account.dto.OtherIncomeRequest

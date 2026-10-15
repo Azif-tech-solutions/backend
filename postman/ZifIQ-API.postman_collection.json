@@ -2578,7 +2578,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"3be6bfc5-5afc-4f7e-b22e-aabb3cb63544\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"9b7c9c55-788a-43df-9e9a-533c5276dfc2\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -2669,7 +2669,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"467bc682-325c-4ffc-921e-1eed2ea842b4\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"6a143ea5-9c33-4197-a57b-8c35dd7dd558\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -2962,7 +2962,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": {\n    \"tradingName\": \"Apex Industries\",\n    \"legalName\": null,\n    \"registrationNumber\": null,\n    \"tin\": null,\n    \"vatRegistrationNumber\": null,\n    \"nrsBusinessId\": null,\n    \"businessDescription\": null,\n    \"email\": null,\n    \"phone\": \"\",\n    \"website\": null,\n    \"streetAddress\": \"\",\n    \"city\": null,\n    \"postalCode\": null,\n    \"stateCode\": null,\n    \"stateName\": null,\n    \"lgaCode\": null,\n    \"lgaName\": null,\n    \"countryCode\": \"NG\",\n    \"hasLogo\": false,\n    \"logoUpdatedAt\": null,\n    \"documentFooter\": null,\n    \"financialYearStartMonth\": 1,\n    \"nrsReadiness\": {\n      \"ready\": false,\n      \"missing\": [\n        \"tin\",\n        \"email\",\n        \"streetAddress\",\n        \"stateCode\",\n        \"lgaCode\",\n        \"nrsBusinessId\",\n        \"businessDescription\"\n      ]\n    },\n    \"updatedBy\": null,\n    \"updatedAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+              "body": "{\n  \"data\": {\n    \"tradingName\": \"Apex Industries\",\n    \"legalName\": null,\n    \"registrationNumber\": null,\n    \"tin\": null,\n    \"vatRegistrationNumber\": null,\n    \"nrsBusinessId\": null,\n    \"businessDescription\": null,\n    \"email\": null,\n    \"phone\": \"\",\n    \"website\": null,\n    \"streetAddress\": \"\",\n    \"city\": null,\n    \"postalCode\": null,\n    \"stateCode\": null,\n    \"stateName\": null,\n    \"lgaCode\": null,\n    \"lgaName\": null,\n    \"countryCode\": \"NG\",\n    \"hasLogo\": false,\n    \"logoUrl\": null,\n    \"logoUrlExpiresAt\": null,\n    \"logoContentType\": null,\n    \"logoInDocuments\": false,\n    \"logoUpdatedAt\": null,\n    \"documentFooter\": null,\n    \"financialYearStartMonth\": 1,\n    \"nrsReadiness\": {\n      \"ready\": false,\n      \"missing\": [\n        \"tin\",\n        \"email\",\n        \"streetAddress\",\n        \"stateCode\",\n        \"lgaCode\",\n        \"nrsBusinessId\",\n        \"businessDescription\"\n      ]\n    },\n    \"updatedBy\": null,\n    \"updatedAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
             }
           ]
         },
@@ -3079,7 +3079,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": {\n    \"tradingName\": \"Apex Industries Ltd\",\n    \"legalName\": \"Apex Industries Limited\",\n    \"registrationNumber\": \"RC-1849302\",\n    \"tin\": \"33467982-0001\",\n    \"vatRegistrationNumber\": \"NG-VAT-4471029\",\n    \"nrsBusinessId\": null,\n    \"businessDescription\": \"Beverage manufacturing and distribution\",\n    \"email\": \"info@apex.ng\",\n    \"phone\": \"+234 803 412 7781\",\n    \"website\": \"https://apex.ng\",\n    \"streetAddress\": \"12 Industrial Way\",\n    \"city\": \"Aba\",\n    \"postalCode\": \"450001\",\n    \"stateCode\": \"NG-AB\",\n    \"stateName\": \"Abia\",\n    \"lgaCode\": \"NG-AB-ANO\",\n    \"lgaName\": \"Aba North\",\n    \"countryCode\": \"NG\",\n    \"hasLogo\": false,\n    \"logoUpdatedAt\": null,\n    \"documentFooter\": \"Goods sold in good condition are not returnable except under our returns policy.\",\n    \"financialYearStartMonth\": 1,\n    \"nrsReadiness\": {\n      \"ready\": false,\n      \"missing\": [\n        \"nrsBusinessId\"\n      ]\n    },\n    \"updatedBy\": \"Alice Admin\",\n    \"updatedAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+              "body": "{\n  \"data\": {\n    \"tradingName\": \"Apex Industries Ltd\",\n    \"legalName\": \"Apex Industries Limited\",\n    \"registrationNumber\": \"RC-1849302\",\n    \"tin\": \"33467982-0001\",\n    \"vatRegistrationNumber\": \"NG-VAT-4471029\",\n    \"nrsBusinessId\": null,\n    \"businessDescription\": \"Beverage manufacturing and distribution\",\n    \"email\": \"info@apex.ng\",\n    \"phone\": \"+234 803 412 7781\",\n    \"website\": \"https://apex.ng\",\n    \"streetAddress\": \"12 Industrial Way\",\n    \"city\": \"Aba\",\n    \"postalCode\": \"450001\",\n    \"stateCode\": \"NG-AB\",\n    \"stateName\": \"Abia\",\n    \"lgaCode\": \"NG-AB-ANO\",\n    \"lgaName\": \"Aba North\",\n    \"countryCode\": \"NG\",\n    \"hasLogo\": false,\n    \"logoUrl\": null,\n    \"logoUrlExpiresAt\": null,\n    \"logoContentType\": null,\n    \"logoInDocuments\": false,\n    \"logoUpdatedAt\": null,\n    \"documentFooter\": \"Goods sold in good condition are not returnable except under our returns policy.\",\n    \"financialYearStartMonth\": 1,\n    \"nrsReadiness\": {\n      \"ready\": false,\n      \"missing\": [\n        \"nrsBusinessId\"\n      ]\n    },\n    \"updatedBy\": \"Alice Admin\",\n    \"updatedAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
             }
           ]
         },
@@ -3216,7 +3216,7 @@
                 "logo"
               ]
             },
-            "description": "multipart/form-data, part `file`: a PNG or JPEG of at most 512 KB. The type is checked from the file's content, not its name; SVG is refused because it can carry script. Newman uses postman/fixtures/company-logo.png.",
+            "description": "multipart/form-data, part `file`: PNG, JPEG, WebP, AVIF or SVG of at most 1 MB, stored in S3 (purpose settings.company-logo). The type is checked from the file's content, not its name; an SVG with script, event handlers, foreignObject, a DOCTYPE or links to other files is refused (400 FILE_UNSAFE). The profile's logoUrl is a short-lived (1 h) S3 link that shows the image in place — use it as an <img src>, and read the profile again for a fresh one. logoInDocuments is false for AVIF and WebP, which the PDF engine can't draw: invoices and receipts then print the trading name. DELETE on the same path removes the logo (perm settings.manage). Newman uses postman/fixtures/company-logo.png.",
             "body": {
               "mode": "formdata",
               "formdata": [
@@ -3246,7 +3246,7 @@
                 "exec": [
                   "if (pm.response.code >= 200 && pm.response.code < 300) {",
                   "    const json = pm.response.json();",
-                  "    pm.test('logo is set', () => pm.expect(json.data.hasLogo).to.eql(true));",
+                  "    pm.test('logo is set and linked from storage', () => { pm.expect(json.data.hasLogo).to.eql(true); pm.expect(json.data.logoUrl).to.be.a('string'); pm.expect(json.data.logoContentType).to.eql('image/png'); });",
                   "}",
                   "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
                 ]
@@ -3272,7 +3272,7 @@
                     "logo"
                   ]
                 },
-                "description": "multipart/form-data, part `file`: a PNG or JPEG of at most 512 KB. The type is checked from the file's content, not its name; SVG is refused because it can carry script. Newman uses postman/fixtures/company-logo.png.",
+                "description": "multipart/form-data, part `file`: PNG, JPEG, WebP, AVIF or SVG of at most 1 MB, stored in S3 (purpose settings.company-logo). The type is checked from the file's content, not its name; an SVG with script, event handlers, foreignObject, a DOCTYPE or links to other files is refused (400 FILE_UNSAFE). The profile's logoUrl is a short-lived (1 h) S3 link that shows the image in place — use it as an <img src>, and read the profile again for a fresh one. logoInDocuments is false for AVIF and WebP, which the PDF engine can't draw: invoices and receipts then print the trading name. DELETE on the same path removes the logo (perm settings.manage). Newman uses postman/fixtures/company-logo.png.",
                 "body": {
                   "mode": "formdata",
                   "formdata": [
@@ -3304,12 +3304,122 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": {\n    \"tradingName\": \"Apex Industries Ltd\",\n    \"legalName\": \"Apex Industries Limited\",\n    \"registrationNumber\": \"RC-1849302\",\n    \"tin\": \"33467982-0001\",\n    \"vatRegistrationNumber\": \"NG-VAT-4471029\",\n    \"nrsBusinessId\": null,\n    \"businessDescription\": \"Beverage manufacturing and distribution\",\n    \"email\": \"info@apex.ng\",\n    \"phone\": \"+234 803 412 7781\",\n    \"website\": \"https://apex.ng\",\n    \"streetAddress\": \"12 Industrial Way\",\n    \"city\": \"Aba\",\n    \"postalCode\": \"450001\",\n    \"stateCode\": \"NG-AB\",\n    \"stateName\": \"Abia\",\n    \"lgaCode\": \"NG-AB-ANO\",\n    \"lgaName\": \"Aba North\",\n    \"countryCode\": \"NG\",\n    \"hasLogo\": true,\n    \"logoUpdatedAt\": \"2026-10-01T10:15:30Z\",\n    \"documentFooter\": \"Goods sold in good condition are not returnable except under our returns policy.\",\n    \"financialYearStartMonth\": 1,\n    \"nrsReadiness\": {\n      \"ready\": false,\n      \"missing\": [\n        \"nrsBusinessId\"\n      ]\n    },\n    \"updatedBy\": \"Alice Admin\",\n    \"updatedAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+              "body": "{\n  \"data\": {\n    \"tradingName\": \"Apex Industries Ltd\",\n    \"legalName\": \"Apex Industries Limited\",\n    \"registrationNumber\": \"RC-1849302\",\n    \"tin\": \"33467982-0001\",\n    \"vatRegistrationNumber\": \"NG-VAT-4471029\",\n    \"nrsBusinessId\": null,\n    \"businessDescription\": \"Beverage manufacturing and distribution\",\n    \"email\": \"info@apex.ng\",\n    \"phone\": \"+234 803 412 7781\",\n    \"website\": \"https://apex.ng\",\n    \"streetAddress\": \"12 Industrial Way\",\n    \"city\": \"Aba\",\n    \"postalCode\": \"450001\",\n    \"stateCode\": \"NG-AB\",\n    \"stateName\": \"Abia\",\n    \"lgaCode\": \"NG-AB-ANO\",\n    \"lgaName\": \"Aba North\",\n    \"countryCode\": \"NG\",\n    \"hasLogo\": true,\n    \"logoUrl\": \"https://zifiq-files.s3.eu-north-1.amazonaws.com/tenants/{{tenantId}}/settings.company-logo/2026/10/{{logoFileId}}?X-Amz-Signature=...\",\n    \"logoUrlExpiresAt\": \"2026-10-01T11:15:30Z\",\n    \"logoContentType\": \"image/png\",\n    \"logoInDocuments\": true,\n    \"logoUpdatedAt\": \"2026-10-01T10:15:30Z\",\n    \"documentFooter\": \"Goods sold in good condition are not returnable except under our returns policy.\",\n    \"financialYearStartMonth\": 1,\n    \"nrsReadiness\": {\n      \"ready\": false,\n      \"missing\": [\n        \"nrsBusinessId\"\n      ]\n    },\n    \"updatedBy\": \"Alice Admin\",\n    \"updatedAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
             }
           ]
         },
         {
-          "name": "A5 Upload Company Logo (error: not an image)",
+          "name": "A5 Upload Company Logo (SVG)",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/settings/company/logo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "settings",
+                "company",
+                "logo"
+              ]
+            },
+            "description": "SVG logos are drawn as vectors on PDFs. Newman uses postman/fixtures/company-logo.svg.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "postman/fixtures/company-logo.svg"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('the SVG replaced the PNG', () => { pm.expect(json.data.logoContentType).to.eql('image/svg+xml'); pm.expect(json.data.logoInDocuments).to.eql(true); });",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "A5 Upload Company Logo (SVG) - 200 OK",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/settings/company/logo",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "settings",
+                    "company",
+                    "logo"
+                  ]
+                },
+                "description": "SVG logos are drawn as vectors on PDFs. Newman uses postman/fixtures/company-logo.svg.",
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": "postman/fixtures/company-logo.svg"
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"tradingName\": \"Apex Industries Ltd\",\n    \"legalName\": \"Apex Industries Limited\",\n    \"registrationNumber\": \"RC-1849302\",\n    \"tin\": \"33467982-0001\",\n    \"vatRegistrationNumber\": \"NG-VAT-4471029\",\n    \"nrsBusinessId\": null,\n    \"businessDescription\": \"Beverage manufacturing and distribution\",\n    \"email\": \"info@apex.ng\",\n    \"phone\": \"+234 803 412 7781\",\n    \"website\": \"https://apex.ng\",\n    \"streetAddress\": \"12 Industrial Way\",\n    \"city\": \"Aba\",\n    \"postalCode\": \"450001\",\n    \"stateCode\": \"NG-AB\",\n    \"stateName\": \"Abia\",\n    \"lgaCode\": \"NG-AB-ANO\",\n    \"lgaName\": \"Aba North\",\n    \"countryCode\": \"NG\",\n    \"hasLogo\": true,\n    \"logoUrl\": \"https://zifiq-files.s3.eu-north-1.amazonaws.com/tenants/{{tenantId}}/settings.company-logo/2026/10/{{logoFileId}}?X-Amz-Signature=...\",\n    \"logoUrlExpiresAt\": \"2026-10-01T11:15:30Z\",\n    \"logoContentType\": \"image/svg+xml\",\n    \"logoInDocuments\": true,\n    \"logoUpdatedAt\": \"2026-10-01T10:15:30Z\",\n    \"documentFooter\": \"Goods sold in good condition are not returnable except under our returns policy.\",\n    \"financialYearStartMonth\": 1,\n    \"nrsReadiness\": {\n      \"ready\": false,\n      \"missing\": [\n        \"nrsBusinessId\"\n      ]\n    },\n    \"updatedBy\": \"Alice Admin\",\n    \"updatedAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "A6 Upload Company Logo (error: not an image)",
           "request": {
             "method": "PUT",
             "header": [],
@@ -3353,11 +3463,11 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('fails as expected with 400 INVALID_LOGO', () => {",
+                  "pm.test('fails as expected with 400 FILE_TYPE_NOT_ALLOWED', () => {",
                   "    pm.response.to.have.status(400);",
                   "    const j = pm.response.json();",
                   "    pm.expect(j).to.have.property('error');",
-                  "    pm.expect(j.error.code).to.eql('INVALID_LOGO');",
+                  "    pm.expect(j.error.code).to.eql('FILE_TYPE_NOT_ALLOWED');",
                   "});"
                 ]
               }
@@ -3365,7 +3475,7 @@
           ],
           "response": [
             {
-              "name": "A5 Upload Company Logo (error: not an image) - 400 Bad Request",
+              "name": "A6 Upload Company Logo (error: not an image) - 400 Bad Request",
               "originalRequest": {
                 "method": "PUT",
                 "header": [],
@@ -3413,94 +3523,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"error\": {\n    \"code\": \"INVALID_LOGO\",\n    \"message\": \"The logo must be a PNG or JPEG image\",\n    \"details\": {}\n  }\n}"
-            }
-          ]
-        },
-        {
-          "name": "A6 Get Company Logo",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/settings/company/logo",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "settings",
-                "company",
-                "logo"
-              ]
-            },
-            "description": "Streams the image with its own content type (cached privately for 5 minutes). 404 LOGO_NOT_SET when there is none. DELETE on the same path removes it (perm settings.manage).",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test('response is image/png', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('image/png'));"
-                ]
-              }
-            }
-          ],
-          "response": [
-            {
-              "name": "A6 Get Company Logo - 200 OK",
-              "originalRequest": {
-                "method": "GET",
-                "header": [],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/settings/company/logo",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "settings",
-                    "company",
-                    "logo"
-                  ]
-                },
-                "description": "Streams the image with its own content type (cached privately for 5 minutes). 404 LOGO_NOT_SET when there is none. DELETE on the same path removes it (perm settings.manage).",
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{accessToken}}",
-                      "type": "string"
-                    }
-                  ]
-                }
-              },
-              "status": "OK",
-              "code": 200,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "cookie": [],
-              "body": "(binary image/png)"
+              "body": "{\n  \"error\": {\n    \"code\": \"FILE_TYPE_NOT_ALLOWED\",\n    \"message\": \"This kind of file (application/pdf) can't be uploaded here\",\n    \"details\": {\n      \"detected\": \"application/pdf\",\n      \"allowed\": \"image/avif,image/jpeg,image/png,image/svg+xml,image/webp\"\n    }\n  }\n}"
             }
           ]
         },
@@ -9638,6 +9661,7 @@
                 }
               ]
             },
+            "description": "Perm factory.costing.read. Quantity produced and total landing cost over every run costed from each recipe; recipeIds is repeatable or comma-separated (at most 200). Every id must be a recipe of this tenant, else 404 RECIPE_NOT_FOUND.",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -9685,6 +9709,7 @@
                     }
                   ]
                 },
+                "description": "Perm factory.costing.read. Quantity produced and total landing cost over every run costed from each recipe; recipeIds is repeatable or comma-separated (at most 200). Every id must be a recipe of this tenant, else 404 RECIPE_NOT_FOUND.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -9707,6 +9732,109 @@
               ],
               "cookie": [],
               "body": "{\n  \"data\": [\n    {\n      \"recipeId\": \"{{recipeId}}\",\n      \"recipeName\": \"Premium Blend Base\",\n      \"qtyUsed\": 50.0,\n      \"totalCost\": 130.0\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Total Cost for Selected Recipes (error: unknown recipe)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/factory/production/total-cost?recipeIds=00000000-0000-4000-8000-000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "factory",
+                "production",
+                "total-cost"
+              ],
+              "query": [
+                {
+                  "key": "recipeIds",
+                  "value": "00000000-0000-4000-8000-000000000000"
+                }
+              ]
+            },
+            "description": "A recipe id that isn't this tenant's (another tenant's recipe is invisible under row-level security) answers 404, not 500.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fails as expected with 404 RECIPE_NOT_FOUND', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j).to.have.property('error');",
+                  "    pm.expect(j.error.code).to.eql('RECIPE_NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Total Cost for Selected Recipes (error: unknown recipe) - 404 Not Found",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/factory/production/total-cost?recipeIds=00000000-0000-4000-8000-000000000000",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "factory",
+                    "production",
+                    "total-cost"
+                  ],
+                  "query": [
+                    {
+                      "key": "recipeIds",
+                      "value": "00000000-0000-4000-8000-000000000000"
+                    }
+                  ]
+                },
+                "description": "A recipe id that isn't this tenant's (another tenant's recipe is invisible under row-level security) answers 404, not 500.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": {\n    \"code\": \"RECIPE_NOT_FOUND\",\n    \"message\": \"Recipe not found\",\n    \"details\": {}\n  }\n}"
             }
           ]
         },

@@ -99,6 +99,7 @@ enum class ErrorCode {
     FILE_NOT_FOUND,
     FILE_TOO_LARGE,
     FILE_TYPE_NOT_ALLOWED,
+    FILE_UNSAFE,
     UNKNOWN_FILE_PURPOSE,
     // Showroom + inventory extensions (docs/05 §7)
     RECEIPT_EXCEEDS_SENT,
@@ -167,8 +168,6 @@ enum class ErrorCode {
     LEDGER_ENTRY_NOT_FOUND,
 
     // ---- Settings (docs/06 §7) ----
-    INVALID_LOGO,
-    LOGO_NOT_SET,
     ONBOARDING_INCOMPLETE,
     OPTION_IN_USE,
     FIELD_HAS_BLANKS,
