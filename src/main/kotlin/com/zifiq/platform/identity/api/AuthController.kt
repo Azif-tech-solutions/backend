@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*
 @RequestMapping("/api/v1/auth")
 class AuthController(
     private val authService: AuthService,
+    private val locationSwitch: com.zifiq.platform.identity.LocationSwitchService,
 ) : AuthApi {
     @PostMapping("/register-tenant")
     override fun registerTenant(
@@ -34,6 +35,13 @@ class AuthController(
         @Valid @RequestBody request: TenantSwitchRequest,
     ): ApiEnvelope<TokenResponse> =
         ApiEnvelope(authService.switchTenant(request))
+
+    @PostMapping("/switch-location")
+    override fun switchLocation(@RequestBody request: LocationSwitchRequest): ApiEnvelope<TokenResponse> =
+        ApiEnvelope(locationSwitch.switch(request.locationId))
+
+    @GetMapping("/locations")
+    override fun switchableLocations(): ApiEnvelope<List<SwitchableLocation>> = ApiEnvelope(locationSwitch.switchable())
 
     @PostMapping("/change-password")
     override fun changePassword(

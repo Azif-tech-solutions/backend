@@ -1,5 +1,7 @@
 package com.zifiq.factory.service
 
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
+import com.zifiq.platform.security.LocationAccessService
 import com.zifiq.platform.directory.UserRef
 import com.zifiq.factory.dto.*
 import com.zifiq.factory.model.CategoriesTable
@@ -47,16 +49,18 @@ class FactorySetupService(
     private val currentActorProvider: CurrentActorProvider,
     private val tenantScopedTransaction: TenantScopedTransaction,
     private val documentSequenceService: DocumentSequenceService,
+    private val locationAccess: LocationAccessService,
 ) {
     // ---- Factories ----
 
+    /** A user assigned to one location sees only their own factory (none, at a showroom). */
     fun getFactories(): List<FactorySummary> = tenantScopedTransaction.execute {
         val tenantId = currentActorProvider.current().tenantId
-        LocationsTable.selectAll()
+        val query = LocationsTable.selectAll()
             .andWhere { LocationsTable.tenantId eq tenantId }
             .andWhere { LocationsTable.type eq "FACTORY" }
-            .orderBy(LocationsTable.name)
-            .map(::rowToFactorySummary)
+        locationAccess.allowedLocationIds()?.let { allowed -> query.andWhere { LocationsTable.id inList allowed } }
+        query.orderBy(LocationsTable.name).map(::rowToFactorySummary)
     }
 
     fun createFactory(request: FactoryRequest): FactorySummary = tenantScopedTransaction.execute {
@@ -87,6 +91,7 @@ class FactorySetupService(
 
     fun updateFactory(id: UUID, request: FactoryRequest): FactorySummary = tenantScopedTransaction.execute {
         val tenantId = currentActorProvider.current().tenantId
+        visibleFactory(id)
         val updated = LocationsTable.update({
             (LocationsTable.id eq id) and (LocationsTable.tenantId eq tenantId) and (LocationsTable.type eq "FACTORY")
         }) {
@@ -106,6 +111,7 @@ class FactorySetupService(
 
     fun updateFactoryStatus(id: UUID, status: String): FactorySummary = tenantScopedTransaction.execute {
         val tenantId = currentActorProvider.current().tenantId
+        visibleFactory(id)
         val updated = LocationsTable.update({
             (LocationsTable.id eq id) and (LocationsTable.tenantId eq tenantId) and (LocationsTable.type eq "FACTORY")
         }) {
@@ -114,6 +120,11 @@ class FactorySetupService(
         if (updated == 0) throw ApiErrors.factoryNotFound()
 
         LocationsTable.selectAll().andWhere { LocationsTable.id eq id }.single().let(::rowToFactorySummary)
+    }
+
+    /** Another location's factory is "not found" for a user assigned elsewhere: its existence isn't revealed. */
+    private fun visibleFactory(id: UUID) {
+        locationAccess.allowedLocationIds()?.let { if (id !in it) throw ApiErrors.factoryNotFound() }
     }
 
     // ---- Suppliers ----

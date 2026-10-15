@@ -12,6 +12,8 @@ data class CurrentActor(
     val tenantId: UUID,
     val email: String?,
     val displayName: String?,
+    /** The factory or showroom this session switched to (`location_id` claim), or null: see LocationAccessService. */
+    val activeLocationId: UUID? = null,
 )
 
 @Component
@@ -27,6 +29,9 @@ class CurrentActorProvider(private val tenantContext: TenantContext) {
             tenantId = tenantContext.requireTenantId(),
             email = authentication.token.getClaimAsString("email"),
             displayName = authentication.token.getClaimAsString("name"),
+            activeLocationId = authentication.token.getClaimAsString("location_id")?.let { claim ->
+                runCatching { UUID.fromString(claim) }.getOrElse { throw ApiErrors.invalidToken() }
+            },
         )
     }
 }

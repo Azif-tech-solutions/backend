@@ -36,6 +36,7 @@ class ResponseReferencesArchitectureTest {
         "TenantRegistrationResponse.tenantId" to "the caller's new tenant",
         "TenantRegistrationResponse.userId" to "the caller",
         "TokenResponse.activeTenantId" to "the session's tenant",
+        "TokenResponse.activeLocationId" to "the session's factory or showroom",
         "TokenResponse.userId" to "the caller",
         "MemberSummary.userId" to "the member row itself",
         "OtpChallengeSummary.challengeId" to "a one-time challenge handle",

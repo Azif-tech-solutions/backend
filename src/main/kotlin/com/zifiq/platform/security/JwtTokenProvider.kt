@@ -27,11 +27,12 @@ class JwtTokenProvider(
     val accessTokenValiditySeconds: Long = 3600 // 1 hour
     val refreshTokenValiditySeconds: Long = 86400 * 30 // 30 days
 
-    fun generateAccessToken(userId: UUID, tenantId: UUID, email: String, displayName: String): String {
+    fun generateAccessToken(userId: UUID, tenantId: UUID, email: String, displayName: String, locationId: UUID? = null): String {
         val now = Instant.now()
         val claimsSet = JWTClaimsSet.Builder()
             .subject(userId.toString())
             .claim("tenant_id", tenantId.toString())
+            .apply { if (locationId != null) claim("location_id", locationId.toString()) }
             .claim("email", email)
             .claim("name", displayName)
             .issueTime(Date.from(now))

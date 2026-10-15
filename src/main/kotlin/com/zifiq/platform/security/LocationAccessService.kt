@@ -27,8 +27,19 @@ class LocationAccessService(
     private val currentActorProvider: CurrentActorProvider,
     private val hierarchy: LocationHierarchy = LocationHierarchy(),
 ) {
-    /** Null = unrestricted (no assignment row, or explicit ALL_LOCATIONS). Otherwise the one location the current user is assigned to. */
+    /**
+     * The one location this request is confined to, or null for the whole company. A user assigned to
+     * a location is always confined to it; anyone else is confined to the factory or showroom their
+     * session switched to (POST /auth/switch-location), so two factories never see each other's data.
+     * Every list, read and write in every module goes through this.
+     */
     private fun restriction(): UUID? {
+        val actor = currentActorProvider.current()
+        return assignedLocation() ?: actor.activeLocationId
+    }
+
+    /** The location the user is assigned to (SINGLE_LOCATION), or null when they may work anywhere. */
+    fun assignedLocation(): UUID? {
         val actor = currentActorProvider.current()
         return AccessCaches.restrictions.get(AccessCaches.UserKey(actor.tenantId, actor.userId)) { Optional.ofNullable(load(actor.tenantId, actor.userId)) }.orElse(null)
     }

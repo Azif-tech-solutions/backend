@@ -2578,7 +2578,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"9252d7af-7482-4710-aa1d-78cc93e9bbbb\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"d936c2cc-57e1-4ebf-86f0-acdb68519759\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -2669,7 +2669,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"fe0ed1fe-f3eb-4208-9368-8631b41ba716\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"4d04ed88-8d01-4afa-8097-4575ec8eabf5\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -5158,6 +5158,210 @@
               ],
               "cookie": [],
               "body": "{\n  \"data\": {\n    \"id\": \"{{factoryId2}}\",\n    \"code\": \"FAC-2\",\n    \"name\": \"Apex Plant B\",\n    \"address\": \"4 Coastal Road, Port Harcourt\",\n    \"state\": \"Rivers\",\n    \"phone\": null,\n    \"manager\": null,\n    \"vatRate\": 7.5,\n    \"vatEnabled\": true,\n    \"vatRegistrationNumber\": null,\n    \"status\": \"ACTIVE\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "List Locations to Switch Into",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/locations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "locations"
+              ]
+            },
+            "description": "The factory/showroom switcher: a user assigned to a location gets only that one; anyone else every factory and showroom of the tenant.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('both factories can be entered', () => pm.expect(json.data.map(l => l.id)).to.include(pm.collectionVariables.get('factoryId')));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "List Locations to Switch Into - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/locations",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "locations"
+                  ]
+                },
+                "description": "The factory/showroom switcher: a user assigned to a location gets only that one; anyone else every factory and showroom of the tenant.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{factoryId}}\",\n      \"code\": \"FAC-1\",\n      \"name\": \"Apex Plant A\",\n      \"type\": \"FACTORY\",\n      \"active\": true\n    },\n    {\n      \"id\": \"{{factoryId2}}\",\n      \"code\": \"FAC-2\",\n      \"name\": \"Apex Plant B\",\n      \"type\": \"FACTORY\",\n      \"active\": true\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Switch Location (work inside one factory)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/switch-location",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "switch-location"
+              ]
+            },
+            "description": "New tokens confined to one factory or showroom: from then on every list, report, read and write in every module shows and touches only that location's data (another factory's records are 'not found', writes there are 403 LOCATION_ACCESS_DENIED). The location survives token refresh; switch-tenant clears it. {\"locationId\": null} returns to the whole company (only for users not assigned to a location). This collection keeps its company-wide token so the later folders can work across factories; a client stores the returned tokens.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"locationId\": \"{{factoryId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.test('the session now works in the factory', () => pm.expect(json.data.activeLocationId).to.eql(pm.collectionVariables.get('factoryId')));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Switch Location (work inside one factory) - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/switch-location",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "switch-location"
+                  ]
+                },
+                "description": "New tokens confined to one factory or showroom: from then on every list, report, read and write in every module shows and touches only that location's data (another factory's records are 'not found', writes there are 403 LOCATION_ACCESS_DENIED). The location survives token refresh; switch-tenant clears it. {\"locationId\": null} returns to the whole company (only for users not assigned to a location). This collection keeps its company-wide token so the later folders can work across factories; a client stores the returned tokens.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"locationId\": \"{{factoryId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"accessToken\": \"{{accessToken}}\",\n    \"refreshToken\": \"{{refreshToken}}\",\n    \"tokenType\": \"Bearer\",\n    \"expiresInSeconds\": 3600,\n    \"activeTenantId\": \"{{tenantId}}\",\n    \"userId\": \"{{userId}}\",\n    \"activeLocationId\": \"{{factoryId}}\"\n  }\n}"
             }
           ]
         },

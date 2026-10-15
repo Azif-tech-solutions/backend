@@ -462,6 +462,22 @@ ep("06 - Factory Setup", "Create Second Factory (for Transfers/Trade)", "POST", 
                   "vatRegistrationNumber": None, "status": "ACTIVE"}},
    tests=["const json = pm.response.json();", "pm.collectionVariables.set('factoryId2', json.data.id);"])
 
+ep("06 - Factory Setup", "List Locations to Switch Into", "GET", "/api/v1/auth/locations",
+   resp={"data": [{"id": "{{factoryId}}", "code": "FAC-1", "name": "Apex Plant A", "type": "FACTORY", "active": True},
+                  {"id": "{{factoryId2}}", "code": "FAC-2", "name": "Apex Plant B", "type": "FACTORY", "active": True}]},
+   tests=["const json = pm.response.json();", "pm.test('both factories can be entered', () => pm.expect(json.data.map(l => l.id)).to.include(pm.collectionVariables.get('factoryId')));"],
+   desc="The factory/showroom switcher: a user assigned to a location gets only that one; anyone else every factory and showroom of the tenant.")
+
+ep("06 - Factory Setup", "Switch Location (work inside one factory)", "POST", "/api/v1/auth/switch-location",
+   body={"locationId": "{{factoryId}}"},
+   resp={"data": {"accessToken": "{{accessToken}}", "refreshToken": "{{refreshToken}}", "tokenType": "Bearer",
+                  "expiresInSeconds": 3600, "activeTenantId": "{{tenantId}}", "userId": "{{userId}}", "activeLocationId": "{{factoryId}}"}},
+   tests=["const json = pm.response.json();", "pm.test('the session now works in the factory', () => pm.expect(json.data.activeLocationId).to.eql(pm.collectionVariables.get('factoryId')));"],
+   desc="New tokens confined to one factory or showroom: from then on every list, report, read and write in every module shows and touches only "
+        "that location's data (another factory's records are 'not found', writes there are 403 LOCATION_ACCESS_DENIED). The location survives "
+        "token refresh; switch-tenant clears it. {\"locationId\": null} returns to the whole company (only for users not assigned to a location). "
+        "This collection keeps its company-wide token so the later folders can work across factories; a client stores the returned tokens.")
+
 ep("06 - Factory Setup", "List Factories", "GET", "/api/v1/factory/setup/factories",
    resp={"data": [{"id": "{{factoryId}}", "code": "FAC-1", "name": "Apex Plant A", "address": "12 Industrial Way, Lagos", "state": "Lagos",
                    "phone": "+234-800-100-0001", "manager": None, "vatRate": 7.5, "vatEnabled": True,

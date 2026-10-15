@@ -318,6 +318,10 @@ class CorrespondentService(
     private fun detail(id: UUID): CorrespondentDetail {
         val row = joined.selectAll().where { (CorrespondentsTable.id eq id) and (CorrespondentsTable.tenantId eq support.tenantId()) }
             .firstOrNull() ?: throw ApiErrors.correspondentNotFound()
+        // The register's reach: a session confined to a location sees its correspondents and unassigned ones.
+        locationAccess.resolveFilter(null)?.let { scoped ->
+            if (row[CorrespondentsTable.locationId] != null && row[CorrespondentsTable.locationId] != scoped) throw ApiErrors.correspondentNotFound()
+        }
         val history = CorrespondentAssignmentHistoryTable
             .join(LocationsTable, JoinType.LEFT, additionalConstraint = { RawOp { +CorrespondentAssignmentHistoryTable.locationId; +" = "; +LocationsTable.id } })
             .selectAll()

@@ -173,7 +173,8 @@ class ProductionService(
     fun getCostingDetail(id: UUID): ProductionCostingDetail = tenantScopedTransaction.execute {
         val row = ProductionCostingsTable.selectAll().andWhere { ProductionCostingsTable.id eq id }.firstOrNull()
             ?: throw ApiErrors.costingNotFound()
-        locationAccessService.assertAccess(row[ProductionCostingsTable.locationId])
+        // Reading: another location's costing is "not found", so its existence isn't revealed.
+        locationAccessService.allowedLocationIds()?.let { if (row[ProductionCostingsTable.locationId] !in it) throw ApiErrors.costingNotFound() }
         rowToCostingDetail(row)
     }
 
@@ -336,8 +337,13 @@ class ProductionService(
         val ids = recipeIds.distinct()
         if (ids.isEmpty()) throw ApiErrors.validationFailed(mapOf("recipeIds" to "Give at least one recipe id"))
         if (ids.size > PagingPolicy.MAX_PAGE_SIZE) throw ApiErrors.validationFailed(mapOf("recipeIds" to "At most ${PagingPolicy.MAX_PAGE_SIZE} recipes at a time"))
+        // A user assigned to one factory totals only that factory's recipes; another's is "not found".
+        val allowed = locationAccessService.allowedLocationIds()
         val names = RecipesTable.select(RecipesTable.id, RecipesTable.name)
-            .where { (RecipesTable.tenantId eq tenantId) and (RecipesTable.id inList ids) }
+            .where {
+                listOfNotNull(RecipesTable.tenantId eq tenantId, RecipesTable.id inList ids, allowed?.let { RecipesTable.locationId inList it })
+                    .reduce { a, b -> a and b }
+            }
             .associate { it[RecipesTable.id].value to it[RecipesTable.name] }
         if (names.size != ids.size) throw ApiErrors.recipeNotFound()
         val qty = Aggregates.sum(ProductionRunsTable.quantityProduced)

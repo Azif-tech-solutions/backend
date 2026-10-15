@@ -21,6 +21,14 @@ interface AuthApi {
     @SecurityRequirement(name = "bearerAuth")
     fun switchTenant(request: TenantSwitchRequest): ApiEnvelope<TokenResponse>
 
+    @Operation(summary = "Work inside one factory or showroom: new tokens whose every list, report, read and write is confined to it (null = whole company, only for users not assigned to a location)")
+    @SecurityRequirement(name = "bearerAuth")
+    fun switchLocation(request: LocationSwitchRequest): ApiEnvelope<TokenResponse>
+
+    @Operation(summary = "The factories and showrooms this user can switch into")
+    @SecurityRequirement(name = "bearerAuth")
+    fun switchableLocations(): ApiEnvelope<List<SwitchableLocation>>
+
     @Operation(summary = "Change password for currently authenticated user")
     @SecurityRequirement(name = "bearerAuth")
     fun changePassword(request: ChangePasswordRequest): ApiEnvelope<Map<String, String>>

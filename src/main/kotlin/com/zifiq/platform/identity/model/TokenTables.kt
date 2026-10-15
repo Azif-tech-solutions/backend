@@ -8,6 +8,8 @@ object RefreshTokensTable : UUIDTable("refresh_tokens") {
     val tokenHash = varchar("token_hash", 255).uniqueIndex()
     val userId = reference("user_id", AppUsersTable)
     val tenantId = reference("tenant_id", TenantsTable)
+    /** The factory or showroom the session had switched to, kept across refreshes (V14_10). */
+    val locationId = uuid("location_id").nullable()
     val expiresAt = timestamp("expires_at")
     val createdAt = timestamp("created_at")
     val revoked = bool("revoked").default(false)

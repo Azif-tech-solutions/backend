@@ -1,5 +1,7 @@
 package com.zifiq.inventory.service
 
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inSubQuery
+import com.zifiq.inventory.model.StockBalancesTable
 import com.zifiq.platform.directory.Ref
 import com.zifiq.inventory.repository.StockSql
 import org.jetbrains.exposed.sql.sum
@@ -109,7 +111,10 @@ class GroupCardService(
         ) { rs -> if (rs.next()) rs.getString(1) else null } ?: throw ApiErrors.invalidFilter("groupId", "Category not found")
 
         val unitName = StockSql.unitName(StockItemsTable.unitOfMeasureId)
-        val inGroup = (StockItemsTable.tenantId eq tenantId) and (StockItemsTable.categoryId eq groupId)
+        val locations = locationAccess.resolveFilterSet(locationId)
+        // Members are the group's items stocked at the locations in scope: another factory's items are never listed.
+        val inGroup = (StockItemsTable.tenantId eq tenantId) and (StockItemsTable.categoryId eq groupId) and
+            (if (locations != null) StockItemsTable.id inSubQuery StockBalancesTable.select(StockBalancesTable.stockItemId).where { StockBalancesTable.locationId inList locations } else Op.TRUE)
         val units = StockItemsTable.select(unitName).where { inGroup }.withDistinct().limit(PagingPolicy.SUMMARY_TOP_N).map { it[unitName] }
         if (units.size > 1) throw ApiErrors.groupMixedUnits(units)
         val memberCount = StockItemsTable.select(StockItemsTable.id).where { inGroup }.count()
@@ -117,7 +122,6 @@ class GroupCardService(
             .where { inGroup }.orderBy(StockItemsTable.name to SortOrder.ASC).limit(PagingPolicy.SUMMARY_TOP_N)
             .map { GroupCardMember(Ref.stockItem(it[StockItemsTable.id].value), it.getOrNull(unitName)) }
 
-        val locations = locationAccess.resolveFilterSet(locationId)
         fun scoped(): Op<Boolean> {
             var condition: Op<Boolean> = (StockLedgerEntriesTable.tenantId eq tenantId) and (StockItemsTable.categoryId eq groupId)
             if (locations != null) condition = condition and (StockLedgerEntriesTable.locationId inList locations)

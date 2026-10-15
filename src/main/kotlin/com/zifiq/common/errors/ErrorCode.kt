@@ -86,6 +86,7 @@ enum class ErrorCode {
 
     // ---- Location Access ----
     LOCATION_ACCESS_DENIED,
+    LOCATION_NOT_FOUND,
 
     // ---- Search, filters, paging, saved views (docs/03 §4–§5) ----
     INVALID_FILTER,

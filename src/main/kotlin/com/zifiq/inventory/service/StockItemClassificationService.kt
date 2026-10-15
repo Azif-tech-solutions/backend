@@ -1,5 +1,7 @@
 package com.zifiq.inventory.service
 
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
+import com.zifiq.inventory.model.StockBalancesTable
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.tax.HsnCodesTable
 import com.zifiq.common.tax.HsnSectionsTable
@@ -34,7 +36,15 @@ class StockItemClassificationService(
     private val locationAccess: LocationAccessService,
     private val domainEvents: DomainEvents,
 ) {
-    fun get(id: UUID): StockItemClassification = tx.execute { view(item(id)) }
+    fun get(id: UUID): StockItemClassification = tx.execute {
+        val item = item(id)
+        // Visible where it is registered or stocked; anywhere else it is "not found".
+        locationAccess.allowedLocationIds()?.let { allowed ->
+            val stockedHere = !StockBalancesTable.selectAll().where { (StockBalancesTable.stockItemId eq id) and (StockBalancesTable.locationId inList allowed) }.empty()
+            if (item[StockItemsTable.locationId] !in allowed && !stockedHere) throw ApiErrors.stockItemNotFound()
+        }
+        view(item)
+    }
 
     /** PATCH semantics: an omitted (null) field is unchanged; an empty string clears it. */
     fun update(id: UUID, request: StockItemClassificationRequest): StockItemClassification = tx.execute {

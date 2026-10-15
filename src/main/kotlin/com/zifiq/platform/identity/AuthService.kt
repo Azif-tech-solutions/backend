@@ -38,6 +38,7 @@ private data class RefreshTokenRecord(
     val id: UUID,
     val userId: UUID,
     val tenantId: UUID,
+    val locationId: UUID?,
     val expiresAt: Instant,
     val revoked: Boolean,
 )
@@ -195,6 +196,7 @@ class AuthService(
                     id = it[RefreshTokensTable.id].value,
                     userId = it[RefreshTokensTable.userId].value,
                     tenantId = it[RefreshTokensTable.tenantId].value,
+                    locationId = it[RefreshTokensTable.locationId],
                     expiresAt = it[RefreshTokensTable.expiresAt],
                     revoked = it[RefreshTokensTable.revoked],
                 )
@@ -214,7 +216,7 @@ class AuthService(
             .andWhere { AppUsersTable.id eq tokenRow.userId }
             .firstOrNull() ?: throw ApiErrors.userNotFound()
 
-        issueTokens(tokenRow.userId, tokenRow.tenantId, userRow[AppUsersTable.email], userRow[AppUsersTable.displayName])
+        issueTokens(tokenRow.userId, tokenRow.tenantId, userRow[AppUsersTable.email], userRow[AppUsersTable.displayName], tokenRow.locationId)
     }
 
     fun changePassword(request: ChangePasswordRequest): Unit = transaction(exposedDatabase) {
@@ -326,8 +328,12 @@ class AuthService(
         )
     }
 
-    private fun issueTokens(userId: UUID, tenantId: UUID, email: String, displayName: String): TokenResponse {
-        val accessToken = jwtTokenProvider.generateAccessToken(userId, tenantId, email, displayName)
+    /** New tokens for a session switching location (LocationSwitchService), in their own transaction. */
+    fun issueTokensFor(userId: UUID, tenantId: UUID, email: String, displayName: String, locationId: UUID?): TokenResponse =
+        transaction(exposedDatabase) { issueTokens(userId, tenantId, email, displayName, locationId) }
+
+    private fun issueTokens(userId: UUID, tenantId: UUID, email: String, displayName: String, locationId: UUID? = null): TokenResponse {
+        val accessToken = jwtTokenProvider.generateAccessToken(userId, tenantId, email, displayName, locationId)
         val refreshToken = "RT-" + UUID.randomUUID().toString() + "-" + UUID.randomUUID().toString().take(8)
 
         val expiresAt = Instant.now().plusSeconds(jwtTokenProvider.refreshTokenValiditySeconds)
@@ -335,6 +341,7 @@ class AuthService(
             it[RefreshTokensTable.tokenHash] = refreshToken
             it[RefreshTokensTable.userId] = userId
             it[RefreshTokensTable.tenantId] = tenantId
+            it[RefreshTokensTable.locationId] = locationId
             it[RefreshTokensTable.expiresAt] = expiresAt
             it[RefreshTokensTable.createdAt] = Instant.now()
         }
@@ -345,6 +352,7 @@ class AuthService(
             expiresInSeconds = jwtTokenProvider.accessTokenValiditySeconds,
             activeTenantId = tenantId,
             userId = userId,
+            activeLocationId = locationId,
         )
     }
 }

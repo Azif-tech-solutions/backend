@@ -33,6 +33,8 @@ data class TokenResponse(
     val expiresInSeconds: Long,
     val activeTenantId: UUID,
     val userId: UUID,
+    /** The factory or showroom the session works in (POST /auth/switch-location), or null. */
+    val activeLocationId: UUID? = null,
 )
 
 data class RefreshTokenRequest(
@@ -41,6 +43,20 @@ data class RefreshTokenRequest(
 
 data class TenantSwitchRequest(
     val targetTenantId: UUID,
+)
+
+/** null = leave any location (the whole company); only for users not assigned to one location. */
+data class LocationSwitchRequest(
+    val locationId: UUID?,
+)
+
+/** A factory or showroom the user can switch into. */
+data class SwitchableLocation(
+    val id: UUID,
+    val code: String,
+    val name: String,
+    val type: String,
+    val active: Boolean,
 )
 
 data class ChangePasswordRequest(

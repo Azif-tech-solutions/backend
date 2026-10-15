@@ -116,6 +116,7 @@ object ApiErrors {
 
     // ---- Location Access ----
     fun locationAccessDenied() = ApiException(HttpStatus.FORBIDDEN, ErrorCode.LOCATION_ACCESS_DENIED, "You are not assigned to this location")
+    fun locationNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.LOCATION_NOT_FOUND, "Location not found")
 
     // ---- Search, filters, paging, saved views ----
     fun invalidFilter(field: String, reason: String, allowed: Collection<String> = emptyList()) = ApiException(
