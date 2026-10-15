@@ -1,5 +1,7 @@
 package com.zifiq.customers.service
 
+import com.zifiq.platform.directory.ref
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.UserRef
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.filter.FilterContext
@@ -140,7 +142,7 @@ class CustomerLedgerService(
                 paymentMethod = row[CustomerLedgerEntriesTable.paymentMethod],
                 amount = if (type.direction == LedgerDirection.CREDIT) amount else amount.negate(),
                 balanceAfter = row[CustomerLedgerEntriesTable.balanceAfter],
-                locationId = row[CustomerLedgerEntriesTable.locationId],
+                location = ref(row[CustomerLedgerEntriesTable.locationId], Ref::location),
                 sourceModule = row[CustomerLedgerEntriesTable.sourceModule],
                 performedBy = UserRef.of(row[CustomerLedgerEntriesTable.performedByUserId]),
                 reversible = row[CustomerLedgerEntriesTable.sourceModule] == SOURCE_MODULE &&

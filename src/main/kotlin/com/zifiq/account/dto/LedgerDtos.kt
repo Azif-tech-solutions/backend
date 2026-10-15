@@ -1,5 +1,6 @@
 package com.zifiq.account.dto
 
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.UserRef
 import jakarta.validation.Valid
 import jakarta.validation.constraints.DecimalMin
@@ -69,8 +70,7 @@ data class BankAccountView(
     val openingBalance: BigDecimal,
     val openingBalanceDate: LocalDate,
     val currentBalance: BigDecimal,
-    val locationId: UUID?,
-    val locationName: String?,
+    val location: Ref?,
     val status: String,
     val createdAt: Instant,
 )
@@ -152,8 +152,7 @@ data class CashAccountView(
     val code: String,
     val name: String,
     val kind: String,
-    val locationId: UUID?,
-    val locationName: String?,
+    val location: Ref?,
     val currencyCode: String,
     val openingBalance: BigDecimal,
     val currentBalance: BigDecimal,
@@ -161,8 +160,7 @@ data class CashAccountView(
     /** PETTY_CASH with a float limit: balance below half of it. */
     val belowFloat: Boolean,
     val posTerminalRef: String?,
-    val posSettlementBankAccountId: UUID?,
-    val posSettlementBankCode: String?,
+    val posSettlementBankAccount: Ref?,
     val status: String,
     val createdAt: Instant,
 )

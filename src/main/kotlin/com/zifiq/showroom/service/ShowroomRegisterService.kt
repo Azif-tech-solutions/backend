@@ -1,5 +1,7 @@
 package com.zifiq.showroom.service
 
+import com.zifiq.platform.directory.ref
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.UserRef
 import com.zifiq.platform.security.AccessCaches
 import com.zifiq.common.errors.ApiErrors
@@ -284,7 +286,7 @@ class ShowroomRegisterService(
             dateOpened = row[LocationsTable.dateOpened], storageCapacity = row[LocationsTable.storageCapacity], operatingHours = row[LocationsTable.operatingHours],
             status = row[LocationsTable.status], vatRate = row[LocationsTable.vatRate], vatEnabled = row[LocationsTable.vatEnabled],
             vatRegistrationNumber = row[LocationsTable.vatRegistrationNumber], areas = areas(id),
-            defaultReceivingLocationId = row[LocationsTable.defaultReceivingLocationId], defaultSellingLocationId = row[LocationsTable.defaultSellingLocationId],
+            defaultReceivingLocation = ref(row[LocationsTable.defaultReceivingLocationId], Ref::location), defaultSellingLocation = ref(row[LocationsTable.defaultSellingLocationId], Ref::location),
             createdAt = row[LocationsTable.createdAt],
         )
     }

@@ -1,5 +1,6 @@
 package com.zifiq.factory.dto
 
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.UserRef
 import jakarta.validation.constraints.DecimalMin
 import jakarta.validation.constraints.NotBlank
@@ -35,10 +36,18 @@ data class RecipeSummary(
     val id: UUID,
     val code: String,
     val name: String,
+    val location: Ref,
     val sourcing: String,
     val yieldQty: BigDecimal,
+    val yieldUnit: Ref,
     val status: String,
-    val ingredients: List<RecipeIngredientInput>,
+    val ingredients: List<RecipeIngredientView>,
+)
+
+data class RecipeIngredientView(
+    val rawMaterialStockItem: Ref,
+    val quantity: BigDecimal,
+    val unit: Ref,
 )
 
 // ---- Production Cost Calculator ----
@@ -65,7 +74,7 @@ data class ProductionCostingRequest(
 /** Returned to the caller of the calculator (QC) — deliberately omits cost figures. */
 data class ProductionCostingSummary(
     val id: UUID,
-    val targetStockItemId: UUID,
+    val targetStockItem: Ref,
     val batchSizeQty: BigDecimal,
     val status: String,
     val computedBy: UserRef,
@@ -75,8 +84,8 @@ data class ProductionCostingSummary(
 /** Returned only to callers holding factory.costing.read. */
 data class ProductionCostingDetail(
     val id: UUID,
-    val targetStockItemId: UUID,
-    val recipeId: UUID?,
+    val targetStockItem: Ref,
+    val recipe: Ref?,
     val batchSizeQty: BigDecimal,
     val materialsSnapshot: List<Map<String, Any?>>,
     val overheadSnapshot: List<Map<String, Any?>>,
@@ -101,7 +110,7 @@ data class ProductionRunRequest(
 
 data class ProductionRunSummary(
     val batchRef: String,
-    val targetStockItemId: UUID,
+    val targetStockItem: Ref,
     val quantityProduced: BigDecimal,
     val unitLandingCost: BigDecimal,
     val totalLandingCost: BigDecimal,
@@ -109,8 +118,7 @@ data class ProductionRunSummary(
 )
 
 data class RecipeCostAggregate(
-    val recipeId: UUID,
-    val recipeName: String,
+    val recipe: Ref,
     val qtyUsed: BigDecimal,
     val totalCost: BigDecimal,
 )
@@ -148,7 +156,7 @@ data class SpecialProductionRunSummary(
     val id: UUID,
     val orderRef: String,
     val batchRef: String,
-    val clientId: UUID,
+    val client: Ref,
     val quantity: BigDecimal,
     val price: BigDecimal,
     val status: String,

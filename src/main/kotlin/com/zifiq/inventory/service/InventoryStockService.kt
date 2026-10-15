@@ -1,5 +1,7 @@
 package com.zifiq.inventory.service
 
+import com.zifiq.platform.directory.ref
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.UserRef
 import com.zifiq.inventory.repository.StockSql
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.lessEq
@@ -43,20 +45,20 @@ import org.springframework.stereotype.Service
 
 private fun rowToStockItemSummary(row: ResultRow, quantityOnHand: BigDecimal) = StockItemSummary(
     id = row[StockItemsTable.id].value,
-    locationId = row[StockItemsTable.locationId],
+    location = Ref.location(row[StockItemsTable.locationId]),
     itemType = row[StockItemsTable.itemType],
     code = row[StockItemsTable.code],
     name = row[StockItemsTable.name],
-    categoryId = row[StockItemsTable.categoryId],
+    category = ref(row[StockItemsTable.categoryId], Ref::category),
     brand = row[StockItemsTable.brand],
-    unitOfMeasureId = row[StockItemsTable.unitOfMeasureId],
+    unitOfMeasure = Ref.unit(row[StockItemsTable.unitOfMeasureId]),
     reorderLevel = row[StockItemsTable.reorderLevel],
     barcode = row[StockItemsTable.barcode],
     landingCost = row[StockItemsTable.landingCost],
     markupCost = row[StockItemsTable.markupCost],
-    vatCategoryId = row[StockItemsTable.vatCategoryId],
-    hsnSectionId = row[StockItemsTable.hsnSectionId],
-    isicSectionId = row[StockItemsTable.isicSectionId],
+    vatCategory = Ref.vatCategory(row[StockItemsTable.vatCategoryId]),
+    hsnSection = ref(row[StockItemsTable.hsnSectionId], Ref::hsnSection),
+    isicSection = ref(row[StockItemsTable.isicSectionId], Ref::isicSection),
     status = row[StockItemsTable.status],
     createdAt = row[StockItemsTable.createdAt],
     quantityOnHand = quantityOnHand,
@@ -216,7 +218,7 @@ class InventoryStockService(
             summary = "$ref: ${request.quantity.stripTrailingZeros().toPlainString()} finished product received into stock",
             payload = mapOf("quantity" to request.quantity), locationId = request.locationId,
         )
-        RefillSummary(ref, request.stockItemId, request.quantity, UserRef(actor.userId), Instant.now())
+        RefillSummary(ref, Ref.stockItem(request.stockItemId), request.quantity, UserRef(actor.userId), Instant.now())
     }
 
     fun refillRawMaterial(request: RawMaterialRefillRequest): StockReceiptSummary = tenantScopedTransaction.execute {
@@ -295,9 +297,9 @@ class InventoryStockService(
     private fun rowToReceiptSummary(row: ResultRow) = StockReceiptSummary(
         id = row[StockReceiptsTable.id].value,
         ref = row[StockReceiptsTable.ref],
-        stockItemId = row[StockReceiptsTable.stockItemId].value,
-        supplierId = row[StockReceiptsTable.supplierId],
-        manufacturerId = row[StockReceiptsTable.manufacturerId],
+        stockItem = Ref.stockItem(row[StockReceiptsTable.stockItemId].value),
+        supplier = ref(row[StockReceiptsTable.supplierId], Ref::supplier),
+        manufacturer = ref(row[StockReceiptsTable.manufacturerId], Ref::manufacturer),
         quantity = row[StockReceiptsTable.quantity],
         unitCost = row[StockReceiptsTable.unitCost],
         manufacturedDate = row[StockReceiptsTable.manufacturedDate],
@@ -449,10 +451,8 @@ class InventoryStockService(
             StockMovementRow(
                 sn = sn,
                 date = row[StockLedgerEntriesTable.entryDate],
-                locationId = row[StockLedgerEntriesTable.locationId],
-                stockItemId = row[StockItemsTable.id].value,
-                itemCode = row[StockItemsTable.code],
-                itemName = row[StockItemsTable.name],
+                location = Ref.location(row[StockLedgerEntriesTable.locationId]),
+                stockItem = Ref.stockItem(row[StockItemsTable.id].value),
                 sourceType = row[StockLedgerEntriesTable.sourceType],
                 sourceReference = row[StockLedgerEntriesTable.sourceReference],
                 qtyIn = row[StockLedgerEntriesTable.qtyIn],
@@ -473,8 +473,7 @@ class InventoryStockService(
         query.orderBy(StockItemsTable.name to SortOrder.ASC, StockBalancesTable.locationId to SortOrder.ASC)
         Paging.fetch(query, paging) { row ->
             ReOrderRow(
-                stockItemId = row[StockItemsTable.id].value,
-                itemName = row[StockItemsTable.name],
+                stockItem = Ref.stockItem(row[StockItemsTable.id].value),
                 quantityOnHand = row[StockBalancesTable.quantityOnHand],
                 reorderLevel = row[StockItemsTable.reorderLevel],
             )

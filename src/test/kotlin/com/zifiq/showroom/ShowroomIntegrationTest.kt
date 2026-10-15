@@ -1,5 +1,6 @@
 package com.zifiq.showroom
 
+import com.zifiq.platform.directory.Refs
 import com.zifiq.common.errors.ErrorCode
 import com.zifiq.common.filter.ListSearchRequest
 import com.zifiq.common.tax.TaxClassificationRepository
@@ -184,8 +185,8 @@ class ShowroomIntegrationTest : PostgresIntegrationTest() {
         assertThat(kano.code).startsWith("SHR-")
         assertThat(kano.status).isEqualTo("PENDING")
         assertThat(kano.areas.map { it.code }).containsExactly("${kano.code}-SF", "${kano.code}-WH")
-        assertThat(kano.defaultReceivingLocationId).isEqualTo(area(kano, "WAREHOUSE"))
-        assertThat(kano.defaultSellingLocationId).isEqualTo(area(kano, "SHOP_FLOOR"))
+        assertThat(kano.defaultReceivingLocation?.id).isEqualTo(area(kano, "WAREHOUSE"))
+        assertThat(kano.defaultSellingLocation?.id).isEqualTo(area(kano, "SHOP_FLOOR"))
         failsWith { showroom("showroom kano") }.isEqualTo(ErrorCode.DUPLICATE_NAME)
         failsWith { register.create(ShowroomRequest("Bad State", "NG-XX", "1 Road", "Town", "08030000000")) }.isEqualTo(ErrorCode.INVALID_STATE_CODE)
 
@@ -206,11 +207,11 @@ class ShowroomIntegrationTest : PostgresIntegrationTest() {
             listOf(DirectEntryLineInput("Local Groundnuts 500g", BigDecimal(20), cartons, BigDecimal(800), BigDecimal("7.5"), BigDecimal(1200), BigDecimal(1100))))
         val first = intake.directEntry(request)
         assertThat(first.ref).startsWith("DE-")
-        assertThat(first.intoLocationId).isEqualTo(area(ikeja, "WAREHOUSE"))
+        assertThat(first.intoLocation.id).isEqualTo(area(ikeja, "WAREHOUSE"))
         assertThat(first.totalInputVat).isEqualByComparingTo("1200") // 16,000 × 7.5%
-        val itemId = first.lines.single().stockItemId
+        val itemId = first.lines.single().stockItem.id
         val second = intake.directEntry(request.copy(lines = listOf(request.lines.single().copy(quantity = BigDecimal(5), description = "local groundnuts 500G"))))
-        assertThat(second.lines.single().stockItemId).isEqualTo(itemId)
+        assertThat(second.lines.single().stockItem.id).isEqualTo(itemId)
         assertThat(balance(area(ikeja, "WAREHOUSE"), itemId)).isEqualByComparingTo("25")
         assertThat(tx.execute { prices.currentPrice(itemId, today) }!!.dealerPrice).isEqualByComparingTo("1100")
 
@@ -286,7 +287,7 @@ class ShowroomIntegrationTest : PostgresIntegrationTest() {
         val dealerReturn = returns.post(ReturnRequest("DEALER", ikeja.id, dealerId, null, "INV-9", null, null,
             listOf(ReturnLineInput(citrus, BigDecimal(2), "EXPIRED_OR_NEAR_EXPIRY", "QUARANTINE"))))
         assertThat(dealerReturn.totalValue).isEqualByComparingTo("8200")
-        assertThat(dealerReturn.lines.single().intoLocationName).endsWith("Quarantine")
+        assertThat(tx.execute { Refs.resolve(dealerReturn) }.let { dealerReturn.lines.single().intoLocation?.name }).endsWith("Quarantine")
         failsWith { returns.post(ReturnRequest("NON_DEALER", ikeja.id, dealerId, null, null, null, null, listOf(ReturnLineInput(citrus, BigDecimal.ONE, "PRODUCT_DEFECT", "RESALEABLE")))) }
             .isEqualTo(ErrorCode.USE_DEALER_RETURN)
         failsWith { returns.post(ReturnRequest("DEALER", ikeja.id, walkIn.customer.id, null, null, null, null, listOf(ReturnLineInput(citrus, BigDecimal.ONE, "PRODUCT_DEFECT", "RESALEABLE")))) }
@@ -306,7 +307,7 @@ class ShowroomIntegrationTest : PostgresIntegrationTest() {
         // The dealer's credit is unspent: reversal takes the money and the goods back.
         val reversed = returns.reverse(dealerReturn.id, "Wrong customer")
         assertThat(reversed.status).isEqualTo("REVERSED")
-        assertThat(balance(dealerReturn.lines.single().intoLocationId!!, citrus)).isEqualByComparingTo("0")
+        assertThat(balance(dealerReturn.lines.single().intoLocation!!.id, citrus)).isEqualByComparingTo("0")
         failsWith { returns.reverse(dealerReturn.id, "Again") }.isEqualTo(ErrorCode.RETURN_ALREADY_REVERSED)
 
         // Return Reports: posted returns by default, with totals by reason.

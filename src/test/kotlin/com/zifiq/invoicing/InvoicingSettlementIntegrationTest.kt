@@ -318,10 +318,10 @@ class InvoicingSettlementIntegrationTest : PostgresIntegrationTest() {
 
         val replacementId = invoices.void(original.id, "Billed to the wrong customer", ReissueRequest(customerId = special))
         val replacement = queries.detail(replacementId)
-        assertThat(replacement.buyer.customerId).isEqualTo(special)
+        assertThat(replacement.buyer.customer?.id).isEqualTo(special)
         assertThat(replacement.totals.paid).isEqualByComparingTo("10000")
         assertThat(replacement.linked.payments.single().source).isEqualTo("REISSUE_TRANSFER")
-        assertThat(replacement.linked.payments.single().receiptId).isEqualTo(payment.receiptId)
+        assertThat(replacement.linked.payments.single().receipt.id).isEqualTo(payment.receiptId)
 
         tx.execute { invoices.voidForSource("POS_SALE", source, "Sale voided at the till") }
         val voided = queries.detail(replacementId)
@@ -437,12 +437,12 @@ class InvoicingSettlementIntegrationTest : PostgresIntegrationTest() {
             .extracting("id").containsExactly(old.id)
 
         val debtors = receivables.debtors(ListSearchRequest(q = "CU-O$tag"))
-        val row = debtors.items.single { it.customerId == ordinary }
+        val row = debtors.items.single { it.customer?.id == ordinary }
         assertThat(row.openInvoices).isEqualTo(3)
         assertThat(row.outstanding).isEqualByComparingTo("158670")
         assertThat(row.overLimit).isTrue()
         assertThat(row.ageing).isEqualTo("DAYS_31_60")
-        assertThat(receivables.debtors(ListSearchRequest(params = mapOf("overLimitOnly" to listOf("true")))).items.map { it.customerId }).contains(ordinary)
+        assertThat(receivables.debtors(ListSearchRequest(params = mapOf("overLimitOnly" to listOf("true")))).items.map { it.customer?.id }).contains(ordinary)
         val account = receivables.debtor(ordinary, null, null, openOnly = true, PageRequest.of(0, 2))
         assertThat(account.warning).isNotNull()
         assertThat(account.transactions.items).hasSize(2)
@@ -466,7 +466,7 @@ class InvoicingSettlementIntegrationTest : PostgresIntegrationTest() {
         val till = till()
         val first = issue()
         val second = issue()
-        fun debtor() = receivables.debtors(ListSearchRequest(q = "CU-O$tag")).items.singleOrNull { it.customerId == ordinary }
+        fun debtor() = receivables.debtors(ListSearchRequest(q = "CU-O$tag")).items.singleOrNull { it.customer?.id == ordinary }
         assertThat(debtor()!!.openInvoices).isEqualTo(2)
         assertThat(tx.execute { invoices.outstandingFor(ordinary) }).isEqualByComparingTo(first.total + second.total)
         assertThat(tx.execute { invoices.openInvoicesFor(ordinary) }.map { it.id }).containsExactly(first.id, second.id)

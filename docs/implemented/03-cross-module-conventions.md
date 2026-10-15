@@ -345,9 +345,22 @@ Only small, bounded reference lists stay unpaged (`{"data": [...]}`): VAT catego
 - **Cross-module joins in SQL** go through columns the owning module publishes in its spi for that purpose (`customers.spi.CustomerColumns`), never its internal tables.
 - **Caching.** `platform.security.AccessCaches` holds the lookups every request repeats (permission codes, location scope, storage areas, module setting values). Every key carries the tenant, and storage-area lookups key on the tenant the transaction's row-level security is enforcing (`TenantScopedTransaction.rlsTenant()`), so a cached value is only ever served to the tenant whose RLS produced it. Writers clear the affected entries at once; entries expire after 30 s (5–30 min for the location hierarchy) to bound staleness across app instances.
 
-### 5.1.2 Users in responses
+### 5.1.2 References in responses — never a bare id (standing rule)
 
-Every user a response mentions — who recorded, issued, approved, uploaded, voided, the cashier, a manager who is a user — is a `platform.directory.UserRef`, serialized as `{ "id", "name", "email" }`. Never a bare `…UserId` and never a bare display name. A service only writes `UserRef(id)` (or `UserRef.of(nullableId)`); `UserRefResolver`, a `ResponseBodyAdvice`, finds every reference in the response however deeply it is nested (pages, lists, maps, details) and fills them all with one primary-key query on `app_users` just before the response is written. So a page of 50 rows naming 50 users is one lookup, and no service resolves names itself. Output the HTTP layer doesn't see (a PDF, an e-mail) calls `UserRefs.resolve(model)` in its transaction and prints `ref.name`. Free-text names a user types (petty cash "approved by Mrs Okafor") stay strings; request bodies keep plain ids (`managerUserId`).
+A response never returns a bare foreign key. Every field that points at another record — a stock item, unit, location, customer, user, bank or cash account, category, supplier, invoice, receipt, transfer, recipe… — is a `platform.directory.Ref`, serialized as the record's id plus its identifying details:
+
+```json
+"stockItem": { "id": "…", "code": "RM-0001", "name": "Malted Barley", "itemType": "RAW_MATERIAL" },
+"unit":      { "id": "…", "code": "KG", "name": "Kilogram", "symbol": "kg" },
+"location":  { "id": "…", "code": "SHR-1", "name": "Showroom Ikeja", "type": "SHOWROOM" },
+"recordedBy":{ "id": "…", "name": "Alice Admin", "email": "alice@apex.ng" }
+```
+
+- **Services** only write `Ref.stockItem(id)` (or `ref(nullableId, Ref::stockItem)`, `UserRef(id)` / `UserRef.of(id)` for users). The field is named after the record (`stockItem`, `unit`, `sourceLocation`), not `…Id`; a lookup name beside it (`locationName`, `stockItemCode`) is not kept — the reference carries it.
+- **Resolution** is global: `RefResolver` (a `ResponseBodyAdvice`) walks each response (pages, lists, maps, details) and fills every reference with **one query per kind of record**, in the request's tenant transaction (row-level security applies: another tenant's record comes back as its id with null details). Output the HTTP layer doesn't see (PDFs, e-mails) calls `Refs.resolve(model)` in its transaction and reads `ref.name` / `ref["code"]`.
+- **Kinds** are `RefKind`; each module registers a `RefLoader` per kind it owns — usually one line, `TableRefLoader(kind, table, "code" to table.code, "name" to table.name)` (platform: users, locations, roles; inventory: stock items, drivers, transfers; factory: units, categories, suppliers, manufacturers, recipes, special-production clients; customers: customers, correspondents, dealer categories; account: bank/cash accounts, expense categories, receipts, VAT categories, HSN/ISIC sections; invoicing: invoices). A new kind of record = a `RefKind` value + a loader.
+- **Not references**: request bodies (a client names a record by id); the row's own id and its sub-rows' ids (`lineId`, `paymentId`, `priceId`); polymorphic pointers that carry their type and ref (`sourceId`, `linkedId`); session identity, external ids (`nrsBusinessId`) and one-time handles; stored snapshot names printed on a document (a receipt's `customerName`, an invoice's `buyerName`) — those sit beside the reference.
+- **Enforced**: `ResponseReferencesArchitectureTest` fails the build when a response class (any `..dto..` class that isn't a request) has a `…Id: UUID` field that isn't on its short, reasoned exception list.
 
 ### 5.2 Simple filters (query parameters)
 

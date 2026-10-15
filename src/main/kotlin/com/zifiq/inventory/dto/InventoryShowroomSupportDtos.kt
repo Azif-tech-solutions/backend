@@ -1,5 +1,6 @@
 package com.zifiq.inventory.dto
 
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.UserRef
 import jakarta.validation.Valid
 import jakarta.validation.constraints.DecimalMax
@@ -66,12 +67,8 @@ data class PriceEntryUpdateRequest(
 data class PriceChange(val priceId: UUID, val effectiveFrom: LocalDate, val retailPrice: BigDecimal, val dealerPrice: BigDecimal)
 
 data class PriceListRow(
-    val stockItemId: UUID,
-    val code: String,
-    val product: String,
-    val itemType: String,
-    val categoryId: UUID?,
-    val group: String,
+    val stockItem: Ref,
+    val category: Ref?,
     val unit: String?,
     val status: String,
     val priceId: UUID?,
@@ -104,12 +101,11 @@ data class PriceHistoryRow(
 
 // ---- Group stock/bin cards (docs/05 §4.10) ----
 
-data class GroupCardMember(val stockItemId: UUID, val code: String, val name: String, val unit: String?)
+data class GroupCardMember(val stockItem: Ref, val unit: String?)
 
 data class GroupCardHeader(
     val groupType: String,
-    val groupId: UUID,
-    val groupName: String,
+    val group: Ref,
     /** The first members by name ([memberCount] in all). */
     val members: List<GroupCardMember>,
     val memberCount: Long,

@@ -1,5 +1,6 @@
 package com.zifiq.inventory.service
 
+import com.zifiq.platform.directory.Ref
 import com.zifiq.inventory.repository.StockSql
 import org.jetbrains.exposed.sql.sum
 import com.zifiq.common.paging.PagingPolicy
@@ -114,7 +115,7 @@ class GroupCardService(
         val memberCount = StockItemsTable.select(StockItemsTable.id).where { inGroup }.count()
         val members = StockItemsTable.select(StockItemsTable.id, StockItemsTable.code, StockItemsTable.name, unitName)
             .where { inGroup }.orderBy(StockItemsTable.name to SortOrder.ASC).limit(PagingPolicy.SUMMARY_TOP_N)
-            .map { GroupCardMember(it[StockItemsTable.id].value, it[StockItemsTable.code], it[StockItemsTable.name], it.getOrNull(unitName)) }
+            .map { GroupCardMember(Ref.stockItem(it[StockItemsTable.id].value), it.getOrNull(unitName)) }
 
         val locations = locationAccess.resolveFilterSet(locationId)
         fun scoped(): Op<Boolean> {
@@ -138,7 +139,7 @@ class GroupCardService(
         val totalIssued = totals[issued] ?: BigDecimal.ZERO
         return Scope(
             GroupCardHeader(
-                groupType = "CATEGORY", groupId = groupId, groupName = groupName, members = members, memberCount = memberCount,
+                groupType = "CATEGORY", group = Ref.category(groupId), members = members, memberCount = memberCount,
                 openingBalance = opening, totalReceived = totalReceived, totalIssued = totalIssued, closingBalance = opening + totalReceived - totalIssued,
             ),
             ::inRange,

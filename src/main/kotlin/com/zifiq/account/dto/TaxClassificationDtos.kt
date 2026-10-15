@@ -1,5 +1,6 @@
 package com.zifiq.account.dto
 
+import com.zifiq.platform.directory.Ref
 import jakarta.validation.constraints.NotEmpty
 import java.math.BigDecimal
 import java.time.Instant
@@ -30,9 +31,7 @@ data class IsicSectionSummary(
 )
 
 data class TenantVatCategorySummary(
-    val vatCategoryId: UUID,
-    val code: String,
-    val name: String,
+    val vatCategory: Ref,
     val rate: BigDecimal,
     val isActive: Boolean,
     val activatedAt: Instant,

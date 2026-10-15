@@ -1,5 +1,7 @@
 package com.zifiq.showroom.service
 
+import com.zifiq.platform.directory.ref
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.UserRef
 import com.zifiq.common.money.Money
 import com.zifiq.inventory.repository.StockSql
@@ -330,7 +332,7 @@ class StockIntakeService(
             .orderBy(ShowroomStockEntryLinesTable.lineNo to SortOrder.ASC)
             .map {
                 StockEntryLineView(
-                    lineNo = it[ShowroomStockEntryLinesTable.lineNo], stockItemId = it[ShowroomStockEntryLinesTable.stockItemId], code = it[StockItemsTable.code],
+                    lineNo = it[ShowroomStockEntryLinesTable.lineNo], stockItem = Ref.stockItem(it[ShowroomStockEntryLinesTable.stockItemId]), code = it[StockItemsTable.code],
                     description = it[ShowroomStockEntryLinesTable.description], quantity = it[ShowroomStockEntryLinesTable.quantity], unit = it.getOrNull(unit),
                     unitCost = mask(it[ShowroomStockEntryLinesTable.unitCost]), lineCost = mask(it[ShowroomStockEntryLinesTable.lineCost]),
                     inputVatRate = it[ShowroomStockEntryLinesTable.inputVatRate], inputVatAmount = mask(it[ShowroomStockEntryLinesTable.inputVatAmount]),
@@ -343,10 +345,9 @@ class StockIntakeService(
         val userId = entry[ShowroomStockEntriesTable.createdByUserId].value
         return StockEntrySummary(
             id = entryId, ref = entry[ShowroomStockEntriesTable.ref], kind = entry[ShowroomStockEntriesTable.kind],
-            locationId = location.id, locationName = location.name, intoLocationId = into.id, intoLocationName = into.label,
-            supplierId = entry[ShowroomStockEntriesTable.supplierId],
-            supplierName = entry[ShowroomStockEntriesTable.supplierName] ?: entry[ShowroomStockEntriesTable.supplierId]?.let(names::supplierName),
-            manufacturerId = entry[ShowroomStockEntriesTable.manufacturerId],
+            location = Ref.location(location.id), intoLocation = Ref.location(into.id),
+            supplier = ref(entry[ShowroomStockEntriesTable.supplierId], Ref::supplier),
+            manufacturer = ref(entry[ShowroomStockEntriesTable.manufacturerId], Ref::manufacturer),
             partnerName = entry[ShowroomStockEntriesTable.manufacturerId]?.let(names::manufacturerName),
             partnerReference = entry[ShowroomStockEntriesTable.partnerReference], paymentTerms = entry[ShowroomStockEntriesTable.paymentTerms],
             checkedBy = entry[ShowroomStockEntriesTable.checkedBy], receivedDate = entry[ShowroomStockEntriesTable.receivedDate], lines = lines,
@@ -436,8 +437,8 @@ class StockIntakeService(
             StockEntryLineRow(
                 entryId = it[ShowroomStockEntriesTable.id].value, lineId = it[ShowroomStockEntryLinesTable.id].value,
                 date = it[ShowroomStockEntriesTable.receivedDate], ref = it[ShowroomStockEntriesTable.ref], kind = kind,
-                locationId = it[ShowroomStockEntriesTable.locationId], locationName = it[location[LocationsTable.name]],
-                stockItemId = it[ShowroomStockEntryLinesTable.stockItemId], productCode = it[StockItemsTable.code],
+                location = Ref.location(it[ShowroomStockEntriesTable.locationId]),
+                stockItem = Ref.stockItem(it[ShowroomStockEntryLinesTable.stockItemId]),
                 product = it[ShowroomStockEntryLinesTable.description], party = it.getOrNull(partyName),
                 partnerReference = it[ShowroomStockEntriesTable.partnerReference], batchNo = it[ShowroomStockEntryLinesTable.batchNo],
                 expiryDate = it[ShowroomStockEntryLinesTable.expiryDate], quantity = it[ShowroomStockEntryLinesTable.quantity], unit = it.getOrNull(unitName),

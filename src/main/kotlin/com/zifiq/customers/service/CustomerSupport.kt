@@ -1,5 +1,7 @@
 package com.zifiq.customers.service
 
+import com.zifiq.platform.directory.ref
+import com.zifiq.platform.directory.Ref
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.search.RawOp
 import com.zifiq.common.tax.NigeriaLgasTable
@@ -179,7 +181,7 @@ class CustomerSupport(
         customerSince = row[CustomersTable.customerSince],
         status = CustomerStatus.valueOf(row[CustomersTable.status]),
         statusReason = row[CustomersTable.statusReason],
-        userId = row[CustomersTable.userId],
+        user = ref(row[CustomersTable.userId], Ref::user),
         customAttributes = CustomersTable.attributes(row[CustomersTable.customAttributes]),
         createdAt = row[CustomersTable.createdAt],
     )
@@ -194,10 +196,8 @@ class CustomerSupport(
         phone = row[CustomersTable.phone],
         stateCode = row[CustomersTable.stateCode],
         stateName = row.getOrNull(NigeriaStatesTable.name),
-        locationId = row[CustomersTable.locationId],
-        locationName = row.getOrNull(LocationsTable.name),
-        correspondentId = row[CustomersTable.correspondentId],
-        correspondentName = row.getOrNull(CorrespondentsTable.name),
+        location = ref(row[CustomersTable.locationId], Ref::location),
+        correspondent = ref(row[CustomersTable.correspondentId], Ref::correspondent),
         dealerCategoryName = row.getOrNull(DealerCategoriesTable.name),
         creditLimit = row[CustomersTable.creditLimit],
         walletBalance = row[CustomersTable.walletBalance],

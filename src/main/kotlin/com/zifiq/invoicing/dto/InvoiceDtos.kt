@@ -1,5 +1,6 @@
 package com.zifiq.invoicing.dto
 
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.UserRef
 import com.zifiq.common.paging.PageResult
 import jakarta.validation.Valid
@@ -88,11 +89,10 @@ data class InvoiceRow(
     val displayStatus: String,
     val issued: LocalDate?,
     val due: LocalDate?,
-    val customerId: UUID?,
-    val customer: String,
+    val customer: Ref?,
+    val buyerName: String,
     val customerType: String?,
-    val locationId: UUID,
-    val showroom: String?,
+    val location: Ref,
     val sourceType: String,
     val source: String,
     val sourceRef: String,
@@ -109,7 +109,7 @@ data class InvoiceRow(
 data class InvoiceLineDetail(
     val id: UUID,
     val lineNo: Int,
-    val stockItemId: UUID,
+    val stockItem: Ref,
     val code: String,
     val name: String,
     val quantity: BigDecimal,
@@ -146,7 +146,7 @@ data class IssuerBlock(
 )
 
 data class BuyerBlock(
-    val customerId: UUID?,
+    val customer: Ref?,
     val code: String?,
     val name: String,
     val type: String?,
@@ -241,16 +241,15 @@ data class VoidedInvoiceRow(
     val total: BigDecimal,
     val voidedBy: UserRef?,
     val voidedAt: Instant?,
-    val replacedById: UUID?,
-    val replacedBy: String?,
+    val replacedBy: Ref?,
 )
 
 /** Picker row: `number · customer · balance` (§9 lookups). */
 data class InvoiceLookupRow(
     val id: UUID,
     val number: String,
-    val customerId: UUID?,
-    val customer: String,
+    val customer: Ref?,
+    val buyerName: String,
     val issued: LocalDate?,
     val total: BigDecimal,
     val balance: BigDecimal,
@@ -282,8 +281,7 @@ data class InvoicePaymentView(
     val method: String,
     val methodLabel: String,
     val amount: BigDecimal,
-    val receiptId: UUID,
-    val receipt: String,
+    val receipt: Ref,
     /** Confirmed, Pending confirmation, Declined or Voided. */
     val status: String,
     /** POS_CHECKOUT, RECORDED or REISSUE_TRANSFER. */
@@ -293,8 +291,7 @@ data class InvoicePaymentView(
 
 data class RecordedPayment(
     val paymentId: UUID,
-    val receiptId: UUID,
-    val receiptRef: String,
+    val receipt: Ref,
     /** NOT_REQUIRED (cash, wallet) or PENDING (POS, transfer, cheque: Accounts confirms it). */
     val confirmationStatus: String,
     val invoice: InvoiceDetail,
@@ -348,8 +345,8 @@ data class CreditNoteDetail(
     val invoiceTypeCode: String,
     val invoice: InvoiceLinkRef,
     val invoiceIssueDate: LocalDate?,
-    val customerId: UUID?,
-    val customer: String,
+    val customer: Ref?,
+    val buyerName: String,
     val showroom: InvoiceLocation,
     val reason: String,
     val reasonNote: String,
@@ -367,10 +364,9 @@ data class CreditNoteDetail(
 data class CreditNoteRow(
     val id: UUID,
     val number: String,
-    val invoiceId: UUID,
-    val invoiceNumber: String?,
-    val customerId: UUID?,
-    val customer: String,
+    val invoice: Ref,
+    val customer: Ref?,
+    val buyerName: String,
     val showroom: String?,
     val reason: String,
     val reasonNote: String,
@@ -392,8 +388,7 @@ data class DeliveryRequest(
 
 data class DeliveryView(
     val id: UUID,
-    val invoiceId: UUID,
-    val number: String?,
+    val invoice: Ref,
     val recipient: String,
     val template: String,
     val trigger: String,
@@ -426,8 +421,8 @@ data class ReceivableRow(
     val number: String,
     val issued: LocalDate?,
     val due: LocalDate?,
-    val customerId: UUID?,
-    val customer: String,
+    val customer: Ref?,
+    val buyerName: String,
     val customerType: String?,
     val showroom: String?,
     val total: BigDecimal,
@@ -442,15 +437,10 @@ data class ReceivableRow(
 )
 
 data class DebtorRow(
-    val customerId: UUID,
-    val code: String,
-    val name: String,
-    val type: String,
+    val customer: Ref,
     val phone: String?,
-    val locationId: UUID?,
-    val showroom: String?,
-    val correspondentId: UUID?,
-    val rep: String?,
+    val location: Ref?,
+    val correspondent: Ref?,
     val openInvoices: Int,
     val outstanding: BigDecimal,
     val creditLimit: BigDecimal,
@@ -474,9 +464,8 @@ data class DebtorAccount(
 )
 
 data class DebtorTransaction(
-    val invoiceId: UUID,
+    val invoice: Ref,
     val date: LocalDate?,
-    val invoice: String,
     val description: String,
     val value: BigDecimal,
     val paid: BigDecimal,

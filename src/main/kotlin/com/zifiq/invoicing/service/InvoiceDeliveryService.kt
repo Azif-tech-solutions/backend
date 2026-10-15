@@ -1,5 +1,7 @@
 package com.zifiq.invoicing.service
 
+import com.zifiq.platform.directory.ref
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.UserRef
 import com.zifiq.platform.directory.Names
 import com.zifiq.common.money.Money
@@ -180,7 +182,7 @@ class InvoiceDeliveryService(
 
     private fun toView(row: ResultRow): DeliveryView {
         return DeliveryView(
-            id = row[InvoiceDeliveriesTable.id].value, invoiceId = row[InvoiceDeliveriesTable.invoiceId].value, number = row[InvoicesTable.number],
+            id = row[InvoiceDeliveriesTable.id].value, invoice = Ref.invoice(row[InvoiceDeliveriesTable.invoiceId].value),
             recipient = row[InvoiceDeliveriesTable.recipientEmail], template = row[InvoiceDeliveriesTable.template], trigger = row[InvoiceDeliveriesTable.trigger],
             status = when (row[NotificationOutboxTable.status]) { "SENT" -> "Sent"; "FAILED" -> "Failed"; else -> "Queued" },
             requestedAt = row[InvoiceDeliveriesTable.requestedAt], sentAt = row[NotificationOutboxTable.sentAt],

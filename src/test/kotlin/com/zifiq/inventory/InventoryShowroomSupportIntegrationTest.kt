@@ -1,5 +1,6 @@
 package com.zifiq.inventory
 
+import com.zifiq.platform.directory.Refs
 import com.zifiq.common.errors.ErrorCode
 import com.zifiq.common.filter.ListSearchRequest
 import com.zifiq.inventory.dto.DriverRequest
@@ -188,7 +189,7 @@ class InventoryShowroomSupportIntegrationTest : PostgresIntegrationTest() {
         val transfer = operations.dispatchTransfer(
             StockTransferRequest(factory, showroom, driver.id, null, null, null, listOf(TransferLineInput(citrus, BigDecimal(50), null, batchNo = "B-77"))),
         )
-        assertThat(transfer.driverName).isEqualTo("Musa Bello")
+        assertThat(tx.execute { Refs.resolve(transfer) }.let { transfer.driver?.name }).isEqualTo("Musa Bello")
         assertThat(transfer.driverVehicle).isEqualTo("KN-482-ABC")
         assertThat(balance(factory, citrus)).isEqualByComparingTo("50")
 
@@ -254,7 +255,7 @@ class InventoryShowroomSupportIntegrationTest : PostgresIntegrationTest() {
             .isEqualTo(ErrorCode.INSUFFICIENT_STOCK)
         // A pending showroom can receive.
         val toPending = operations.dispatchTransfer(StockTransferRequest(showroom, pending, null, null, null, null, listOf(TransferLineInput(malt, BigDecimal(5), null, fromLocationId = showroomFloor))))
-        assertThat(toPending.lines.single().fromLocationName).isEqualTo("Loc SHR-1-SF")
+        assertThat(tx.execute { Refs.resolve(toPending) }.let { toPending.lines.single().fromLocation?.name }).isEqualTo("Loc SHR-1-SF")
         assertThat(balance(showroomFloor, malt)).isEqualByComparingTo("5")
 
         val incoming = operations.listTransfers(pending, setOf("DISPATCHED", "PARTIALLY_RECEIVED"), "INTO", null, null, null)
@@ -309,7 +310,7 @@ class InventoryShowroomSupportIntegrationTest : PostgresIntegrationTest() {
         assertThat(row.retailPrice).isEqualByComparingTo("4500")
         assertThat(row.nextChange!!.retailPrice).isEqualByComparingTo("4800")
         assertThat(row.margin).isEqualByComparingTo("1500")
-        assertThat(prices.list(ListSearchRequest(params = mapOf("belowCost" to listOf("true")))).items.map { it.code }).containsExactly("ITM-2")
+        assertThat(prices.list(ListSearchRequest(params = mapOf("belowCost" to listOf("true")))).items.also { tx.execute { Refs.resolve(it) } }.map { it.stockItem["code"] }).containsExactly("ITM-2")
 
         val history = prices.itemHistory(citrus).items
         assertThat(history.map { it.state }).containsExactly("SCHEDULED", "CURRENT")
@@ -329,7 +330,7 @@ class InventoryShowroomSupportIntegrationTest : PostgresIntegrationTest() {
         stockUp(showroomFloor, citrus, "7")
         stockUp(showroomFloor, malt, "3")
         val card = groupCards.stockCard("CATEGORY", drinks, showroom, null, null)
-        assertThat(card.header.members.map { it.code }).containsExactly("ITM-1", "ITM-2")
+        assertThat(card.header.members.also { tx.execute { Refs.resolve(it) } }.map { it.stockItem["code"] }).containsExactly("ITM-1", "ITM-2")
         assertThat(card.header.memberCount).isEqualTo(2)
         assertThat(card.header.closingBalance).isEqualByComparingTo(card.rows.items.last().qtyRemain)
         assertThat(card.header.closingBalance).isEqualByComparingTo(

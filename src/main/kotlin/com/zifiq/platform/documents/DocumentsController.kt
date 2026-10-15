@@ -1,5 +1,7 @@
 package com.zifiq.platform.documents
 
+import com.zifiq.platform.directory.ref
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.UserRef
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.filter.FilterContext
@@ -60,10 +62,9 @@ data class IssuedDocumentRow(
     val docType: DocumentType,
     val sourceModule: String,
     val sourceId: UUID,
-    val locationId: UUID?,
-    val locationName: String?,
+    val location: Ref?,
     val partyName: String?,
-    val partyCustomerId: UUID?,
+    val partyCustomer: Ref?,
     /** Selling value, not a cost, so never masked; null for documents without one (transfer waybills). */
     val valueAmount: BigDecimal?,
     val issuedBy: UserRef,
@@ -197,10 +198,9 @@ class DocumentService(
         docType = DocumentType.valueOf(row[IssuedDocumentsTable.docType]),
         sourceModule = row[IssuedDocumentsTable.sourceModule],
         sourceId = row[IssuedDocumentsTable.sourceId],
-        locationId = row[IssuedDocumentsTable.locationId],
-        locationName = row.getOrNull(LocationsTable.name),
+        location = ref(row[IssuedDocumentsTable.locationId], Ref::location),
         partyName = row[IssuedDocumentsTable.partyName],
-        partyCustomerId = row[IssuedDocumentsTable.partyCustomerId],
+        partyCustomer = ref(row[IssuedDocumentsTable.partyCustomerId], Ref::customer),
         valueAmount = row[IssuedDocumentsTable.valueAmount],
         issuedBy = UserRef(row[IssuedDocumentsTable.issuedByUserId].value),
         issuedAt = row[IssuedDocumentsTable.issuedAt],

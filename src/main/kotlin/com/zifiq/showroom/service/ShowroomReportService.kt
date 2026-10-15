@@ -1,5 +1,7 @@
 package com.zifiq.showroom.service
 
+import com.zifiq.platform.directory.ref
+import com.zifiq.platform.directory.Ref
 import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.QueryAlias
 import org.jetbrains.exposed.sql.ColumnSet
@@ -145,9 +147,9 @@ class ShowroomReportService(
         val page = Paging.fetchNumbered(query, PageRequest.of(request.page, request.size)) { sn, row ->
             val type = row[StockItemsTable.itemType]
             ComprehensiveStockRow(
-                ln = sn, stockItemId = row[StockItemsTable.id].value, code = row[StockItemsTable.code], detail = row[StockItemsTable.name], group = row[categoryName],
+                ln = sn, stockItem = Ref.stockItem(row[StockItemsTable.id].value), group = row[categoryName],
                 source = SOURCE_LABELS[type] ?: type.lowercase().replace('_', ' ').replaceFirstChar(Char::titlecase),
-                locationId = row[source.location], area = row[area], qty = row[qty] ?: BigDecimal.ZERO, unit = row.getOrNull(unitName),
+                location = Ref.location(row[source.location]), area = row[area], qty = row[qty] ?: BigDecimal.ZERO, unit = row.getOrNull(unitName),
                 unitCost = if (visible) (row[StockItemsTable.landingCost] ?: BigDecimal.ZERO).setScale(2) else BigDecimal.ZERO.setScale(2),
                 totalCost = if (visible) row[totalCost] else BigDecimal.ZERO.setScale(2),
                 sellingPrice = row[price], retailValue = row[retailValue],
@@ -284,8 +286,7 @@ class ShowroomReportService(
         val page = Paging.fetch(query, PageRequest.of(request.page, request.size)) {
             val status = it[StockTransfersTable.status]
             TransferReportRow(
-                transferId = it[StockTransfersTable.id].value, lineId = it[StockTransferLinesTable.id].value, date = it[StockTransfersTable.transferDate],
-                waybillRef = it[StockTransfersTable.waybillRef], source = it[sourceName], sourceType = it[sourceType],
+                transfer = Ref.stockTransfer(it[StockTransfersTable.id].value), lineId = it[StockTransferLinesTable.id].value, date = it[StockTransfersTable.transferDate], source = it[sourceName], sourceType = it[sourceType],
                 destination = it[destinationName], destinationType = it[destinationType], route = it[route],
                 driver = it[StockTransfersTable.driverName], vehicle = it[StockTransfersTable.driverVehicle],
                 productCode = it[StockItemsTable.code], product = it[StockItemsTable.name], qtySent = it[StockTransferLinesTable.qtySent],

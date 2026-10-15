@@ -1,5 +1,7 @@
 package com.zifiq.customers.service
 
+import com.zifiq.platform.directory.ref
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.UserRef
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.filter.FilterContext
@@ -334,7 +336,7 @@ class ReclassificationService(
 
     private fun toSummary(row: ResultRow) = ReclassificationSummary(
         id = row[CustomerReclassificationsTable.id].value,
-        customerId = row[CustomerReclassificationsTable.customerId].value,
+        customer = Ref.customer(row[CustomerReclassificationsTable.customerId].value),
         customerCode = row[CustomersTable.code],
         customerName = row[CustomersTable.name],
         fromType = CustomerType.valueOf(row[CustomerReclassificationsTable.fromType]),

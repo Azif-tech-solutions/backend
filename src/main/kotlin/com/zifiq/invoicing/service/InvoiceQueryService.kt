@@ -1,5 +1,7 @@
 package com.zifiq.invoicing.service
 
+import com.zifiq.platform.directory.ref
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.UserRef
 import com.zifiq.platform.directory.Names
 import com.zifiq.account.spi.Channel
@@ -120,7 +122,7 @@ class InvoiceQueryService(
                 id = row[InvoicesTable.id].value, number = row[InvoicesTable.number]!!, voidReason = row[InvoicesTable.voidReason],
                 customer = row[InvoicesTable.buyerName], issued = row[InvoicesTable.issueDate], total = row[InvoicesTable.taxInclusiveAmount],
                 voidedBy = UserRef.of(row[InvoicesTable.voidedByUserId]?.value), voidedAt = row[InvoicesTable.voidedAt],
-                replacedById = row[InvoicesTable.replacedByInvoiceId], replacedBy = row[InvoicesTable.replacedByInvoiceId]?.let(replacements::get),
+                replacedBy = ref(row[InvoicesTable.replacedByInvoiceId], Ref::invoice),
             )
         }
         val summary = if (request.summary) {
@@ -192,7 +194,7 @@ class InvoiceQueryService(
                 val balance = Money.round(row[d.balance])
                 val number = row[InvoicesTable.number]!!
                 InvoiceLookupRow(
-                    id = row[InvoicesTable.id].value, number = number, customerId = row[InvoicesTable.customerId], customer = row[InvoicesTable.buyerName],
+                    id = row[InvoicesTable.id].value, number = number, customer = ref(row[InvoicesTable.customerId], Ref::customer), buyerName = row[InvoicesTable.buyerName],
                     issued = row[InvoicesTable.issueDate], total = row[InvoicesTable.taxInclusiveAmount], balance = balance,
                     displayStatus = InvoiceExpressions.label(row[d.displayStatus]),
                     label = "$number · ${row[InvoicesTable.buyerName]} · ${Money.naira(balance)}",
@@ -276,7 +278,7 @@ class InvoiceQueryService(
         if (scoped) support.assertVisible(row[InvoicesTable.locationId].value)
         val lines = InvoiceLinesTable.selectAll().where { InvoiceLinesTable.invoiceId eq id }.orderBy(InvoiceLinesTable.lineNo).map { line ->
             InvoiceLineDetail(
-                id = line[InvoiceLinesTable.id].value, lineNo = line[InvoiceLinesTable.lineNo], stockItemId = line[InvoiceLinesTable.stockItemId],
+                id = line[InvoiceLinesTable.id].value, lineNo = line[InvoiceLinesTable.lineNo], stockItem = Ref.stockItem(line[InvoiceLinesTable.stockItemId]),
                 code = line[InvoiceLinesTable.itemCode], name = line[InvoiceLinesTable.itemName], quantity = line[InvoiceLinesTable.quantity],
                 unit = line[InvoiceLinesTable.unitName], nrsUnitCode = line[InvoiceLinesTable.nrsUnitCode], unitPrice = line[InvoiceLinesTable.unitPrice],
                 discountAmount = line[InvoiceLinesTable.discountAmount], discountRate = line[InvoiceLinesTable.discountRate], lineNet = line[InvoiceLinesTable.lineNet],
@@ -309,7 +311,7 @@ class InvoiceQueryService(
             showroom = InvoiceLocation(row[InvoicesTable.locationId].value, row.getOrNull(LocationsTable.name)),
             issuer = issuerBlock(row),
             buyer = BuyerBlock(
-                customerId = row[InvoicesTable.customerId], code = customerCode, name = row[InvoicesTable.buyerName], type = row[InvoicesTable.buyerType],
+                customer = ref(row[InvoicesTable.customerId], Ref::customer), code = customerCode, name = row[InvoicesTable.buyerName], type = row[InvoicesTable.buyerType],
                 email = row[InvoicesTable.buyerEmail], phone = row[InvoicesTable.buyerPhone], tin = row[InvoicesTable.buyerTin],
                 businessDescription = row[InvoicesTable.buyerBusinessDescription],
                 address = listOfNotNull(row[InvoicesTable.buyerStreetAddress], row[InvoicesTable.buyerCity]).joinToString(", ").ifEmpty { null },
@@ -350,7 +352,7 @@ class InvoiceQueryService(
             InvoicePaymentView(
                 id = p[InvoicePaymentsTable.id].value, date = p[InvoicePaymentsTable.paidAt], method = p[InvoicePaymentsTable.method],
                 methodLabel = methodLabel(p[InvoicePaymentsTable.method]), amount = p[InvoicePaymentsTable.amount],
-                receiptId = p[InvoicePaymentsTable.paymentReceiptId], receipt = p[InvoicePaymentsTable.receiptRef], status = status,
+                receipt = Ref.receipt(p[InvoicePaymentsTable.paymentReceiptId]), status = status,
                 source = p[InvoicePaymentsTable.paymentSource], reversalReason = p[InvoicePaymentsTable.reversalReason],
             )
         }
@@ -386,8 +388,8 @@ class InvoiceQueryService(
             InvoiceRow(
                 id = row[InvoicesTable.id].value, number = row[InvoicesTable.number], status = status, displayStatus = InvoiceExpressions.label(row[d.displayStatus]),
                 issued = if (status == "DRAFT") null else row[InvoicesTable.issueDate], due = row[InvoicesTable.dueDate],
-                customerId = row[InvoicesTable.customerId], customer = row[InvoicesTable.buyerName], customerType = row[InvoicesTable.buyerType],
-                locationId = row[InvoicesTable.locationId].value, showroom = row.getOrNull(LocationsTable.name),
+                customer = ref(row[InvoicesTable.customerId], Ref::customer), buyerName = row[InvoicesTable.buyerName], customerType = row[InvoicesTable.buyerType],
+                location = Ref.location(row[InvoicesTable.locationId].value),
                 sourceType = row[InvoicesTable.sourceType], source = if (row[InvoicesTable.sourceType] == "PRO_FORMA") "Pro-forma" else "POS sale",
                 sourceRef = row[InvoicesTable.sourceRef], proForma = row[InvoicesTable.proFormaRef],
                 waybills = waybills[row[InvoicesTable.id].value].orEmpty(),

@@ -410,7 +410,7 @@ class CustomerService(
         if (current.location?.id != next.locationId) add("locationId")
         if (current.correspondent?.id != next.correspondentId) add("correspondentId")
         if (current.creditLimit.compareTo(next.creditLimit) != 0) add("creditLimit")
-        if (current.userId != next.userId) add("userId")
+        if (current.user?.id != next.userId) add("userId")
         if (current.customAttributes != next.customAttributes) add("customAttributes")
     }
 }

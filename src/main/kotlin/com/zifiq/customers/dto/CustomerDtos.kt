@@ -1,5 +1,6 @@
 package com.zifiq.customers.dto
 
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.UserRef
 import com.zifiq.customers.spi.BalanceType
 import com.zifiq.customers.spi.CustomerStatus
@@ -105,7 +106,7 @@ data class CustomerDetail(
     val customerSince: LocalDate,
     val status: CustomerStatus,
     val statusReason: String?,
-    val userId: UUID?,
+    val user: Ref?,
     val customAttributes: Map<String, Any?>,
     val createdAt: Instant,
 )
@@ -120,10 +121,8 @@ data class CustomerSummary(
     val phone: String?,
     val stateCode: String?,
     val stateName: String?,
-    val locationId: UUID?,
-    val locationName: String?,
-    val correspondentId: UUID?,
-    val correspondentName: String?,
+    val location: Ref?,
+    val correspondent: Ref?,
     val dealerCategoryName: String?,
     val creditLimit: BigDecimal,
     val walletBalance: BigDecimal,
@@ -180,7 +179,7 @@ data class ReclassificationRequest(
 
 data class ReclassificationSummary(
     val id: UUID,
-    val customerId: UUID,
+    val customer: Ref,
     val customerCode: String,
     val customerName: String,
     val fromType: CustomerType,
@@ -213,7 +212,7 @@ data class LedgerRow(
     /** Signed: credit +, debit −. */
     val amount: BigDecimal,
     val balanceAfter: BigDecimal,
-    val locationId: UUID?,
+    val location: Ref?,
     val sourceModule: String,
     val performedBy: UserRef?,
     val reversible: Boolean,
@@ -306,8 +305,7 @@ data class CorrespondentSummary(
     val phone: String,
     val email: String?,
     val region: String?,
-    val locationId: UUID?,
-    val locationName: String?,
+    val location: Ref?,
     val status: String,
     val assignedAt: LocalDate?,
     val customerCount: Long,
@@ -319,8 +317,7 @@ data class CorrespondentSummary(
 data class CorrespondentHistoryRow(
     val action: String,
     val region: String?,
-    val locationId: UUID?,
-    val locationName: String?,
+    val location: Ref?,
     val effectiveFrom: LocalDate,
     val note: String?,
     val performedBy: UserRef,

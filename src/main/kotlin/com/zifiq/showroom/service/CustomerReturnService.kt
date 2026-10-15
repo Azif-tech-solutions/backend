@@ -1,5 +1,7 @@
 package com.zifiq.showroom.service
 
+import com.zifiq.platform.directory.ref
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.UserRef
 import com.zifiq.common.money.Money
 import com.zifiq.inventory.repository.StockSql
@@ -303,17 +305,16 @@ class CustomerReturnService(
             .map {
                 val into = it[CustomerReturnLinesTable.intoLocationId]
                 ReturnLineView(
-                    lineNo = it[CustomerReturnLinesTable.lineNo], stockItemId = it[CustomerReturnLinesTable.stockItemId], code = it[StockItemsTable.code],
-                    name = it[StockItemsTable.name], quantity = it[CustomerReturnLinesTable.quantity], unit = it.getOrNull(unit),
+                    lineNo = it[CustomerReturnLinesTable.lineNo], stockItem = Ref.stockItem(it[CustomerReturnLinesTable.stockItemId]), quantity = it[CustomerReturnLinesTable.quantity], unit = it.getOrNull(unit),
                     unitPrice = it[CustomerReturnLinesTable.unitPrice], lineValue = it[CustomerReturnLinesTable.lineValue],
                     reason = it[CustomerReturnLinesTable.reason], condition = it[CustomerReturnLinesTable.condition],
-                    intoLocationId = into, intoLocationName = into?.let { location -> stockLocations.get(location).label }, note = it[CustomerReturnLinesTable.note],
+                    intoLocation = ref(into, Ref::location), note = it[CustomerReturnLinesTable.note],
                 )
             }
         val userId = header[CustomerReturnsTable.createdByUserId].value
         return ReturnSummary(
             id = id, ref = header[CustomerReturnsTable.ref], returnType = header[CustomerReturnsTable.returnType],
-            locationId = header[CustomerReturnsTable.locationId], locationName = stockLocations.get(header[CustomerReturnsTable.locationId]).name,
+            location = Ref.location(header[CustomerReturnsTable.locationId]),
             customer = ReturnCustomerView(header[CustomerReturnsTable.customerId], header[CustomerReturnsTable.customerCode], header[CustomerReturnsTable.customerName],
                 header[CustomerReturnsTable.customerType], header[CustomerReturnsTable.temporaryCustomer]),
             originalDocumentRef = header[CustomerReturnsTable.originalDocumentRef], returnDate = header[CustomerReturnsTable.returnDate],
@@ -428,11 +429,10 @@ class CustomerReturnService(
     private fun row(it: ResultRow) = ReturnLineRow(
         returnId = it[CustomerReturnsTable.id].value, lineId = it[CustomerReturnLinesTable.id].value, date = it[CustomerReturnsTable.returnDate],
         ref = it[CustomerReturnsTable.ref], returnType = it[CustomerReturnsTable.returnType], originalDocumentRef = it[CustomerReturnsTable.originalDocumentRef],
-        customerId = it[CustomerReturnsTable.customerId], customerCode = it[CustomerReturnsTable.customerCode], customerName = it[CustomerReturnsTable.customerName],
+        customer = Ref.customer(it[CustomerReturnsTable.customerId]), customerCode = it[CustomerReturnsTable.customerCode], customerName = it[CustomerReturnsTable.customerName],
         customerType = it[CustomerReturnsTable.customerType], productCode = it[StockItemsTable.code], productName = it[StockItemsTable.name],
         quantity = it[CustomerReturnLinesTable.quantity], unitPrice = it[CustomerReturnLinesTable.unitPrice], lineValue = it[CustomerReturnLinesTable.lineValue],
-        reason = it[CustomerReturnLinesTable.reason], condition = it[CustomerReturnLinesTable.condition], locationId = it[CustomerReturnsTable.locationId],
-        locationName = it[location[LocationsTable.name]], creditedTo = it[creditedTo], status = it[CustomerReturnsTable.status],
+        reason = it[CustomerReturnLinesTable.reason], condition = it[CustomerReturnLinesTable.condition], location = Ref.location(it[CustomerReturnsTable.locationId]), creditedTo = it[creditedTo], status = it[CustomerReturnsTable.status],
     )
 
 

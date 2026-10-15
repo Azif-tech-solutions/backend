@@ -1,5 +1,6 @@
 package com.zifiq.factory.dto
 
+import com.zifiq.platform.directory.Ref
 import jakarta.validation.constraints.DecimalMin
 import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Pattern
@@ -25,9 +26,9 @@ data class FactoryTradeRespondRequest(
 data class FactoryTradeOfferSummary(
     val id: UUID,
     val ref: String,
-    val fromLocationId: UUID,
-    val toLocationId: UUID,
-    val stockItemId: UUID,
+    val fromLocation: Ref,
+    val toLocation: Ref,
+    val stockItem: Ref,
     val quantity: BigDecimal,
     val reason: String,
     val status: String,

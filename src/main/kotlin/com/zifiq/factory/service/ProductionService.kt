@@ -1,5 +1,8 @@
 package com.zifiq.factory.service
 
+import com.zifiq.factory.dto.RecipeIngredientView
+import com.zifiq.platform.directory.ref
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.UserRef
 import com.zifiq.common.paging.PagingPolicy
 import com.zifiq.common.sql.Aggregates
@@ -76,7 +79,10 @@ class ProductionService(
             }
         }
 
-        RecipeSummary(id, code, request.name.trim(), request.sourcing, request.yieldQty, "ACTIVE", request.ingredients)
+        RecipeSummary(
+            id, code, request.name.trim(), Ref.location(request.locationId), request.sourcing, request.yieldQty, Ref.unit(request.yieldUnitId), "ACTIVE",
+            request.ingredients.map { RecipeIngredientView(Ref.stockItem(it.rawMaterialStockItemId), it.quantity, Ref.unit(it.unitId)) },
+        )
     }
 
     /** Recipes, paged; the page's ingredients come from one query. */
@@ -90,7 +96,7 @@ class ProductionService(
         val ingredientsByRecipe = RecipeIngredientsTable.selectAll()
             .where { RecipeIngredientsTable.recipeId inList page.items.map { it[RecipesTable.id].value } }
             .groupBy({ it[RecipeIngredientsTable.recipeId].value }) {
-                RecipeIngredientInput(it[RecipeIngredientsTable.rawMaterialStockItemId].value, it[RecipeIngredientsTable.quantity], it[RecipeIngredientsTable.unitId])
+                RecipeIngredientView(Ref.stockItem(it[RecipeIngredientsTable.rawMaterialStockItemId].value), it[RecipeIngredientsTable.quantity], Ref.unit(it[RecipeIngredientsTable.unitId]))
             }
         page.withItems(page.items.map { row ->
             val ingredients = ingredientsByRecipe[row[RecipesTable.id].value].orEmpty()
@@ -98,8 +104,10 @@ class ProductionService(
                 id = row[RecipesTable.id].value,
                 code = row[RecipesTable.code],
                 name = row[RecipesTable.name],
+                location = Ref.location(row[RecipesTable.locationId]),
                 sourcing = row[RecipesTable.sourcing],
                 yieldQty = row[RecipesTable.yieldQty],
+                yieldUnit = Ref.unit(row[RecipesTable.yieldUnitId]),
                 status = row[RecipesTable.status],
                 ingredients = ingredients,
             )
@@ -158,7 +166,7 @@ class ProductionService(
             it[ProductionCostingsTable.createdAt] = Instant.now()
         }.value
 
-        ProductionCostingSummary(id, request.targetStockItemId, request.batchSizeQty, "PENDING", UserRef(actor.userId), Instant.now())
+        ProductionCostingSummary(id, Ref.stockItem(request.targetStockItemId), request.batchSizeQty, "PENDING", UserRef(actor.userId), Instant.now())
     }
 
     fun getCostingDetail(id: UUID): ProductionCostingDetail = tenantScopedTransaction.execute {
@@ -170,8 +178,8 @@ class ProductionService(
 
     private fun rowToCostingDetail(row: ResultRow) = ProductionCostingDetail(
         id = row[ProductionCostingsTable.id].value,
-        targetStockItemId = row[ProductionCostingsTable.targetStockItemId].value,
-        recipeId = row[ProductionCostingsTable.recipeId]?.value,
+        targetStockItem = Ref.stockItem(row[ProductionCostingsTable.targetStockItemId].value),
+        recipe = ref(row[ProductionCostingsTable.recipeId]?.value, Ref::recipe),
         batchSizeQty = row[ProductionCostingsTable.batchSizeQty],
         materialsSnapshot = row[ProductionCostingsTable.materialsSnapshot],
         overheadSnapshot = row[ProductionCostingsTable.overheadSnapshot],
@@ -286,7 +294,7 @@ class ProductionService(
         val canSeeCost = permissionAuthorizer.hasPermission(actor.userId, "factory.costing.read")
         ProductionRunSummary(
             batchRef = batchRef,
-            targetStockItemId = costing[ProductionCostingsTable.targetStockItemId].value,
+            targetStockItem = Ref.stockItem(costing[ProductionCostingsTable.targetStockItemId].value),
             quantityProduced = costing[ProductionCostingsTable.batchSizeQty],
             unitLandingCost = costVisibility.maskIfUnauthorized(costing[ProductionCostingsTable.computedUnitCost], canSeeCost, BigDecimal.ZERO),
             totalLandingCost = costVisibility.maskIfUnauthorized(costing[ProductionCostingsTable.computedTotalCost], canSeeCost, BigDecimal.ZERO),
@@ -308,7 +316,7 @@ class ProductionService(
             Paging.fetch(query.orderBy(ProductionRunsTable.runAt to SortOrder.DESC, ProductionRunsTable.id to SortOrder.DESC), paging) { row ->
                 ProductionRunSummary(
                     batchRef = row[ProductionRunsTable.batchRef],
-                    targetStockItemId = row[ProductionRunsTable.productionCostingId].value,
+                    targetStockItem = Ref.stockItem(row[ProductionRunsTable.productionCostingId].value),
                     quantityProduced = row[ProductionRunsTable.quantityProduced],
                     unitLandingCost = costVisibility.maskIfUnauthorized(row[ProductionRunsTable.unitLandingCost], canSeeCost, BigDecimal.ZERO),
                     totalLandingCost = costVisibility.maskIfUnauthorized(row[ProductionRunsTable.totalLandingCost], canSeeCost, BigDecimal.ZERO),
@@ -342,8 +350,7 @@ class ProductionService(
         ids.map { id ->
             val row = totals[id]
             RecipeCostAggregate(
-                recipeId = id,
-                recipeName = names.getValue(id),
+                recipe = Ref.recipe(id),
                 qtyUsed = row?.get(qty) ?: BigDecimal.ZERO,
                 totalCost = row?.let { Aggregates.money(it, cost) } ?: BigDecimal.ZERO.setScale(2),
             )
@@ -409,7 +416,7 @@ class ProductionService(
             )
         }
 
-        SpecialProductionRunSummary(id, orderRef, batchRef, request.clientId, request.quantity, request.price, "IN_PRODUCTION")
+        SpecialProductionRunSummary(id, orderRef, batchRef, Ref.specialProductionClient(request.clientId), request.quantity, request.price, "IN_PRODUCTION")
     }
 
     fun updateSpecialProductionStatus(id: UUID, status: String): SpecialProductionRunSummary = tenantScopedTransaction.execute {
@@ -427,7 +434,7 @@ class ProductionService(
         val row = SpecialProductionRunsTable.selectAll().andWhere { SpecialProductionRunsTable.id eq id }.single()
         SpecialProductionRunSummary(
             id, row[SpecialProductionRunsTable.orderRef], row[SpecialProductionRunsTable.batchRef],
-            row[SpecialProductionRunsTable.clientId].value, row[SpecialProductionRunsTable.quantity],
+            Ref.specialProductionClient(row[SpecialProductionRunsTable.clientId].value), row[SpecialProductionRunsTable.quantity],
             row[SpecialProductionRunsTable.price], row[SpecialProductionRunsTable.status],
         )
     }
@@ -441,7 +448,7 @@ class ProductionService(
         Paging.fetch(query.orderBy(SpecialProductionRunsTable.createdAt to SortOrder.DESC, SpecialProductionRunsTable.id to SortOrder.DESC), paging) { row ->
             SpecialProductionRunSummary(
                 row[SpecialProductionRunsTable.id].value, row[SpecialProductionRunsTable.orderRef], row[SpecialProductionRunsTable.batchRef],
-                row[SpecialProductionRunsTable.clientId].value, row[SpecialProductionRunsTable.quantity],
+                Ref.specialProductionClient(row[SpecialProductionRunsTable.clientId].value), row[SpecialProductionRunsTable.quantity],
                 row[SpecialProductionRunsTable.price], row[SpecialProductionRunsTable.status],
             )
         }

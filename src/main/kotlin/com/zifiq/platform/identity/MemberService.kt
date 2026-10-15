@@ -1,5 +1,7 @@
 package com.zifiq.platform.identity
 
+import com.zifiq.platform.directory.ref
+import com.zifiq.platform.directory.Ref
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SortOrder
@@ -128,7 +130,7 @@ class MemberService(
             phone = request.phone,
             status = "ACTIVE",
             role = RoleRef(request.roleId, roleNameOf(request.roleId)),
-            locationId = request.locationId,
+            location = ref(request.locationId, Ref::location),
             accessScope = if (request.locationId != null) "SINGLE_LOCATION" else "ALL_LOCATIONS",
             invitedAt = Instant.now(),
         )
@@ -184,7 +186,7 @@ class MemberService(
                 phone = null,
                 status = row[TenantMembershipsTable.status],
                 role = roleByUser[userId],
-                locationId = location?.first,
+                location = ref(location?.first, Ref::location),
                 accessScope = location?.second ?: "ALL_LOCATIONS",
                 invitedAt = row[TenantMembershipsTable.createdAt],
             )

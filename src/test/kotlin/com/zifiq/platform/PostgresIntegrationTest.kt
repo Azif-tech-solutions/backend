@@ -36,6 +36,7 @@ abstract class PostgresIntegrationTest {
         @BeforeAll
         fun startContainerAndMigrate() {
             postgres.start()
+            registerRefLoaders()
 
             // Non-superuser application role, mirroring docker/init/01-application-role.sql, so
             // RLS (FORCE ROW LEVEL SECURITY) is actually exercised the same way it is in production.
@@ -83,3 +84,21 @@ abstract class PostgresIntegrationTest {
         }
     }
 }
+
+/** Every module's reference loaders, as Spring registers them at startup (tests build services by hand). */
+fun registerRefLoaders() = listOf(
+    com.zifiq.platform.directory.PlatformRefLoaders.Users(), com.zifiq.platform.directory.PlatformRefLoaders.Locations(),
+    com.zifiq.platform.directory.PlatformRefLoaders.Roles(),
+    com.zifiq.inventory.service.InventoryRefLoaders.StockItems(), com.zifiq.inventory.service.InventoryRefLoaders.Drivers(),
+    com.zifiq.inventory.service.InventoryRefLoaders.StockTransfers(),
+    com.zifiq.factory.service.FactoryRefLoaders.Units(), com.zifiq.factory.service.FactoryRefLoaders.Categories(),
+    com.zifiq.factory.service.FactoryRefLoaders.Suppliers(), com.zifiq.factory.service.FactoryRefLoaders.Manufacturers(),
+    com.zifiq.factory.service.FactoryRefLoaders.Recipes(), com.zifiq.factory.service.FactoryRefLoaders.SpecialProductionClients(),
+    com.zifiq.customers.service.CustomerRefLoaders.Customers(), com.zifiq.customers.service.CustomerRefLoaders.Correspondents(),
+    com.zifiq.customers.service.CustomerRefLoaders.DealerCategories(),
+    com.zifiq.account.service.AccountRefLoaders.BankAccounts(), com.zifiq.account.service.AccountRefLoaders.CashAccounts(),
+    com.zifiq.account.service.AccountRefLoaders.ExpenseCategories(), com.zifiq.account.service.AccountRefLoaders.Receipts(),
+    com.zifiq.account.service.AccountRefLoaders.VatCategories(), com.zifiq.account.service.AccountRefLoaders.HsnSections(),
+    com.zifiq.account.service.AccountRefLoaders.IsicSections(),
+    com.zifiq.invoicing.service.InvoicingRefLoaders.Invoices(),
+).forEach(com.zifiq.platform.directory.Refs::register)

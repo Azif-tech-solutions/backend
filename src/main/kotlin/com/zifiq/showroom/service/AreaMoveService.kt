@@ -1,5 +1,7 @@
 package com.zifiq.showroom.service
 
+import com.zifiq.platform.directory.ref
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.UserRef
 import com.zifiq.inventory.repository.StockSql
 import com.zifiq.common.errors.ApiErrors
@@ -131,13 +133,12 @@ class AreaMoveService(
             .select(StorageAreaMoveLinesTable.columns + StockItemsTable.code + StockItemsTable.name + unit)
             .where { StorageAreaMoveLinesTable.moveId eq id }
             .orderBy(StorageAreaMoveLinesTable.lineNo to SortOrder.ASC)
-            .map { AreaMoveLineView(it[StorageAreaMoveLinesTable.lineNo], it[StorageAreaMoveLinesTable.stockItemId], it[StockItemsTable.code],
-                it[StockItemsTable.name], it[StorageAreaMoveLinesTable.quantity], it.getOrNull(unit)) }
+            .map { AreaMoveLineView(it[StorageAreaMoveLinesTable.lineNo], Ref.stockItem(it[StorageAreaMoveLinesTable.stockItemId]), it[StorageAreaMoveLinesTable.quantity], it.getOrNull(unit)) }
         val root = stockLocations.get(move[StorageAreaMovesTable.rootLocationId])
         return AreaMoveSummary(
-            id = id, ref = move[StorageAreaMovesTable.ref], rootLocationId = root.id, rootLocationName = root.name,
-            fromLocationId = move[StorageAreaMovesTable.fromLocationId], fromLocationName = stockLocations.get(move[StorageAreaMovesTable.fromLocationId]).name,
-            toLocationId = move[StorageAreaMovesTable.toLocationId], toLocationName = stockLocations.get(move[StorageAreaMovesTable.toLocationId]).name,
+            id = id, ref = move[StorageAreaMovesTable.ref], rootLocation = Ref.location(root.id),
+            fromLocation = Ref.location(move[StorageAreaMovesTable.fromLocationId]),
+            toLocation = Ref.location(move[StorageAreaMovesTable.toLocationId]),
             movedDate = move[StorageAreaMovesTable.movedDate], note = move[StorageAreaMovesTable.note], lines = lines,
             movedBy = UserRef(move[StorageAreaMovesTable.createdByUserId].value), createdAt = move[StorageAreaMovesTable.createdAt],
         )

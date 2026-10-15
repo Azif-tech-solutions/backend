@@ -1,5 +1,7 @@
 package com.zifiq.account.service
 
+import com.zifiq.platform.directory.ref
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.UserRef
 import com.zifiq.platform.directory.Names
 import com.zifiq.common.money.Money
@@ -328,13 +330,12 @@ class RunningCostService(
         return rows.map { row ->
             RunningCostView(
                 id = row[OperatingCostsTable.id].value, ref = row[OperatingCostsTable.ref], date = row[OperatingCostsTable.paymentDate],
-                description = row[OperatingCostsTable.description], expenseCategoryId = row[OperatingCostsTable.expenseCategoryId],
-                category = row[ExpenseCategoriesTable.name], payee = row[OperatingCostsTable.payee], method = row[OperatingCostsTable.paymentMethod],
+                description = row[OperatingCostsTable.description], expenseCategory = Ref.expenseCategory(row[OperatingCostsTable.expenseCategoryId]), payee = row[OperatingCostsTable.payee], method = row[OperatingCostsTable.paymentMethod],
                 payingAccountId = row[OperatingCostsTable.payingCashAccountId] ?: row[OperatingCostsTable.payingBankAccountId]!!,
                 payingAccount = row[payingCash[CashAccountsTable.code]] ?: row[payingBank[BankAccountsTable.code]],
                 amount = row[OperatingCostsTable.amount], inputVatAmount = row[OperatingCostsTable.inputVatAmount], supplierTin = row[OperatingCostsTable.supplierTin],
                 invoiceOrReceiptNo = row[OperatingCostsTable.invoiceOrReceiptNo], chequeNumber = row[OperatingCostsTable.chequeNumber],
-                locationId = row[OperatingCostsTable.locationId], locationName = row[OperatingCostsTable.locationId]?.let(locations::get),
+                location = ref(row[OperatingCostsTable.locationId], Ref::location),
                 status = row[OperatingCostsTable.status], exceedsMonthlyCap = row[OperatingCostsTable.exceedsMonthlyCap],
                 submittedBy = UserRef.of(row[OperatingCostsTable.submittedByUserId]), submittedAt = row[OperatingCostsTable.submittedAt],
                 approvedBy = UserRef.of(row[OperatingCostsTable.approvedByUserId]), approvedAt = row[OperatingCostsTable.approvedAt],

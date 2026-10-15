@@ -216,7 +216,7 @@ class AccountReceiptsIntegrationTest : PostgresIntegrationTest() {
         assertThat(cash.get(ikejaTill).currentBalance).isEqualByComparingTo("75000")
         val other = wallets.fund(WalletFundingRequest(dealer, "WALLET", "CASH", BigDecimal("1000"), ikeja, cashAccountId = ikejaTill))
         signIn(cashier)
-        failsWith { receipts.getRow(other.receiptId) }.isEqualTo(ErrorCode.RECEIPT_NOT_FOUND)
+        failsWith { receipts.getRow(other.receipt.id) }.isEqualTo(ErrorCode.RECEIPT_NOT_FOUND)
         failsWith { wallets.fund(WalletFundingRequest(walkIn, "WALLET", "CASH", BigDecimal("10"), ikeja, cashAccountId = ikejaTill)) }.isEqualTo(ErrorCode.BALANCE_TYPE_NOT_ALLOWED)
         failsWith { wallets.fund(WalletFundingRequest(dealer, "DEPOSIT", "CASH", BigDecimal("10"), ikeja, cashAccountId = ikejaTill)) }.isEqualTo(ErrorCode.BALANCE_TYPE_NOT_ALLOWED)
     }
@@ -231,14 +231,14 @@ class AccountReceiptsIntegrationTest : PostgresIntegrationTest() {
         assertThat(balanceOf(dealer)).isEqualByComparingTo(before)
         assertThat(receipts.confirmationStats(null).pendingCount).isGreaterThanOrEqualTo(1)
 
-        val approved = receipts.approve(transfer.receiptId)
+        val approved = receipts.approve(transfer.receipt.id)
         assertThat(approved.confirmationStatus).isEqualTo("APPROVED")
         assertThat(balanceOf(dealer) - before).isEqualByComparingTo("200000")
         assertThat(banks.get(gtb).currentBalance).isEqualByComparingTo("1200000")
-        failsWith { receipts.approve(transfer.receiptId) }.isEqualTo(ErrorCode.ALREADY_DECIDED)
+        failsWith { receipts.approve(transfer.receipt.id) }.isEqualTo(ErrorCode.ALREADY_DECIDED)
 
         val bounced = wallets.fund(WalletFundingRequest(dealer, "WALLET", "CHEQUE", BigDecimal("50000"), ikeja, receivingBankAccountId = gtb, payerReference = "CHQ-77"))
-        receipts.decline(bounced.receiptId, "Cheque bounced")
+        receipts.decline(bounced.receipt.id, "Cheque bounced")
         assertThat(balanceOf(dealer) - before).isEqualByComparingTo("200000")
         assertThat(banks.get(gtb).currentBalance).isEqualByComparingTo("1200000")
         assertThat(wallets.fundings(ListSearchRequest(q = bounced.ref)).items.single().status).isEqualTo("DECLINED")
@@ -253,10 +253,10 @@ class AccountReceiptsIntegrationTest : PostgresIntegrationTest() {
         val start = balanceOf(special, "deposit_balance")
         val deposit = wallets.fund(WalletFundingRequest(special, "DEPOSIT", "CASH", BigDecimal("30000"), ikeja, cashAccountId = ikejaTill))
         assertThat(balanceOf(special, "deposit_balance") - start).isEqualByComparingTo("30000")
-        assertThat(receipts.void(deposit.receiptId, "Recorded against the wrong customer").status).isEqualTo("VOIDED")
+        assertThat(receipts.void(deposit.receipt.id, "Recorded against the wrong customer").status).isEqualTo("VOIDED")
         assertThat(balanceOf(special, "deposit_balance")).isEqualByComparingTo(start)
         assertThat(cash.get(ikejaTill).currentBalance).isEqualByComparingTo("0")
-        failsWith { receipts.void(deposit.receiptId, "Again") }.isEqualTo(ErrorCode.ALREADY_REVERSED)
+        failsWith { receipts.void(deposit.receipt.id, "Again") }.isEqualTo(ErrorCode.ALREADY_REVERSED)
 
         // A sale receipt belongs to Sales & POS.
         val sale = tx.execute {
@@ -363,17 +363,17 @@ class AccountReceiptsIntegrationTest : PostgresIntegrationTest() {
     @Test
     fun `VAT per location is effective-dated, applies today's change at once, and resolves areas to their showroom`() {
         signIn(accounts)
-        val start = vat.list().locations.single { it.locationId == ikeja }
+        val start = vat.list().locations.single { it.location?.id == ikeja }
         assertThat(start.rate).isEqualByComparingTo("7.5")
         failsWith { vat.set(ikeja, LocationVatRequest(true, BigDecimal("10"), effectiveFrom = today.minusDays(1))) }.isEqualTo(ErrorCode.VALIDATION_FAILED)
         failsWith { vat.set(ikejaFloor, LocationVatRequest(true, BigDecimal("10"), effectiveFrom = today)) }.isEqualTo(ErrorCode.INVALID_LOCATION)
 
-        val scheduled = vat.set(ikeja, LocationVatRequest(true, BigDecimal("10"), "NG-VAT-1", today.plusDays(10), "New rate")).locations.single { it.locationId == ikeja }
+        val scheduled = vat.set(ikeja, LocationVatRequest(true, BigDecimal("10"), "NG-VAT-1", today.plusDays(10), "New rate")).locations.single { it.location?.id == ikeja }
         assertThat(scheduled.rate).isEqualByComparingTo("7.5")
         assertThat(scheduled.scheduled!!.rate).isEqualByComparingTo("10")
         failsWith { vat.set(ikeja, LocationVatRequest(true, BigDecimal("11"), effectiveFrom = today.plusDays(10))) }.isEqualTo(ErrorCode.VAT_SETTING_EXISTS_FOR_DATE)
 
-        val disabled = vat.set(ikeja, LocationVatRequest(false, BigDecimal("7.5"), effectiveFrom = today)).locations.single { it.locationId == ikeja }
+        val disabled = vat.set(ikeja, LocationVatRequest(false, BigDecimal("7.5"), effectiveFrom = today)).locations.single { it.location?.id == ikeja }
         assertThat(disabled.enabled).isFalse()
         assertThat(vat.list().disabledCount).isGreaterThanOrEqualTo(1)
         val onFloor = tx.execute { vat.forLocation(ikejaFloor, today) }

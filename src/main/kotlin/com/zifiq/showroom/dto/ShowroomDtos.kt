@@ -1,5 +1,6 @@
 package com.zifiq.showroom.dto
 
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.UserRef
 import jakarta.validation.Valid
 import jakarta.validation.constraints.DecimalMax
@@ -73,8 +74,8 @@ data class ShowroomDetail(
     val vatEnabled: Boolean,
     val vatRegistrationNumber: String?,
     val areas: List<AreaView>,
-    val defaultReceivingLocationId: UUID?,
-    val defaultSellingLocationId: UUID?,
+    val defaultReceivingLocation: Ref?,
+    val defaultSellingLocation: Ref?,
     val createdAt: Instant,
     /** Status changes: e.g. "Showroom holds 1,240 units" when suspending a stocked showroom. */
     val warnings: List<String> = emptyList(),
@@ -147,7 +148,7 @@ data class OutsourceReceiptRequest(
 
 data class StockEntryLineView(
     val lineNo: Int,
-    val stockItemId: UUID,
+    val stockItem: Ref,
     val code: String,
     val description: String,
     val quantity: BigDecimal,
@@ -166,13 +167,10 @@ data class StockEntrySummary(
     val id: UUID,
     val ref: String,
     val kind: String,
-    val locationId: UUID,
-    val locationName: String,
-    val intoLocationId: UUID,
-    val intoLocationName: String,
-    val supplierId: UUID?,
-    val supplierName: String?,
-    val manufacturerId: UUID?,
+    val location: Ref,
+    val intoLocation: Ref,
+    val supplier: Ref?,
+    val manufacturer: Ref?,
     val partnerName: String?,
     val partnerReference: String?,
     val paymentTerms: String?,
@@ -195,10 +193,8 @@ data class StockEntryLineRow(
     val date: LocalDate,
     val ref: String,
     val kind: String,
-    val locationId: UUID,
-    val locationName: String,
-    val stockItemId: UUID,
-    val productCode: String,
+    val location: Ref,
+    val stockItem: Ref,
     val product: String,
     val party: String?,
     val partnerReference: String?,
@@ -227,17 +223,14 @@ data class AreaMoveRequest(
     @field:Size(min = 1, max = 100) val lines: List<@Valid AreaMoveLineInput>,
 )
 
-data class AreaMoveLineView(val lineNo: Int, val stockItemId: UUID, val code: String, val name: String, val quantity: BigDecimal, val unit: String?)
+data class AreaMoveLineView(val lineNo: Int, val stockItem: Ref, val quantity: BigDecimal, val unit: String?)
 
 data class AreaMoveSummary(
     val id: UUID,
     val ref: String,
-    val rootLocationId: UUID,
-    val rootLocationName: String,
-    val fromLocationId: UUID,
-    val fromLocationName: String,
-    val toLocationId: UUID,
-    val toLocationName: String,
+    val rootLocation: Ref,
+    val fromLocation: Ref,
+    val toLocation: Ref,
     val movedDate: LocalDate,
     val note: String?,
     val lines: List<AreaMoveLineView>,
@@ -281,17 +274,14 @@ data class ReturnCustomerView(val id: UUID, val code: String, val name: String, 
 
 data class ReturnLineView(
     val lineNo: Int,
-    val stockItemId: UUID,
-    val code: String,
-    val name: String,
+    val stockItem: Ref,
     val quantity: BigDecimal,
     val unit: String?,
     val unitPrice: BigDecimal,
     val lineValue: BigDecimal,
     val reason: String,
     val condition: String,
-    val intoLocationId: UUID?,
-    val intoLocationName: String?,
+    val intoLocation: Ref?,
     val note: String?,
 )
 
@@ -299,8 +289,7 @@ data class ReturnSummary(
     val id: UUID,
     val ref: String,
     val returnType: String,
-    val locationId: UUID,
-    val locationName: String,
+    val location: Ref,
     val customer: ReturnCustomerView,
     val originalDocumentRef: String?,
     val returnDate: LocalDate,
@@ -326,7 +315,7 @@ data class ReturnLineRow(
     val ref: String,
     val returnType: String,
     val originalDocumentRef: String?,
-    val customerId: UUID,
+    val customer: Ref,
     val customerCode: String,
     val customerName: String,
     val customerType: String,
@@ -337,8 +326,7 @@ data class ReturnLineRow(
     val lineValue: BigDecimal,
     val reason: String,
     val condition: String,
-    val locationId: UUID,
-    val locationName: String,
+    val location: Ref,
     /** 'Dealer wallet' | 'Temporary wallet' | 'Customer wallet'. */
     val creditedTo: String,
     val status: String,
@@ -350,13 +338,11 @@ data class ReasonTotal(val reason: String, val lines: Long, val units: BigDecima
 
 data class ComprehensiveStockRow(
     val ln: Int,
-    val stockItemId: UUID,
-    val code: String,
-    val detail: String,
+    val stockItem: Ref,
     val group: String,
     /** 'Finished Product' | 'Outsource' | 'Direct entry' (or the item type for others). */
     val source: String,
-    val locationId: UUID,
+    val location: Ref,
     /** Area name, or "Unallocated" for stock on the showroom itself. */
     val area: String,
     val qty: BigDecimal,
@@ -369,10 +355,9 @@ data class ComprehensiveStockRow(
 )
 
 data class TransferReportRow(
-    val transferId: UUID,
+    val transfer: Ref,
     val lineId: UUID,
     val date: LocalDate,
-    val waybillRef: String,
     val source: String,
     val sourceType: String,
     val destination: String,

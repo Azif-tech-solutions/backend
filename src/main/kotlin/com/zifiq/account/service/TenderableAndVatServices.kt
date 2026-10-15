@@ -1,5 +1,7 @@
 package com.zifiq.account.service
 
+import com.zifiq.platform.directory.ref
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.UserRef
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.JoinType
@@ -142,7 +144,7 @@ class TenderableService(
         val fromFundings = fundings.map { row ->
             val receipt = receipts[row[WalletFundingsTable.paymentReceiptId]]
             TenderableWalletFundRow(
-                ref = row[WalletFundingsTable.ref], date = row[WalletFundingsTable.createdAt], customerId = row[WalletFundingsTable.customerId],
+                ref = row[WalletFundingsTable.ref], date = row[WalletFundingsTable.createdAt], customer = Ref.customer(row[WalletFundingsTable.customerId]),
                 dealer = "${row[WalletFundingsTable.customerCode]} ${row[WalletFundingsTable.customerName]}",
                 method = Channel.labelOf(row[WalletFundingsTable.channel]),
                 bank = receipt?.get(PaymentReceiptsTable.receivingBankAccountId)?.let(banks::get), amount = row[WalletFundingsTable.amount],
@@ -153,7 +155,7 @@ class TenderableService(
         val creditFilter = LedgerEntriesFilter(customerIds = customerId?.let(::setOf), entryTypes = setOf(LedgerEntryType.RETURN_CREDIT), from = from, to = to,
             customerTypes = setOf(CustomerType.AUTHORISED_DEALER), newestFirst = true, limit = upTo)
         val fromReturns = customerQueries.ledgerEntries(creditFilter).map {
-            TenderableWalletFundRow(it.reference, it.createdAt, it.customerId, "${it.customerCode} ${it.customerName}", "Return credit", null, it.amount, null, "Confirmed")
+            TenderableWalletFundRow(it.reference, it.createdAt, Ref.customer(it.customerId), "${it.customerCode} ${it.customerName}", "Return credit", null, it.amount, null, "Confirmed")
         }
         val items = (fromFundings + fromReturns).sortedByDescending { it.date }.drop(paging.offset.toInt()).take(paging.size)
 
@@ -248,7 +250,7 @@ class LocationVatService(
             val current = all.filter { !it[LocationVatSettingsTable.effectiveFrom].isAfter(today) }.maxByOrNull { it[LocationVatSettingsTable.effectiveFrom] }
             val next = all.filter { it[LocationVatSettingsTable.effectiveFrom].isAfter(today) }.minByOrNull { it[LocationVatSettingsTable.effectiveFrom] }
             LocationVatRow(
-                locationId = id, code = location[LocationsTable.code], name = location[LocationsTable.name], type = location[LocationsTable.type],
+                location = Ref.location(id),
                 registration = current?.get(LocationVatSettingsTable.vatRegistrationNumber) ?: location[LocationsTable.vatRegistrationNumber],
                 rate = current?.get(LocationVatSettingsTable.vatRate) ?: location[LocationsTable.vatRate],
                 enabled = current?.get(LocationVatSettingsTable.vatEnabled) ?: location[LocationsTable.vatEnabled],

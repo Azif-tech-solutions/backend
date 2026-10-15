@@ -1,5 +1,7 @@
 package com.zifiq.factory.service
 
+import com.zifiq.platform.directory.ref
+import com.zifiq.platform.directory.Ref
 import org.jetbrains.exposed.sql.SortOrder
 import com.zifiq.common.paging.Paging
 import com.zifiq.common.paging.PageResult
@@ -131,9 +133,9 @@ class FactoryTradeService(
     private fun rowToTradeOfferSummary(row: ResultRow) = FactoryTradeOfferSummary(
         id = row[FactoryTradeOffersTable.id].value,
         ref = row[FactoryTradeOffersTable.ref],
-        fromLocationId = row[FactoryTradeOffersTable.fromLocationId],
-        toLocationId = row[FactoryTradeOffersTable.toLocationId],
-        stockItemId = row[FactoryTradeOffersTable.stockItemId].value,
+        fromLocation = Ref.location(row[FactoryTradeOffersTable.fromLocationId]),
+        toLocation = Ref.location(row[FactoryTradeOffersTable.toLocationId]),
+        stockItem = Ref.stockItem(row[FactoryTradeOffersTable.stockItemId].value),
         quantity = row[FactoryTradeOffersTable.quantity],
         reason = row[FactoryTradeOffersTable.reason],
         status = row[FactoryTradeOffersTable.status],

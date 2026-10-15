@@ -34,6 +34,35 @@ NOW = "2026-10-01T10:15:30Z"
 # Every user a response mentions comes back like this (platform.directory.UserRef).
 USER = {"id": "{{userId}}", "name": "Alice Admin", "email": "admin@apex.com"}
 
+# A referenced record, as every response returns it (platform.directory.Ref): its id plus identifying details.
+REF_EXAMPLES = {
+    "location": {"code": "SHR-1", "name": "Showroom Ikeja", "type": "SHOWROOM"},
+    "customer": {"code": "CU-1", "name": "Okafor Stores", "type": "ORDINARY_CUSTOMER"},
+    "stockItem": {"code": "RM-0001", "name": "Malted Barley", "itemType": "RAW_MATERIAL"},
+    "correspondent": {"code": "COR-1", "name": "Bisi Adeyemi"},
+    "cashAccount": {"code": "TILL-1", "name": "Ikeja Till", "kind": "TILL"},
+    "bankAccount": {"code": "BA-1", "bankName": "Guaranty Trust Bank", "accountName": "Apex Industries Ltd"},
+    "expenseCategory": {"code": "EX-10", "name": "Fuel Expenses"},
+    "recipe": {"code": "RCP-1", "name": "Premium Blend Base"},
+    "specialProductionClient": {"name": "Acme Contractors Ltd"},
+    "category": {"name": "Beverages", "type": "FINISHED_PRODUCT"},
+    "unit": {"code": "KG", "name": "Kilogram", "symbol": "kg"},
+    "vatCategory": {"code": "STANDARD", "name": "Standard rate", "rate": 7.50},
+    "hsnSection": {"code": "VI", "name": "Products of the chemical or allied industries"},
+    "isicSection": {"code": "C", "name": "Manufacturing"},
+    "supplier": {"code": "SUP-1", "name": "Northern Grains Ltd"},
+    "manufacturer": {"code": "MFR-1", "name": "Apex Maltings"},
+    "driver": {"name": "Musa Bello", "phone": "0803 555 1212"},
+    "invoice": {"number": "INV-1", "status": "ISSUED"},
+    "receipt": {"ref": "RCT-1", "kind": "RECEIPT"},
+    "stockTransfer": {"ref": "WB-1"},
+    "role": {"name": "Stock Keeper"},
+}
+
+
+def REF(kind, id):
+    return dict({"id": id}, **REF_EXAMPLES[kind])
+
 
 def PAGED(items, summary=None, **extra):
     """A paged response example (common/paging PageResult), one page holding [items]."""
@@ -149,7 +178,7 @@ ep("02 - Tenants & Members", "Create Custom Role", "POST", "/api/v1/tenants/role
 ep("02 - Tenants & Members", "Invite Member", "POST", "/api/v1/tenants/members",
    body={"email": "keeper@apex.com", "displayName": "Kelvin Keeper", "phone": "+2348000000000", "roleId": "{{stockKeeperRoleId}}", "locationId": "{{factoryId}}"},
    resp={"data": {"userId": "{{memberUserId}}", "email": "keeper@apex.com", "displayName": "Kelvin Keeper", "phone": "+2348000000000",
-                  "status": "ACTIVE", "role": {"id": "{{stockKeeperRoleId}}", "name": "Stock Keeper"}, "locationId": "{{factoryId}}",
+                  "status": "ACTIVE", "role": {"id": "{{stockKeeperRoleId}}", "name": "Stock Keeper"}, "location": REF("location", "{{factoryId}}"),
                   "accessScope": "SINGLE_LOCATION", "invitedAt": NOW}},
    tests=["const json = pm.response.json();", "pm.collectionVariables.set('memberUserId', json.data.userId);"],
    desc="Run Factory Setup > Create Factory first so {{factoryId}} is populated, or leave locationId null for ALL_LOCATIONS.")
@@ -159,20 +188,20 @@ ep("02 - Tenants & Members", "List Members", "GET", "/api/v1/tenants/members",
    desc="Paged, name order. q matches name (trigram) or e-mail (prefix); status narrows (ACTIVE, SUSPENDED, INVITED).",
    resp=PAGED([
        {"userId": "{{userId}}", "email": "admin@apex.com", "displayName": "Alice Admin", "phone": None, "status": "ACTIVE",
-        "role": {"id": "{{adminRoleId}}", "name": "Administrator"}, "locationId": None, "accessScope": "ALL_LOCATIONS", "invitedAt": NOW},
+        "role": {"id": "{{adminRoleId}}", "name": "Administrator"}, "location": None, "accessScope": "ALL_LOCATIONS", "invitedAt": NOW},
        {"userId": "{{memberUserId}}", "email": "keeper@apex.com", "displayName": "Kelvin Keeper", "phone": "+2348000000000", "status": "ACTIVE",
-        "role": {"id": "{{stockKeeperRoleId}}", "name": "Stock Keeper"}, "locationId": "{{factoryId}}", "accessScope": "SINGLE_LOCATION", "invitedAt": NOW},
+        "role": {"id": "{{stockKeeperRoleId}}", "name": "Stock Keeper"}, "location": REF("location", "{{factoryId}}"), "accessScope": "SINGLE_LOCATION", "invitedAt": NOW},
    ]))
 
 ep("02 - Tenants & Members", "Update Member Status", "PUT", "/api/v1/tenants/members/{{memberUserId}}/status",
    body={"status": "SUSPENDED"},
    resp={"data": {"userId": "{{memberUserId}}", "email": "keeper@apex.com", "displayName": "Kelvin Keeper", "phone": None, "status": "SUSPENDED",
-                  "role": {"id": "{{stockKeeperRoleId}}", "name": "Stock Keeper"}, "locationId": "{{factoryId}}", "accessScope": "SINGLE_LOCATION", "invitedAt": NOW}})
+                  "role": {"id": "{{stockKeeperRoleId}}", "name": "Stock Keeper"}, "location": REF("location", "{{factoryId}}"), "accessScope": "SINGLE_LOCATION", "invitedAt": NOW}})
 
 ep("02 - Tenants & Members", "Update Member Location", "PUT", "/api/v1/tenants/members/{{memberUserId}}/location",
    body={"locationId": None},
    resp={"data": {"userId": "{{memberUserId}}", "email": "keeper@apex.com", "displayName": "Kelvin Keeper", "phone": None, "status": "ACTIVE",
-                  "role": {"id": "{{stockKeeperRoleId}}", "name": "Stock Keeper"}, "locationId": None, "accessScope": "ALL_LOCATIONS", "invitedAt": NOW}},
+                  "role": {"id": "{{stockKeeperRoleId}}", "name": "Stock Keeper"}, "location": None, "accessScope": "ALL_LOCATIONS", "invitedAt": NOW}},
    desc="null locationId grants ALL_LOCATIONS access scope.")
 
 # ============================== OTP ==============================
@@ -242,18 +271,18 @@ ep("04 - VAT Control", "List ISIC Sections", "GET", "/api/v1/account/vat-control
 
 ep("04 - VAT Control", "Get Tenant VAT Categories", "GET", "/api/v1/account/vat-control/tenant-vat-categories",
    resp={"data": [
-       {"vatCategoryId": "{{standardRateVatCategoryId}}", "code": "STANDARD_RATE", "name": "Standard Rate", "rate": 7.50, "isActive": False, "activatedAt": "1970-01-01T00:00:00Z"},
-       {"vatCategoryId": "{{zeroRatedVatCategoryId}}", "code": "ZERO_RATED", "name": "Zero-Rated", "rate": 0.00, "isActive": False, "activatedAt": "1970-01-01T00:00:00Z"},
-       {"vatCategoryId": "{{exemptVatCategoryId}}", "code": "EXEMPT", "name": "Exempt", "rate": 0.00, "isActive": False, "activatedAt": "1970-01-01T00:00:00Z"},
+       {"vatCategory": REF("vatCategory", "{{standardRateVatCategoryId}}"), "rate": 7.50, "isActive": False, "activatedAt": "1970-01-01T00:00:00Z"},
+       {"vatCategory": REF("vatCategory", "{{zeroRatedVatCategoryId}}"), "rate": 0.00, "isActive": False, "activatedAt": "1970-01-01T00:00:00Z"},
+       {"vatCategory": REF("vatCategory", "{{exemptVatCategoryId}}"), "rate": 0.00, "isActive": False, "activatedAt": "1970-01-01T00:00:00Z"},
    ]},
    desc="Every tenant starts with none of the 3 categories activated -- run Select Tenant VAT Categories below before registering any stock item, which requires an active vatCategoryId.")
 
 ep("04 - VAT Control", "Select Tenant VAT Categories", "PUT", "/api/v1/account/vat-control/tenant-vat-categories",
    body={"vatCategoryCodes": ["STANDARD_RATE", "ZERO_RATED", "EXEMPT"]},
    resp={"data": [
-       {"vatCategoryId": "{{standardRateVatCategoryId}}", "code": "STANDARD_RATE", "name": "Standard Rate", "rate": 7.50, "isActive": True, "activatedAt": NOW},
-       {"vatCategoryId": "{{zeroRatedVatCategoryId}}", "code": "ZERO_RATED", "name": "Zero-Rated", "rate": 0.00, "isActive": True, "activatedAt": NOW},
-       {"vatCategoryId": "{{exemptVatCategoryId}}", "code": "EXEMPT", "name": "Exempt", "rate": 0.00, "isActive": True, "activatedAt": NOW},
+       {"vatCategory": REF("vatCategory", "{{standardRateVatCategoryId}}"), "rate": 7.50, "isActive": True, "activatedAt": NOW},
+       {"vatCategory": REF("vatCategory", "{{zeroRatedVatCategoryId}}"), "rate": 0.00, "isActive": True, "activatedAt": NOW},
+       {"vatCategory": REF("vatCategory", "{{exemptVatCategoryId}}"), "rate": 0.00, "isActive": True, "activatedAt": NOW},
    ]},
    desc="Replaces the tenant's active VAT category set with exactly the codes given -- this call activates all 3. A stock item's vatCategoryId must be one the tenant has activated here, or registration fails with VAT_CATEGORY_NOT_ACTIVE.")
 
@@ -514,10 +543,10 @@ ep("07 - Inventory Stock", "Register Raw Material", "POST", "/api/v1/inventory/s
          "categoryId": "{{categoryId}}", "brand": None, "unitOfMeasureId": "{{unitId}}", "reorderLevel": 10,
          "barcode": None, "landingCost": 5.00, "markupCost": None,
          "vatCategoryId": "{{standardRateVatCategoryId}}", "hsnSectionId": "{{hsnSectionId}}", "isicSectionId": "{{isicSectionId}}"},
-   resp={"data": {"id": "{{rawMaterialId}}", "locationId": "{{factoryId}}", "itemType": "RAW_MATERIAL", "code": "ITM-1",
-                  "name": "Cocoa Powder", "categoryId": "{{categoryId}}", "brand": None, "unitOfMeasureId": "{{unitId}}",
+   resp={"data": {"id": "{{rawMaterialId}}", "location": REF("location", "{{factoryId}}"), "itemType": "RAW_MATERIAL", "code": "ITM-1",
+                  "name": "Cocoa Powder", "category": REF("category", "{{categoryId}}"), "brand": None, "unitOfMeasure": REF("unit", "{{unitId}}"),
                   "reorderLevel": 10.000, "barcode": None, "landingCost": 5.00, "markupCost": None,
-                  "vatCategoryId": "{{standardRateVatCategoryId}}", "hsnSectionId": "{{hsnSectionId}}", "isicSectionId": "{{isicSectionId}}",
+                  "vatCategory": REF("vatCategory", "{{standardRateVatCategoryId}}"), "hsnSection": REF("hsnSection", "{{hsnSectionId}}"), "isicSection": REF("isicSection", "{{isicSectionId}}"),
                   "status": "ACTIVE", "createdAt": NOW, "quantityOnHand": 0.000}},
    tests=["const json = pm.response.json();", "pm.collectionVariables.set('rawMaterialId', json.data.id);"],
    desc="itemType is one of FINISHED_PRODUCT, RAW_MATERIAL, IN_HOUSE_RECIPE, OUTSOURCED. vatCategoryId/hsnSectionId/isicSectionId are required on every product -- run 04 - VAT Control first (List VAT Categories, List HSN Sections, List ISIC Sections, Select Tenant VAT Categories) to populate these variables. vatCategoryId must be one the active tenant has activated, or this returns 400 VAT_CATEGORY_NOT_ACTIVE.")
@@ -527,19 +556,19 @@ ep("07 - Inventory Stock", "Register Finished Product", "POST", "/api/v1/invento
          "categoryId": None, "brand": None, "unitOfMeasureId": "{{unitId}}", "reorderLevel": 5, "barcode": None,
          "landingCost": None, "markupCost": None,
          "vatCategoryId": "{{standardRateVatCategoryId}}", "hsnSectionId": "{{hsnSectionId}}", "isicSectionId": "{{isicSectionId}}"},
-   resp={"data": {"id": "{{finishedProductId}}", "locationId": "{{factoryId}}", "itemType": "FINISHED_PRODUCT", "code": "ITM-2",
-                  "name": "Premium Blend", "categoryId": None, "brand": None, "unitOfMeasureId": "{{unitId}}",
+   resp={"data": {"id": "{{finishedProductId}}", "location": REF("location", "{{factoryId}}"), "itemType": "FINISHED_PRODUCT", "code": "ITM-2",
+                  "name": "Premium Blend", "category": None, "brand": None, "unitOfMeasure": REF("unit", "{{unitId}}"),
                   "reorderLevel": 5.000, "barcode": None, "landingCost": None, "markupCost": None,
-                  "vatCategoryId": "{{standardRateVatCategoryId}}", "hsnSectionId": "{{hsnSectionId}}", "isicSectionId": "{{isicSectionId}}",
+                  "vatCategory": REF("vatCategory", "{{standardRateVatCategoryId}}"), "hsnSection": REF("hsnSection", "{{hsnSectionId}}"), "isicSection": REF("isicSection", "{{isicSectionId}}"),
                   "status": "ACTIVE", "createdAt": NOW, "quantityOnHand": 0.000}},
    tests=["const json = pm.response.json();", "pm.collectionVariables.set('finishedProductId', json.data.id);"])
 
 ep("07 - Inventory Stock", "List Stock Items", "GET", "/api/v1/inventory/stock-items",
    query=[{"key": "locationId", "value": "{{factoryId}}"}],
-   resp=PAGED([{"id": "{{rawMaterialId}}", "locationId": "{{factoryId}}", "itemType": "RAW_MATERIAL", "code": "ITM-1",
-                   "name": "Cocoa Powder", "categoryId": "{{categoryId}}", "brand": None, "unitOfMeasureId": "{{unitId}}",
+   resp=PAGED([{"id": "{{rawMaterialId}}", "location": REF("location", "{{factoryId}}"), "itemType": "RAW_MATERIAL", "code": "ITM-1",
+                   "name": "Cocoa Powder", "category": REF("category", "{{categoryId}}"), "brand": None, "unitOfMeasure": REF("unit", "{{unitId}}"),
                    "reorderLevel": 10.000, "barcode": None, "landingCost": 5.00, "markupCost": None,
-                   "vatCategoryId": "{{standardRateVatCategoryId}}", "hsnSectionId": "{{hsnSectionId}}", "isicSectionId": "{{isicSectionId}}",
+                   "vatCategory": REF("vatCategory", "{{standardRateVatCategoryId}}"), "hsnSection": REF("hsnSection", "{{hsnSectionId}}"), "isicSection": REF("isicSection", "{{isicSectionId}}"),
                    "status": "ACTIVE", "createdAt": NOW, "quantityOnHand": 0.000}]),
    tests=["const json = pm.response.json();",
           "pm.test('every item carries its quantity on hand', () => json.data.items.forEach(i => pm.expect(i.quantityOnHand).to.be.a('number')));"],
@@ -548,45 +577,45 @@ ep("07 - Inventory Stock", "List Stock Items", "GET", "/api/v1/inventory/stock-i
 
 ep("07 - Inventory Stock", "Update Stock Item Status", "PUT", "/api/v1/inventory/stock-items/{{rawMaterialId}}/status",
    body={"status": "SUSPENDED"},
-   resp={"data": {"id": "{{rawMaterialId}}", "locationId": "{{factoryId}}", "itemType": "RAW_MATERIAL", "code": "ITM-1",
-                  "name": "Cocoa Powder", "categoryId": "{{categoryId}}", "brand": None, "unitOfMeasureId": "{{unitId}}",
+   resp={"data": {"id": "{{rawMaterialId}}", "location": REF("location", "{{factoryId}}"), "itemType": "RAW_MATERIAL", "code": "ITM-1",
+                  "name": "Cocoa Powder", "category": REF("category", "{{categoryId}}"), "brand": None, "unitOfMeasure": REF("unit", "{{unitId}}"),
                   "reorderLevel": 10.000, "barcode": None, "landingCost": 5.00, "markupCost": None,
-                  "vatCategoryId": "{{standardRateVatCategoryId}}", "hsnSectionId": "{{hsnSectionId}}", "isicSectionId": "{{isicSectionId}}",
+                  "vatCategory": REF("vatCategory", "{{standardRateVatCategoryId}}"), "hsnSection": REF("hsnSection", "{{hsnSectionId}}"), "isicSection": REF("isicSection", "{{isicSectionId}}"),
                   "status": "SUSPENDED", "createdAt": NOW, "quantityOnHand": 0.000}})
 
 ep("07 - Inventory Stock", "Reactivate Stock Item", "PUT", "/api/v1/inventory/stock-items/{{rawMaterialId}}/status",
    body={"status": "ACTIVE"},
-   resp={"data": {"id": "{{rawMaterialId}}", "locationId": "{{factoryId}}", "itemType": "RAW_MATERIAL", "code": "ITM-1",
-                  "name": "Cocoa Powder", "categoryId": "{{categoryId}}", "brand": None, "unitOfMeasureId": "{{unitId}}",
+   resp={"data": {"id": "{{rawMaterialId}}", "location": REF("location", "{{factoryId}}"), "itemType": "RAW_MATERIAL", "code": "ITM-1",
+                  "name": "Cocoa Powder", "category": REF("category", "{{categoryId}}"), "brand": None, "unitOfMeasure": REF("unit", "{{unitId}}"),
                   "reorderLevel": 10.000, "barcode": None, "landingCost": 5.00, "markupCost": None,
-                  "vatCategoryId": "{{standardRateVatCategoryId}}", "hsnSectionId": "{{hsnSectionId}}", "isicSectionId": "{{isicSectionId}}",
+                  "vatCategory": REF("vatCategory", "{{standardRateVatCategoryId}}"), "hsnSection": REF("hsnSection", "{{hsnSectionId}}"), "isicSection": REF("isicSection", "{{isicSectionId}}"),
                   "status": "ACTIVE", "createdAt": NOW}},
    desc="Reverses the previous request -- everything from here on (Refill, Transfers, Production, Trade) needs this item ACTIVE.")
 
 ep("07 - Inventory Stock", "Refill Finished Product", "POST", "/api/v1/inventory/stock/refill/finished-product",
    body={"locationId": "{{factoryId}}", "stockItemId": "{{finishedProductId}}", "quantity": 50, "note": "Initial stocking"},
-   resp={"data": {"ref": "RF-1", "stockItemId": "{{finishedProductId}}", "quantity": 50, "performedBy": USER, "at": NOW}})
+   resp={"data": {"ref": "RF-1", "stockItem": REF("stockItem", "{{finishedProductId}}"), "quantity": 50, "performedBy": USER, "at": NOW}})
 
 ep("07 - Inventory Stock", "Refill Raw Material (Receive)", "POST", "/api/v1/inventory/stock/refill/raw-material",
    body={"locationId": "{{factoryId}}", "stockItemId": "{{rawMaterialId}}", "supplierId": "{{supplierId}}",
          "manufacturerId": "{{manufacturerId}}", "quantity": 100, "unitCost": 5.00,
          "manufacturedDate": "2026-09-01", "expiryDate": "2027-09-01"},
-   resp={"data": {"id": "{{stockReceiptId}}", "ref": "DL-1", "stockItemId": "{{rawMaterialId}}", "supplierId": "{{supplierId}}",
-                  "manufacturerId": "{{manufacturerId}}", "quantity": 100.000, "unitCost": 5.00, "manufacturedDate": "2026-09-01",
+   resp={"data": {"id": "{{stockReceiptId}}", "ref": "DL-1", "stockItem": REF("stockItem", "{{rawMaterialId}}"), "supplier": REF("supplier", "{{supplierId}}"),
+                  "manufacturer": REF("manufacturer", "{{manufacturerId}}"), "quantity": 100.000, "unitCost": 5.00, "manufacturedDate": "2026-09-01",
                   "expiryDate": "2027-09-01", "verifiedBy": None, "offloadedAt": None, "condition": "PENDING_VERIFICATION"}},
    tests=["const json = pm.response.json();", "pm.collectionVariables.set('stockReceiptId', json.data.id);"],
    desc="This is also the Material/Recipe Receive Report's data source (same table, see List Stock Receipts).")
 
 ep("07 - Inventory Stock", "List Stock Receipts (Material Receive Report)", "GET", "/api/v1/inventory/stock/receipts",
    query=[{"key": "locationId", "value": "{{factoryId}}"}],
-   resp=PAGED([{"id": "{{stockReceiptId}}", "ref": "DL-1", "stockItemId": "{{rawMaterialId}}", "supplierId": "{{supplierId}}",
-                   "manufacturerId": "{{manufacturerId}}", "quantity": 100.000, "unitCost": 5.00, "manufacturedDate": "2026-09-01",
+   resp=PAGED([{"id": "{{stockReceiptId}}", "ref": "DL-1", "stockItem": REF("stockItem", "{{rawMaterialId}}"), "supplier": REF("supplier", "{{supplierId}}"),
+                   "manufacturer": REF("manufacturer", "{{manufacturerId}}"), "quantity": 100.000, "unitCost": 5.00, "manufacturedDate": "2026-09-01",
                    "expiryDate": "2027-09-01", "verifiedBy": None, "offloadedAt": None, "condition": "PENDING_VERIFICATION"}]))
 
 ep("07 - Inventory Stock", "Verify Stock Receipt", "POST", "/api/v1/inventory/stock/receipts/{{stockReceiptId}}/verify",
    body={"condition": "ACCEPTED"},
-   resp={"data": {"id": "{{stockReceiptId}}", "ref": "DL-1", "stockItemId": "{{rawMaterialId}}", "supplierId": "{{supplierId}}",
-                  "manufacturerId": "{{manufacturerId}}", "quantity": 100.000, "unitCost": 5.00, "manufacturedDate": "2026-09-01",
+   resp={"data": {"id": "{{stockReceiptId}}", "ref": "DL-1", "stockItem": REF("stockItem", "{{rawMaterialId}}"), "supplier": REF("supplier", "{{supplierId}}"),
+                  "manufacturer": REF("manufacturer", "{{manufacturerId}}"), "quantity": 100.000, "unitCost": 5.00, "manufacturedDate": "2026-09-01",
                   "expiryDate": "2027-09-01", "verifiedBy": USER, "offloadedAt": NOW, "condition": "ACCEPTED"}})
 
 ep("07 - Inventory Stock", "Stock Card (per-transaction)", "GET", "/api/v1/inventory/stock/card/{{rawMaterialId}}",
@@ -606,10 +635,10 @@ ep("07 - Inventory Stock", "Comprehensive Stock Report", "GET", "/api/v1/invento
 ep("07 - Inventory Stock", "Stock Movement Report", "GET", "/api/v1/inventory/stock/movement-report",
    query=[{"key": "locationId", "value": "{{factoryId}}"}],
    resp=PAGED([
-       {"sn": 1, "date": "2026-10-01", "locationId": "{{factoryId}}", "stockItemId": "{{rawMaterialId}}", "itemCode": "ITM-1",
-        "itemName": "Cocoa Powder", "sourceType": "RECEIVE", "sourceReference": "DL-1", "qtyIn": 100.000, "qtyOut": 0.000},
-       {"sn": 2, "date": "2026-10-01", "locationId": "{{factoryId}}", "stockItemId": "{{rawMaterialId}}", "itemCode": "ITM-1",
-        "itemName": "Cocoa Powder", "sourceType": "TRANSFER_OUT", "sourceReference": "WB-1", "qtyIn": 0.000, "qtyOut": 10.000},
+       {"sn": 1, "date": "2026-10-01", "location": REF("location", "{{factoryId}}"), "stockItem": REF("stockItem", "{{rawMaterialId}}"), 
+        "sourceType": "RECEIVE", "sourceReference": "DL-1", "qtyIn": 100.000, "qtyOut": 0.000},
+       {"sn": 2, "date": "2026-10-01", "location": REF("location", "{{factoryId}}"), "stockItem": REF("stockItem", "{{rawMaterialId}}"), 
+        "sourceType": "TRANSFER_OUT", "sourceReference": "WB-1", "qtyIn": 0.000, "qtyOut": 10.000},
    ]),
    desc="Cross-item, cross-movement-type ledger view (unlike Stock Card, which is scoped to a single item) -- every stock-affecting action across every module writes to the same ledger this reads from. All filters (locationId, stockItemId, sourceType, from, to) are optional. sourceType is one of REFILL, RECEIVE, PRODUCTION_RUN, TRANSFER_OUT, TRANSFER_IN, QUANTITY_ADJUSTMENT, TRADE_OUT, TRADE_IN.")
 
@@ -622,9 +651,9 @@ ep("07 - Inventory Stock", "Re-Order Report", "GET", "/api/v1/inventory/stock/re
 ep("08 - Inventory Operations", "Dispatch Stock Transfer", "POST", "/api/v1/inventory/stock/transfers",
    body={"sourceLocationId": "{{factoryId}}", "destinationLocationId": "{{factoryId2}}", "driverName": "John Driver",
          "driverVehicle": "LAG-123-XY", "lines": [{"stockItemId": "{{rawMaterialId}}", "quantity": 10, "unitPrice": None}]},
-   resp={"data": {"id": "{{transferId}}", "waybillRef": "WB-1", "sourceLocationId": "{{factoryId}}", "destinationLocationId": "{{factoryId2}}",
+   resp={"data": {"id": "{{transferId}}", "waybillRef": "WB-1", "sourceLocation": REF("location", "{{factoryId}}"), "destinationLocation": REF("location", "{{factoryId2}}"),
                   "status": "DISPATCHED", "dispatchedAt": NOW, "receivedAt": None,
-                  "lines": [{"id": "{{transferLineId}}", "stockItemId": "{{rawMaterialId}}", "qtySent": 10.000, "qtyReceived": None, "qtyRejected": None}]}},
+                  "lines": [{"id": "{{transferLineId}}", "stockItem": REF("stockItem", "{{rawMaterialId}}"), "qtySent": 10.000, "qtyReceived": None, "qtyRejected": None}]}},
    tests=[
        "const json = pm.response.json();",
        "pm.collectionVariables.set('transferId', json.data.id);",
@@ -635,33 +664,33 @@ ep("08 - Inventory Operations", "Dispatch Stock Transfer", "POST", "/api/v1/inve
 
 ep("08 - Inventory Operations", "Receive Stock Transfer", "POST", "/api/v1/inventory/stock/transfers/{{transferId}}/receive",
    body={"lines": [{"stockTransferLineId": "{{transferLineId}}", "qtyReceived": 10, "qtyRejected": None}]},
-   resp={"data": {"id": "{{transferId}}", "waybillRef": "WB-1", "sourceLocationId": "{{factoryId}}", "destinationLocationId": "{{factoryId2}}",
+   resp={"data": {"id": "{{transferId}}", "waybillRef": "WB-1", "sourceLocation": REF("location", "{{factoryId}}"), "destinationLocation": REF("location", "{{factoryId2}}"),
                   "status": "RECEIVED", "dispatchedAt": NOW, "receivedAt": NOW,
-                  "lines": [{"id": "{{transferLineId}}", "stockItemId": "{{rawMaterialId}}", "qtySent": 10.000, "qtyReceived": 10.000, "qtyRejected": None}]}})
+                  "lines": [{"id": "{{transferLineId}}", "stockItem": REF("stockItem", "{{rawMaterialId}}"), "qtySent": 10.000, "qtyReceived": 10.000, "qtyRejected": None}]}})
 
 ep("08 - Inventory Operations", "List Stock Transfers", "GET", "/api/v1/inventory/stock/transfers",
    query=[{"key": "locationId", "value": "{{factoryId}}"}],
-   resp=PAGED([{"id": "{{transferId}}", "waybillRef": "WB-1", "sourceLocationId": "{{factoryId}}", "destinationLocationId": "{{factoryId2}}",
+   resp=PAGED([{"id": "{{transferId}}", "waybillRef": "WB-1", "sourceLocation": REF("location", "{{factoryId}}"), "destinationLocation": REF("location", "{{factoryId2}}"),
                    "status": "RECEIVED", "dispatchedAt": NOW, "receivedAt": NOW,
-                   "lines": [{"id": "{{transferLineId}}", "stockItemId": "{{rawMaterialId}}", "qtySent": 10.000, "qtyReceived": 10.000, "qtyRejected": None}]}]))
+                   "lines": [{"id": "{{transferLineId}}", "stockItem": REF("stockItem", "{{rawMaterialId}}"), "qtySent": 10.000, "qtyReceived": 10.000, "qtyRejected": None}]}]))
 
 ep("08 - Inventory Operations", "Post Quantity Adjustment (below OTP threshold)", "POST", "/api/v1/inventory/quantity-adjustments",
    body={"locationId": "{{factoryId}}", "stockItemId": "{{rawMaterialId}}", "direction": "NEGATIVE", "quantity": 3,
          "reason": "DAMAGED_BROKEN", "note": "Bag torn in storage", "otpChallengeId": None},
-   resp={"data": {"ref": "QA-1", "stockItemId": "{{rawMaterialId}}", "direction": "NEGATIVE", "quantity": 3, "reason": "DAMAGED_BROKEN",
+   resp={"data": {"ref": "QA-1", "stockItem": REF("stockItem", "{{rawMaterialId}}"), "direction": "NEGATIVE", "quantity": 3, "reason": "DAMAGED_BROKEN",
                   "note": "Bag torn in storage", "performedBy": USER, "at": NOW}},
    desc="Adjustments at or below the 50-unit threshold (FactoryOperationsService.ADJUSTMENT_OTP_THRESHOLD) need no OTP.")
 
 ep("08 - Inventory Operations", "Post Quantity Adjustment (above threshold, OTP-gated)", "POST", "/api/v1/inventory/quantity-adjustments",
    body={"locationId": "{{factoryId}}", "stockItemId": "{{rawMaterialId}}", "direction": "NEGATIVE", "quantity": 60,
          "reason": "STOCKTAKE_VARIANCE", "note": "Annual stocktake correction", "otpChallengeId": "{{otpChallengeId}}"},
-   resp={"data": {"ref": "QA-2", "stockItemId": "{{rawMaterialId}}", "direction": "NEGATIVE", "quantity": 60, "reason": "STOCKTAKE_VARIANCE",
+   resp={"data": {"ref": "QA-2", "stockItem": REF("stockItem", "{{rawMaterialId}}"), "direction": "NEGATIVE", "quantity": 60, "reason": "STOCKTAKE_VARIANCE",
                   "note": "Annual stocktake correction", "performedBy": USER, "at": NOW}},
    desc="Run the OTP folder's three requests first (request -> issue -> verify) so otpChallengeId is USED, or this returns 403 OTP_REQUIRED.")
 
 ep("08 - Inventory Operations", "List Quantity Adjustments", "GET", "/api/v1/inventory/quantity-adjustments",
    query=[{"key": "locationId", "value": "{{factoryId}}"}],
-   resp={"data": [{"ref": "QA-1", "stockItemId": "{{rawMaterialId}}", "direction": "NEGATIVE", "quantity": 3, "reason": "DAMAGED_BROKEN",
+   resp={"data": [{"ref": "QA-1", "stockItem": REF("stockItem", "{{rawMaterialId}}"), "direction": "NEGATIVE", "quantity": 3, "reason": "DAMAGED_BROKEN",
                    "note": "Bag torn in storage", "performedBy": USER, "at": NOW}]})
 
 # ============================== FACTORY PRODUCTION ==============================
@@ -669,43 +698,43 @@ ep("09 - Factory Production", "Register Recipe", "POST", "/api/v1/factory/recipe
    body={"locationId": "{{factoryId}}", "code": None, "name": "Premium Blend Base", "description": "Base recipe for Premium Blend",
          "sourcing": "IN_HOUSE_PRODUCTION", "yieldQty": 100, "yieldUnitId": "{{unitId}}", "shelfLifeDays": 365,
          "reorderLevel": 20, "ingredients": [{"rawMaterialStockItemId": "{{rawMaterialId}}", "quantity": 10, "unitId": "{{unitId}}"}]},
-   resp={"data": {"id": "{{recipeId}}", "code": "RCP-1", "name": "Premium Blend Base", "sourcing": "IN_HOUSE_PRODUCTION",
-                  "yieldQty": 100, "status": "ACTIVE",
-                  "ingredients": [{"rawMaterialStockItemId": "{{rawMaterialId}}", "quantity": 10, "unitId": "{{unitId}}"}]}},
+   resp={"data": {"id": "{{recipeId}}", "code": "RCP-1", "name": "Premium Blend Base", "location": REF("location", "{{factoryId}}"),
+                  "sourcing": "IN_HOUSE_PRODUCTION", "yieldQty": 100, "yieldUnit": REF("unit", "{{unitId}}"), "status": "ACTIVE",
+                  "ingredients": [{"rawMaterialStockItem": REF("stockItem", "{{rawMaterialId}}"), "quantity": 10, "unit": REF("unit", "{{unitId}}")}]}},
    tests=["const json = pm.response.json();", "pm.collectionVariables.set('recipeId', json.data.id);"],
    desc="sourcing is IN_HOUSE_PRODUCTION or DIRECT_IMPORTATION.")
 
 ep("09 - Factory Production", "List Recipes", "GET", "/api/v1/factory/recipes",
    query=[{"key": "locationId", "value": "{{factoryId}}"}],
-   resp=PAGED([{"id": "{{recipeId}}", "code": "RCP-1", "name": "Premium Blend Base", "sourcing": "IN_HOUSE_PRODUCTION",
-                   "yieldQty": 100, "status": "ACTIVE",
-                   "ingredients": [{"rawMaterialStockItemId": "{{rawMaterialId}}", "quantity": 10, "unitId": "{{unitId}}"}]}]))
+   resp=PAGED([{"id": "{{recipeId}}", "code": "RCP-1", "name": "Premium Blend Base", "location": REF("location", "{{factoryId}}"),
+                   "sourcing": "IN_HOUSE_PRODUCTION", "yieldQty": 100, "yieldUnit": REF("unit", "{{unitId}}"), "status": "ACTIVE",
+                   "ingredients": [{"rawMaterialStockItem": REF("stockItem", "{{rawMaterialId}}"), "quantity": 10, "unit": REF("unit", "{{unitId}}")}]}]))
 
 ep("09 - Factory Production", "Run Cost Calculator (QC - blind)", "POST", "/api/v1/factory/production/cost-calculator",
    body={"locationId": "{{factoryId}}", "targetStockItemId": "{{finishedProductId}}", "recipeId": None, "batchSizeQty": 50,
          "materials": [{"stockItemId": "{{rawMaterialId}}", "quantity": 20}], "overheads": [{"label": "Labour", "amount": 30}]},
-   resp={"data": {"id": "{{costingId}}", "targetStockItemId": "{{finishedProductId}}", "batchSizeQty": 50, "status": "PENDING",
+   resp={"data": {"id": "{{costingId}}", "targetStockItem": REF("stockItem", "{{finishedProductId}}"), "batchSizeQty": 50, "status": "PENDING",
                   "computedBy": USER, "createdAt": NOW}},
    tests=["const json = pm.response.json();", "pm.collectionVariables.set('costingId', json.data.id);"],
    desc="Deliberately omits computedUnitCost/computedTotalCost -- QC (the typical caller) completes costing blind per the PRD. Pass either materials[] or recipeId.")
 
 ep("09 - Factory Production", "Get Costing Detail (Management/Admin only)", "GET", "/api/v1/factory/production/cost-calculator/{{costingId}}",
-   resp={"data": {"id": "{{costingId}}", "targetStockItemId": "{{finishedProductId}}", "recipeId": None, "batchSizeQty": 50.000,
-                  "materialsSnapshot": [{"stockItemId": "{{rawMaterialId}}", "name": "Cocoa Powder", "quantity": 20, "unitCost": 5.0}],
+   resp={"data": {"id": "{{costingId}}", "targetStockItem": REF("stockItem", "{{finishedProductId}}"), "recipe": None, "batchSizeQty": 50.000,
+                  "materialsSnapshot": [{"stockItem": REF("stockItem", "{{rawMaterialId}}"), "name": "Cocoa Powder", "quantity": 20, "unitCost": 5.0}],
                   "overheadSnapshot": [{"label": "Labour", "amount": 30}], "computedUnitCost": 2.60, "computedTotalCost": 130.00,
                   "status": "PENDING", "computedBy": USER, "approvedBy": None, "approvedAt": None, "rejectionReason": None}},
    desc="Requires factory.costing.read -- this is the one endpoint that reveals the figure QC's own calculator just produced.")
 
 ep("09 - Factory Production", "Approve Costing", "POST", "/api/v1/factory/production/cost-calculator/{{costingId}}/approve",
-   resp={"data": {"id": "{{costingId}}", "targetStockItemId": "{{finishedProductId}}", "recipeId": None, "batchSizeQty": 50.000,
-                  "materialsSnapshot": [{"stockItemId": "{{rawMaterialId}}", "name": "Cocoa Powder", "quantity": 20, "unitCost": 5.0}],
+   resp={"data": {"id": "{{costingId}}", "targetStockItem": REF("stockItem", "{{finishedProductId}}"), "recipe": None, "batchSizeQty": 50.000,
+                  "materialsSnapshot": [{"stockItem": REF("stockItem", "{{rawMaterialId}}"), "name": "Cocoa Powder", "quantity": 20, "unitCost": 5.0}],
                   "overheadSnapshot": [{"label": "Labour", "amount": 30}], "computedUnitCost": 2.60, "computedTotalCost": 130.00,
                   "status": "APPROVED", "computedBy": USER, "approvedBy": USER, "approvedAt": NOW, "rejectionReason": None}})
 
 ep("09 - Factory Production", "Reject Costing (alternative to Approve)", "POST", "/api/v1/factory/production/cost-calculator/{{costingId}}/reject",
    body={"rejectionReason": "Material substitution needed -- cost too high"},
-   resp={"data": {"id": "{{costingId}}", "targetStockItemId": "{{finishedProductId}}", "recipeId": None, "batchSizeQty": 50.000,
-                  "materialsSnapshot": [{"stockItemId": "{{rawMaterialId}}", "name": "Cocoa Powder", "quantity": 20, "unitCost": 5.0}],
+   resp={"data": {"id": "{{costingId}}", "targetStockItem": REF("stockItem", "{{finishedProductId}}"), "recipe": None, "batchSizeQty": 50.000,
+                  "materialsSnapshot": [{"stockItem": REF("stockItem", "{{rawMaterialId}}"), "name": "Cocoa Powder", "quantity": 20, "unitCost": 5.0}],
                   "overheadSnapshot": [{"label": "Labour", "amount": 30}], "computedUnitCost": 2.60, "computedTotalCost": 130.00,
                   "status": "REJECTED", "computedBy": USER, "approvedBy": None, "approvedAt": None,
                   "rejectionReason": "Material substitution needed -- cost too high"}},
@@ -716,18 +745,18 @@ ep("09 - Factory Production", "Reject Costing (alternative to Approve)", "POST",
 
 ep("09 - Factory Production", "Commit Production Run", "POST", "/api/v1/factory/production/runs",
    body={"productionCostingId": "{{costingId}}"},
-   resp={"data": {"batchRef": "PB-1", "targetStockItemId": "{{finishedProductId}}", "quantityProduced": 50.000,
+   resp={"data": {"batchRef": "PB-1", "targetStockItem": REF("stockItem", "{{finishedProductId}}"), "quantityProduced": 50.000,
                   "unitLandingCost": 2.60, "totalLandingCost": 130.00, "runAt": NOW}},
    desc="productionCostingId must reference an APPROVED costing. Consumes the raw materials and credits the finished product in the same transaction.")
 
 ep("09 - Factory Production", "List Production Runs", "GET", "/api/v1/factory/production/runs",
    query=[{"key": "locationId", "value": "{{factoryId}}"}],
-   resp=PAGED([{"batchRef": "PB-1", "targetStockItemId": "{{finishedProductId}}", "quantityProduced": 50.000,
+   resp=PAGED([{"batchRef": "PB-1", "targetStockItem": REF("stockItem", "{{finishedProductId}}"), "quantityProduced": 50.000,
                    "unitLandingCost": 2.60, "totalLandingCost": 130.00, "runAt": NOW}]))
 
 ep("09 - Factory Production", "Total Cost for Selected Recipes", "GET", "/api/v1/factory/production/total-cost",
    query=[{"key": "recipeIds", "value": "{{recipeId}}"}],
-   resp={"data": [{"recipeId": "{{recipeId}}", "recipeName": "Premium Blend Base", "qtyUsed": 50.000, "totalCost": 130.00}]},
+   resp={"data": [{"recipe": REF("recipe", "{{recipeId}}"), "qtyUsed": 50.000, "totalCost": 130.00}]},
    desc="Perm factory.costing.read. Quantity produced and total landing cost over every run costed from each recipe; recipeIds is repeatable "
         "or comma-separated (at most 200). Every id must be a recipe of this tenant, else 404 RECIPE_NOT_FOUND.")
 
@@ -746,41 +775,41 @@ ep("09 - Factory Production", "Create Special Production Run", "POST", "/api/v1/
    body={"locationId": "{{factoryId}}", "clientId": "{{specialClientId}}", "targetStockItemId": None,
          "productDescription": "Custom emulsion batch for Acme", "quantity": 25, "unitId": "{{unitId}}",
          "unitCost": 4.00, "price": 7.50, "materials": [{"stockItemId": "{{rawMaterialId}}", "quantity": 5}]},
-   resp={"data": {"id": "{{specialRunId}}", "orderRef": "SO-1", "batchRef": "SB-1", "clientId": "{{specialClientId}}",
+   resp={"data": {"id": "{{specialRunId}}", "orderRef": "SO-1", "batchRef": "SB-1", "client": REF("specialProductionClient", "{{specialClientId}}"),
                   "quantity": 25.000, "price": 7.50, "status": "IN_PRODUCTION"}},
    tests=["const json = pm.response.json();", "pm.collectionVariables.set('specialRunId', json.data.id);"])
 
 ep("09 - Factory Production", "Update Special Production Status", "PUT", "/api/v1/factory/special-production/runs/{{specialRunId}}/status",
    body={"status": "AWAITING_DISPATCH"},
-   resp={"data": {"id": "{{specialRunId}}", "orderRef": "SO-1", "batchRef": "SB-1", "clientId": "{{specialClientId}}",
+   resp={"data": {"id": "{{specialRunId}}", "orderRef": "SO-1", "batchRef": "SB-1", "client": REF("specialProductionClient", "{{specialClientId}}"),
                   "quantity": 25.000, "price": 7.50, "status": "AWAITING_DISPATCH"}},
    desc="status is one of IN_PRODUCTION, AWAITING_DISPATCH, DELIVERED.")
 
 ep("09 - Factory Production", "List Special Production Runs", "GET", "/api/v1/factory/special-production/runs",
    query=[{"key": "locationId", "value": "{{factoryId}}"}],
-   resp=PAGED([{"id": "{{specialRunId}}", "orderRef": "SO-1", "batchRef": "SB-1", "clientId": "{{specialClientId}}",
+   resp=PAGED([{"id": "{{specialRunId}}", "orderRef": "SO-1", "batchRef": "SB-1", "client": REF("specialProductionClient", "{{specialClientId}}"),
                    "quantity": 25.000, "price": 7.50, "status": "AWAITING_DISPATCH"}]))
 
 # ============================== FACTORY TRADING ==============================
 ep("10 - Factory Trading", "Offer Trade", "POST", "/api/v1/factory/trades/offer",
    body={"fromLocationId": "{{factoryId2}}", "toLocationId": "{{factoryId}}", "stockItemId": "{{rawMaterialId}}",
          "quantity": 5, "reason": "SURPLUS", "expiresAt": "2026-12-31T00:00:00Z"},
-   resp={"data": {"id": "{{tradeOfferId}}", "ref": "FT-1", "fromLocationId": "{{factoryId2}}", "toLocationId": "{{factoryId}}",
-                  "stockItemId": "{{rawMaterialId}}", "quantity": 5.000, "reason": "SURPLUS", "status": "PENDING",
+   resp={"data": {"id": "{{tradeOfferId}}", "ref": "FT-1", "fromLocation": REF("location", "{{factoryId2}}"), "toLocation": REF("location", "{{factoryId}}"),
+                  "stockItem": REF("stockItem", "{{rawMaterialId}}"), "quantity": 5.000, "reason": "SURPLUS", "status": "PENDING",
                   "offeredAt": NOW, "expiresAt": "2026-12-31T00:00:00Z"}},
    tests=["const json = pm.response.json();", "pm.collectionVariables.set('tradeOfferId', json.data.id);"],
    desc="reason is one of SURPLUS, EXPIRY, CHANGEOVER, SCHEDULE, DISCONTINUED. Requires the receiving factory (fromLocationId) to actually hold the stock.")
 
 ep("10 - Factory Trading", "Respond to Trade (Accept)", "POST", "/api/v1/factory/trades/{{tradeOfferId}}/respond",
    body={"decision": "ACCEPTED"},
-   resp={"data": {"id": "{{tradeOfferId}}", "ref": "FT-1", "fromLocationId": "{{factoryId2}}", "toLocationId": "{{factoryId}}",
-                  "stockItemId": "{{rawMaterialId}}", "quantity": 5.000, "reason": "SURPLUS", "status": "ACCEPTED",
+   resp={"data": {"id": "{{tradeOfferId}}", "ref": "FT-1", "fromLocation": REF("location", "{{factoryId2}}"), "toLocation": REF("location", "{{factoryId}}"),
+                  "stockItem": REF("stockItem", "{{rawMaterialId}}"), "quantity": 5.000, "reason": "SURPLUS", "status": "ACCEPTED",
                   "offeredAt": NOW, "expiresAt": "2026-12-31T00:00:00Z"}})
 
 ep("10 - Factory Trading", "List Trade Offers", "GET", "/api/v1/factory/trades",
    query=[{"key": "locationId", "value": "{{factoryId}}"}],
-   resp=PAGED([{"id": "{{tradeOfferId}}", "ref": "FT-1", "fromLocationId": "{{factoryId2}}", "toLocationId": "{{factoryId}}",
-                   "stockItemId": "{{rawMaterialId}}", "quantity": 5.000, "reason": "SURPLUS", "status": "ACCEPTED",
+   resp=PAGED([{"id": "{{tradeOfferId}}", "ref": "FT-1", "fromLocation": REF("location", "{{factoryId2}}"), "toLocation": REF("location", "{{factoryId}}"),
+                   "stockItem": REF("stockItem", "{{rawMaterialId}}"), "quantity": 5.000, "reason": "SURPLUS", "status": "ACCEPTED",
                    "offeredAt": NOW, "expiresAt": "2026-12-31T00:00:00Z"}]))
 
 # ============================== NRS REFERENCE DATA ==============================
@@ -888,17 +917,17 @@ def ERR(code, message, details=None):
 
 
 CORR = {"id": "{{correspondentId}}", "code": "CR-1", "name": "Bisi Adeyemi", "phone": "0802 123 4567", "email": None,
-        "region": "Lagos Mainland", "locationId": "{{customerLocationId}}", "locationName": "Customer Home Plant", "status": "ASSIGNED",
+        "region": "Lagos Mainland", "location": REF("location", "{{customerLocationId}}"), "status": "ASSIGNED",
         "assignedAt": "2026-10-08", "customerCount": 1, "dealerCount": 1, "responsibilities": "Lagos dealers", "userLinked": False}
 CORR2 = dict(CORR, id="{{correspondent2Id}}", code="CR-2", name="Emeka Eze", phone="0805 999 0000", region="South West",
              responsibilities="Ibadan and Abeokuta walk-in accounts", customerCount=0, dealerCount=0)
-HISTORY_ROW = {"action": "ASSIGNED", "region": "Lagos Mainland", "locationId": "{{customerLocationId}}", "locationName": "Customer Home Plant",
+HISTORY_ROW = {"action": "ASSIGNED", "region": "Lagos Mainland", "location": REF("location", "{{customerLocationId}}"), 
                "effectiveFrom": "2026-10-08", "note": None, "performedBy": USER, "createdAt": NOW}
 CATEGORY = {"id": "{{diamondCategoryId}}", "name": "Diamond", "discountPct": 7.50, "suggestedCreditLimit": 5000000.00, "sortOrder": 5,
             "status": "ACTIVE", "dealerCount": 0}
-ENTRY = {"id": "{{adjustmentEntryId}}", "customerId": "{{dealerId}}", "balanceType": "WALLET", "entryType": "ADJUSTMENT_CREDIT",
+ENTRY = {"id": "{{adjustmentEntryId}}", "customer": REF("customer", "{{dealerId}}"), "balanceType": "WALLET", "entryType": "ADJUSTMENT_CREDIT",
          "amount": 2500.00, "balanceAfter": 2500.00, "reference": "WLT-1"}
-RECLASS = {"id": "{{reclassificationId}}", "customerId": "{{customerId}}", "customerCode": "CU-1", "customerName": "Chidi Nwosu",
+RECLASS = {"id": "{{reclassificationId}}", "customer": REF("customer", "{{customerId}}"), "customerCode": "CU-1", "customerName": "Chidi Nwosu",
            "fromType": "ORDINARY_CUSTOMER", "toType": "SPECIAL_CUSTOMER", "direction": "PROMOTION", "reason": "MET_PURCHASE_VOLUME",
            "note": "Crossed N5m in 90 days", "effectiveFrom": "2026-10-08", "status": "APPLIED", "fromCreditLimit": 0.00,
            "toCreditLimit": 0.00, "toDealerCategoryName": None, "walletBalanceCarriedOver": 0.00, "authorisedBy": USER,
@@ -1187,7 +1216,7 @@ ep(C, "F5 Customer Ledger (wallet)", "GET", "/api/v1/customers/{{dealerId}}/ledg
                   "totalDebits": 0.00, "items": [{"id": "{{adjustmentEntryId}}", "entryDate": "2026-10-08", "reference": "WLT-1",
                   "entryType": "ADJUSTMENT_CREDIT", "displayType": "Adjustment", "direction": "CREDIT",
                   "description": "Adjustment: Opening balance migration", "paymentMethod": "Wallet adjustment", "amount": 2500.00,
-                  "balanceAfter": 2500.00, "locationId": "{{customerLocationId}}", "sourceModule": "customers", "performedBy": USER,
+                  "balanceAfter": 2500.00, "location": REF("location", "{{customerLocationId}}"), "sourceModule": "customers", "performedBy": USER,
                   "reversible": True, "reversedByEntryId": None, "createdAt": NOW}],
                   "page": 0, "size": 50, "totalItems": 1, "totalPages": 1}},
    tests=["const json = pm.response.json();", "pm.test('closing balance 2500', () => pm.expect(json.data.closingBalance).to.eql(2500));"],
@@ -1352,8 +1381,8 @@ ep(C, "J2 My Ledger (self-service)", "GET", "/api/v1/customers/me/ledger",
 # ============================== DOCUMENTS (docs/03 §8) ==============================
 D = "13 - Documents"
 DOC = {"id": "8d2c1f0e-3333-4c4c-9a9a-000000000003", "ref": "WB-1", "docType": "WAYBILL", "sourceModule": "inventory",
-       "sourceId": "{{transferId}}", "locationId": "{{factoryId}}", "locationName": "Apex Plant A (Updated)",
-       "partyName": "Apex Plant B", "partyCustomerId": None, "valueAmount": None, "issuedBy": USER,
+       "sourceId": "{{transferId}}", "location": REF("location", "{{factoryId}}"), 
+       "partyName": "Apex Plant B", "partyCustomer": None, "valueAmount": None, "issuedBy": USER,
        "issuedAt": NOW, "status": "ISSUED", "reprintCount": 0, "pdfUrl": None}
 
 ep(D, "List Issued Documents", "GET", "/api/v1/documents",
@@ -1432,14 +1461,14 @@ ep(F, "Get Download Link (error: deleted)", "GET", "/api/v1/files/{{fileId}}/dow
 I = "15 - Inventory Extensions"
 DRIVER = {"id": "{{driverId}}", "name": "Musa Bello", "phone": "0803 000 1111", "vehicleNumber": "KN-482-ABC", "licenceNumber": "KAN-77821",
           "status": "ACTIVE", "createdAt": NOW}
-TRANSFER2 = {"id": "{{transfer2Id}}", "waybillRef": "WB-2", "sourceLocationId": "{{factoryId}}", "sourceLocationName": "Apex Plant A (Updated)",
-             "sourceLocationType": "FACTORY", "destinationLocationId": "{{factoryId2}}", "destinationLocationName": "Apex Plant B",
-             "destinationLocationType": "FACTORY", "status": "DISPATCHED", "driverId": "{{driverId}}", "driverName": "Musa Bello",
+TRANSFER2 = {"id": "{{transfer2Id}}", "waybillRef": "WB-2", "sourceLocation": REF("location", "{{factoryId}}"), 
+             "destinationLocation": REF("location", "{{factoryId2}}"), 
+             "status": "DISPATCHED", "driver": REF("driver", "{{driverId}}"), 
              "driverVehicle": "KN-482-ABC", "transferDate": "2026-10-08", "dispatchedAt": NOW, "receivedDate": None, "receivedAt": None,
              "receiptNote": None, "totalSent": 5.000, "totalRejected": 0, "waybillUrl": "/api/v1/inventory/stock/transfers/{{transfer2Id}}/waybill.pdf",
-             "lines": [{"id": "{{transfer2LineId}}", "stockItemId": "{{finishedProductId}}", "stockItemCode": "ITM-2", "stockItemName": "Premium Blend",
-                        "unit": "Kilogram", "qtySent": 5.000, "qtyReceived": None, "qtyRejected": None, "outstanding": 5.000, "fromLocationId": None,
-                        "fromLocationName": None, "receivedIntoLocationId": None, "receivedIntoLocationName": None, "batchNo": "B-2026-10-01",
+             "lines": [{"id": "{{transfer2LineId}}", "stockItem": REF("stockItem", "{{finishedProductId}}"), 
+                        "unit": "Kilogram", "qtySent": 5.000, "qtyReceived": None, "qtyRejected": None, "outstanding": 5.000, "fromLocation": None,
+                        "receivedIntoLocation": None, "batchNo": "B-2026-10-01",
                         "rejectionNote": None}]}
 
 ep(I, "Register Driver", "POST", "/api/v1/inventory/drivers",
@@ -1469,7 +1498,7 @@ ep(I, "Dispatch Transfer (with driver and batch)", "POST", "/api/v1/inventory/st
    resp={"data": TRANSFER2},
    tests=["const json = pm.response.json();", "pm.collectionVariables.set('transfer2Id', json.data.id);",
           "pm.collectionVariables.set('transfer2LineId', json.data.lines[0].id);",
-          "pm.test('driver taken from the register', () => pm.expect(json.data.driverName).to.eql('Musa Bello'));"],
+          "pm.test('driver taken from the register', () => pm.expect(json.data.driver.name).to.eql('Musa Bello'));"],
    desc="With driverId the driver's name and vehicle are filled in. Per line, fromLocationId picks the area the goods leave from (default the "
         "source) and availability is checked there. Rules: source must be ACTIVE (409 LOCATION_NOT_TRADING when pending opening), destination "
         "not SUSPENDED (409 LOCATION_SUSPENDED), and not the same location (400 SAME_LOCATION — use an area move). The waybill is registered "
@@ -1507,8 +1536,8 @@ ep(I, "Transfer Waybill PDF", "GET", "/api/v1/inventory/stock/transfers/{{transf
 ep(I, "Counted Adjustment", "POST", "/api/v1/inventory/quantity-adjustments",
    body={"locationId": "{{factoryId2}}", "stockItemId": "{{finishedProductId}}", "mode": "COUNTED", "countedQuantity": 2,
          "reason": "STOCKTAKE_VARIANCE", "note": "Monthly count", "otpChallengeId": None},
-   resp={"data": {"id": "5c1d2e3f-4444-4c4c-9a9a-000000000004", "ref": "QA-3", "locationId": "{{factoryId2}}", "locationName": "Apex Plant B",
-                  "rootLocationName": "Apex Plant B", "stockItemId": "{{finishedProductId}}", "productCode": "ITM-2", "productName": "Premium Blend",
+   resp={"data": {"id": "5c1d2e3f-4444-4c4c-9a9a-000000000004", "ref": "QA-3", "location": REF("location", "{{factoryId2}}"), 
+                  "rootLocationName": "Apex Plant B", "stockItem": REF("stockItem", "{{finishedProductId}}"), 
                   "unit": "Kilogram", "mode": "COUNTED", "direction": "NEGATIVE", "quantity": 2.000, "recordedQuantity": 4.000, "newQuantity": 2.000,
                   "reason": "STOCKTAKE_VARIANCE", "note": "Monthly count", "otpVerified": False, "performedBy": USER,
                   "at": NOW}},
@@ -1555,8 +1584,8 @@ ep(I, "Schedule a Price Change", "POST", "/api/v1/inventory/price-list/publish",
    resp={"data": {"batchRef": "PL-2", "effectiveFrom": "2099-01-01", "count": 1, "belowCostCount": 0, "costVisible": True}})
 
 ep(I, "Price List", "GET", "/api/v1/inventory/price-list", query=[{"key": "q", "value": "premium"}],
-   resp=PAGED([{"stockItemId": "{{finishedProductId}}", "code": "ITM-2", "product": "Premium Blend", "itemType": "FINISHED_PRODUCT", "categoryId": None,
-               "group": "Ungrouped", "unit": "Kilogram", "status": "ACTIVE", "priceId": "9e0f1a2b-5555-4c4c-9a9a-000000000005", "retailPrice": 5000.00,
+   resp=PAGED([{"stockItem": REF("stockItem", "{{finishedProductId}}"), "category": None,
+               "unit": "Kilogram", "status": "ACTIVE", "priceId": "9e0f1a2b-5555-4c4c-9a9a-000000000005", "retailPrice": 5000.00,
                "dealerPrice": 4500.00, "effectiveFrom": "2026-10-08", "batchRef": "PL-1",
                "nextChange": {"priceId": "{{scheduledPriceId}}", "effectiveFrom": "2099-01-01", "retailPrice": 5500.00, "dealerPrice": 5000.00},
                "landingCost": 0.00, "margin": 5000.00, "marginPct": 100.00, "dealerMargin": 4500.00, "belowCost": False}],
@@ -1581,14 +1610,14 @@ ep(I, "Change Scheduled Price", "PUT", "/api/v1/inventory/price-list/entries/{{s
 
 ep(I, "Group Stock Card", "GET", "/api/v1/inventory/stock/group-card",
    query=[{"key": "groupBy", "value": "CATEGORY"}, {"key": "groupId", "value": "{{categoryId}}"}, {"key": "locationId", "value": "{{factoryId}}"}],
-   resp={"data": {"header": {"groupType": "CATEGORY", "groupId": "{{categoryId}}", "groupName": "Beverages", "members": [], "openingBalance": 0,
+   resp={"data": {"header": {"groupType": "CATEGORY", "group": REF("category", "{{categoryId}}"), "members": [], "openingBalance": 0,
                              "memberCount": 0, "totalReceived": 0, "totalIssued": 0, "closingBalance": 0}, "rows": PAGED([])["data"]}},
    desc="Every movement of every product in the category, one running total. A showroom/factory includes its storage areas; from/to optional. "
         "Products with different units can't be added up (400 GROUP_MIXED_UNITS). groupBy=PARENT_PRODUCT needs product variants (not built yet).")
 
 ep(I, "Group Bin Card", "GET", "/api/v1/inventory/stock/group-bin-card",
    query=[{"key": "groupBy", "value": "CATEGORY"}, {"key": "groupId", "value": "{{categoryId}}"}, {"key": "locationId", "value": "{{factoryId}}"}],
-   resp={"data": {"header": {"groupType": "CATEGORY", "groupId": "{{categoryId}}", "groupName": "Beverages", "members": [], "openingBalance": 0,
+   resp={"data": {"header": {"groupType": "CATEGORY", "group": REF("category", "{{categoryId}}"), "members": [], "openingBalance": 0,
                              "memberCount": 0, "totalReceived": 0, "totalIssued": 0, "closingBalance": 0}, "rows": PAGED([])["data"]}},
    desc="Daily totals for the group.")
 
@@ -1600,16 +1629,16 @@ SHOWROOM = {"id": "{{showroomId}}", "code": "SHR-1", "name": "Showroom Ikeja", "
             "streetAddress": "48 Allen Avenue", "city": "Ikeja", "phone": "0803 000 1111", "email": "ikeja@apex.ng", "managerName": "Ngozi Eze",
             "manager": None, "dateOpened": "2026-10-01", "storageCapacity": "1,200 cartons", "operatingHours": "Mon–Sat 8am–7pm",
             "status": "ACTIVE", "vatRate": 7.50, "vatEnabled": True, "vatRegistrationNumber": None, "areas": AREAS,
-            "defaultReceivingLocationId": "{{warehouseAreaId}}", "defaultSellingLocationId": "{{floorAreaId}}", "createdAt": NOW, "warnings": []}
-ENTRY_LINE = {"lineNo": 1, "stockItemId": "{{directItemId}}", "code": "ITM-9", "description": "Local Groundnuts 500g", "quantity": 20.000,
+            "defaultReceivingLocation": REF("location", "{{warehouseAreaId}}"), "defaultSellingLocation": REF("location", "{{floorAreaId}}"), "createdAt": NOW, "warnings": []}
+ENTRY_LINE = {"lineNo": 1, "stockItem": REF("stockItem", "{{directItemId}}"), "code": "ITM-9", "description": "Local Groundnuts 500g", "quantity": 20.000,
               "unit": "Kilogram", "unitCost": 800.00, "lineCost": 16000.00, "inputVatRate": 7.50, "inputVatAmount": 1200.00,
               "sellingPrice": 1200.00, "batchNo": None, "expiryDate": None}
-RETURN = {"id": "{{returnId}}", "ref": "RT-1", "returnType": "NON_DEALER", "locationId": "{{showroomId}}", "locationName": "Showroom Ikeja",
+RETURN = {"id": "{{returnId}}", "ref": "RT-1", "returnType": "NON_DEALER", "location": REF("location", "{{showroomId}}"), 
           "customer": {"id": "8f8f8f8f-6666-4c4c-9a9a-000000000006", "code": "CU-5", "name": "Ada Nwosu", "type": "NO_CREDIT_WALKIN", "temporary": True},
           "originalDocumentRef": "RCT-552", "returnDate": "2026-10-09", "note": None,
-          "lines": [{"lineNo": 1, "stockItemId": "{{finishedProductId}}", "code": "ITM-2", "name": "Premium Blend", "quantity": 1.000, "unit": "Kilogram",
+          "lines": [{"lineNo": 1, "stockItem": REF("stockItem", "{{finishedProductId}}"), "code": "ITM-2", "name": "Premium Blend", "quantity": 1.000, "unit": "Kilogram",
                      "unitPrice": 5000.00, "lineValue": 5000.00, "reason": "PRODUCT_DEFECT", "condition": "RESALEABLE",
-                     "intoLocationId": "{{warehouseAreaId}}", "intoLocationName": "Showroom Ikeja — Warehouse", "note": None}],
+                     "intoLocation": REF("location", "{{warehouseAreaId}}"), "note": None}],
           "totalValue": 10000.00, "writeOffValue": 5000.00, "walletBalanceBefore": 0.00, "walletCredit": 10000.00, "walletBalanceAfter": 10000.00,
           "status": "POSTED", "reversedReason": None, "reversedAt": None, "processedBy": USER, "createdAt": NOW}
 
@@ -1679,21 +1708,21 @@ ep(S, "B1 Direct Stock Entry", "POST", "/api/v1/showroom/direct-entries",
          "supplierInvoiceNo": "INV-7781", "paymentTerms": "Cash on delivery", "receivedDate": "{{today}}", "vatCategoryId": None,
          "lines": [{"description": "Local Groundnuts 500g", "quantity": 20, "unitOfMeasureId": "{{unitId}}", "unitCost": 800, "inputVatRate": 7.5,
                     "sellingPrice": 1200, "dealerPrice": 1100}]},
-   resp={"data": {"id": "{{entryId}}", "ref": "DE-1", "kind": "DIRECT_ENTRY", "locationId": "{{showroomId}}", "locationName": "Showroom Ikeja",
-                  "intoLocationId": "{{warehouseAreaId}}", "intoLocationName": "Showroom Ikeja — Warehouse", "supplierId": None,
-                  "supplierName": "Independent local vendor", "manufacturerId": None, "partnerName": None, "partnerReference": "INV-7781",
+   resp={"data": {"id": "{{entryId}}", "ref": "DE-1", "kind": "DIRECT_ENTRY", "location": REF("location", "{{showroomId}}"), 
+                  "intoLocation": REF("location", "{{warehouseAreaId}}"), "supplier": None,
+                  "manufacturer": None, "partnerName": None, "partnerReference": "INV-7781",
                   "paymentTerms": "Cash on delivery", "checkedBy": None, "receivedDate": "2026-10-09", "lines": [ENTRY_LINE], "totalCost": 16000.00,
                   "totalInputVat": 1200.00, "enteredBy": USER, "createdAt": NOW, "costVisible": True, "warnings": []}},
    tests=["const json = pm.response.json();", "pm.collectionVariables.set('entryId', json.data.id);",
-          "pm.collectionVariables.set('directItemId', json.data.lines[0].stockItemId);",
-          "pm.test('goes to the warehouse by default', () => pm.expect(json.data.intoLocationId).to.eql(pm.collectionVariables.get('warehouseAreaId')));"],
+          "pm.collectionVariables.set('directItemId', json.data.lines[0].stockItem.id);",
+          "pm.test('goes to the warehouse by default', () => pm.expect(json.data.intoLocation.id).to.eql(pm.collectionVariables.get('warehouseAreaId')));"],
    desc="Perm showroom.intake.manage. Third-party goods not in the product register: each description becomes a DIRECT_ENTRY item held only at this "
         "showroom (the same description + unit restocks the same item), priced from sellingPrice/dealerPrice, costed at unitCost. Goods go to "
         "intoLocationId or the showroom's receiving area. Give supplierId (registered) or supplierName. inputVatRate is the VAT the supplier charged.")
 
 ep(S, "B2 Direct Entries Report", "GET", "/api/v1/showroom/direct-entries", query=[{"key": "q", "value": "groundnuts"}],
    resp=PAGED([{"entryId": "{{entryId}}", "lineId": "1a2b3c4d-7777-4c4c-9a9a-000000000007", "date": "2026-10-09", "ref": "DE-1", "kind": "DIRECT_ENTRY",
-               "locationId": "{{showroomId}}", "locationName": "Showroom Ikeja", "stockItemId": "{{directItemId}}", "productCode": "ITM-9",
+               "location": REF("location", "{{showroomId}}"), "stockItem": REF("stockItem", "{{directItemId}}"), 
                "product": "Local Groundnuts 500g", "party": "Independent local vendor", "partnerReference": "INV-7781", "batchNo": None, "expiryDate": None,
                "quantity": 20.000, "unit": "Kilogram", "unitCost": 800.00, "lineCost": 16000.00, "inputVatAmount": 1200.00}],
              summary={"entries": 1, "lines": 1, "units": 20, "totalCost": 16000.00, "inputVat": 1200.00, "costVisible": True}),
@@ -1741,17 +1770,17 @@ ep(S, "C2 Receive at Showroom", "POST", "/api/v1/inventory/stock/transfers/{{sho
    body={"lines": [{"stockTransferLineId": "{{showroomTransferLineId}}", "qtyReceived": 6, "qtyRejected": 0}]},
    resp={"data": dict(TRANSFER2, status="RECEIVED")},
    tests=["const json = pm.response.json();",
-          "pm.test('received into the showroom warehouse by default', () => pm.expect(json.data.lines[0].receivedIntoLocationId).to.eql(pm.collectionVariables.get('warehouseAreaId')));"],
+          "pm.test('received into the showroom warehouse by default', () => pm.expect(json.data.lines[0].receivedIntoLocation.id).to.eql(pm.collectionVariables.get('warehouseAreaId')));"],
    desc="With no receivedIntoLocationId, goods go to the showroom's default receiving area (Warehouse).")
 
 # ---- D. Area moves ----
 ep(S, "D1 Move Warehouse → Shop Floor", "POST", "/api/v1/showroom/area-moves",
    body={"fromLocationId": "{{warehouseAreaId}}", "toLocationId": "{{floorAreaId}}", "movedDate": None, "note": "Restock the floor",
          "lines": [{"stockItemId": "{{finishedProductId}}", "quantity": 2}]},
-   resp={"data": {"id": "2b3c4d5e-8888-4c4c-9a9a-000000000008", "ref": "AM-1", "rootLocationId": "{{showroomId}}", "rootLocationName": "Showroom Ikeja",
-                  "fromLocationId": "{{warehouseAreaId}}", "fromLocationName": "Warehouse", "toLocationId": "{{floorAreaId}}", "toLocationName": "Shop Floor",
+   resp={"data": {"id": "2b3c4d5e-8888-4c4c-9a9a-000000000008", "ref": "AM-1", "rootLocation": REF("location", "{{showroomId}}"), 
+                  "fromLocation": REF("location", "{{warehouseAreaId}}"), "toLocation": REF("location", "{{floorAreaId}}"), 
                   "movedDate": "2026-10-09", "note": "Restock the floor",
-                  "lines": [{"lineNo": 1, "stockItemId": "{{finishedProductId}}", "code": "ITM-2", "name": "Premium Blend", "quantity": 2.000, "unit": "Kilogram"}],
+                  "lines": [{"lineNo": 1, "stockItem": REF("stockItem", "{{finishedProductId}}"), "code": "ITM-2", "name": "Premium Blend", "quantity": 2.000, "unit": "Kilogram"}],
                   "movedBy": USER, "createdAt": NOW}},
    desc="Perm showroom.stock.manage. Both areas must belong to the same showroom/factory (400 NOT_SAME_LOCATION). Leaving a QUARANTINE area needs a note.")
 
@@ -1810,8 +1839,8 @@ ep(S, "E7 Return Reports", "GET", "/api/v1/showroom/returns", query=[{"key": "lo
 
 # ---- F. Reports ----
 ep(S, "F1 Comprehensive Stock (showroom)", "GET", "/api/v1/showroom/reports/comprehensive-stock", query=[{"key": "locationId", "value": "{{showroomId}}"}],
-   resp=PAGED([{"ln": 1, "stockItemId": "{{finishedProductId}}", "code": "ITM-2", "detail": "Premium Blend", "group": "Ungrouped", "source": "Finished Product",
-               "locationId": "{{warehouseAreaId}}", "area": "Warehouse", "qty": 5.000, "unit": "Kilogram", "unitCost": 0.00, "totalCost": 0.00,
+   resp=PAGED([{"ln": 1, "stockItem": REF("stockItem", "{{finishedProductId}}"), "group": "Ungrouped", "source": "Finished Product",
+               "location": REF("location", "{{warehouseAreaId}}"), "area": "Warehouse", "qty": 5.000, "unit": "Kilogram", "unitCost": 0.00, "totalCost": 0.00,
                "sellingPrice": 5000.00, "retailValue": 25000.00}],
              summary={"costVisible": True, "asAt": "2026-10-09", "lineItems": 4, "totalQuantity": 39, "totalStockValue": 64000.00, "retailValue": 115400.00, "storageAreas": 3}),
    tests=["const json = pm.response.json();", "pm.test('rows per area', () => pm.expect(json.data.items.map(r => r.area)).to.include('Warehouse'));"],
@@ -1821,7 +1850,7 @@ ep(S, "F1 Comprehensive Stock (showroom)", "GET", "/api/v1/showroom/reports/comp
 
 ep(S, "F2 General Transfer Report", "GET", "/api/v1/showroom/reports/transfers", query=[{"key": "route", "value": "FACTORY_TO_SHOWROOM"}],
    resp=PAGED([], summary={"transfers": 1, "totalQuantity": 6, "inTransit": 0, "locationsInvolved": 2}),
-   tests=["const json = pm.response.json();", "pm.test('the factory → showroom transfer is listed', () => pm.expect(json.data.items.map(r => r.transferId)).to.include(pm.collectionVariables.get('showroomTransferId')));"],
+   tests=["const json = pm.response.json();", "pm.test('the factory → showroom transfer is listed', () => pm.expect(json.data.items.map(r => r.transfer.id)).to.include(pm.collectionVariables.get('showroomTransferId')));"],
    desc="One row per transfer line. Filters: route (SHOWROOM_TO_SHOWROOM, FACTORY_TO_SHOWROOM, SHOWROOM_TO_FACTORY, FACTORY_TO_FACTORY), sourceLocationId, "
         "destinationLocationId, driverId, status (IN_TRANSIT|RECEIVED), hasRejections, stockItemId, transferDate/from/to/period. q: waybill, product, driver, vehicle.")
 
@@ -1843,11 +1872,11 @@ CATEGORY = {"id": "{{expenseCategoryId}}", "code": "EX-11", "name": "Generator D
 BANK = {"id": "{{bankAccountId}}", "code": "BA-1", "bankName": "Guaranty Trust Bank", "branch": "Ikeja GRA", "accountName": "Apex Industries Ltd",
         "accountNumber": "0123456789", "accountNumberMasked": "•••• 6789", "accountType": "COLLECTIONS", "currencyCode": "NGN",
         "sortCodeOrBic": "058152052", "authorisedSignatory": "Alice Admin", "relationshipManager": "Tunde Bakare", "dateOpened": "2024-02-01",
-        "openingBalance": 2000000.00, "openingBalanceDate": "2026-10-01", "currentBalance": 2000000.00, "locationId": None, "locationName": None,
+        "openingBalance": 2000000.00, "openingBalanceDate": "2026-10-01", "currentBalance": 2000000.00, "location": None, 
         "status": "ACTIVE", "createdAt": NOW}
-PETTY = {"id": "{{pettyCashAccountId}}", "code": "PC-IKJ", "name": "Ikeja Petty Cash", "kind": "PETTY_CASH", "locationId": "{{showroomId}}",
-         "locationName": "Showroom Ikeja", "currencyCode": "NGN", "openingBalance": 150000.00, "currentBalance": 150000.00, "floatLimit": 300000.00,
-         "belowFloat": False, "posTerminalRef": None, "posSettlementBankAccountId": None, "posSettlementBankCode": None, "status": "ACTIVE", "createdAt": NOW}
+PETTY = {"id": "{{pettyCashAccountId}}", "code": "PC-IKJ", "name": "Ikeja Petty Cash", "kind": "PETTY_CASH", "location": REF("location", "{{showroomId}}"),
+         "currencyCode": "NGN", "openingBalance": 150000.00, "currentBalance": 150000.00, "floatLimit": 300000.00,
+         "belowFloat": False, "posTerminalRef": None, "posSettlementBankAccount": None, "status": "ACTIVE", "createdAt": NOW}
 
 ep(A, "A1 List Expense Categories", "GET", "/api/v1/account/expense-categories",
    resp={"data": [dict(CATEGORY, id="{{bankChargesCategoryId}}", code="EX-10", name="Bank Charges", description=None, accountHead="FINANCE",
@@ -1920,7 +1949,7 @@ ep(A, "B6 Post Manual Bank Entry", "POST", "/api/v1/account/bank-accounts/{{bank
 
 ep(A, "B7 Post Manual Bank Entry (error: debit without category)", "POST", "/api/v1/account/bank-accounts/{{bankAccountId}}/manual-entries",
    body={"entryType": "DEBIT", "amount": 500, "entryDate": "{{today}}", "description": "Unclassified charge"}, status=400, status_text="Bad Request",
-   resp={"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"expenseCategoryId": "is required for a debit"}}},
+   resp={"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"expenseCategory": REF("expenseCategory", "is required for a debit")}}},
    expect_error={"status": 400, "code": "VALIDATION_FAILED"})
 
 ep(A, "B8 Bank Statement", "GET", "/api/v1/account/bank-accounts/{{bankAccountId}}/statement", query=[{"key": "period", "value": "THIS_MONTH"}],
@@ -2006,7 +2035,7 @@ ep(A, "C8 Cash Inflow/Outflow Statement", "GET", "/api/v1/account/cash-flow", qu
         "outflow": 1000.00, "balance": 149000.00, "accountCode": "PC-IKJ", "accountName": "Ikeja Petty Cash Box", "kind": "PETTY_CASH",
         "sourceType": "CASH_COUNT_ADJUSTMENT", "expenseCategoryName": None}],
        "page": 0, "size": 50, "totalItems": 2, "totalPages": 1, "totalIsEstimate": False, "facets": None,
-       "summary": {"scope": {"locationId": "{{showroomId}}", "locationName": "Showroom Ikeja",
+       "summary": {"scope": {"location": REF("location", "{{showroomId}}"), 
                              "accounts": [{"id": "{{pettyCashAccountId}}", "code": "PC-IKJ", "name": "Ikeja Petty Cash Box", "kind": "PETTY_CASH"},
                                           {"id": "{{tillAccountId}}", "code": "TILL-IKJ-01", "name": "Ikeja Till 1", "kind": "TILL"}]},
                    "period": {"from": "2026-10-01", "to": "2026-10-12"}, "openingCash": 0.00, "totalInflow": 150000.00, "totalOutflow": 1000.00, "closingCash": 149000.00},
@@ -2052,28 +2081,28 @@ ep(A, "D4 Exchange Rate History", "GET", "/api/v1/account/exchange-rates/history
                   "meta": {"appliedFilters": {}, "ignoredQualifiers": [], "suggestions": [], "matches": {}}}},
    desc="Paged, newest first. Filters: currencyCode, publishedBy, buyRate, from/to (publishedAt); q matches the FX-n reference.")
 
-FUNDING = {"id": "{{pettyFundingId}}", "ref": "PCF-1", "date": "2026-10-12", "pettyCashAccountId": "{{pettyCashAccountId}}", "pettyCashAccountCode": "PC-IKJ",
+FUNDING = {"id": "{{pettyFundingId}}", "ref": "PCF-1", "date": "2026-10-12", "pettyCashAccount": REF("cashAccount", "{{pettyCashAccountId}}"), 
            "sourceKind": "BANK", "sourceName": "BA-1 Guaranty Trust Bank", "amount": 50000.00, "transferOrChequeReference": "TRF-20931",
            "authorisedBy": "Alice Admin", "description": "Weekly top-up", "fundedBy": USER, "status": "POSTED", "reversalReason": None, "createdAt": NOW}
-PAYMENT = {"id": "{{pettyPaymentId}}", "ref": "PCP-1", "date": "2026-10-12", "pettyCashAccountId": "{{pettyCashAccountId}}", "pettyCashAccountCode": "PC-IKJ",
-           "expenseCategoryId": "{{expenseCategoryId}}", "category": "Generator Diesel", "amount": 12000.00, "paidTo": "Total filling station",
+PAYMENT = {"id": "{{pettyPaymentId}}", "ref": "PCP-1", "date": "2026-10-12", "pettyCashAccount": REF("cashAccount", "{{pettyCashAccountId}}"), 
+           "expenseCategory": REF("expenseCategory", "{{expenseCategoryId}}"), "amount": 12000.00, "paidTo": "Total filling station",
            "approvedBy": "Mrs Okafor", "description": "20 litres", "status": "POSTED", "reversalReason": None, "balanceAfter": 187000.00, "createdAt": NOW}
-ALLOCATION = {"id": "{{allocationId}}", "ref": "PPC-1", "date": NOW, "sourceName": "BA-1 Guaranty Trust Bank", "destinationLocationId": "{{showroomId}}",
-              "branch": "Showroom Ikeja", "destinationAccountCode": "PC-IKJ", "purpose": "Branch float for October", "sentBy": USER,
+ALLOCATION = {"id": "{{allocationId}}", "ref": "PPC-1", "date": NOW, "sourceName": "BA-1 Guaranty Trust Bank", "destinationLocation": REF("location", "{{showroomId}}"),
+              "destinationAccountCode": "PC-IKJ", "purpose": "Branch float for October", "sentBy": USER,
               "amount": 20000.00, "status": "PENDING", "respondedBy": None, "respondedOn": None, "note": None}
-COST = {"id": "{{runningCostId}}", "ref": None, "date": "2026-10-12", "description": "Generator servicing", "expenseCategoryId": "{{expenseCategoryId}}",
-        "category": "Generator Diesel", "payee": "CoolAir Ltd", "method": "BANK_TRANSFER", "payingAccountId": "{{bankAccountId}}", "payingAccount": "BA-1",
+COST = {"id": "{{runningCostId}}", "ref": None, "date": "2026-10-12", "description": "Generator servicing", "expenseCategory": REF("expenseCategory", "{{expenseCategoryId}}"),
+        "payee": "CoolAir Ltd", "method": "BANK_TRANSFER", "payingAccountId": "{{bankAccountId}}", "payingAccount": "BA-1",
         "amount": 45000.00, "inputVatAmount": 3139.53, "supplierTin": "12345678-0001", "invoiceOrReceiptNo": "INV-889", "chequeNumber": None,
-        "locationId": None, "locationName": None, "status": "DRAFT", "exceedsMonthlyCap": False, "submittedBy": None, "submittedAt": None,
+        "location": None, "status": "DRAFT", "exceedsMonthlyCap": False, "submittedBy": None, "submittedAt": None,
         "approvedBy": None, "approvedAt": None, "rejectionReason": None, "reversalReason": None, "createdAt": NOW}
 COST_BODY = {"expenseCategoryId": "{{expenseCategoryId}}", "payee": "CoolAir Ltd", "amount": 45000, "paymentMethod": "BANK_TRANSFER",
              "payingBankAccountId": "{{bankAccountId}}", "invoiceOrReceiptNo": "INV-889", "inputVatAmount": 3139.53, "supplierTin": "12345678-0001",
              "paymentDate": "{{today}}", "description": "Generator servicing", "submit": False}
-DISBURSEMENT = {"id": "{{disbursementId}}", "ref": "BF-1", "date": NOW, "destinationLocationId": "{{showroomId}}", "branch": "Showroom Ikeja",
+DISBURSEMENT = {"id": "{{disbursementId}}", "ref": "BF-1", "date": NOW, "destinationLocation": REF("location", "{{showroomId}}"), 
                 "purpose": "Restocking float", "channel": "BANK_TRANSFER", "sourceAccount": "BA-1", "destinationAccount": "BA-2", "sentBy": USER,
                 "sent": 300000.00, "received": None, "shortfall": None, "shortfallReason": None, "status": "AWAITING", "confirmedBy": None,
                 "dateReceived": None, "rejectionReason": None}
-LODGEMENT = {"id": "{{lodgementId}}", "ref": "LDG-1", "date": "2026-10-12", "locationId": "{{showroomId}}", "showroom": "Showroom Ikeja",
+LODGEMENT = {"id": "{{lodgementId}}", "ref": "LDG-1", "date": "2026-10-12", "location": REF("location", "{{showroomId}}"), 
              "cashAccountCode": "TILL-IKJ-01", "takings": 32500.00, "banked": 30000.00, "retained": 2500.00, "bank": "BA-1 Guaranty Trust Bank",
              "accountNumberMasked": "•••• 6789", "depositedBy": USER, "teller": "TLR-8812", "status": "AWAITING_CONFIRMATION",
              "confirmedBy": None, "confirmedAt": None, "rejectionReason": None}
@@ -2096,7 +2125,7 @@ ep(A, "F2 Fund Petty Cash (error: float limit)", "POST", "/api/v1/account/petty-
 
 ep(A, "F3 List Petty Cash Fundings", "GET", "/api/v1/account/petty-cash/fundings", query=[{"key": "pettyCashAccountId", "value": "{{pettyCashAccountId}}"}],
    resp={"data": {"items": [FUNDING], "page": 0, "size": 50, "totalItems": 1, "totalPages": 1, "totalIsEstimate": False, "facets": None,
-                  "summary": {"pettyCashAccountId": "{{pettyCashAccountId}}", "code": "PC-IKJ", "openingBalance": 150000.00, "fundedToDate": 50000.00,
+                  "summary": {"pettyCashAccount": REF("cashAccount", "{{pettyCashAccountId}}"), "code": "PC-IKJ", "openingBalance": 150000.00, "fundedToDate": 50000.00,
                               "utilisedToDate": 0.00, "currentBalance": 199000.00},
                   "meta": {"appliedFilters": {}, "ignoredQualifiers": [], "suggestions": [], "matches": {}}}},
    desc="Perm accounting.read. Paged, newest first. Filters: pettyCashAccountId, locationId, sourceKind, fundedBy, status, amount, from/to (fundingDate). "
@@ -2295,16 +2324,16 @@ ep(A, "E1 Global Search: Bank Entry by Reference", "GET", "/api/v1/search",
           "pm.test('the entry is found', () => pm.expect(json.data.groups.find(g => g.type === 'bank-transaction').hits.length).to.eql(1));"],
    desc="The header search finds a bank entry by its exact reference (perm accounting.read), within the accounts the caller can see.")
 
-RECEIPT = {"id": "{{pendingReceiptId}}", "ref": "RCT-2", "kind": "RECEIPT", "receivedAt": NOW, "locationId": "{{showroomId}}", "locationName": "Showroom Ikeja",
-           "cashAccountId": None, "till": None, "cashier": USER, "customerId": "{{dealerId}}",
+RECEIPT = {"id": "{{pendingReceiptId}}", "ref": "RCT-2", "kind": "RECEIPT", "receivedAt": NOW, "location": REF("location", "{{showroomId}}"), 
+           "cashAccount": None, "cashier": USER, "customer": REF("customer", "{{dealerId}}"),
            "customerName": "Okafor & Sons Distribution", "channel": "FUND_TRANSFER", "amount": 200000.00, "sourceModule": "account",
-           "sourceType": "WALLET_FUNDING", "sourceRef": "WF-2", "incomeCategory": None, "description": None, "receivingBankAccountId": "{{bankAccountId}}",
-           "receivingBank": "BA-1 Guaranty Trust Bank", "terminalRef": None, "payerReference": "NIP-000123", "confirmationStatus": "PENDING",
+           "sourceType": "WALLET_FUNDING", "sourceRef": "WF-2", "incomeCategory": None, "description": None, "receivingBankAccount": REF("bankAccount", "{{bankAccountId}}"),
+           "terminalRef": None, "payerReference": "NIP-000123", "confirmationStatus": "PENDING",
            "reviewedBy": None, "reviewedAt": None, "declineNote": None, "status": "ISSUED", "voidReason": None}
-WFUND = {"id": "{{walletFundingId}}", "ref": "WF-1", "date": NOW, "customerId": "{{dealerId}}", "customerCode": "DLR-1", "customerName": "Okafor & Sons Distribution",
-         "balanceType": "WALLET", "channel": "CASH", "amount": 75000.00, "locationId": "{{showroomId}}", "locationName": "Showroom Ikeja",
-         "receiptId": "{{fundingReceiptId}}", "receiptRef": "RCT-1", "confirmationStatus": "NOT_REQUIRED", "status": "CONFIRMED", "createdBy": USER}
-WITHDRAWAL = {"id": "{{withdrawalId}}", "ref": "WW-1", "date": "2026-10-12", "customerId": "{{dealerId}}", "customerCode": "DLR-1",
+WFUND = {"id": "{{walletFundingId}}", "ref": "WF-1", "date": NOW, "customer": REF("customer", "{{dealerId}}"), "customerCode": "DLR-1", "customerName": "Okafor & Sons Distribution",
+         "balanceType": "WALLET", "channel": "CASH", "amount": 75000.00, "location": REF("location", "{{showroomId}}"), 
+         "receipt": REF("receipt", "{{fundingReceiptId}}"), "confirmationStatus": "NOT_REQUIRED", "status": "CONFIRMED", "createdBy": USER}
+WITHDRAWAL = {"id": "{{withdrawalId}}", "ref": "WW-1", "date": "2026-10-12", "customer": REF("customer", "{{dealerId}}"), "customerCode": "DLR-1",
               "customer": "Okafor & Sons Distribution", "balanceType": "WALLET", "initiatedBy": "DEALER", "reason": "DEALER_REQUEST",
               "balanceBefore": 275000.00, "amount": 20000.00, "balanceAfter": 255000.00, "payoutKind": "BANK", "payoutAccount": "BA-1",
               "paidVia": "Transfer to Access 0123456789", "otp": "Verified", "authorisedBy": None, "processedBy": USER,
@@ -2312,7 +2341,7 @@ WITHDRAWAL = {"id": "{{withdrawalId}}", "ref": "WW-1", "date": "2026-10-12", "cu
 ep(A, "K1 Fund Dealer Wallet (cash)", "POST", "/api/v1/account/wallet-fundings",
    body={"customerId": "{{dealerId}}", "balanceType": "WALLET", "channel": "CASH", "amount": 75000, "locationId": "{{showroomId}}", "cashAccountId": "{{tillAccountId}}"},
    resp={"data": WFUND},
-   tests=["const json = pm.response.json();", "pm.collectionVariables.set('walletFundingId', json.data.id);", "pm.collectionVariables.set('fundingReceiptId', json.data.receiptId);",
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('walletFundingId', json.data.id);", "pm.collectionVariables.set('fundingReceiptId', json.data.receipt.id);",
           "pm.test('cash is credited at once', () => pm.expect(json.data.status).to.eql('CONFIRMED'));"],
    desc="Perm accounting.wallet.fund (Cashiers have it). WALLET for Authorised Dealers, DEPOSIT for Special Customers (400 BALANCE_TYPE_NOT_ALLOWED otherwise). "
         "Creates a receipt (RCT-n) and the funding (WF-n). CASH (into cashAccountId, a till or vault at locationId) credits the wallet at once; "
@@ -2323,7 +2352,7 @@ ep(A, "K2 Fund Dealer Wallet (fund transfer, awaits confirmation)", "POST", "/ap
          "receivingBankAccountId": "{{bankAccountId}}", "payerReference": "NIP-000123"},
    resp={"data": dict(WFUND, ref="WF-2", channel="FUND_TRANSFER", amount=200000.00, receiptId="{{pendingReceiptId}}", receiptRef="RCT-2",
                       confirmationStatus="PENDING", status="AWAITING_CONFIRMATION")},
-   tests=["const json = pm.response.json();", "pm.collectionVariables.set('pendingReceiptId', json.data.receiptId);",
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('pendingReceiptId', json.data.receipt.id);",
           "pm.test('waits for Accounts', () => pm.expect(json.data.status).to.eql('AWAITING_CONFIRMATION'));"])
 
 ep(A, "K3 Fund Wallet (error: not a dealer)", "POST", "/api/v1/account/wallet-fundings",
@@ -2422,7 +2451,7 @@ ep(A, "M2 Tenderable: General Report", "GET", "/api/v1/account/tenderable/genera
    desc="Per cashier for the period (locationId, from, to), with grand totals. GET /tenderable/receipts is the Receipt Track (the receipts list).")
 
 ep(A, "M3 Tenderable: Wallet Funds", "GET", "/api/v1/account/tenderable/wallet-funds", query=[{"key": "customerId", "value": "{{dealerId}}"}],
-   resp=PAGED([{"ref": "WF-2", "date": NOW, "customerId": "{{dealerId}}", "dealer": "DLR-1 Okafor & Sons Distribution", "method": "Fund transfer",
+   resp=PAGED([{"ref": "WF-2", "date": NOW, "customer": REF("customer", "{{dealerId}}"), "dealer": "DLR-1 Okafor & Sons Distribution", "method": "Fund transfer",
                 "bank": "BA-1 Guaranty Trust Bank", "amount": 200000.00, "confirmedBy": USER, "status": "Confirmed"}],
               {"total": 275000.00, "confirmed": 275000.00, "awaiting": 0.00}),
    desc="Dealers' wallet fundings plus the return credits Customers posted for them (method \"Return credit\").")
@@ -2449,13 +2478,13 @@ ep(A, "N3 Void Other Income", "POST", "/api/v1/account/receipts/{{otherIncomeId}
         "400 INSUFFICIENT_WALLET_BALANCE); sales and invoice payments are voided in their own modules (409 REVERSE_IN_SOURCE_MODULE).")
 
 ep(A, "O1 VAT per Location", "GET", "/api/v1/account/vat-control/locations",
-   resp={"data": {"disabledCount": 0, "locations": [{"locationId": "{{showroomId}}", "code": "SHR-1", "name": "Showroom Ikeja", "type": "SHOWROOM",
+   resp={"data": {"disabledCount": 0, "locations": [{"location": REF("location", "{{showroomId}}"), 
                   "registration": None, "rate": 7.50, "enabled": True, "effectiveFrom": "2026-10-12", "updatedBy": USER, "scheduled": None}]}},
    desc="Perm accounting.read. Each showroom/factory's VAT in force today and any scheduled change; disabledCount drives the screen's warning.")
 
 ep(A, "O2 Schedule a VAT Change", "POST", "/api/v1/account/vat-control/locations/{{showroomId}}",
    body={"vatEnabled": True, "vatRate": 10, "vatRegistrationNumber": "NG-VAT-4471029", "effectiveFrom": "2030-01-01", "note": "Rate review"},
-   resp={"data": {"disabledCount": 0, "locations": [{"locationId": "{{showroomId}}", "code": "SHR-1", "name": "Showroom Ikeja", "type": "SHOWROOM",
+   resp={"data": {"disabledCount": 0, "locations": [{"location": REF("location", "{{showroomId}}"), 
                   "registration": None, "rate": 7.50, "enabled": True, "effectiveFrom": "2026-10-12", "updatedBy": USER,
                   "scheduled": {"rate": 10.00, "enabled": True, "effectiveFrom": "2030-01-01"}}]}},
    desc="Perm accounting.vat.manage. effectiveFrom today or later (past periods keep the VAT they were charged at); one change per location per date "
@@ -2473,7 +2502,7 @@ ep(A, "O4 VAT History for a Location", "GET", "/api/v1/account/vat-control/locat
 # ============================== ELECTRONIC INVOICING (docs/08, slice 1) ==============================
 I = "18 - Electronic Invoicing"
 
-INVOICE_LINE = {"id": "6d1f0c2e-1b7a-4a8e-9f61-3d2a1c9b7e01", "lineNo": 1, "stockItemId": "{{finishedProductId}}", "code": "ITM-2", "name": "Citrus Drink 50cl",
+INVOICE_LINE = {"id": "6d1f0c2e-1b7a-4a8e-9f61-3d2a1c9b7e01", "lineNo": 1, "stockItem": REF("stockItem", "{{finishedProductId}}"), "code": "ITM-2", "name": "Citrus Drink 50cl",
                 "quantity": 12.000, "unit": "Cartons", "nrsUnitCode": None, "unitPrice": 4100.00, "discountAmount": 0.00, "discountRate": None,
                 "lineNet": 49200.00, "vatCategory": "STANDARD_RATE", "nrsTaxCategory": "STANDARD_VAT", "vatRate": 7.50, "vatAmount": 3690.00,
                 "lineTotal": 52890.00, "isService": False, "hsnCode": None, "hsnSectionCode": "VI",
@@ -2484,7 +2513,7 @@ INVOICE = {"id": "{{invoiceId}}", "number": "INV-1", "status": "ISSUED", "displa
            "issuedBy": USER, "issuedAt": NOW, "createdAt": NOW, "showroom": {"id": "{{showroomId}}", "name": "Showroom Ikeja"},
            "issuer": {"tradingName": "Apex Industries", "legalName": None, "tin": None, "vatRegistrationNumber": None, "nrsBusinessId": None,
                       "email": None, "phone": "08030000000", "address": "Lagos", "locationName": "Showroom Ikeja", "locationAddress": None},
-           "buyer": {"customerId": "{{dealerId}}", "code": "DLR-1", "name": "Okafor & Sons Distribution", "type": "AUTHORISED_DEALER", "email": None,
+           "buyer": {"customer": REF("customer", "{{dealerId}}"), "code": "DLR-1", "name": "Okafor & Sons Distribution", "type": "AUTHORISED_DEALER", "email": None,
                      "phone": "+2348031234567", "tin": None, "businessDescription": None, "address": None, "stateCode": "NG-LA", "lgaCode": None, "countryCode": "NG"},
            "lines": [INVOICE_LINE],
            "totals": {"lineExtension": 49200.00, "discount": 0.00, "vat": 3690.00, "total": 52890.00, "paid": 0.00, "credited": 0.00, "balance": 52890.00,
@@ -2497,8 +2526,8 @@ INVOICE = {"id": "{{invoiceId}}", "number": "INV-1", "status": "ISSUED", "displa
            "voidReason": None, "voidedBy": None, "voidedAt": None}
 
 INVOICE_ROW = {"id": "{{invoiceId}}", "number": "INV-1", "status": "ISSUED", "displayStatus": "Issued", "issued": "2026-10-15", "due": "2026-11-14",
-               "customerId": "{{dealerId}}", "customer": "Okafor & Sons Distribution", "customerType": "AUTHORISED_DEALER", "locationId": "{{showroomId}}",
-               "showroom": "Showroom Ikeja", "sourceType": "POS_SALE", "source": "POS sale", "sourceRef": "SBX-1", "proForma": None, "waybills": [],
+               "customer": REF("customer", "{{dealerId}}"), "customer": "Okafor & Sons Distribution", "customerType": "AUTHORISED_DEALER", "location": REF("location", "{{showroomId}}"),
+               "sourceType": "POS_SALE", "source": "POS sale", "sourceRef": "SBX-1", "proForma": None, "waybills": [],
                "total": 52890.00, "paid": 0.00, "credited": 0.00, "balance": 52890.00, "daysOverdue": 0, "delivery": "No email on file"}
 
 INVOICE_SUMMARY = {"invoicesOnFile": 3, "combinedValue": 105780.00, "outstanding": 105780.00, "overdue": 0.00, "fromProForma": 1, "fromPos": 2, "withWaybills": 0}
@@ -2542,7 +2571,7 @@ ep(I, "B2 Issue Invoice to a Walk-in", "POST", "/api/v1/invoicing/sandbox/invoic
    body={"locationId": "{{showroomId}}", "walkInBuyer": {"name": "Ada Obi", "phone": "08031234567", "email": "ada@example.com"},
          "paymentTermsDays": 0, "lines": [{"stockItemId": "{{finishedProductId}}", "quantity": 2, "unitPrice": 4100, "discountRate": 5}]},
    resp={"data": dict(INVOICE, id="{{walkInInvoiceId}}", number="INV-2", dueDate="2026-10-15", paymentTermsDays=0,
-                      buyer={"customerId": None, "code": None, "name": "Ada Obi", "type": None, "email": "ada@example.com", "phone": "08031234567", "tin": None,
+                      buyer={"customer": None, "code": None, "name": "Ada Obi", "type": None, "email": "ada@example.com", "phone": "08031234567", "tin": None,
                              "businessDescription": None, "address": None, "stateCode": None, "lgaCode": None, "countryCode": "NG"},
                       lines=[dict(INVOICE_LINE, quantity=2.000, discountAmount=410.00, discountRate=5.0000, lineNet=7790.00, vatAmount=584.25, lineTotal=8374.25)],
                       totals={"lineExtension": 7790.00, "discount": 410.00, "vat": 584.25, "total": 8374.25, "paid": 0.00, "credited": 0.00, "balance": 8374.25,
@@ -2609,7 +2638,7 @@ ep(I, "C6 Invoice PDF", "GET", "/api/v1/invoicing/invoices/{{invoiceId}}/invoice
 
 ep(I, "C7 Invoice Picker (open only)", "GET", "/api/v1/invoicing/invoices/lookup",
    query=[{"key": "customerId", "value": "{{dealerId}}"}, {"key": "openOnly", "value": "true"}],
-   resp={"data": [{"id": "{{invoiceId}}", "number": "INV-1", "customerId": "{{dealerId}}", "customer": "Okafor & Sons Distribution", "issued": "2026-10-15",
+   resp={"data": [{"id": "{{invoiceId}}", "number": "INV-1", "customer": REF("customer", "{{dealerId}}"), "customer": "Okafor & Sons Distribution", "issued": "2026-10-15",
                    "total": 52890.00, "balance": 52890.00, "displayStatus": "Issued", "label": "INV-1 · Okafor & Sons Distribution · ₦52,890.00"}]})
 
 ep(I, "C8 Invoice for a Sale or Pro-forma Reference", "GET", "/api/v1/invoicing/invoices/lookup-source",
@@ -2676,7 +2705,7 @@ ep(I, "E4 Void and Reissue to Another Customer", "POST", "/api/v1/invoicing/invo
 
 ep(I, "E5 Voided Invoices", "GET", "/api/v1/invoicing/invoices/voided",
    resp=PAGED([{"id": "{{invoiceId}}", "number": "INV-1", "voidReason": "Billed to the wrong customer at the till", "customer": "Okafor & Sons Distribution",
-                "issued": "2026-10-15", "total": 52890.00, "voidedBy": USER, "voidedAt": NOW, "replacedById": "{{reissuedInvoiceId}}", "replacedBy": "INV-4"}],
+                "issued": "2026-10-15", "total": 52890.00, "voidedBy": USER, "voidedAt": NOW, "replacedBy": REF("invoice", "{{reissuedInvoiceId}}")}],
               {"count": 2, "value": 61264.25}))
 
 ep(I, "E6 Global Search: Invoice", "GET", "/api/v1/search", query=[{"key": "q", "value": "{{invoiceNumber}}"}, {"key": "types", "value": "invoice"}],
@@ -2685,20 +2714,20 @@ ep(I, "E6 Global Search: Invoice", "GET", "/api/v1/search", query=[{"key": "q", 
         "route": "/invoicing/invoices/{{invoiceId}}"}], "more": False, "moreRoute": "/invoicing/invoices?q=INV-1"}]}},
    desc="Global search provider invoice (perm invoicing.invoice.read).")
 
-PAYMENT_VIEW = {"id": "{{cashPaymentId}}", "date": NOW, "method": "CASH", "methodLabel": "Cash", "amount": 20000.00, "receiptId": "6c1f2d40-8a8e-4f7a-9d0e-0b1c2d3e4f50",
-                "receipt": "RCT-4", "status": "Confirmed", "source": "RECORDED", "reversalReason": None}
+PAYMENT_VIEW = {"id": "{{cashPaymentId}}", "date": NOW, "method": "CASH", "methodLabel": "Cash", "amount": 20000.00, "receipt": REF("receipt", "6c1f2d40-8a8e-4f7a-9d0e-0b1c2d3e4f50"),
+                "status": "Confirmed", "source": "RECORDED", "reversalReason": None}
 CREDIT_NOTE = {"id": "{{creditNoteId}}", "number": "CN-1", "invoiceTypeCode": "380", "invoice": {"id": "{{draftInvoiceId}}", "number": "INV-3"},
-               "invoiceIssueDate": "2026-10-15", "customerId": "{{specialId}}", "customer": "Grace Foods", "showroom": {"id": "{{showroomId}}", "name": "Showroom Ikeja"},
+               "invoiceIssueDate": "2026-10-15", "customer": REF("customer", "{{specialId}}"), "customer": "Grace Foods", "showroom": {"id": "{{showroomId}}", "name": "Showroom Ikeja"},
                "reason": "PRICING_ERROR", "reasonNote": "Agreed price was 3,800 a carton",
                "lines": [{"id": "0d7e3b8a-2c1f-4e5a-9b6c-7d8e9f0a1b2c", "invoiceLineId": "{{creditLineId}}", "lineNo": 1, "code": "ITM-2", "name": "Citrus Drink 50cl",
                           "quantity": None, "amount": 4000.00, "unitPrice": 4000.00, "vatRate": 7.50, "lineNet": 4000.00, "vatAmount": 300.00, "lineTotal": 4300.00}],
                "lineExtension": 4000.00, "vat": 300.00, "total": 4300.00, "appliedToInvoice": 4300.00, "excessRefunded": 0.00, "issuedBy": USER, "issuedAt": NOW}
-DELIVERY_VIEW = {"id": "5b2c9d1e-3f4a-4b5c-8d6e-7f8091a2b3c4", "invoiceId": "{{draftInvoiceId}}", "number": "INV-3", "recipient": "accounts@gracefoods.ng",
+DELIVERY_VIEW = {"id": "5b2c9d1e-3f4a-4b5c-8d6e-7f8091a2b3c4", "invoice": REF("invoice", "{{draftInvoiceId}}"), "recipient": "accounts@gracefoods.ng",
                  "template": "STANDARD", "trigger": "MANUAL", "status": "Queued", "requestedAt": NOW, "sentAt": None, "requestedBy": USER}
 
 ep(I, "F1 Record Cash Payment", "POST", "/api/v1/invoicing/invoices/{{reissuedInvoiceId}}/payments",
    body={"method": "CASH", "amount": 20000, "cashAccountId": "{{tillAccountId}}"},
-   resp={"data": {"paymentId": "{{cashPaymentId}}", "receiptId": "6c1f2d40-8a8e-4f7a-9d0e-0b1c2d3e4f50", "receiptRef": "RCT-4", "confirmationStatus": "NOT_REQUIRED",
+   resp={"data": {"paymentId": "{{cashPaymentId}}", "receipt": REF("receipt", "6c1f2d40-8a8e-4f7a-9d0e-0b1c2d3e4f50"), "confirmationStatus": "NOT_REQUIRED",
                   "invoice": dict(INVOICE, id="{{reissuedInvoiceId}}", displayStatus="Partially Paid")}},
    tests=["const json = pm.response.json();", "pm.collectionVariables.set('cashPaymentId', json.data.paymentId);",
           "pm.test('partially paid', () => pm.expect(json.data.invoice.displayStatus).to.eql('Partially Paid'));"],
@@ -2709,9 +2738,9 @@ ep(I, "F1 Record Cash Payment", "POST", "/api/v1/invoicing/invoices/{{reissuedIn
 
 ep(I, "F2 Record Transfer Payment (awaits confirmation)", "POST", "/api/v1/invoicing/invoices/{{reissuedInvoiceId}}/payments",
    body={"method": "FUND_TRANSFER", "amount": 10000, "receivingBankAccountId": "{{bankAccountId}}", "payerReference": "GTB/77310"},
-   resp={"data": {"paymentId": "8e9f0a1b-2c3d-4e5f-8a9b-0c1d2e3f4a5b", "receiptId": "{{transferReceiptId}}", "receiptRef": "RCT-5", "confirmationStatus": "PENDING",
+   resp={"data": {"paymentId": "8e9f0a1b-2c3d-4e5f-8a9b-0c1d2e3f4a5b", "receipt": REF("receipt", "{{transferReceiptId}}"), "confirmationStatus": "PENDING",
                   "invoice": dict(INVOICE, id="{{reissuedInvoiceId}}", displayStatus="Partially Paid")}},
-   tests=["const json = pm.response.json();", "pm.collectionVariables.set('transferReceiptId', json.data.receiptId);",
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('transferReceiptId', json.data.receipt.id);",
           "pm.test('awaits confirmation', () => pm.expect(json.data.confirmationStatus).to.eql('PENDING'));"],
    desc="Counted as paid at once and flagged in totals.pendingConfirmation until Accounts confirms it in the receipt queue.")
 
@@ -2760,7 +2789,7 @@ ep(I, "G4 Issue Credit Note (error: more than the line)", "POST", "/api/v1/invoi
    expect_error={"status": 400, "code": "CREDIT_EXCEEDS_LINE"})
 
 ep(I, "G5 List Credit Notes", "GET", "/api/v1/invoicing/credit-notes", query=[{"key": "invoiceId", "value": "{{draftInvoiceId}}"}, {"key": "facets", "value": "reason"}],
-   resp=PAGED([{"id": "{{creditNoteId}}", "number": "CN-1", "invoiceId": "{{draftInvoiceId}}", "invoiceNumber": "INV-3", "customerId": "{{specialId}}",
+   resp=PAGED([{"id": "{{creditNoteId}}", "number": "CN-1", "invoice": REF("invoice", "{{draftInvoiceId}}"), "customer": REF("customer", "{{specialId}}"),
                 "customer": "Grace Foods", "showroom": "Showroom Ikeja", "reason": "PRICING_ERROR", "reasonNote": "Agreed price was 3,800 a carton",
                 "total": 4300.00, "appliedToInvoice": 4300.00, "excessRefunded": 0.00, "issuedBy": USER, "issuedAt": NOW}],
               {"count": 2, "total": 12900.00, "excessToWallets": 0.00}),
@@ -2789,7 +2818,7 @@ ep(I, "H3 E-mail (error: void invoice)", "POST", "/api/v1/invoicing/invoices/{{w
 ep(I, "H4 Invoice E-mail History", "GET", "/api/v1/invoicing/invoices/{{draftInvoiceId}}/deliveries", resp={"data": [DELIVERY_VIEW]})
 
 ep(I, "H5 Deliveries", "GET", "/api/v1/invoicing/deliveries", query=[{"key": "facets", "value": "delivery"}],
-   resp=PAGED([{"invoiceId": "{{draftInvoiceId}}", "number": "INV-3", "issued": "2026-10-15", "customer": "Grace Foods", "email": "accounts@gracefoods.ng",
+   resp=PAGED([{"invoice": REF("invoice", "{{draftInvoiceId}}"), "number": "INV-3", "issued": "2026-10-15", "customer": "Grace Foods", "email": "accounts@gracefoods.ng",
                 "showroom": "Showroom Ikeja", "total": 86000.00, "delivery": "Not sent", "deliveryCode": "NOT_SENT", "lastAttemptAt": NOW, "attempts": 2}],
               {"issued": 3, "delivered": 0, "deliveredPct": 0.0, "failed": 0, "noEmailCount": 1, "noEmailValue": 52890.00}),
    desc="Issued invoices with their e-mail state: delivery SENT, FAILED, NO_EMAIL or NOT_SENT (queued or never sent). The same delivery filter works on the history list.")
@@ -2800,11 +2829,11 @@ ep(I, "H6 Bulk Export (ZIP of PDFs)", "GET", "/api/v1/invoicing/invoices/export.
         "More than invoicing.bulkExportMaxInvoices (200) gives 400 EXPORT_TOO_LARGE: narrow the range.")
 
 ep(I, "I1 Outstanding Receivables", "GET", "/api/v1/invoicing/receivables", query=[{"key": "facets", "value": "ageingBucket"}],
-   resp=PAGED([{"id": "{{draftInvoiceId}}", "number": "INV-3", "issued": "2026-10-15", "due": "2026-10-29", "customerId": "{{specialId}}", "customer": "Grace Foods",
+   resp=PAGED([{"id": "{{draftInvoiceId}}", "number": "INV-3", "issued": "2026-10-15", "due": "2026-10-29", "customer": REF("customer", "{{specialId}}"), "customer": "Grace Foods",
                 "customerType": "SPECIAL_CUSTOMER", "showroom": "Showroom Ikeja", "total": 86000.00, "paid": 0.00, "credited": 12900.00, "balance": 73100.00,
                 "status": "Partially Paid", "daysOverdue": 0, "ageingBucket": "NOT_DUE"}],
               {"outstandingTotal": 73100.00, "outstandingCount": 1, "overdueTotal": 0.00, "overdueCount": 0, "partiallyPaidTotal": 73100.00, "partiallyPaidCount": 1,
-               "voidedCount": 2, "outstandingByCustomer": [{"customerId": "{{specialId}}", "customer": "Grace Foods", "invoiceCount": 1, "balance": 73100.00}]}),
+               "voidedCount": 2, "outstandingByCustomer": [{"customer": REF("customer", "{{specialId}}"), "customer": "Grace Foods", "invoiceCount": 1, "balance": 73100.00}]}),
    desc="Perm invoicing.receivables.read. Issued invoices with more than invoicing.paidTolerance left to pay, most overdue first. ageingBucket NOT_DUE, "
         "WITHIN_30, DAYS_31_60, OVER_60 (days past due); overdueOnly=true; plus every invoice filter. The header is computed from the same rows, so it "
         "reconciles exactly.")
@@ -2814,8 +2843,8 @@ ep(I, "I2 Overdue Receivables Only", "GET", "/api/v1/invoicing/receivables", que
                    "partiallyPaidCount": 0, "voidedCount": 2, "outstandingByCustomer": []}))
 
 ep(I, "I3 Debtors List", "GET", "/api/v1/invoicing/debtors",
-   resp=PAGED([{"customerId": "{{specialId}}", "code": "CU-2", "name": "Grace Foods", "type": "SPECIAL_CUSTOMER", "phone": None, "locationId": "{{customerLocationId}}",
-                "showroom": "Lagos HQ", "correspondentId": None, "rep": None, "openInvoices": 1, "outstanding": 73100.00, "creditLimit": 0.00, "overLimit": True,
+   resp=PAGED([{"customer": REF("customer", "{{specialId}}"), "phone": None, "location": REF("location", "{{customerLocationId}}"),
+                "correspondent": None, "openInvoices": 1, "outstanding": 73100.00, "creditLimit": 0.00, "overLimit": True,
                 "oldestInvoiceDays": 0, "ageing": "WITHIN_30", "ageingLabel": "Within 30 days", "lastPaymentAt": None}],
               {"debtors": 1, "outstandingTotal": 73100.00, "overLimitCount": 1}),
    desc="Perm invoicing.receivables.read. One row per customer with an open balance; ageing on the oldest open invoice's issue date. Filters locationId "
@@ -2823,13 +2852,13 @@ ep(I, "I3 Debtors List", "GET", "/api/v1/invoicing/debtors",
         "(default), oldestInvoiceDays, name, lastPaymentAt.")
 
 ep(I, "I4 Debtor Account", "GET", "/api/v1/invoicing/debtors/{{specialId}}", query=[{"key": "openOnly", "value": "false"}, {"key": "page", "value": "0"}, {"key": "size", "value": "50"}],
-   resp={"data": {"customer": {"customerId": "{{specialId}}", "code": "CU-2", "name": "Grace Foods", "type": "SPECIAL_CUSTOMER", "phone": None,
-                               "locationId": "{{customerLocationId}}", "showroom": "Lagos HQ", "correspondentId": None, "rep": None, "openInvoices": 1,
+   resp={"data": {"customer": {"customer": REF("customer", "{{specialId}}"), "phone": None,
+                               "location": REF("location", "{{customerLocationId}}"), "correspondent": None, "openInvoices": 1,
                                "outstanding": 73100.00, "creditLimit": 0.00, "overLimit": True, "oldestInvoiceDays": 0, "ageing": "WITHIN_30",
                                "ageingLabel": "Within 30 days", "lastPaymentAt": None},
                   "account": {"openInvoices": 1, "lastPaymentAt": None, "totalInvoiced": 86000.00, "totalPaid": 0.00, "totalCredited": 12900.00,
                               "outstanding": 73100.00, "creditLimit": 0.00, "overLimit": True},
-                  "transactions": PAGED([{"invoiceId": "{{draftInvoiceId}}", "date": "2026-10-15", "invoice": "INV-3", "description": "Invoice from pro-forma SBX-3",
+                  "transactions": PAGED([{"invoice": REF("invoice", "{{draftInvoiceId}}"), "date": "2026-10-15", "description": "Invoice from pro-forma SBX-3",
                                           "value": 86000.00, "paid": 12900.00, "balance": 73100.00, "dueDate": "2026-10-29", "status": "Partially Paid"}])["data"],
                   "warning": "Further credit sales should be withheld until the balance is brought within limit."}},
    desc="The customer's account and their invoice history, newest first and paged (from, to, openOnly, page, size). warning is set when they are over their "

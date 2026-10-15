@@ -1,5 +1,8 @@
 package com.zifiq.account.service
 
+import com.zifiq.platform.directory.Refs
+import com.zifiq.platform.directory.ref
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.UserRef
 import com.zifiq.platform.directory.Names
 import com.zifiq.common.money.Money
@@ -247,7 +250,7 @@ class FundDisbursementService(
         return rows.map { row ->
             FundDisbursementRow(
                 id = row[FundDisbursementsTable.id].value, ref = row[FundDisbursementsTable.ref], date = row[FundDisbursementsTable.sentAt],
-                destinationLocationId = row[FundDisbursementsTable.destinationLocationId], branch = row[LocationsTable.name],
+                destinationLocation = Ref.location(row[FundDisbursementsTable.destinationLocationId]),
                 purpose = row[FundDisbursementsTable.purpose], channel = row[FundDisbursementsTable.channel],
                 sourceAccount = row[sourceBank[BankAccountsTable.code]] ?: row[sourceCash[CashAccountsTable.code]],
                 destinationAccount = row[destinationBank[BankAccountsTable.code]] ?: row[destinationCash[CashAccountsTable.code]],
@@ -402,8 +405,8 @@ class CashLodgementService(
     fun filterMetadata(): FilterMetadata = tx.execute { filterSpec.metadata(support.filterContext()) }
 
     fun search(q: String, limit: Int): List<SearchHit> =
-        list(ListSearchRequest(q = q, size = limit, summary = false)).items.map {
-            SearchHit("lodgement", it.id, it.ref, "${it.showroom ?: ""} · ${Money.naira(it.banked)} · ${it.status.lowercase().replace('_', ' ')}", it.ref, "/account/cash-lodgements/${it.id}")
+        list(ListSearchRequest(q = q, size = limit, summary = false)).items.also { tx.execute { Refs.resolve(it) } }.map {
+            SearchHit("lodgement", it.id, it.ref, "${it.location.name ?: ""} · ${Money.naira(it.banked)} · ${it.status.lowercase().replace('_', ' ')}", it.ref, "/account/cash-lodgements/${it.id}")
         }
 
     private fun awaiting(id: UUID): ResultRow {
@@ -433,7 +436,7 @@ class CashLodgementService(
         return rows.map { row ->
             CashLodgementRow(
                 id = row[CashLodgementsTable.id].value, ref = row[CashLodgementsTable.ref], date = row[CashLodgementsTable.depositDate],
-                locationId = row[CashLodgementsTable.locationId], showroom = row[LocationsTable.name], cashAccountCode = row[CashAccountsTable.code],
+                location = Ref.location(row[CashLodgementsTable.locationId]), cashAccountCode = row[CashAccountsTable.code],
                 takings = row[CashLodgementsTable.takings], banked = row[CashLodgementsTable.banked], retained = row[CashLodgementsTable.retained],
                 bank = "${row[BankAccountsTable.code]} ${row[BankAccountsTable.bankName]}", accountNumberMasked = BankAccountService.mask(row[BankAccountsTable.accountNumber]),
                 depositedBy = UserRef(row[CashLodgementsTable.depositedByUserId]), teller = row[CashLodgementsTable.tellerReference],

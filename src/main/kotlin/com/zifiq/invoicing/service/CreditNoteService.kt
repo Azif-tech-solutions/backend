@@ -1,5 +1,8 @@
 package com.zifiq.invoicing.service
 
+import com.zifiq.platform.directory.Refs
+import com.zifiq.platform.directory.ref
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.UserRef
 import com.zifiq.common.sql.Aggregates
 import com.zifiq.platform.directory.Names
@@ -196,8 +199,7 @@ class CreditNoteService(
         val page = Paging.fetch(joined().selectAll().where(condition).orderBy(*sort.toTypedArray()), PageRequest.of(request.page, request.size)) { it }
         val items = page.items.map { row ->
             CreditNoteRow(
-                id = row[CreditNotesTable.id].value, number = row[CreditNotesTable.number], invoiceId = row[CreditNotesTable.invoiceId].value,
-                invoiceNumber = row[InvoicesTable.number], customerId = row[InvoicesTable.customerId], customer = row[InvoicesTable.buyerName],
+                id = row[CreditNotesTable.id].value, number = row[CreditNotesTable.number], invoice = Ref.invoice(row[CreditNotesTable.invoiceId].value), customer = ref(row[InvoicesTable.customerId], Ref::customer), buyerName = row[InvoicesTable.buyerName],
                 showroom = row.getOrNull(LocationsTable.name), reason = row[CreditNotesTable.reason], reasonNote = row[CreditNotesTable.reasonNote],
                 total = row[CreditNotesTable.total], appliedToInvoice = row[CreditNotesTable.appliedToInvoice], excessRefunded = row[CreditNotesTable.excessRefunded],
                 issuedBy = UserRef(row[CreditNotesTable.issuedByUserId].value), issuedAt = row[CreditNotesTable.issuedAt],
@@ -276,8 +278,8 @@ class CreditNoteService(
     }
 
     fun search(q: String, limit: Int): List<SearchHit> =
-        list(ListSearchRequest(q = q, size = limit, summary = false)).items.map {
-            SearchHit("credit-note", it.id, it.number, "${it.invoiceNumber} · ${it.customer} · ${Money.naira(it.total)}", it.number, "/invoicing/credit-notes/${it.id}")
+        list(ListSearchRequest(q = q, size = limit, summary = false)).items.also { tx.execute { Refs.resolve(it) } }.map {
+            SearchHit("credit-note", it.id, it.number, "${it.invoice["number"]} · ${it.buyerName} · ${Money.naira(it.total)}", it.number, "/invoicing/credit-notes/${it.id}")
         }
 
     // ---- Internals (caller's transaction) ----
@@ -312,7 +314,7 @@ class CreditNoteService(
         return CreditNoteDetail(
             id = id, number = row[CreditNotesTable.number], invoiceTypeCode = row[CreditNotesTable.invoiceTypeCode],
             invoice = InvoiceLinkRef(row[CreditNotesTable.invoiceId].value, row[InvoicesTable.number]), invoiceIssueDate = row[InvoicesTable.issueDate],
-            customerId = row[InvoicesTable.customerId], customer = row[InvoicesTable.buyerName],
+            customer = ref(row[InvoicesTable.customerId], Ref::customer), buyerName = row[InvoicesTable.buyerName],
             showroom = InvoiceLocation(row[InvoicesTable.locationId].value, row.getOrNull(LocationsTable.name)),
             reason = row[CreditNotesTable.reason], reasonNote = row[CreditNotesTable.reasonNote], lines = lines,
             lineExtension = row[CreditNotesTable.lineExtensionAmount], vat = row[CreditNotesTable.vatTotal], total = row[CreditNotesTable.total],

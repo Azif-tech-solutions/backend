@@ -50,9 +50,9 @@
     <tr th:if="${receipt.description != null}"><td class="label">Description</td><td th:text="${receipt.description}">Description</td></tr>
     <tr><td class="label">Paid by</td><td th:text="${channel}">Cash</td></tr>
     <tr th:if="${receipt.payerReference != null}"><td class="label">Reference</td><td th:text="${receipt.payerReference}">TRF-1</td></tr>
-    <tr th:if="${receipt.receivingBank != null}"><td class="label">Bank</td><td th:text="${receipt.receivingBank}">BA-1</td></tr>
-    <tr th:if="${receipt.locationName != null}"><td class="label">Location</td><td th:text="${receipt.locationName}">Showroom</td></tr>
-    <tr th:if="${receipt.till != null}"><td class="label">Till</td><td th:text="${receipt.till}">TILL-1</td></tr>
+    <tr th:if="${receipt.receivingBankAccount != null}"><td class="label">Bank</td><td th:text="${receipt.receivingBankAccount.code + ' ' + receipt.receivingBankAccount.fields['bankName']}">BA-1</td></tr>
+    <tr th:if="${receipt.location != null}"><td class="label">Location</td><td th:text="${receipt.location.name}">Showroom</td></tr>
+    <tr th:if="${receipt.cashAccount != null}"><td class="label">Till</td><td th:text="${receipt.cashAccount.code}">TILL-1</td></tr>
     <tr><td class="label">Cashier</td><td th:text="${receipt.cashier.name}">Cashier</td></tr>
 </table>
 

@@ -1,5 +1,6 @@
 package com.zifiq.account.dto
 
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.UserRef
 import jakarta.validation.constraints.DecimalMax
 import jakarta.validation.constraints.DecimalMin
@@ -19,12 +20,10 @@ data class ReceiptRow(
     val ref: String,
     val kind: String,
     val receivedAt: Instant,
-    val locationId: UUID?,
-    val locationName: String?,
-    val cashAccountId: UUID?,
-    val till: String?,
+    val location: Ref?,
+    val cashAccount: Ref?,
     val cashier: UserRef,
-    val customerId: UUID?,
+    val customer: Ref?,
     val customerName: String?,
     val channel: String,
     val amount: BigDecimal,
@@ -33,8 +32,7 @@ data class ReceiptRow(
     val sourceRef: String,
     val incomeCategory: String?,
     val description: String?,
-    val receivingBankAccountId: UUID?,
-    val receivingBank: String?,
+    val receivingBankAccount: Ref?,
     val terminalRef: String?,
     val payerReference: String?,
     val confirmationStatus: String,
@@ -85,16 +83,14 @@ data class WalletFundingRow(
     val id: UUID,
     val ref: String,
     val date: Instant,
-    val customerId: UUID,
+    val customer: Ref,
     val customerCode: String,
     val customerName: String,
     val balanceType: String,
     val channel: String,
     val amount: BigDecimal,
-    val locationId: UUID?,
-    val locationName: String?,
-    val receiptId: UUID,
-    val receiptRef: String?,
+    val location: Ref?,
+    val receipt: Ref,
     val confirmationStatus: String?,
     val status: String,
     val createdBy: UserRef,
@@ -127,9 +123,9 @@ data class WalletWithdrawalRow(
     val id: UUID,
     val ref: String,
     val date: LocalDate,
-    val customerId: UUID,
+    val customer: Ref,
     val customerCode: String,
-    val customer: String,
+    val customerName: String,
     val balanceType: String,
     val initiatedBy: String,
     val reason: String,
@@ -184,7 +180,7 @@ data class TenderableGeneralReport(val period: Map<String, LocalDate?>, val rows
 data class TenderableWalletFundRow(
     val ref: String,
     val date: Instant,
-    val customerId: UUID,
+    val customer: Ref,
     val dealer: String,
     /** Fund transfer, Cash deposit, POS, Cheque, or Return credit. */
     val method: String,
@@ -200,10 +196,7 @@ data class TenderableWalletFundRow(
 data class ScheduledVat(val rate: BigDecimal, val enabled: Boolean, val effectiveFrom: LocalDate)
 
 data class LocationVatRow(
-    val locationId: UUID,
-    val code: String,
-    val name: String,
-    val type: String,
+    val location: Ref,
     val registration: String?,
     val rate: BigDecimal,
     val enabled: Boolean,

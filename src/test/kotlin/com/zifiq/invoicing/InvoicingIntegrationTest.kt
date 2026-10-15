@@ -357,7 +357,7 @@ class InvoicingIntegrationTest : PostgresIntegrationTest() {
         val old = queries.detail(original.id)
         assertThat(replacementId).isNotEqualTo(original.id)
         assertThat(replacement.number).isNotEqualTo(original.number)
-        assertThat(replacement.buyer.customerId).isEqualTo(ordinary)
+        assertThat(replacement.buyer.customer?.id).isEqualTo(ordinary)
         assertThat(replacement.linked.reissueOf!!.id).isEqualTo(original.id)
         assertThat(replacement.linked.sourceRef).isEqualTo(old.linked.sourceRef)
         assertThat(old.status).isEqualTo("VOID")
@@ -432,7 +432,7 @@ class InvoicingIntegrationTest : PostgresIntegrationTest() {
         failsWith { issue(request(issueDate = today.plusDays(1))) }.isEqualTo(ErrorCode.VALIDATION_FAILED)
 
         val walkIn = queries.detail(issue(request(customer = null, walkIn = WalkInBuyer("Ada Walk-in", phone = "08031234567"))).id)
-        assertThat(walkIn.buyer.customerId).isNull()
+        assertThat(walkIn.buyer.customer?.id).isNull()
         assertThat(walkIn.buyer.name).isEqualTo("Ada Walk-in")
         assertThat(walkIn.invoiceKind).isEqualTo("B2C")
     }

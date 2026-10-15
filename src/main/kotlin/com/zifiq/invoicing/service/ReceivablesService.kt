@@ -1,5 +1,7 @@
 package com.zifiq.invoicing.service
 
+import com.zifiq.platform.directory.ref
+import com.zifiq.platform.directory.Ref
 import org.jetbrains.exposed.sql.sum
 import org.jetbrains.exposed.sql.min
 import org.jetbrains.exposed.sql.javatime.JavaLocalDateColumnType
@@ -80,7 +82,7 @@ class ReceivablesService(
         val items = page.result.items.map { row ->
             ReceivableRow(
                 id = row[InvoicesTable.id].value, number = row[InvoicesTable.number]!!, issued = row[InvoicesTable.issueDate], due = row[InvoicesTable.dueDate],
-                customerId = row[InvoicesTable.customerId], customer = row[InvoicesTable.buyerName], customerType = row[InvoicesTable.buyerType],
+                customer = ref(row[InvoicesTable.customerId], Ref::customer), buyerName = row[InvoicesTable.buyerName], customerType = row[InvoicesTable.buyerType],
                 showroom = row.getOrNull(LocationsTable.name), total = row[InvoicesTable.taxInclusiveAmount], paid = row[InvoicesTable.amountPaid],
                 credited = row[InvoicesTable.amountCredited], balance = Money.round(row[d.balance]),
                 status = InvoiceExpressions.label(row[d.displayStatus]), daysOverdue = row[d.daysOverdue], ageingBucket = row[d.ageingBucket] ?: "NOT_DUE",
@@ -177,7 +179,7 @@ class ReceivablesService(
         val transactions = Paging.fetch(query, paging) {
             val void = it[InvoicesTable.status] == "VOID"
             DebtorTransaction(
-                invoiceId = it[InvoicesTable.id].value, date = it[InvoicesTable.issueDate], invoice = it[InvoicesTable.number]!!,
+                invoice = Ref.invoice(it[InvoicesTable.id].value), date = it[InvoicesTable.issueDate],
                 description = (if (it[InvoicesTable.sourceType] == "PRO_FORMA") "Invoice from pro-forma " else "Invoice for sale ") + it[InvoicesTable.sourceRef] + if (void) " (void)" else "",
                 value = it[InvoicesTable.taxInclusiveAmount], paid = it[InvoicesTable.amountPaid] + it[InvoicesTable.amountCredited],
                 balance = if (void) BigDecimal.ZERO.setScale(2) else Money.round(it[d.balance].max(BigDecimal.ZERO)),
@@ -271,9 +273,9 @@ class ReceivablesService(
                 val days = row[oldestAlias]?.let { ChronoUnit.DAYS.between(it, today).toInt() } ?: 0
                 val ageing = ageingOf(days)
                 DebtorRow(
-                    customerId = row[b.customerId], code = row[CustomerColumns.code], name = row[CustomerColumns.name], type = row[CustomerColumns.type],
-                    phone = row[CustomerColumns.phone], locationId = row[CustomerColumns.locationId], showroom = row[CustomerColumns.locationId]?.let(showrooms::get),
-                    correspondentId = row[CustomerColumns.correspondentId], rep = row[CustomerColumns.correspondentId]?.let(reps::get),
+                    customer = Ref.customer(row[b.customerId]),
+                    phone = row[CustomerColumns.phone], location = ref(row[CustomerColumns.locationId], Ref::location),
+                    correspondent = ref(row[CustomerColumns.correspondentId], Ref::correspondent),
                     openInvoices = openInvoices, outstanding = outstanding, creditLimit = row[CustomerColumns.creditLimit],
                     overLimit = openInvoices > 0 && outstanding > row[CustomerColumns.creditLimit],
                     oldestInvoiceDays = days, ageing = ageing, ageingLabel = AGEING_LABELS.getValue(ageing), lastPaymentAt = row[lastPaymentAlias],
@@ -284,9 +286,9 @@ class ReceivablesService(
 
     /** A customer with no invoices in the caller's scope yet. */
     private fun zeroRow(customer: CustomerRef) = DebtorRow(
-        customerId = customer.id, code = customer.code, name = customer.name, type = customer.type.name, phone = customer.phone,
-        locationId = customer.locationId, showroom = customer.locationId?.let { Names.locations(listOf(it))[it] },
-        correspondentId = customer.correspondentId, rep = customer.correspondentId?.let { correspondents.names(listOf(it))[it] },
+        customer = Ref.customer(customer.id), phone = customer.phone,
+        location = ref(customer.locationId, Ref::location),
+        correspondent = ref(customer.correspondentId, Ref::correspondent),
         openInvoices = 0, outstanding = BigDecimal.ZERO.setScale(2), creditLimit = customer.creditLimit, overLimit = false,
         oldestInvoiceDays = 0, ageing = ageingOf(0), ageingLabel = AGEING_LABELS.getValue(ageingOf(0)), lastPaymentAt = null,
     )

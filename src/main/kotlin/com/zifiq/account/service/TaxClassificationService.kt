@@ -1,5 +1,7 @@
 package com.zifiq.account.service
 
+import com.zifiq.platform.directory.ref
+import com.zifiq.platform.directory.Ref
 import com.zifiq.account.dto.*
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.tax.HsnSectionsTable
@@ -65,9 +67,7 @@ class TaxClassificationService(
             .orderBy(VatCategoriesTable.name)
             .map { row ->
                 TenantVatCategorySummary(
-                    vatCategoryId = row[VatCategoriesTable.id].value,
-                    code = row[VatCategoriesTable.code],
-                    name = row[VatCategoriesTable.name],
+                    vatCategory = Ref.vatCategory(row[VatCategoriesTable.id].value),
                     rate = row[VatCategoriesTable.rate],
                     isActive = row.getOrNull(TenantVatCategoriesTable.isActive) ?: false,
                     activatedAt = row.getOrNull(TenantVatCategoriesTable.activatedAt) ?: Instant.EPOCH,

@@ -236,7 +236,7 @@ class AccountLedgersIntegrationTest : PostgresIntegrationTest() {
         failsWith { cash.register(CashAccountRequest("PC-X", "Petty", "PETTY_CASH", ikejaFloor)) }.isEqualTo(ErrorCode.INVALID_LOCATION)
         val till = cash.register(CashAccountRequest("till-ikj-01", "Ikeja Till 1", "TILL", ikeja, posTerminalRef = "T-55", posSettlementBankAccountId = settlement.id))
         assertThat(till.code).isEqualTo("TILL-IKJ-01")
-        assertThat(till.posSettlementBankCode).isEqualTo(settlement.code)
+        assertThat(till.posSettlementBankAccount?.id).isEqualTo(settlement.id)
         failsWith { cash.register(CashAccountRequest("TILL-IKJ-01", "Duplicate", "TILL", ikeja)) }.isEqualTo(ErrorCode.DUPLICATE_CODE)
 
         val petty = cash.register(CashAccountRequest("PC-IKJ", "Ikeja Petty Cash", "PETTY_CASH", ikeja, openingBalance = BigDecimal("150000"), floatLimit = BigDecimal("300000")))
@@ -305,7 +305,7 @@ class AccountLedgersIntegrationTest : PostgresIntegrationTest() {
         failsWith { cash.cashFlow(ListSearchRequest(params = mapOf("locationId" to listOf(lekki.toString())))) }.isEqualTo(ErrorCode.LOCATION_ACCESS_DENIED)
         failsWith { cash.get(vault.id) }.isEqualTo(ErrorCode.CASH_ACCOUNT_NOT_FOUND)
         assertThat(cash.list(null, emptySet(), null, null, null).map { it.code }).doesNotContain("VAULT-HQ", "PC-LKK")
-        assertThat(banks.list(null, emptySet(), null, null, null, null).all { it.locationId == ikeja }).isTrue()
+        assertThat(banks.list(null, emptySet(), null, null, null, null).all { it.location?.id == ikeja }).isTrue()
     }
 
     @Test

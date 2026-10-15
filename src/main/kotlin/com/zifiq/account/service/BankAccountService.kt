@@ -1,5 +1,7 @@
 package com.zifiq.account.service
 
+import com.zifiq.platform.directory.ref
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.Names
 import com.zifiq.common.money.Money
 import com.zifiq.account.dto.AccountLookupRow
@@ -337,8 +339,7 @@ class BankAccountService(
             openingBalance = row[BankAccountsTable.openingBalance],
             openingBalanceDate = row[BankAccountsTable.openingBalanceDate],
             currentBalance = row[BankAccountsTable.currentBalance],
-            locationId = row[BankAccountsTable.locationId],
-            locationName = row[BankAccountsTable.locationId]?.let(locationNames::get),
+            location = ref(row[BankAccountsTable.locationId], Ref::location),
             status = row[BankAccountsTable.status],
             createdAt = row[BankAccountsTable.createdAt],
         )

@@ -1,5 +1,6 @@
 package com.zifiq.inventory.service
 
+import com.zifiq.platform.directory.Refs
 import com.zifiq.platform.documents.DocumentLinkProvider
 import com.zifiq.platform.documents.DocumentRegistry
 import com.zifiq.platform.documents.DocumentType
@@ -34,13 +35,13 @@ class WaybillService(
 
     fun render(transferId: UUID): Waybill {
         val model = tx.execute {
-            val transfer = operations.loadTransferSummary(transferId)
+            val transfer = operations.loadTransferSummary(transferId).also(Refs::resolve)
             operations.requireTransferVisible(transfer)
             val company = TenantsTable.selectAll().where { TenantsTable.id eq currentActorProvider.current().tenantId }.single()[TenantsTable.name]
             fun location(id: UUID) = LocationsTable.selectAll().where { LocationsTable.id eq id }.single()
-            val sourceRoot = location(rootOf(transfer.sourceLocationId))
-            val destinationRoot = location(rootOf(transfer.destinationLocationId))
-            val route = if (transfer.sourceLocationType == "SHOWROOM" && transfer.destinationLocationType == "SHOWROOM") "Showroom Transfer Waybill" else "Stock Transfer Waybill"
+            val sourceRoot = location(rootOf(transfer.sourceLocation.id))
+            val destinationRoot = location(rootOf(transfer.destinationLocation.id))
+            val route = if (transfer.sourceLocation["type"] == "SHOWROOM" && transfer.destinationLocation["type"] == "SHOWROOM") "Showroom Transfer Waybill" else "Stock Transfer Waybill"
             mapOf(
                 "title" to route,
                 "company" to company,

@@ -1,5 +1,6 @@
 package com.zifiq.invoicing.api
 
+import com.zifiq.platform.directory.Ref
 import com.zifiq.common.filter.FilterMetadata
 import com.zifiq.common.filter.ListSearchRequest
 import com.zifiq.common.paging.PageResult
@@ -190,7 +191,7 @@ class InvoicesController(
     @PreAuthorize(PAYMENT)
     override fun recordPayment(@PathVariable id: UUID, @Valid @RequestBody request: RecordPaymentRequest): ApiEnvelope<RecordedPayment> {
         val recorded = payments.record(id, request)
-        return ApiEnvelope(RecordedPayment(recorded.paymentId, recorded.receiptId, recorded.receiptRef, recorded.confirmationStatus, queries.detail(id)))
+        return ApiEnvelope(RecordedPayment(recorded.paymentId, Ref.receipt(recorded.receiptId), recorded.confirmationStatus, queries.detail(id)))
     }
 
     @GetMapping("/{id}/payments")

@@ -1,5 +1,7 @@
 package com.zifiq.inventory.service
 
+import com.zifiq.platform.directory.ref
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.UserRef
 import com.zifiq.inventory.repository.StockSql
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.lessEq
@@ -311,12 +313,8 @@ class PriceListService(
         fun mask(value: BigDecimal) = if (costVisible) value.setScale(2, RoundingMode.HALF_UP) else BigDecimal.ZERO.setScale(2)
         val nextId = row.getOrNull(next[StockItemPricesTable.id])
         return PriceListRow(
-            stockItemId = row[StockItemsTable.id].value,
-            code = row[StockItemsTable.code],
-            product = row[StockItemsTable.name],
-            itemType = row[StockItemsTable.itemType],
-            categoryId = row[StockItemsTable.categoryId],
-            group = row[categoryName],
+            stockItem = Ref.stockItem(row[StockItemsTable.id].value),
+            category = ref(row[StockItemsTable.categoryId], Ref::category),
             unit = row.getOrNull(unitName),
             status = row[StockItemsTable.status],
             priceId = row.getOrNull(current[StockItemPricesTable.id])?.value,

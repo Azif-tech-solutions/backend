@@ -1,5 +1,7 @@
 package com.zifiq.account.service
 
+import com.zifiq.platform.directory.ref
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.UserRef
 import com.zifiq.platform.directory.Names
 import com.zifiq.common.money.Money
@@ -371,10 +373,10 @@ class WalletMoneyService(
         return rows.map { row ->
             WalletFundingRow(
                 id = row[WalletFundingsTable.id].value, ref = row[WalletFundingsTable.ref], date = row[WalletFundingsTable.createdAt],
-                customerId = row[WalletFundingsTable.customerId], customerCode = row[WalletFundingsTable.customerCode], customerName = row[WalletFundingsTable.customerName],
+                customer = Ref.customer(row[WalletFundingsTable.customerId]), customerCode = row[WalletFundingsTable.customerCode], customerName = row[WalletFundingsTable.customerName],
                 balanceType = row[WalletFundingsTable.balanceType], channel = row[WalletFundingsTable.channel], amount = row[WalletFundingsTable.amount],
-                locationId = row[WalletFundingsTable.locationId], locationName = row[WalletFundingsTable.locationId]?.let(locations::get),
-                receiptId = row[WalletFundingsTable.paymentReceiptId], receiptRef = row[fundingReceipt[PaymentReceiptsTable.ref]],
+                location = ref(row[WalletFundingsTable.locationId], Ref::location),
+                receipt = Ref.receipt(row[WalletFundingsTable.paymentReceiptId]),
                 confirmationStatus = row[fundingReceipt[PaymentReceiptsTable.confirmationStatus]], status = row[WalletFundingsTable.status],
                 createdBy = UserRef(row[WalletFundingsTable.createdByUserId]),
             )
@@ -406,7 +408,7 @@ class WalletMoneyService(
         return rows.map { row ->
             WalletWithdrawalRow(
                 id = row[WalletWithdrawalsTable.id].value, ref = row[WalletWithdrawalsTable.ref], date = row[WalletWithdrawalsTable.withdrawalDate],
-                customerId = row[WalletWithdrawalsTable.customerId], customerCode = row[WalletWithdrawalsTable.customerCode], customer = row[WalletWithdrawalsTable.customerName],
+                customer = Ref.customer(row[WalletWithdrawalsTable.customerId]), customerCode = row[WalletWithdrawalsTable.customerCode], customerName = row[WalletWithdrawalsTable.customerName],
                 balanceType = row[WalletWithdrawalsTable.balanceType], initiatedBy = row[WalletWithdrawalsTable.initiatedBy], reason = row[WalletWithdrawalsTable.reason],
                 balanceBefore = row[WalletWithdrawalsTable.balanceBefore], amount = row[WalletWithdrawalsTable.amount], balanceAfter = row[WalletWithdrawalsTable.balanceAfter],
                 payoutKind = row[WalletWithdrawalsTable.payoutKind], payoutAccount = row[payoutCash[CashAccountsTable.code]] ?: row[payoutBank[BankAccountsTable.code]],

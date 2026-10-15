@@ -55,7 +55,7 @@
 <div class="parties">
     <div class="party">
         <div class="label">From</div>
-        <div class="party-name" th:text="${transfer.sourceLocationName}">Source</div>
+        <div class="party-name" th:text="${transfer.sourceLocation.name}">Source</div>
     </div>
     <div class="party">
         <div class="label">To</div>
@@ -67,7 +67,7 @@
 
 <table class="meta">
     <tr>
-        <td><div class="label">Driver</div><span th:text="${transfer.driverName != null ? transfer.driverName : '—'}">—</span></td>
+        <td><div class="label">Driver</div><span th:text="${transfer.driver != null ? transfer.driver.name : '—'}">—</span></td>
         <td><div class="label">Vehicle no.</div><span th:text="${transfer.driverVehicle != null ? transfer.driverVehicle : '—'}">—</span></td>
         <td><div class="label">Dispatch date</div><span th:text="${dispatchDate}">date</span></td>
         <td><div class="label">Status</div><span th:text="${stamp}">In transit</span></td>
@@ -84,9 +84,9 @@
     <tbody>
     <tr th:each="line, stat : ${transfer.lines}">
         <td th:text="${stat.count}">1</td>
-        <td th:text="${line.stockItemCode}">ITM-1</td>
-        <td th:text="${line.stockItemName}">Product</td>
-        <td th:text="${line.fromLocationName != null ? line.fromLocationName : '—'}">—</td>
+        <td th:text="${line.stockItem.code}">ITM-1</td>
+        <td th:text="${line.stockItem.name}">Product</td>
+        <td th:text="${line.fromLocation != null ? line.fromLocation.name : '—'}">—</td>
         <td th:text="${line.batchNo != null ? line.batchNo : '—'}">—</td>
         <td class="num" th:text="${line.qtySent.stripTrailingZeros().toPlainString()}">0</td>
         <td class="num" th:text="${line.qtyReceived != null ? line.qtyReceived.stripTrailingZeros().toPlainString() : '—'}">—</td>

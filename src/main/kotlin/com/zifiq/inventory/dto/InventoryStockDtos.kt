@@ -1,5 +1,6 @@
 package com.zifiq.inventory.dto
 
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.UserRef
 import jakarta.validation.constraints.DecimalMin
 import jakarta.validation.constraints.NotBlank
@@ -38,21 +39,21 @@ data class StockItemStatusRequest(
 
 data class StockItemSummary(
     val id: UUID,
-    val locationId: UUID,
+    val location: Ref,
     val itemType: String,
     val code: String,
     val name: String,
-    val categoryId: UUID?,
+    val category: Ref?,
     val brand: String?,
-    val unitOfMeasureId: UUID,
+    val unitOfMeasure: Ref,
     val reorderLevel: BigDecimal,
     val barcode: String?,
     val landingCost: BigDecimal?,
     val markupCost: BigDecimal?,
-    val vatCategoryId: UUID,
+    val vatCategory: Ref,
     /** Null only for DIRECT_ENTRY items (docs/05 §2.2). */
-    val hsnSectionId: UUID?,
-    val isicSectionId: UUID?,
+    val hsnSection: Ref?,
+    val isicSection: Ref?,
     val status: String,
     val createdAt: Instant,
     /**
@@ -85,7 +86,7 @@ data class RawMaterialRefillRequest(
 
 data class RefillSummary(
     val ref: String,
-    val stockItemId: UUID,
+    val stockItem: Ref,
     val quantity: BigDecimal,
     val performedBy: UserRef,
     val at: Instant,
@@ -100,9 +101,9 @@ data class StockReceiptVerifyRequest(
 data class StockReceiptSummary(
     val id: UUID,
     val ref: String,
-    val stockItemId: UUID,
-    val supplierId: UUID?,
-    val manufacturerId: UUID?,
+    val stockItem: Ref,
+    val supplier: Ref?,
+    val manufacturer: Ref?,
     val quantity: BigDecimal,
     val unitCost: BigDecimal,
     val manufacturedDate: LocalDate?,
@@ -147,10 +148,8 @@ data class ComprehensiveStockRow(
 data class StockMovementRow(
     val sn: Int,
     val date: LocalDate,
-    val locationId: UUID,
-    val stockItemId: UUID,
-    val itemCode: String,
-    val itemName: String,
+    val location: Ref,
+    val stockItem: Ref,
     val sourceType: String,
     val sourceReference: String,
     val qtyIn: BigDecimal,
@@ -160,8 +159,7 @@ data class StockMovementRow(
 // ---- Re-Order Report ----
 
 data class ReOrderRow(
-    val stockItemId: UUID,
-    val itemName: String,
+    val stockItem: Ref,
     val quantityOnHand: BigDecimal,
     val reorderLevel: BigDecimal,
 )

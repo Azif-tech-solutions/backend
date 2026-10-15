@@ -1,5 +1,6 @@
 package com.zifiq.inventory.dto
 
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.UserRef
 import jakarta.validation.Valid
 import jakarta.validation.constraints.DecimalMin
@@ -54,19 +55,15 @@ data class StockTransferReceiveRequest(
 
 data class StockTransferLineSummary(
     val id: UUID,
-    val stockItemId: UUID,
-    val stockItemCode: String,
-    val stockItemName: String,
+    val stockItem: Ref,
     val unit: String?,
     val qtySent: BigDecimal,
     val qtyReceived: BigDecimal?,
     val qtyRejected: BigDecimal?,
     /** Sent − received − rejected. */
     val outstanding: BigDecimal,
-    val fromLocationId: UUID?,
-    val fromLocationName: String?,
-    val receivedIntoLocationId: UUID?,
-    val receivedIntoLocationName: String?,
+    val fromLocation: Ref?,
+    val receivedIntoLocation: Ref?,
     val batchNo: String?,
     val rejectionNote: String?,
 )
@@ -74,15 +71,10 @@ data class StockTransferLineSummary(
 data class StockTransferSummary(
     val id: UUID,
     val waybillRef: String,
-    val sourceLocationId: UUID,
-    val sourceLocationName: String,
-    val sourceLocationType: String,
-    val destinationLocationId: UUID,
-    val destinationLocationName: String,
-    val destinationLocationType: String,
+    val sourceLocation: Ref,
+    val destinationLocation: Ref,
     val status: String,
-    val driverId: UUID?,
-    val driverName: String?,
+    val driver: Ref?,
     val driverVehicle: String?,
     val transferDate: LocalDate,
     val dispatchedAt: Instant,
@@ -114,12 +106,9 @@ data class QuantityAdjustmentRequest(
 data class QuantityAdjustmentSummary(
     val id: UUID,
     val ref: String,
-    val locationId: UUID,
-    val locationName: String,
+    val location: Ref,
     val rootLocationName: String,
-    val stockItemId: UUID,
-    val productCode: String,
-    val productName: String,
+    val stockItem: Ref,
     val unit: String?,
     val mode: String,
     val direction: String,

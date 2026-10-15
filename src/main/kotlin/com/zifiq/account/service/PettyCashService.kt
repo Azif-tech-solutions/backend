@@ -1,5 +1,7 @@
 package com.zifiq.account.service
 
+import com.zifiq.platform.directory.ref
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.UserRef
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.notLike
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.isNotNull
@@ -516,8 +518,8 @@ class PettyCashService(
         if (visible != null && row[CashAccountsTable.locationId] !in visible) throw ApiErrors.pettyCashPaymentNotFound()
         return PettyCashPaymentView(
             id = id, ref = row[PettyCashPaymentsTable.ref], date = row[PettyCashPaymentsTable.paymentDate],
-            pettyCashAccountId = row[PettyCashPaymentsTable.pettyCashAccountId], pettyCashAccountCode = row[CashAccountsTable.code],
-            expenseCategoryId = row[PettyCashPaymentsTable.expenseCategoryId], category = row[ExpenseCategoriesTable.name],
+            pettyCashAccount = Ref.cashAccount(row[PettyCashPaymentsTable.pettyCashAccountId]),
+            expenseCategory = Ref.expenseCategory(row[PettyCashPaymentsTable.expenseCategoryId]),
             amount = row[PettyCashPaymentsTable.amount], paidTo = row[PettyCashPaymentsTable.paidTo], approvedBy = row[PettyCashPaymentsTable.approvedBy],
             description = row[PettyCashPaymentsTable.description], status = row[PettyCashPaymentsTable.status], reversalReason = row[PettyCashPaymentsTable.reversalReason],
             balanceAfter = row[CashAccountsTable.currentBalance], createdAt = row[PettyCashPaymentsTable.createdAt],
@@ -538,7 +540,7 @@ class PettyCashService(
         return rows.map { row ->
             PettyCashFundingRow(
                 id = row[PettyCashFundingsTable.id].value, ref = row[PettyCashFundingsTable.ref], date = row[PettyCashFundingsTable.fundingDate],
-                pettyCashAccountId = row[PettyCashFundingsTable.pettyCashAccountId], pettyCashAccountCode = row[CashAccountsTable.code],
+                pettyCashAccount = Ref.cashAccount(row[PettyCashFundingsTable.pettyCashAccountId]),
                 sourceKind = row[PettyCashFundingsTable.sourceKind],
                 sourceName = row[sourceBank[BankAccountsTable.code]]?.let { "$it ${row[sourceBank[BankAccountsTable.bankName]]}" }
                     ?: "${row[sourceCash[CashAccountsTable.code]]} ${row[sourceCash[CashAccountsTable.name]]}",
@@ -585,7 +587,7 @@ class PettyCashService(
                 id = row[PettyCashAllocationsTable.id].value, ref = row[PettyCashAllocationsTable.ref], date = row[PettyCashAllocationsTable.sentAt],
                 sourceName = row[sourceBank[BankAccountsTable.code]]?.let { "$it ${row[sourceBank[BankAccountsTable.bankName]]}" }
                     ?: "${row[sourceCash[CashAccountsTable.code]]} ${row[sourceCash[CashAccountsTable.name]]}",
-                destinationLocationId = row[PettyCashAllocationsTable.destinationLocationId], branch = row[LocationsTable.name],
+                destinationLocation = Ref.location(row[PettyCashAllocationsTable.destinationLocationId]),
                 destinationAccountCode = row[destinationAccount[CashAccountsTable.code]], purpose = row[PettyCashAllocationsTable.purpose],
                 sentBy = UserRef(row[PettyCashAllocationsTable.sentByUserId]), amount = row[PettyCashAllocationsTable.amount],
                 status = row[PettyCashAllocationsTable.status], respondedBy = UserRef.of(row[PettyCashAllocationsTable.respondedByUserId]),

@@ -1,5 +1,6 @@
 package com.zifiq.platform.accesscontrol
 
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.security.AccessCaches
 import com.zifiq.platform.accesscontrol.model.PermissionCatalogTable
 import com.zifiq.platform.accesscontrol.model.RolePermissionsTable
@@ -19,8 +20,8 @@ import org.jetbrains.exposed.sql.selectAll
 import org.springframework.stereotype.Service
 
 data class RoleAssignmentSummary(
-    val userId: UUID,
-    val roleId: UUID,
+    val user: Ref,
+    val role: Ref,
 )
 
 @Service
@@ -63,6 +64,6 @@ class RoleAssignmentService(
             it[UserRoleAssignmentsTable.grantedAt] = Instant.now()
         }
         AccessCaches.permissionsChanged(actor.tenantId)
-        RoleAssignmentSummary(userId, roleId)
+        RoleAssignmentSummary(Ref.user(userId), Ref.role(roleId))
     }
 }

@@ -1,5 +1,7 @@
 package com.zifiq.customers.service
 
+import com.zifiq.platform.directory.ref
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.UserRef
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.Expression
@@ -325,8 +327,7 @@ class CorrespondentService(
                 CorrespondentHistoryRow(
                     action = it[CorrespondentAssignmentHistoryTable.action],
                     region = it[CorrespondentAssignmentHistoryTable.region],
-                    locationId = it[CorrespondentAssignmentHistoryTable.locationId],
-                    locationName = it.getOrNull(LocationsTable.name),
+                    location = ref(it[CorrespondentAssignmentHistoryTable.locationId], Ref::location),
                     effectiveFrom = it[CorrespondentAssignmentHistoryTable.effectiveFrom],
                     note = it[CorrespondentAssignmentHistoryTable.note],
                     performedBy = UserRef(it[CorrespondentAssignmentHistoryTable.performedByUserId]),
@@ -376,8 +377,7 @@ class CorrespondentService(
             phone = row[CorrespondentsTable.phone],
             email = row[CorrespondentsTable.email],
             region = row[CorrespondentsTable.region],
-            locationId = row[CorrespondentsTable.locationId],
-            locationName = row.getOrNull(LocationsTable.name),
+            location = ref(row[CorrespondentsTable.locationId], Ref::location),
             status = row[CorrespondentsTable.status],
             assignedAt = row[CorrespondentsTable.assignedAt],
             customerCount = row[CorrespondentsTable.customerCount].toLong(),

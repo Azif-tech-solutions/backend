@@ -1,5 +1,6 @@
 package com.zifiq.platform.identity.dto
 
+import com.zifiq.platform.directory.Ref
 import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
@@ -24,7 +25,7 @@ data class MemberSummary(
     val phone: String?,
     val status: String,
     val role: RoleRef?,
-    val locationId: UUID?,
+    val location: Ref?,
     val accessScope: String,
     val invitedAt: Instant,
 )

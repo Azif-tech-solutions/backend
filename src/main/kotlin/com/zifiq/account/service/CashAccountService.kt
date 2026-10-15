@@ -1,5 +1,8 @@
 package com.zifiq.account.service
 
+import com.zifiq.platform.directory.Refs
+import com.zifiq.platform.directory.ref
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.Names
 import com.zifiq.common.money.Money
 import com.zifiq.account.dto.AccountLookupRow
@@ -134,8 +137,8 @@ class CashAccountService(
     fun get(id: UUID): CashAccountView = tx.execute { view(row(id)) }
 
     fun lookup(q: String?, kinds: Set<String>, locationId: UUID?, activeOnly: Boolean): List<AccountLookupRow> =
-        list(q, kinds, locationId, if (activeOnly) "ACTIVE" else null, null).take(50)
-            .map { AccountLookupRow(it.id, it.code, it.name, listOfNotNull(it.kind.lowercase().replace('_', ' '), it.locationName ?: "Head office", Money.naira(it.currentBalance)).joinToString(" · "), it.status) }
+        list(q, kinds, locationId, if (activeOnly) "ACTIVE" else null, null).take(50).also { tx.execute { Refs.resolve(it) } }
+            .map { AccountLookupRow(it.id, it.code, it.name, listOfNotNull(it.kind.lowercase().replace('_', ' '), it.location?.name ?: "Head office", Money.naira(it.currentBalance)).joinToString(" · "), it.status) }
 
     fun update(id: UUID, request: CashAccountUpdateRequest): CashAccountView = tx.execute {
         val existing = row(id)
@@ -313,16 +316,14 @@ class CashAccountService(
                 code = row[CashAccountsTable.code],
                 name = row[CashAccountsTable.name],
                 kind = row[CashAccountsTable.kind],
-                locationId = row[CashAccountsTable.locationId],
-                locationName = row[CashAccountsTable.locationId]?.let(locations::get),
+                location = ref(row[CashAccountsTable.locationId], Ref::location),
                 currencyCode = row[CashAccountsTable.currencyCode],
                 openingBalance = row[CashAccountsTable.openingBalance],
                 currentBalance = balance,
                 floatLimit = limit,
                 belowFloat = limit != null && balance * BigDecimal(2) < limit,
                 posTerminalRef = row[CashAccountsTable.posTerminalRef],
-                posSettlementBankAccountId = row[CashAccountsTable.posSettlementBankAccountId],
-                posSettlementBankCode = row[CashAccountsTable.posSettlementBankAccountId]?.let(banks::get),
+                posSettlementBankAccount = ref(row[CashAccountsTable.posSettlementBankAccountId], Ref::bankAccount),
                 status = row[CashAccountsTable.status],
                 createdAt = row[CashAccountsTable.createdAt],
             )

@@ -1,5 +1,7 @@
 package com.zifiq.inventory.service
 
+import com.zifiq.platform.directory.ref
+import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.UserRef
 import com.zifiq.inventory.repository.StockSql
 import com.zifiq.common.errors.ApiErrors
@@ -352,7 +354,7 @@ class InventoryOperationsService(
     /** Either end of the transfer must be in the caller's scope; otherwise it reads as not found. */
     fun requireTransferVisible(summary: StockTransferSummary) {
         val allowed = locationAccessService.allowedLocationIds() ?: return
-        if (summary.sourceLocationId !in allowed && summary.destinationLocationId !in allowed) throw ApiErrors.transferNotFound()
+        if (summary.sourceLocation.id !in allowed && summary.destinationLocation.id !in allowed) throw ApiErrors.transferNotFound()
     }
 
     fun loadTransferSummary(transferId: UUID): StockTransferSummary {
@@ -383,18 +385,14 @@ class InventoryOperationsService(
             val rejected = it[StockTransferLinesTable.qtyRejected]
             StockTransferLineSummary(
                 id = it[StockTransferLinesTable.id].value,
-                stockItemId = it[StockTransferLinesTable.stockItemId].value,
-                stockItemCode = it[StockItemsTable.code],
-                stockItemName = it[StockItemsTable.name],
+                stockItem = Ref.stockItem(it[StockTransferLinesTable.stockItemId].value),
                 unit = it.getOrNull(unitName),
                 qtySent = sent,
                 qtyReceived = received,
                 qtyRejected = rejected,
                 outstanding = sent - (received ?: BigDecimal.ZERO) - (rejected ?: BigDecimal.ZERO),
-                fromLocationId = it[StockTransferLinesTable.fromLocationId],
-                fromLocationName = it[StockTransferLinesTable.fromLocationId]?.let { id -> locations[id]?.name },
-                receivedIntoLocationId = it[StockTransferLinesTable.receivedIntoLocationId],
-                receivedIntoLocationName = it[StockTransferLinesTable.receivedIntoLocationId]?.let { id -> locations[id]?.name },
+                fromLocation = ref(it[StockTransferLinesTable.fromLocationId], Ref::location),
+                receivedIntoLocation = ref(it[StockTransferLinesTable.receivedIntoLocationId], Ref::location),
                 batchNo = it[StockTransferLinesTable.batchNo],
                 rejectionNote = it[StockTransferLinesTable.rejectionNote],
             )
@@ -407,15 +405,10 @@ class InventoryOperationsService(
             StockTransferSummary(
                 id = transferId,
                 waybillRef = row[StockTransfersTable.waybillRef],
-                sourceLocationId = source.id,
-                sourceLocationName = source.label,
-                sourceLocationType = source.rootType,
-                destinationLocationId = destination.id,
-                destinationLocationName = destination.label,
-                destinationLocationType = destination.rootType,
+                sourceLocation = Ref.location(source.id),
+                destinationLocation = Ref.location(destination.id),
                 status = row[StockTransfersTable.status],
-                driverId = row[StockTransfersTable.driverId],
-                driverName = row[StockTransfersTable.driverName],
+                driver = ref(row[StockTransfersTable.driverId], Ref::driver),
                 driverVehicle = row[StockTransfersTable.driverVehicle],
                 transferDate = row[StockTransfersTable.transferDate],
                 dispatchedAt = row[StockTransfersTable.dispatchedAt],
@@ -590,12 +583,9 @@ class InventoryOperationsService(
         return QuantityAdjustmentSummary(
             id = row[QuantityAdjustmentsTable.id].value,
             ref = row[QuantityAdjustmentsTable.ref],
-            locationId = row[QuantityAdjustmentsTable.locationId],
-            locationName = areaName,
+            location = Ref.location(row[QuantityAdjustmentsTable.locationId]),
             rootLocationName = rootName ?: areaName,
-            stockItemId = row[QuantityAdjustmentsTable.stockItemId].value,
-            productCode = row[StockItemsTable.code],
-            productName = row[StockItemsTable.name],
+            stockItem = Ref.stockItem(row[QuantityAdjustmentsTable.stockItemId].value),
             unit = row.getOrNull(adjustmentUnit),
             mode = row[QuantityAdjustmentsTable.mode],
             direction = row[QuantityAdjustmentsTable.direction],
