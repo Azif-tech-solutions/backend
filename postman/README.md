@@ -24,6 +24,13 @@ for real, the same way Factory, Inventory and Customers were.
    **ZifIQ Local** to test your own machine (start Postgres and the app first,
    see the main `README.md` / `compose.yaml`), or **ZifIQ Dev (EC2)** to test
    the deployed server with nothing running locally.
+3. For the file uploads (logo, attachments): in Postman, **Settings > General >
+   Working directory**, choose the `backend` folder of this repository. The
+   upload requests name their files relative to it (`postman/fixtures/...`);
+   if Postman can't find a file there it sends the request without it, and the
+   server answers `415 UNSUPPORTED_MEDIA_TYPE` (no multipart body) or
+   `400 VALIDATION_FAILED` (no `file` part). Alternatively, re-pick the file in
+   the request's Body > form-data `file` field.
 
 ## Authorization
 

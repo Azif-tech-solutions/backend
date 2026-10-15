@@ -21,6 +21,14 @@ object ApiErrors {
     fun unauthenticated() = ApiException(HttpStatus.UNAUTHORIZED, ErrorCode.UNAUTHORIZED, "A valid access token is required")
     fun internalError() = ApiException(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_ERROR, "An unexpected error occurred")
     fun noRouteFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND, "No route matches this request")
+    fun methodNotAllowed(method: String, supported: Collection<String>) = ApiException(
+        HttpStatus.METHOD_NOT_ALLOWED, ErrorCode.METHOD_NOT_ALLOWED, "$method is not supported here", mapOf("supported" to supported.sorted().joinToString(", ")),
+    )
+    fun unsupportedMediaType(sent: String?, supported: Collection<String>) = ApiException(
+        HttpStatus.UNSUPPORTED_MEDIA_TYPE, ErrorCode.UNSUPPORTED_MEDIA_TYPE,
+        "This endpoint takes ${supported.joinToString(" or ")}" + (sent?.let { ", not $it" } ?: ""), mapOf("supported" to supported.joinToString(", ")),
+    )
+    fun notMultipart() = validationFailed(mapOf("body" to "Expected a multipart/form-data body with the file in it"))
 
     // ---- Authentication ----
     fun userExists() = ApiException(HttpStatus.CONFLICT, ErrorCode.USER_EXISTS, "A user with this email address already exists")

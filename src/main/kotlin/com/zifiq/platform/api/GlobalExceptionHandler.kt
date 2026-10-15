@@ -6,6 +6,9 @@ import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.slf4j.LoggerFactory
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
+import org.springframework.web.HttpMediaTypeNotSupportedException
+import org.springframework.web.HttpRequestMethodNotSupportedException
+import org.springframework.web.multipart.MultipartException
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.MissingServletRequestParameterException
@@ -61,6 +64,20 @@ class GlobalExceptionHandler {
     @ExceptionHandler(org.springframework.web.multipart.support.MissingServletRequestPartException::class)
     fun handleMissingPart(exception: org.springframework.web.multipart.support.MissingServletRequestPartException): ResponseEntity<ApiErrorEnvelope> =
         toResponse(ApiErrors.validationFailed(mapOf(exception.requestPartName to "This part is required")))
+
+    /** Usually a file upload whose file the client never attached (no multipart body at all). */
+    @ExceptionHandler(HttpMediaTypeNotSupportedException::class)
+    fun handleUnsupportedMediaType(exception: HttpMediaTypeNotSupportedException): ResponseEntity<ApiErrorEnvelope> =
+        toResponse(ApiErrors.unsupportedMediaType(exception.contentType?.toString(), exception.supportedMediaTypes.map { it.toString() }))
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException::class)
+    fun handleMethodNotSupported(exception: HttpRequestMethodNotSupportedException): ResponseEntity<ApiErrorEnvelope> =
+        toResponse(ApiErrors.methodNotAllowed(exception.method, exception.supportedMethods?.toList().orEmpty()))
+
+    /** A multipart request the servlet couldn't read (not multipart, or a broken body). */
+    @ExceptionHandler(MultipartException::class)
+    fun handleBrokenMultipart(exception: MultipartException): ResponseEntity<ApiErrorEnvelope> =
+        if (exception is org.springframework.web.multipart.MaxUploadSizeExceededException) handleUploadTooLarge(exception) else toResponse(ApiErrors.notMultipart())
 
     @ExceptionHandler(AccessDeniedException::class)
     fun handleAccessDenied(exception: AccessDeniedException): ResponseEntity<ApiErrorEnvelope> =

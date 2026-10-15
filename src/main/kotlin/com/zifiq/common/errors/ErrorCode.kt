@@ -15,6 +15,8 @@ enum class ErrorCode {
     INTERNAL_ERROR,
     NOT_FOUND,
     UNAUTHORIZED,
+    METHOD_NOT_ALLOWED,
+    UNSUPPORTED_MEDIA_TYPE,
 
     // ---- Authentication ----
     USER_EXISTS,
