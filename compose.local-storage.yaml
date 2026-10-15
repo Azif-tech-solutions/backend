@@ -2,7 +2,7 @@
 #   docker compose -f compose.yaml -f compose.local-storage.yaml up --build -d
 # Running the app with ./gradlew bootRun instead? Start only S3Mock:
 #   docker compose -f compose.yaml -f compose.local-storage.yaml up -d s3mock
-# and set ZIFIQ_STORAGE_BUCKET=zifiq-local ZIFIQ_STORAGE_ENDPOINT=http://localhost:9090
+# and set ZIFIQ_STORAGE_BUCKET=zifiq-local ZIFIQ_STORAGE_REGION=eu-north-1 ZIFIQ_STORAGE_ENDPOINT=http://localhost:9090
 #         AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=local (S3Mock accepts any keys).
 services:
   s3mock:
@@ -15,6 +15,8 @@ services:
   backend:
     environment:
       ZIFIQ_STORAGE_BUCKET: zifiq-local
+      # S3Mock ignores the region, but the AWS SDK refuses to build a client without one.
+      ZIFIQ_STORAGE_REGION: eu-north-1
       ZIFIQ_STORAGE_ENDPOINT: http://s3mock:9090
       # Not real credentials: S3Mock accepts any keys. AWS itself uses the EC2 instance's IAM role.
       AWS_ACCESS_KEY_ID: local

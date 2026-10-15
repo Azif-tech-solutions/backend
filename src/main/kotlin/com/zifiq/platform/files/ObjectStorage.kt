@@ -27,7 +27,8 @@ data class StorageProperties(
     val keyPrefix: String = "",
     val downloadUrlTtl: Duration = Duration.ofMinutes(5),
 ) {
-    val configured: Boolean get() = bucket.isNotBlank()
+    /** Both are needed: the AWS SDK can't build a client without a region (S3Mock ignores it, but it must be set). */
+    val configured: Boolean get() = bucket.isNotBlank() && region.isNotBlank()
 }
 
 /** Where file bytes live. One implementation (S3); tests run it against S3Mock. */
