@@ -274,4 +274,6 @@ object ApiErrors {
     fun exportTooLarge(max: Int, found: Long) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.EXPORT_TOO_LARGE, "$found invoices match; narrow the range to at most $max", mapOf("max" to max.toString(), "found" to found.toString()))
     fun creditNoteNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.CREDIT_NOTE_NOT_FOUND, "Credit note not found")
     fun invoicePaymentNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.INVOICE_PAYMENT_NOT_FOUND, "Invoice payment not found")
+    fun pageTooDeep(maxRows: Long) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.PAGE_TOO_DEEP,
+        "Pages are available for the first $maxRows rows; narrow the filters or the date range to see older ones", mapOf("maxRows" to maxRows.toString()))
 }

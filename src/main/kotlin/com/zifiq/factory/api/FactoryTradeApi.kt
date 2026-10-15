@@ -1,5 +1,7 @@
 package com.zifiq.factory.api
 
+import com.zifiq.common.paging.PageResult
+import com.zifiq.common.paging.PageParams
 import com.zifiq.factory.dto.FactoryTradeOfferRequest
 import com.zifiq.factory.dto.FactoryTradeOfferSummary
 import com.zifiq.factory.dto.FactoryTradeRespondRequest
@@ -19,5 +21,5 @@ interface FactoryTradeApi {
     fun respondToTrade(id: UUID, request: FactoryTradeRespondRequest): ApiEnvelope<FactoryTradeOfferSummary>
 
     @Operation(summary = "List factory-to-factory trade offers")
-    fun listTrades(locationId: UUID?, status: String?): ApiEnvelope<List<FactoryTradeOfferSummary>>
+    fun listTrades(locationId: UUID?, status: String?, paging: PageParams): ApiEnvelope<PageResult<FactoryTradeOfferSummary>>
 }

@@ -319,20 +319,26 @@ Every entity used in a form picker exposes `GET …/lookup?q=&limit=10&<context 
 
 ### 5.1 Paging
 
-Unbounded lists (ledgers, receipts, invoices, logs, sales, customers, …) take:
-- `page` (0-based, default 0);
-- `size` (default 50, max 200; larger → `400 PAGE_SIZE_TOO_LARGE`);
-- or, for append-only ledgers and logs, **keyset paging**: `after=<cursor>` with an opaque base64 cursor of the sort key + id. This stays fast on page 10,000, where `OFFSET` would not.
+Every list that grows with use (ledgers, receipts, invoices, stock cards and reports, transfers, runs, logs, customers, …) is paged. Every paging number — default and largest `size`, the count cap, lookup sizes, global-search sizes, facet sizes, the list statement timeout — is a constant in **`common.paging.PagingPolicy`** and nowhere else.
 
-Response:
+- Request: `page` (0-based, default 0) and `size` (default 50, max 200; larger → `400 PAGE_SIZE_TOO_LARGE`). Controllers take them as one reusable parameter, `@ParameterObject paging: PageParams`, and pass `paging.toRequest()` to the service; lists with the search/filter framework read them through `ListSearchRequest`.
+- Service: `Paging.fetch(query, request) { row -> … }` runs the page and a capped count; `Paging.fetchNumbered(query, request) { sn, row -> … }` for numbered reports (S/N continues across pages). Filtering, sorting, totals and running balances all happen in SQL — a service never loads a whole result set to filter, sum or page it.
+- Response:
 ```json
 { "data": { "items": [ … ], "page": 0, "size": 50, "totalItems": 1834, "totalPages": 37, "totalIsEstimate": false,
-            "nextCursor": "eyJ…", "facets": { … }, "summary": { … },
+            "facets": { … }, "summary": { … },
             "meta": { "appliedFilters": [ … ], "ignoredQualifiers": [], "suggestions": [], "matches": {} } } }
 ```
-`totalItems` is exact up to 10,000. Beyond that the count stops at 10,000 and `totalIsEstimate: true` means "10,000 or more", so a count never becomes the slow part of a search. A capped `count(*)` is used instead of the planner's row estimate, which can be wildly off on filtered queries. `common.paging.PageRequest` / `PageResult<T>` implement this once. Every paged endpoint is marked **[paged]** in its module doc.
+- `totalItems` is exact up to `PagingPolicy.COUNT_CAP` (10,000); beyond it the count stops and `totalIsEstimate: true` means "10,000 or more", so counting never becomes the slow part. A page that would start past the cap is refused (`400 PAGE_TOO_DEEP`): an offset that deep makes the database skip that many rows first. Narrow the filters or the date range instead. (Keyset `after=` cursors are the planned extension for ledgers that need endless scrolling.)
+- Summaries (`summary`) are SQL aggregates over the list's own condition, built with `common.sql.Aggregates` (`count(where)`, `sum(value, where)`), so a header with several totals is one query.
 
-Small, bounded reference lists (categories, units, bank accounts, expense categories, dealer categories, VAT categories, NRS reference data, locations) stay unpaged: `{"data": [...]}`, as today. Shipped endpoints keep their response shape. When the first paged endpoint ships, add a "Paged responses" section to `frontend-integration.md`.
+Only small, bounded reference lists stay unpaged (`{"data": [...]}`): VAT categories, HS/ISIC sections, NRS code lists, units, categories, dealer and expense categories, roles, bank and cash accounts, settings. Pickers (`…/lookup`) return at most `PagingPolicy.LOOKUP_MAX` rows.
+
+### 5.1.1 Indexes, caching and tenant isolation at scale
+
+- **Indexes.** Every query a list, report or search runs is backed by an index whose leading column is `tenant_id` (what row-level security filters on). `docs/database-indexes.md` lists every index, generated from the schema by `scripts/db/index-report.sql`. Large-table indexes are added with `create index concurrently` in their own migration (V13), which needs `spring.flyway.postgresql.transactional-lock: false` (already set).
+- **Proof.** `scripts/scale/seed.sql` loads one tenant with millions of rows (invoices and lines, receipts, cash and bank ledgers, stock ledger, customers, wallet ledger, events) so list and report queries can be timed and EXPLAINed before a module is called done.
+- **Caching.** `platform.security.AccessCaches` holds the lookups every request repeats (permission codes, location scope, storage areas, module setting values). Every key carries the tenant, and storage-area lookups key on the tenant the transaction's row-level security is enforcing (`TenantScopedTransaction.rlsTenant()`), so a cached value is only ever served to the tenant whose RLS produced it. Writers clear the affected entries at once; entries expire after 30 s (5–30 min for the location hierarchy) to bound staleness across app instances.
 
 ### 5.2 Simple filters (query parameters)
 

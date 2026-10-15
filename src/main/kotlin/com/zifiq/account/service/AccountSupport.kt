@@ -72,16 +72,6 @@ class AccountSupport(
         locationAccess.assertAccess(locationId)
     }
 
-    fun locationNames(ids: Collection<UUID>): Map<UUID, String> =
-        if (ids.isEmpty()) emptyMap()
-        else LocationsTable.select(LocationsTable.id, LocationsTable.name).where { LocationsTable.id inList ids.toSet() }
-            .associate { it[LocationsTable.id].value to it[LocationsTable.name] }
-
-    fun userNames(ids: Collection<UUID>): Map<UUID, String> =
-        if (ids.isEmpty()) emptyMap()
-        else AppUsersTable.select(AppUsersTable.id, AppUsersTable.displayName).where { AppUsersTable.id inList ids.toSet() }
-            .associate { it[AppUsersTable.id].value to it[AppUsersTable.displayName] }
-
     /** Records a domain event; returns its id so a notification can link to it. */
     fun record(type: String, aggregateType: String, id: UUID, ref: String?, summary: String, payload: Map<String, Any?> = emptyMap(), locationId: UUID? = null): UUID =
         domainEvents.record(type = type, aggregateType = aggregateType, aggregateId = id, aggregateRef = ref, summary = summary, payload = payload, locationId = locationId)
@@ -109,7 +99,5 @@ class AccountSupport(
     }
 
     companion object {
-        fun money(value: BigDecimal): BigDecimal = value.setScale(2, RoundingMode.HALF_UP)
-        fun naira(value: BigDecimal): String = "₦" + "%,.2f".format(value)
     }
 }

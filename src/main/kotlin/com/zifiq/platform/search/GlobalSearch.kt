@@ -1,5 +1,7 @@
 package com.zifiq.platform.search
 
+import com.zifiq.common.paging.Paging
+import com.zifiq.common.paging.PagingPolicy
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.platform.api.ApiEnvelope
 import com.zifiq.platform.tenancy.TenantScopedTransaction
@@ -67,11 +69,11 @@ class GlobalSearchController(
     override fun search(
         @RequestParam q: String,
         @RequestParam(required = false) types: Set<String>?,
-        @RequestParam(defaultValue = "5") limit: Int,
+        @RequestParam(defaultValue = "${PagingPolicy.GLOBAL_SEARCH_PER_TYPE_DEFAULT}") limit: Int,
     ): ApiEnvelope<GlobalSearchResult> {
         val text = q.trim()
         if (text.length < 2) throw ApiErrors.validationFailed(mapOf("q" to "must be at least 2 characters"))
-        val perType = limit.coerceIn(1, 20)
+        val perType = PagingPolicy.globalSearchLimit(limit)
         val timedOut = mutableListOf<String>()
         val groups = providers
             .filter { types.isNullOrEmpty() || it.type in types }
@@ -81,7 +83,7 @@ class GlobalSearchController(
                 // module can't hold up (or abort) the others; it is reported in `timedOut`.
                 val hits = runCatching {
                     tx.execute {
-                        TransactionManager.current().exec("select set_config('statement_timeout', '$PROVIDER_TIMEOUT', true)")
+                        Paging.limitStatementTime(PROVIDER_TIMEOUT)
                         provider.search(text, perType + 1)
                     }
                 }.getOrElse { error ->
@@ -104,6 +106,6 @@ class GlobalSearchController(
     }
 
     private companion object {
-        const val PROVIDER_TIMEOUT = "1500ms"
+        const val PROVIDER_TIMEOUT = PagingPolicy.GLOBAL_SEARCH_PROVIDER_TIMEOUT
     }
 }

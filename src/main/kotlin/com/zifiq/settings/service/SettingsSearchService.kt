@@ -1,5 +1,6 @@
 package com.zifiq.settings.service
 
+import com.zifiq.common.paging.PagingPolicy
 import com.zifiq.platform.customfields.CustomFieldDefinitionsTable
 import com.zifiq.platform.search.SearchHit
 import com.zifiq.platform.search.SearchProvider
@@ -42,7 +43,7 @@ class SettingsSearchService(
 ) {
     private data class Screen(val label: String, val keywords: String, val route: String, val permission: String?)
 
-    fun search(q: String?, limit: Int = 20): List<SettingsSearchHit> {
+    fun search(q: String?, limit: Int = PagingPolicy.LOOKUP_DEFAULT): List<SettingsSearchHit> {
         val words = SettingsText.words(q)
         if (words.isEmpty()) return emptyList()
         return tx.execute {

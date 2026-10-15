@@ -1,5 +1,7 @@
 package com.zifiq.invoicing.service
 
+import com.zifiq.inventory.repository.StockSql
+import com.zifiq.common.money.Money
 import com.zifiq.account.spi.VatRates
 import com.zifiq.account.spi.VatSetting
 import com.zifiq.common.errors.ApiErrors
@@ -77,7 +79,7 @@ data class PricedLine(
     val isicCode: String?,
     val serviceCategory: String?,
 ) {
-    val gross: BigDecimal get() = InvoiceSupport.money(quantity * unitPrice)
+    val gross: BigDecimal get() = Money.round(quantity * unitPrice)
 }
 
 data class InvoiceTotalsCalc(val lineExtension: BigDecimal, val discount: BigDecimal, val vat: BigDecimal, val total: BigDecimal) {
@@ -187,23 +189,23 @@ class InvoiceBuilder(
             if (input.quantity.signum() <= 0) throw ApiErrors.validationFailed(mapOf("$field.quantity" to "must be more than 0"))
             if (input.unitPrice.signum() < 0) throw ApiErrors.validationFailed(mapOf("$field.unitPrice" to "can't be negative"))
             val quantity = input.quantity.setScale(3, RoundingMode.HALF_UP)
-            val unitPrice = InvoiceSupport.money(input.unitPrice)
+            val unitPrice = Money.round(input.unitPrice)
             val value = quantity * unitPrice
             val rate = input.discountRate?.takeIf { it.signum() > 0 }
             if (rate != null && rate > BigDecimal(100)) throw ApiErrors.discountExceedsLine()
             val discount = when {
-                input.discountAmount.signum() > 0 -> InvoiceSupport.money(input.discountAmount)
-                rate != null -> InvoiceSupport.money(value * rate / BigDecimal(100))
+                input.discountAmount.signum() > 0 -> Money.round(input.discountAmount)
+                rate != null -> Money.round(value * rate / BigDecimal(100))
                 else -> BigDecimal.ZERO.setScale(2)
             }
             if (discount.signum() < 0 || discount > value) throw ApiErrors.discountExceedsLine()
-            val net = InvoiceSupport.money(value - discount)
+            val net = Money.round(value - discount)
 
             val category = vatCategories.getValue(item[StockItemsTable.vatCategoryId])
             val code = category[VatCategoriesTable.code]
             // Standard-rated items take the location's rate while it collects VAT; zero-rated and exempt never do.
             val vatRate = if (code == "STANDARD_RATE" && vat.enabled) vat.rate.setScale(2) else BigDecimal.ZERO.setScale(2)
-            val vatAmount = InvoiceSupport.money(net * vatRate / BigDecimal(100))
+            val vatAmount = Money.round(net * vatRate / BigDecimal(100))
 
             val isService = item[StockItemsTable.isService]
             val hsnSection = item[StockItemsTable.hsnSectionId]?.let(hsnSections::get)
@@ -288,5 +290,5 @@ class InvoiceBuilder(
             )
         }
 
-    private val unitName = RawExpression<String?>({ +"(select u.name from units_of_measure u where u.id = "; +StockItemsTable.unitOfMeasureId; +")" })
+    private val unitName = StockSql.unitName(StockItemsTable.unitOfMeasureId)
 }

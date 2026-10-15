@@ -1,5 +1,7 @@
 package com.zifiq.account.service
 
+import com.zifiq.platform.directory.Names
+import com.zifiq.common.money.Money
 import com.zifiq.account.dto.AccountLookupRow
 import com.zifiq.account.dto.CashAccountRequest
 import com.zifiq.account.dto.CashAccountUpdateRequest
@@ -86,7 +88,7 @@ class CashAccountService(
         if (currency != "NGN" && currency !in support.moduleSettings().stringList(AccountingSettings.TRACKED_CURRENCIES)) {
             throw ApiErrors.currencyNotTracked(currency, support.moduleSettings().stringList(AccountingSettings.TRACKED_CURRENCIES))
         }
-        val opening = AccountSupport.money(request.openingBalance ?: BigDecimal.ZERO)
+        val opening = Money.round(request.openingBalance ?: BigDecimal.ZERO)
 
         val id = CashAccountsTable.insertAndGetId {
             it[tenantId] = EntityID(support.tenantId(), TenantsTable)
@@ -133,7 +135,7 @@ class CashAccountService(
 
     fun lookup(q: String?, kinds: Set<String>, locationId: UUID?, activeOnly: Boolean): List<AccountLookupRow> =
         list(q, kinds, locationId, if (activeOnly) "ACTIVE" else null, null).take(50)
-            .map { AccountLookupRow(it.id, it.code, it.name, listOfNotNull(it.kind.lowercase().replace('_', ' '), it.locationName ?: "Head office", AccountSupport.naira(it.currentBalance)).joinToString(" · "), it.status) }
+            .map { AccountLookupRow(it.id, it.code, it.name, listOfNotNull(it.kind.lowercase().replace('_', ' '), it.locationName ?: "Head office", Money.naira(it.currentBalance)).joinToString(" · "), it.status) }
 
     fun update(id: UUID, request: CashAccountUpdateRequest): CashAccountView = tx.execute {
         val existing = row(id)
@@ -172,7 +174,7 @@ class CashAccountService(
         val code = account[CashAccountsTable.code]
         val date = request.countDate!!
         if (date.isAfter(support.today())) throw ApiErrors.validationFailed(mapOf("countDate" to "can't be in the future"))
-        val counted = AccountSupport.money(request.countedAmount!!)
+        val counted = Money.round(request.countedAmount!!)
         val book = account[CashAccountsTable.currentBalance]
         val variance = counted - book
         val note = request.note?.trim()?.ifEmpty { null }
@@ -188,13 +190,13 @@ class CashAccountService(
             )
             val eventId = support.record(
                 "account.cash.count-variance", "cash_account", id, reference,
-                "$reference: $code counted ${AccountSupport.naira(counted)} against ${AccountSupport.naira(book)} (${if (variance.signum() > 0) "+" else ""}${AccountSupport.naira(variance)})",
+                "$reference: $code counted ${Money.naira(counted)} against ${Money.naira(book)} (${if (variance.signum() > 0) "+" else ""}${Money.naira(variance)})",
                 mapOf("book" to book, "counted" to counted, "variance" to variance, "entryId" to posted.id), account[CashAccountsTable.locationId],
             )
             notify.holdersOf(
                 permission = MANAGEMENT_ALERTS, locationId = account[CashAccountsTable.locationId], category = NotificationCategory.ALERT,
                 title = "Cash count variance — $code",
-                body = "${account[CashAccountsTable.name]}: counted ${AccountSupport.naira(counted)}, book ${AccountSupport.naira(book)}. $note",
+                body = "${account[CashAccountsTable.name]}: counted ${Money.naira(counted)}, book ${Money.naira(book)}. $note",
                 linkType = "cash-account", linkRef = id.toString(), sourceEventId = eventId, exclude = support.userId(),
             )
         }
@@ -253,7 +255,7 @@ class CashAccountService(
                 remark = row[CashTransactionsTable.remark],
                 inflow = if (inflow) row[CashTransactionsTable.amount] else null,
                 outflow = if (inflow) null else row[CashTransactionsTable.amount],
-                balance = AccountSupport.money(BigDecimal(row[balance].toString())),
+                balance = Money.round(BigDecimal(row[balance].toString())),
                 accountCode = row[CashAccountsTable.code],
                 accountName = row[CashAccountsTable.name],
                 kind = row[CashAccountsTable.kind],
@@ -267,14 +269,14 @@ class CashAccountService(
             mapOf(
                 "scope" to mapOf(
                     "locationId" to location,
-                    "locationName" to location?.let { support.locationNames(listOf(it))[it] },
+                    "locationName" to location?.let { Names.locations(listOf(it))[it] },
                     "accounts" to scopeAccounts.map { mapOf("id" to it[CashAccountsTable.id].value, "code" to it[CashAccountsTable.code], "name" to it[CashAccountsTable.name], "kind" to it[CashAccountsTable.kind]) },
                 ),
                 "period" to mapOf("from" to from, "to" to to),
-                "openingCash" to AccountSupport.money(from?.let { net(base and (CashTransactionsTable.entryDate less it)) } ?: BigDecimal.ZERO),
+                "openingCash" to Money.round(from?.let { net(base and (CashTransactionsTable.entryDate less it)) } ?: BigDecimal.ZERO),
                 "totalInflow" to total(inPeriod, "IN"),
                 "totalOutflow" to total(inPeriod, "OUT"),
-                "closingCash" to AccountSupport.money(net(if (to == null) base else base and (CashTransactionsTable.entryDate lessEq to))),
+                "closingCash" to Money.round(net(if (to == null) base else base and (CashTransactionsTable.entryDate lessEq to))),
             )
         } else null
         page.withItems(items).copy(summary = summary, meta = PageMeta(ignoredQualifiers = parsed.ignoredQualifiers))
@@ -297,7 +299,7 @@ class CashAccountService(
     private fun view(row: ResultRow) = toViews(listOf(row)).single()
 
     private fun toViews(rows: List<ResultRow>): List<CashAccountView> {
-        val locations = support.locationNames(rows.mapNotNull { it[CashAccountsTable.locationId] })
+        val locations = Names.locations(rows.mapNotNull { it[CashAccountsTable.locationId] })
         val bankIds = rows.mapNotNull { it[CashAccountsTable.posSettlementBankAccountId] }
         val banks = if (bankIds.isEmpty()) emptyMap() else BankAccountsTable.select(BankAccountsTable.id, BankAccountsTable.code)
             .where { BankAccountsTable.id inList bankIds }.associate { it[BankAccountsTable.id].value to it[BankAccountsTable.code] }
@@ -380,7 +382,7 @@ class CashAccountService(
 
     private fun total(condition: Op<Boolean>, direction: String): BigDecimal {
         val sum = Sum(CashTransactionsTable.amount, DecimalColumnType(16, 2))
-        return AccountSupport.money(CashTransactionsTable.select(sum).where(condition and (CashTransactionsTable.direction eq direction)).single()[sum] ?: BigDecimal.ZERO)
+        return Money.round(CashTransactionsTable.select(sum).where(condition and (CashTransactionsTable.direction eq direction)).single()[sum] ?: BigDecimal.ZERO)
     }
 
     private fun context() = FilterContext(costVisible = true, zone = support.moduleSettings().zone())

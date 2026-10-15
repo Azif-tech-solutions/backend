@@ -62,7 +62,14 @@ interface ExchangeRates {
 // ---- Money received (§5.1–5.2) ----
 
 /** How money was received. CASH posts at once; POS, FUND_TRANSFER and CHEQUE wait for Accounts to confirm; WALLET/DEPOSIT were already debited by the caller. */
-enum class Channel { CASH, POS, FUND_TRANSFER, CHEQUE, WALLET, DEPOSIT }
+enum class Channel(val label: String) {
+    CASH("Cash"), POS("POS (card)"), FUND_TRANSFER("Fund transfer"), CHEQUE("Cheque"), WALLET("Wallet"), DEPOSIT("Deposit");
+
+    companion object {
+        /** The label for a stored channel code (the code itself if unknown). */
+        fun labelOf(code: String): String = entries.firstOrNull { it.name == code }?.label ?: code
+    }
+}
 
 enum class ConfirmationStatus { NOT_REQUIRED, PENDING, APPROVED, DECLINED }
 

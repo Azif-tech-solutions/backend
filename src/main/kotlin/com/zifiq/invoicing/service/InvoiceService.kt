@@ -1,5 +1,6 @@
 package com.zifiq.invoicing.service
 
+import com.zifiq.common.money.Money
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.invoicing.dto.DraftHeaderRequest
 import com.zifiq.invoicing.dto.ReissueRequest
@@ -79,7 +80,7 @@ class InvoiceService(
         val id = insertDraft(req, planned)
         val row = row(id)
         support.record("invoicing.invoice.drafted", id, null,
-            "Draft invoice for ${req.sourceRef} — ${row[InvoicesTable.buyerName]}, ${InvoiceSupport.naira(row[InvoicesTable.taxInclusiveAmount])}",
+            "Draft invoice for ${req.sourceRef} — ${row[InvoicesTable.buyerName]}, ${Money.naira(row[InvoicesTable.taxInclusiveAmount])}",
             mapOf("sourceType" to req.sourceType.name, "sourceId" to req.sourceId, "sourceRef" to req.sourceRef), req.locationId)
         return ref(row)
     }
@@ -350,7 +351,7 @@ class InvoiceService(
         documents.register(number, DocumentType.INVOICE, InvoiceSupport.SOURCE_MODULE, id, issued[InvoicesTable.locationId].value,
             issued[InvoicesTable.buyerName], issued[InvoicesTable.customerId], total)
         support.record("invoicing.invoice.issued", id, number,
-            "$number issued to ${issued[InvoicesTable.buyerName]}: ${InvoiceSupport.naira(total)} (${issued[InvoicesTable.sourceRef]})",
+            "$number issued to ${issued[InvoicesTable.buyerName]}: ${Money.naira(total)} (${issued[InvoicesTable.sourceRef]})",
             mapOf("total" to total, "sourceType" to issued[InvoicesTable.sourceType], "sourceId" to issued[InvoicesTable.sourceId],
                 "sourceRef" to issued[InvoicesTable.sourceRef], "customerId" to issued[InvoicesTable.customerId]),
             issued[InvoicesTable.locationId].value)
@@ -386,7 +387,7 @@ class InvoiceService(
         notify.holdersOf(
             permission = "invoicing.receivables.read", locationId = locationId, category = NotificationCategory.ALERT,
             title = "Invoice voided — $number",
-            body = "${InvoiceSupport.naira(invoice[InvoicesTable.taxInclusiveAmount])} to ${invoice[InvoicesTable.buyerName]}: $reason",
+            body = "${Money.naira(invoice[InvoicesTable.taxInclusiveAmount])} to ${invoice[InvoicesTable.buyerName]}: $reason",
             linkType = "invoice", linkRef = id.toString(), sourceEventId = eventId, exclude = support.userId(),
         )
     }

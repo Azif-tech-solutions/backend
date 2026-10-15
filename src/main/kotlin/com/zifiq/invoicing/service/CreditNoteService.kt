@@ -1,5 +1,8 @@
 package com.zifiq.invoicing.service
 
+import com.zifiq.platform.directory.Names
+import com.zifiq.settings.spi.logoDataUri
+import com.zifiq.common.money.Money
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.filter.Facets
 import com.zifiq.common.filter.FilterField
@@ -103,11 +106,11 @@ class CreditNoteService(
                 val quantity = input.quantity.setScale(3, RoundingMode.HALF_UP)
                 if (prevQuantity + quantity > line[InvoiceLinesTable.quantity]) throw ApiErrors.creditExceedsLine(lineNo)
                 // Quantity credits keep the line's own price (after its discount): a share of its net.
-                InvoiceSupport.money(line[InvoiceLinesTable.lineNet] * quantity / line[InvoiceLinesTable.quantity])
-            } else InvoiceSupport.money(input.amount!!)
+                Money.round(line[InvoiceLinesTable.lineNet] * quantity / line[InvoiceLinesTable.quantity])
+            } else Money.round(input.amount!!)
             if (prevNet + net > line[InvoiceLinesTable.lineNet]) throw ApiErrors.creditExceedsLine(lineNo)
-            val vat = InvoiceSupport.money(net * line[InvoiceLinesTable.vatRate] / BigDecimal(100))
-            PricedCredit(line[InvoiceLinesTable.id].value, input.quantity?.setScale(3, RoundingMode.HALF_UP), input.amount?.let(InvoiceSupport::money), net, vat, net + vat)
+            val vat = Money.round(net * line[InvoiceLinesTable.vatRate] / BigDecimal(100))
+            PricedCredit(line[InvoiceLinesTable.id].value, input.quantity?.setScale(3, RoundingMode.HALF_UP), input.amount?.let(Money::round), net, vat, net + vat)
         }
         val lineExtension = priced.fold(BigDecimal.ZERO) { s, it -> s + it.net }.setScale(2)
         val vatTotal = priced.fold(BigDecimal.ZERO) { s, it -> s + it.vat }.setScale(2)
@@ -120,10 +123,10 @@ class CreditNoteService(
         val customerId = invoice[InvoicesTable.customerId]
         if (excess.signum() > 0) {
             if (support.settings().string(InvoicingSettings.CREDIT_NOTE_EXCESS_TO) == "BLOCK") {
-                throw ApiErrors.creditExceedsBalance("This credit note is ${InvoiceSupport.naira(excess)} more than the invoice's balance; refund the customer through Accounts instead")
+                throw ApiErrors.creditExceedsBalance("This credit note is ${Money.naira(excess)} more than the invoice's balance; refund the customer through Accounts instead")
             }
             if (customerId == null) {
-                throw ApiErrors.creditExceedsBalance("This credit note is ${InvoiceSupport.naira(excess)} more than the invoice's balance and a walk-in buyer has no wallet; refund through Accounts instead")
+                throw ApiErrors.creditExceedsBalance("This credit note is ${Money.naira(excess)} more than the invoice's balance and a walk-in buyer has no wallet; refund through Accounts instead")
             }
         }
 
@@ -172,8 +175,8 @@ class CreditNoteService(
         }
         documents.register(number, DocumentType.CREDIT_NOTE, InvoiceSupport.SOURCE_MODULE, id, locationId, invoice[InvoicesTable.buyerName], customerId, total)
         support.record("invoicing.credit-note.issued", id, number,
-            "$number on $invoiceNumber: ${InvoiceSupport.naira(total)} (${request.reason!!.lowercase().replace('_', ' ')})" +
-                if (excess.signum() > 0) ", ${InvoiceSupport.naira(excess)} to the wallet" else "",
+            "$number on $invoiceNumber: ${Money.naira(total)} (${request.reason!!.lowercase().replace('_', ' ')})" +
+                if (excess.signum() > 0) ", ${Money.naira(excess)} to the wallet" else "",
             mapOf("invoiceId" to invoiceId, "invoiceNumber" to invoiceNumber, "total" to total, "applied" to applied, "excess" to excess, "reason" to request.reason), locationId)
         val newBalance = balance - applied
         if (balance > support.tolerance() && newBalance <= support.tolerance()) {
@@ -190,7 +193,7 @@ class CreditNoteService(
         val condition = listOfNotNull(scope, search, filterSpec.fromParams(request.params, context), filterSpec.fromJson(request.filter, context)).allOf()!!
         val sort = if (request.sort.isEmpty() && !parsed.isEmpty) searchSpec.rank(parsed) + filterSpec.sort(emptyList(), context) else filterSpec.sort(request.sortParams, context)
         val page = Paging.fetch(joined().selectAll().where(condition).orderBy(*sort.toTypedArray()), PageRequest.of(request.page, request.size)) { it }
-        val users = support.userNames(page.items.map { it[CreditNotesTable.issuedByUserId].value })
+        val users = Names.users(page.items.map { it[CreditNotesTable.issuedByUserId].value })
         val items = page.items.map { row ->
             CreditNoteRow(
                 id = row[CreditNotesTable.id].value, number = row[CreditNotesTable.number], invoiceId = row[CreditNotesTable.invoiceId].value,
@@ -210,7 +213,7 @@ class CreditNoteService(
         } else null
         val facets = request.facets.take(Facets.MAX_FACETS).associateWith { key ->
             if (key != "reason") throw ApiErrors.invalidFilter(key, "Not a facet", listOf("reason"))
-            val others = request.params.filterKeys { it.substringBefore('.') != key }
+            val others = Facets.paramsWithout(request.params, key)
             Facets.count(joined(), listOfNotNull(scope, search, filterSpec.fromParams(others, context)).allOf(), CreditNotesTable.reason) { v -> v?.let(::reasonLabel) }
         }
         page.withItems(items).copy(summary = summary, facets = facets.ifEmpty { null }, meta = PageMeta(ignoredQualifiers = parsed.ignoredQualifiers))
@@ -228,18 +231,18 @@ class CreditNoteService(
         val model = mapOf(
             "note" to note,
             "company" to company,
-            "logo" to company.logo?.let { "data:${company.logoContentType};base64," + Base64.getEncoder().encodeToString(it) },
+            "logo" to company.logoDataUri(),
             "reason" to reasonLabel(note.reason),
             "issuedAt" to LocalDateTime.ofInstant(note.issuedAt, support.zone()).format(DATE_TIME),
             "invoiceIssueDate" to (note.invoiceIssueDate?.format(DATE) ?: "—"),
             "lines" to note.lines.map { line ->
                 mapOf("no" to line.lineNo, "name" to line.name, "code" to line.code,
-                    "basis" to (line.quantity?.let { "${it.stripTrailingZeros().toPlainString()} × ${InvoiceSupport.naira(line.unitPrice)}" } ?: "Value adjustment"),
-                    "net" to InvoiceSupport.naira(line.lineNet), "vat" to "${line.vatRate.stripTrailingZeros().toPlainString()}% ${InvoiceSupport.naira(line.vatAmount)}",
-                    "total" to InvoiceSupport.naira(line.lineTotal))
+                    "basis" to (line.quantity?.let { "${it.stripTrailingZeros().toPlainString()} × ${Money.naira(line.unitPrice)}" } ?: "Value adjustment"),
+                    "net" to Money.naira(line.lineNet), "vat" to "${line.vatRate.stripTrailingZeros().toPlainString()}% ${Money.naira(line.vatAmount)}",
+                    "total" to Money.naira(line.lineTotal))
             },
-            "lineExtension" to InvoiceSupport.naira(note.lineExtension), "vat" to InvoiceSupport.naira(note.vat), "total" to InvoiceSupport.naira(note.total),
-            "applied" to InvoiceSupport.naira(note.appliedToInvoice), "excess" to InvoiceSupport.naira(note.excessRefunded), "hasExcess" to (note.excessRefunded.signum() > 0),
+            "lineExtension" to Money.naira(note.lineExtension), "vat" to Money.naira(note.vat), "total" to Money.naira(note.total),
+            "applied" to Money.naira(note.appliedToInvoice), "excess" to Money.naira(note.excessRefunded), "hasExcess" to (note.excessRefunded.signum() > 0),
             "duplicate" to documents.isReprint(note.number),
             "nrsFooter" to InvoiceQueryService.NRS_FOOTER,
             "printedAt" to LocalDateTime.now(support.zone()).format(DATE_TIME),
@@ -275,7 +278,7 @@ class CreditNoteService(
 
     fun search(q: String, limit: Int): List<SearchHit> =
         list(ListSearchRequest(q = q, size = limit, summary = false)).items.map {
-            SearchHit("credit-note", it.id, it.number, "${it.invoiceNumber} · ${it.customer} · ${InvoiceSupport.naira(it.total)}", it.number, "/invoicing/credit-notes/${it.id}")
+            SearchHit("credit-note", it.id, it.number, "${it.invoiceNumber} · ${it.customer} · ${Money.naira(it.total)}", it.number, "/invoicing/credit-notes/${it.id}")
         }
 
     // ---- Internals (caller's transaction) ----
@@ -315,7 +318,7 @@ class CreditNoteService(
             reason = row[CreditNotesTable.reason], reasonNote = row[CreditNotesTable.reasonNote], lines = lines,
             lineExtension = row[CreditNotesTable.lineExtensionAmount], vat = row[CreditNotesTable.vatTotal], total = row[CreditNotesTable.total],
             appliedToInvoice = row[CreditNotesTable.appliedToInvoice], excessRefunded = row[CreditNotesTable.excessRefunded],
-            issuedBy = support.userNames(listOf(row[CreditNotesTable.issuedByUserId].value)).values.firstOrNull(), issuedAt = row[CreditNotesTable.issuedAt],
+            issuedBy = Names.users(listOf(row[CreditNotesTable.issuedByUserId].value)).values.firstOrNull(), issuedAt = row[CreditNotesTable.issuedAt],
         )
     }
 

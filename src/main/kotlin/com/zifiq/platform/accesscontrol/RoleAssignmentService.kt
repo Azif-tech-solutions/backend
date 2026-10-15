@@ -1,5 +1,6 @@
 package com.zifiq.platform.accesscontrol
 
+import com.zifiq.platform.security.AccessCaches
 import com.zifiq.platform.accesscontrol.model.PermissionCatalogTable
 import com.zifiq.platform.accesscontrol.model.RolePermissionsTable
 import com.zifiq.platform.accesscontrol.model.TenantRolesTable
@@ -61,6 +62,7 @@ class RoleAssignmentService(
             it[UserRoleAssignmentsTable.grantedByUserId] = actor.userId
             it[UserRoleAssignmentsTable.grantedAt] = Instant.now()
         }
+        AccessCaches.permissionsChanged(actor.tenantId)
         RoleAssignmentSummary(userId, roleId)
     }
 }

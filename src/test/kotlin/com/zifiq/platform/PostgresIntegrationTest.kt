@@ -59,6 +59,8 @@ abstract class PostgresIntegrationTest {
 
             Flyway.configure()
                 .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
+                // As spring.flyway.postgresql.transactional-lock in application.yml: concurrent index builds need it.
+                .configuration(mapOf("flyway.postgresql.transactional.lock" to "false"))
                 .load()
                 .migrate()
 

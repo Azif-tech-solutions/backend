@@ -1,5 +1,8 @@
 package com.zifiq.invoicing.service
 
+import com.zifiq.platform.directory.Names
+import com.zifiq.common.money.Money
+import com.zifiq.common.paging.PagingPolicy
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.filter.FilterMetadata
 import com.zifiq.common.filter.ListSearchRequest
@@ -60,7 +63,7 @@ class ReceivablesService(
                 id = row[InvoicesTable.id].value, number = row[InvoicesTable.number]!!, issued = row[InvoicesTable.issueDate], due = row[InvoicesTable.dueDate],
                 customerId = row[InvoicesTable.customerId], customer = row[InvoicesTable.buyerName], customerType = row[InvoicesTable.buyerType],
                 showroom = row.getOrNull(LocationsTable.name), total = row[InvoicesTable.taxInclusiveAmount], paid = row[InvoicesTable.amountPaid],
-                credited = row[InvoicesTable.amountCredited], balance = InvoiceSupport.money(row[d.balance]),
+                credited = row[InvoicesTable.amountCredited], balance = Money.round(row[d.balance]),
                 status = InvoiceExpressions.label(row[d.displayStatus]), daysOverdue = row[d.daysOverdue], ageingBucket = row[d.ageingBucket] ?: "NOT_DUE",
             )
         }
@@ -132,7 +135,7 @@ class ReceivablesService(
                     invoiceId = it[InvoicesTable.id].value, date = it[InvoicesTable.issueDate], invoice = it[InvoicesTable.number]!!,
                     description = (if (it[InvoicesTable.sourceType] == "PRO_FORMA") "Invoice from pro-forma " else "Invoice for sale ") + it[InvoicesTable.sourceRef] + if (void) " (void)" else "",
                     value = it[InvoicesTable.taxInclusiveAmount], paid = it[InvoicesTable.amountPaid] + it[InvoicesTable.amountCredited],
-                    balance = if (void) BigDecimal.ZERO.setScale(2) else InvoiceSupport.money(it[d.balance].max(BigDecimal.ZERO)),
+                    balance = if (void) BigDecimal.ZERO.setScale(2) else Money.round(it[d.balance].max(BigDecimal.ZERO)),
                     dueDate = it[InvoicesTable.dueDate], status = InvoiceExpressions.label(it[d.displayStatus]),
                 )
             }
@@ -172,15 +175,15 @@ class ReceivablesService(
         val byCustomerBalance = RawExpression<BigDecimal>({ +"sum("; +d.balance; +")" })
         val byCustomerCount = RawExpression<Long>({ +"count(*)" })
         val byCustomer = listing.joined().select(InvoicesTable.customerId, InvoicesTable.buyerName, byCustomerCount, byCustomerBalance).where(condition)
-            .groupBy(InvoicesTable.customerId, InvoicesTable.buyerName).orderBy(byCustomerBalance to SortOrder.DESC).limit(20)
+            .groupBy(InvoicesTable.customerId, InvoicesTable.buyerName).orderBy(byCustomerBalance to SortOrder.DESC).limit(PagingPolicy.SUMMARY_TOP_N)
             .map {
                 mapOf("customerId" to it[InvoicesTable.customerId], "customer" to it[InvoicesTable.buyerName],
-                    "invoiceCount" to (it[byCustomerCount] as Number).toLong(), "balance" to InvoiceSupport.money(it[byCustomerBalance]))
+                    "invoiceCount" to (it[byCustomerCount] as Number).toLong(), "balance" to Money.round(it[byCustomerBalance]))
             }
         return mapOf(
-            "outstandingTotal" to InvoiceSupport.money(row[outstanding]), "outstandingCount" to (row[outstandingCount] as Number).toLong(),
-            "overdueTotal" to InvoiceSupport.money(row[overdue]), "overdueCount" to (row[overdueCount] as Number).toLong(),
-            "partiallyPaidTotal" to InvoiceSupport.money(row[partial]), "partiallyPaidCount" to (row[partialCount] as Number).toLong(),
+            "outstandingTotal" to Money.round(row[outstanding]), "outstandingCount" to (row[outstandingCount] as Number).toLong(),
+            "overdueTotal" to Money.round(row[overdue]), "overdueCount" to (row[overdueCount] as Number).toLong(),
+            "partiallyPaidTotal" to Money.round(row[partial]), "partiallyPaidCount" to (row[partialCount] as Number).toLong(),
             "voidedCount" to voided, "outstandingByCustomer" to byCustomer,
         )
     }
@@ -204,7 +207,7 @@ class ReceivablesService(
             val id = g[InvoicesTable.customerId]!!
             val customer = refs[id] ?: return@mapNotNull null
             val oldestDate = g[oldest]?.let(LocalDate::parse)
-            rowFor(customer, (g[count] as Number).toInt(), InvoiceSupport.money(g[outstanding]), oldestDate, lastPayments[id])
+            rowFor(customer, (g[count] as Number).toInt(), Money.round(g[outstanding]), oldestDate, lastPayments[id])
         }
     }
 
@@ -214,7 +217,7 @@ class ReceivablesService(
         val rep = customer.correspondentId?.let { id -> runCatching { correspondents.get(id).name }.getOrNull() }
         return DebtorRow(
             customerId = customer.id, code = customer.code, name = customer.name, type = customer.type.name, phone = customer.phone,
-            locationId = customer.locationId, showroom = customer.locationId?.let { support.locationNames(listOf(it))[it] },
+            locationId = customer.locationId, showroom = customer.locationId?.let { Names.locations(listOf(it))[it] },
             correspondentId = customer.correspondentId, rep = rep, openInvoices = openInvoices, outstanding = outstanding,
             creditLimit = customer.creditLimit, overLimit = outstanding > customer.creditLimit && openInvoices > 0,
             oldestInvoiceDays = days, ageing = ageing, ageingLabel = AGEING_LABELS.getValue(ageing), lastPaymentAt = lastPaymentAt,

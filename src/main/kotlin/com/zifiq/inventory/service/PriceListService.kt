@@ -1,5 +1,7 @@
 package com.zifiq.inventory.service
 
+import com.zifiq.inventory.repository.StockSql
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.lessEq
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.filter.FilterContext
 import com.zifiq.common.filter.FilterField
@@ -94,7 +96,7 @@ class PriceListService(
     private fun QueryBuilder.date(value: LocalDate) = registerArgument(JavaLocalDateColumnType(), value)
 
     private val categoryName = RawExpression<String>({ +"coalesce((select c.name from categories c where c.id = "; +StockItemsTable.categoryId; +"), 'Ungrouped')" })
-    private val unitName = RawExpression<String>({ +"(select u.name from units_of_measure u where u.id = "; +StockItemsTable.unitOfMeasureId; +")" })
+    private val unitName = StockSql.unitName(StockItemsTable.unitOfMeasureId)
 
     private fun filterSpec(): FilterSpec = FilterSpec(
         fields = listOf(
@@ -258,39 +260,44 @@ class PriceListService(
             aggregateRef = row[StockItemPricesTable.batchRef],
             summary = "Scheduled price for ${row[StockItemPricesTable.effectiveFrom]} changed (${row[StockItemPricesTable.batchRef]})",
         )
-        history(row[StockItemPricesTable.stockItemId].value).first { it.priceId == priceId }
+        val updated = StockItemPricesTable.selectAll().where { StockItemPricesTable.id eq priceId }.single()
+        toHistoryRow(updated, today(), currentPriceId(updated[StockItemPricesTable.stockItemId].value, today()))
     }
 
-    fun itemHistory(stockItemId: UUID): List<PriceHistoryRow> = tx.execute {
+    fun itemHistory(stockItemId: UUID, paging: PageRequest = PageRequest.of(null, null)): PageResult<PriceHistoryRow> = tx.execute {
         StockItemsTable.selectAll()
             .where { (StockItemsTable.id eq stockItemId) and (StockItemsTable.tenantId eq tenantContext.requireTenantId()) }
             .firstOrNull() ?: throw ApiErrors.stockItemNotFound()
-        history(stockItemId)
+        val today = today()
+        val currentId = currentPriceId(stockItemId, today)
+        val query = StockItemPricesTable.selectAll().where { StockItemPricesTable.stockItemId eq stockItemId }
+            .orderBy(StockItemPricesTable.effectiveFrom to SortOrder.DESC, StockItemPricesTable.id to SortOrder.DESC)
+        Paging.fetch(query, paging) { toHistoryRow(it, today, currentId) }
     }
 
-    private fun history(stockItemId: UUID): List<PriceHistoryRow> {
-        val today = today()
-        val rows = StockItemPricesTable.selectAll().where { StockItemPricesTable.stockItemId eq stockItemId }
-            .orderBy(StockItemPricesTable.effectiveFrom to SortOrder.DESC).toList()
-        val currentId = rows.firstOrNull { !it[StockItemPricesTable.effectiveFrom].isAfter(today) }?.get(StockItemPricesTable.id)?.value
-        return rows.map { row ->
-            val id = row[StockItemPricesTable.id].value
-            PriceHistoryRow(
-                priceId = id,
-                retailPrice = row[StockItemPricesTable.retailPrice],
-                dealerPrice = row[StockItemPricesTable.dealerPrice],
-                effectiveFrom = row[StockItemPricesTable.effectiveFrom],
-                batchRef = row[StockItemPricesTable.batchRef],
-                note = row[StockItemPricesTable.note],
-                setByUserId = row[StockItemPricesTable.setByUserId].value,
-                createdAt = row[StockItemPricesTable.createdAt],
-                state = when {
-                    row[StockItemPricesTable.effectiveFrom].isAfter(today) -> "SCHEDULED"
-                    id == currentId -> "CURRENT"
-                    else -> "SUPERSEDED"
-                },
-            )
-        }
+    /** The price in force today: the latest one effective on or before today (one indexed row). */
+    private fun currentPriceId(stockItemId: UUID, today: java.time.LocalDate): UUID? =
+        StockItemPricesTable.select(StockItemPricesTable.id)
+            .where { (StockItemPricesTable.stockItemId eq stockItemId) and (StockItemPricesTable.effectiveFrom lessEq today) }
+            .orderBy(StockItemPricesTable.effectiveFrom to SortOrder.DESC).limit(1).firstOrNull()?.get(StockItemPricesTable.id)?.value
+
+    private fun toHistoryRow(row: ResultRow, today: java.time.LocalDate, currentId: UUID?): PriceHistoryRow {
+        val id = row[StockItemPricesTable.id].value
+        return PriceHistoryRow(
+            priceId = id,
+            retailPrice = row[StockItemPricesTable.retailPrice],
+            dealerPrice = row[StockItemPricesTable.dealerPrice],
+            effectiveFrom = row[StockItemPricesTable.effectiveFrom],
+            batchRef = row[StockItemPricesTable.batchRef],
+            note = row[StockItemPricesTable.note],
+            setByUserId = row[StockItemPricesTable.setByUserId].value,
+            createdAt = row[StockItemPricesTable.createdAt],
+            state = when {
+                row[StockItemPricesTable.effectiveFrom].isAfter(today) -> "SCHEDULED"
+                id == currentId -> "CURRENT"
+                else -> "SUPERSEDED"
+            },
+        )
     }
 
     private fun toRow(row: ResultRow, costVisible: Boolean): PriceListRow {

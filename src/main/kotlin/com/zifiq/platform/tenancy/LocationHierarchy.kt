@@ -1,5 +1,7 @@
 package com.zifiq.platform.tenancy
 
+import com.zifiq.platform.security.AccessCaches
+import java.util.Optional
 import com.zifiq.platform.tenancy.model.LocationsTable
 import java.util.UUID
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -18,17 +20,24 @@ class LocationHierarchy {
 
     fun withAreas(locationIds: Collection<UUID>): Set<UUID> {
         if (locationIds.isEmpty()) return emptySet()
-        val areas = LocationsTable.select(LocationsTable.id)
-            .where { LocationsTable.parentLocationId inList locationIds }
-            .map { it[LocationsTable.id].value }
-        return locationIds.toSet() + areas
+        // Cached per tenant and location (AccessCaches), read under that tenant's RLS; adding an area clears its parent's entry.
+        val tenantId = TenantScopedTransaction.rlsTenant()
+        val areas = AccessCaches.areas.getAll(locationIds.map { AccessCaches.LocationKey(tenantId, it) }.toSet()) { missing ->
+            val found = LocationsTable.select(LocationsTable.id, LocationsTable.parentLocationId)
+                .where { LocationsTable.parentLocationId inList missing.map { it.locationId } }
+                .groupBy({ it[LocationsTable.parentLocationId]!! }, { it[LocationsTable.id].value })
+            missing.associateWith { found[it.locationId].orEmpty().toSet() }
+        }
+        return locationIds.toSet() + areas.values.flatten()
     }
 
     /** The factory/showroom an area belongs to; null for a factory/showroom (or an unknown id). */
     fun parentOf(locationId: UUID): UUID? =
-        LocationsTable.select(LocationsTable.parentLocationId)
-            .where { LocationsTable.id eq locationId }
-            .firstOrNull()?.get(LocationsTable.parentLocationId)
+        AccessCaches.parents.get(AccessCaches.LocationKey(TenantScopedTransaction.rlsTenant(), locationId)) {
+            Optional.ofNullable(
+                LocationsTable.select(LocationsTable.parentLocationId).where { LocationsTable.id eq locationId }.firstOrNull()?.get(LocationsTable.parentLocationId),
+            )
+        }.orElse(null)
 
     /** The factory/showroom a location belongs to: itself, or an area's parent. */
     fun rootOf(locationId: UUID): UUID = parentOf(locationId) ?: locationId

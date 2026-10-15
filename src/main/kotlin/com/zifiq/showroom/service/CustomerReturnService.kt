@@ -1,5 +1,7 @@
 package com.zifiq.showroom.service
 
+import com.zifiq.common.money.Money
+import com.zifiq.inventory.repository.StockSql
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.filter.FilterContext
 import com.zifiq.common.filter.FilterField
@@ -193,15 +195,15 @@ class CustomerReturnService(
 
         domainEvents.record(
             type = "showroom.return.posted", aggregateType = "customer-return", aggregateId = id, aggregateRef = ref,
-            summary = "$ref: ${naira(total)} credited to ${customer.code} at ${showroom[LocationsTable.name]}" +
-                if (writeOff.signum() > 0) " (${naira(writeOff)} written off)" else "",
+            summary = "$ref: ${Money.naira(total)} credited to ${customer.code} at ${showroom[LocationsTable.name]}" +
+                if (writeOff.signum() > 0) " (${Money.naira(writeOff)} written off)" else "",
             payload = mapOf("returnType" to request.returnType, "lines" to lines.size, "totalValue" to total, "writeOffValue" to writeOff),
             locationId = showroomId,
         )
         if (writeOff.signum() > 0) {
             notify.holdersOf(
                 permission = "showroom.returns.read", locationId = showroomId, category = NotificationCategory.ALERT,
-                title = "Goods written off — $ref", body = "$ref: ${naira(writeOff)} written off at ${showroom[LocationsTable.name]}.",
+                title = "Goods written off — $ref", body = "$ref: ${Money.naira(writeOff)} written off at ${showroom[LocationsTable.name]}.",
                 linkType = "showroom.return", linkRef = id.toString(), exclude = actor.userId,
             )
         }
@@ -291,7 +293,7 @@ class CustomerReturnService(
 
     private fun summary(id: UUID): ReturnSummary {
         val header = CustomerReturnsTable.selectAll().where { CustomerReturnsTable.id eq id }.single()
-        val unit = RawExpression<String>({ +"(select u.name from units_of_measure u where u.id = "; +StockItemsTable.unitOfMeasureId; +")" })
+        val unit = StockSql.unitName(StockItemsTable.unitOfMeasureId)
         val lines = CustomerReturnLinesTable
             .join(StockItemsTable, JoinType.INNER, CustomerReturnLinesTable.stockItemId, StockItemsTable.id)
             .select(CustomerReturnLinesTable.columns + StockItemsTable.code + StockItemsTable.name + unit)
@@ -433,7 +435,6 @@ class CustomerReturnService(
         locationName = it[location[LocationsTable.name]], creditedTo = it[creditedTo], status = it[CustomerReturnsTable.status],
     )
 
-    private fun naira(amount: BigDecimal) = "₦" + NumberFormat.getNumberInstance(Locale.UK).apply { minimumFractionDigits = 2; maximumFractionDigits = 2 }.format(amount)
 
     companion object {
         const val SOURCE_MODULE = "showroom"

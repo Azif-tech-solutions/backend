@@ -1,5 +1,6 @@
 package com.zifiq.platform.identity
 
+import com.zifiq.platform.security.AccessCaches
 import com.zifiq.platform.accesscontrol.RoleAssignmentService
 import com.zifiq.platform.accesscontrol.model.TenantRolesTable
 import com.zifiq.platform.accesscontrol.model.UserRoleAssignmentsTable
@@ -86,6 +87,7 @@ class MemberService(
             it[UserLocationAssignmentsTable.assignedByUserId] = actor.userId
             it[UserLocationAssignmentsTable.assignedAt] = Instant.now()
         }
+        AccessCaches.restrictionChanged(actor.tenantId, userId)
 
         // Reuses the forgot-password token mechanism for first-time password setup.
         val resetToken = "RST-" + (100000 + secureRandom.nextInt(900000))
@@ -176,6 +178,7 @@ class MemberService(
         if (!isMember) throw ApiErrors.memberNotFound()
 
         val accessScope = if (locationId != null) "SINGLE_LOCATION" else "ALL_LOCATIONS"
+        AccessCaches.restrictionChanged(actor.tenantId, userId)
         val updated = UserLocationAssignmentsTable.update({
             (UserLocationAssignmentsTable.userId eq userId) and (UserLocationAssignmentsTable.tenantId eq actor.tenantId)
         }) {

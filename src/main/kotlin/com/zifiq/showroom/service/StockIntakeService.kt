@@ -1,5 +1,7 @@
 package com.zifiq.showroom.service
 
+import com.zifiq.common.money.Money
+import com.zifiq.inventory.repository.StockSql
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.filter.FilterContext
 import com.zifiq.common.filter.FilterField
@@ -89,7 +91,6 @@ class StockIntakeService(
 
     private fun costVisible() = permissionAuthorizer.hasPermission(currentActorProvider.current().userId, "factory.costing.read")
 
-    private fun money(value: BigDecimal) = value.setScale(2, RoundingMode.HALF_UP)
 
     /** The showroom (must be able to receive) and where the goods go: an area of it, or its receiving default. */
     private fun receivingPoint(locationId: UUID, intoLocationId: UUID?): Pair<ResultRow, UUID> {
@@ -137,10 +138,10 @@ class StockIntakeService(
         val prepared = request.lines.mapIndexed { index, line ->
             val description = line.description.trim()
             val itemId = findOrCreateDirectItem(showroomId, description, line.unitOfMeasureId!!, line.unitCost!!, vatCategoryId, actor.userId)
-            StockItemsTable.update({ StockItemsTable.id eq itemId }) { it[landingCost] = money(line.unitCost) } // latest-cost method
+            StockItemsTable.update({ StockItemsTable.id eq itemId }) { it[landingCost] = Money.round(line.unitCost) } // latest-cost method
 
-            val retail = money(line.sellingPrice!!)
-            val dealer = money(line.dealerPrice ?: line.sellingPrice)
+            val retail = Money.round(line.sellingPrice!!)
+            val dealer = Money.round(line.dealerPrice ?: line.sellingPrice)
             val current = prices.currentPrice(itemId, priceDate)
             if (current == null || current.retailPrice.compareTo(retail) != 0 || current.dealerPrice.compareTo(dealer) != 0) {
                 if (current != null && current.effectiveFrom == priceDate) {
@@ -169,13 +170,13 @@ class StockIntakeService(
             partnerReference = request.supplierInvoiceNo, paymentTerms = request.paymentTerms, checkedBy = null,
             lines = prepared.map { (_, line, itemId) ->
                 EntryLine(itemId, line.description.trim(), line.quantity!!, line.unitOfMeasureId!!, line.unitCost!!, line.inputVatRate ?: BigDecimal.ZERO,
-                    line.batchNo, line.expiryDate, money(line.sellingPrice!!))
+                    line.batchNo, line.expiryDate, Money.round(line.sellingPrice!!))
             },
         )
         prepared.forEach { (_, line, itemId) ->
             ledger.postEntry(
                 tenantId = actor.tenantId, locationId = into, stockItemId = itemId, sourceType = "DIRECT_ENTRY", sourceReference = ref,
-                qtyIn = line.quantity!!, unitCost = money(line.unitCost!!), remark = "Direct entry — $supplierName".take(300),
+                qtyIn = line.quantity!!, unitCost = Money.round(line.unitCost!!), remark = "Direct entry — $supplierName".take(300),
                 performedByUserId = actor.userId, entryDate = receivedDate,
             )
         }
@@ -204,7 +205,7 @@ class StockIntakeService(
             it[name] = description
             it[unitOfMeasureId] = unitId
             it[reorderLevel] = BigDecimal.ZERO
-            it[landingCost] = money(unitCost)
+            it[landingCost] = Money.round(unitCost)
             it[StockItemsTable.vatCategoryId] = vatCategoryId
             it[status] = "ACTIVE"
             it[createdByUserId] = userId
@@ -244,7 +245,7 @@ class StockIntakeService(
         lines.forEach { line ->
             ledger.postEntry(
                 tenantId = actor.tenantId, locationId = into, stockItemId = line.stockItemId, sourceType = "OUTSOURCE_RECEIPT", sourceReference = ref,
-                qtyIn = line.quantity, unitCost = money(line.unitCost), remark = "Outsource receipt — $partner".take(300),
+                qtyIn = line.quantity, unitCost = Money.round(line.unitCost), remark = "Outsource receipt — $partner".take(300),
                 performedByUserId = actor.userId, entryDate = receivedDate,
             )
         }
@@ -275,8 +276,8 @@ class StockIntakeService(
         manufacturerId: UUID?, partnerReference: String?, paymentTerms: String?, checkedBy: String?, lines: List<EntryLine>,
     ): UUID {
         val tenantId = tenantContext.requireTenantId()
-        val lineCosts = lines.map { money(it.unitCost * it.quantity) }
-        val vat = lines.zip(lineCosts) { line, cost -> money(cost * line.inputVatRate / BigDecimal(100)) }
+        val lineCosts = lines.map { Money.round(it.unitCost * it.quantity) }
+        val vat = lines.zip(lineCosts) { line, cost -> Money.round(cost * line.inputVatRate / BigDecimal(100)) }
         val entryId = ShowroomStockEntriesTable.insertAndGetId {
             it[ShowroomStockEntriesTable.tenantId] = tenantId
             it[ShowroomStockEntriesTable.ref] = ref
@@ -304,7 +305,7 @@ class StockIntakeService(
                 it[description] = line.description.take(200)
                 it[quantity] = line.quantity
                 it[unitOfMeasureId] = line.unitId
-                it[unitCost] = money(line.unitCost)
+                it[unitCost] = Money.round(line.unitCost)
                 it[lineCost] = lineCosts[index]
                 it[inputVatRate] = line.inputVatRate
                 it[inputVatAmount] = vat[index]
@@ -320,7 +321,7 @@ class StockIntakeService(
         val visible = costVisible()
         fun mask(value: BigDecimal) = if (visible) value else BigDecimal.ZERO.setScale(2)
         val entry = ShowroomStockEntriesTable.selectAll().where { ShowroomStockEntriesTable.id eq entryId }.single()
-        val unit = RawExpression<String>({ +"(select u.name from units_of_measure u where u.id = "; +ShowroomStockEntryLinesTable.unitOfMeasureId; +")" })
+        val unit = StockSql.unitName(ShowroomStockEntryLinesTable.unitOfMeasureId)
         val lines = ShowroomStockEntryLinesTable
             .join(StockItemsTable, JoinType.INNER, ShowroomStockEntryLinesTable.stockItemId, StockItemsTable.id)
             .select(ShowroomStockEntryLinesTable.columns + StockItemsTable.code + unit)
@@ -366,7 +367,7 @@ class StockIntakeService(
     // ---- Intake reports (one row per line) ----
 
     private val location = LocationsTable.alias("entry_location")
-    private val unitName = RawExpression<String>({ +"(select u.name from units_of_measure u where u.id = "; +ShowroomStockEntryLinesTable.unitOfMeasureId; +")" })
+    private val unitName = StockSql.unitName(ShowroomStockEntryLinesTable.unitOfMeasureId)
     private val partyName = RawExpression<String>({
         +"coalesce("; +ShowroomStockEntriesTable.supplierName
         +", (select s.company_name from suppliers s where s.id = "; +ShowroomStockEntriesTable.supplierId

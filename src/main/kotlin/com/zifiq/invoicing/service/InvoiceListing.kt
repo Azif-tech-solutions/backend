@@ -1,5 +1,6 @@
 package com.zifiq.invoicing.service
 
+import com.zifiq.platform.directory.Names
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.filter.Facets
 import com.zifiq.common.filter.ListSearchRequest
@@ -53,11 +54,11 @@ class InvoiceListing(private val support: InvoiceSupport) {
     internal fun facets(request: ListSearchRequest, page: Page, d: InvoiceExpressions): Map<String, List<FacetCount>> {
         val context = support.filterContext()
         return request.facets.take(Facets.MAX_FACETS).associateWith { key ->
-            val others = request.params.filterKeys { it.substringBefore('.').removeSuffix("!").removeSuffix("Min").removeSuffix("Max") != key }
+            val others = Facets.paramsWithout(request.params, key)
             val condition = listOfNotNull(page.scope, page.search, d.filterSpec.fromParams(others, context), d.filterSpec.fromJson(request.filter, context)).allOf()
             when (key) {
                 "status" -> Facets.count(joined(), condition, d.displayStatus) { v -> v?.let(InvoiceExpressions::label) }
-                "locationId" -> Facets.count(joined(), condition, InvoicesTable.locationId) { v -> v?.let { support.locationNames(listOf(UUID.fromString(it)))[UUID.fromString(it)] } }
+                "locationId" -> Facets.count(joined(), condition, InvoicesTable.locationId) { v -> v?.let { Names.locations(listOf(UUID.fromString(it)))[UUID.fromString(it)] } }
                 "customerType" -> Facets.count(joined(), condition, InvoicesTable.buyerType) { v -> v?.let { runCatching { CustomerType.valueOf(it).label }.getOrDefault(it) } ?: "Walk-in" }
                 "sourceType" -> Facets.count(joined(), condition, InvoicesTable.sourceType) { v -> if (v == "PRO_FORMA") "Pro-forma" else "POS sale" }
                 "invoiceKind" -> Facets.count(joined(), condition, InvoicesTable.invoiceKind)

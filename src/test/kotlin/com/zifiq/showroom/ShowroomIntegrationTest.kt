@@ -347,6 +347,8 @@ class ShowroomIntegrationTest : PostgresIntegrationTest() {
             exec("select set_config('app.tenant_id', '$tenantId', true)")
             exec("insert into user_location_assignments (tenant_id, user_id, location_id, access_scope, assigned_by_user_id) values ('$tenantId', '$keeper', '${mine.id}', 'SINGLE_LOCATION', '$admin') " +
                 "on conflict (tenant_id, user_id) do update set location_id = excluded.location_id, access_scope = excluded.access_scope")
+            // Written directly, not through MemberService, so the cached scope is cleared by hand.
+            com.zifiq.platform.security.AccessCaches.invalidateAll()
         }
         stock(area(theirs, "WAREHOUSE"), citrus, "5")
         signIn(keeper)
@@ -357,6 +359,7 @@ class ShowroomIntegrationTest : PostgresIntegrationTest() {
         transaction(database) {
             exec("select set_config('app.tenant_id', '$tenantId', true)")
             exec("delete from user_location_assignments where user_id = '$keeper'")
+            com.zifiq.platform.security.AccessCaches.invalidateAll()
         }
     }
 

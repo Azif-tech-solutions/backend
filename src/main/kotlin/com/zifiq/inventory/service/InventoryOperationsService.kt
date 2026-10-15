@@ -1,5 +1,6 @@
 package com.zifiq.inventory.service
 
+import com.zifiq.inventory.repository.StockSql
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.filter.FilterContext
 import com.zifiq.common.filter.FilterField
@@ -313,7 +314,8 @@ class InventoryOperationsService(
         q: String?,
         from: LocalDate?,
         to: LocalDate?,
-    ): List<StockTransferSummary> = tenantScopedTransaction.execute {
+        paging: PageRequest = PageRequest.of(null, null),
+    ): PageResult<StockTransferSummary> = tenantScopedTransaction.execute {
         val tenantId = currentActorProvider.current().tenantId
         val scope = locationAccessService.resolveFilterSet(locationId)
         val query = StockTransfersTable.selectAll().andWhere { StockTransfersTable.tenantId eq tenantId }
@@ -335,9 +337,9 @@ class InventoryOperationsService(
         }
         from?.let { query.andWhere { StockTransfersTable.transferDate greaterEq it } }
         to?.let { query.andWhere { StockTransfersTable.transferDate lessEq it } }
-        query.orderBy(StockTransfersTable.transferDate to SortOrder.DESC, StockTransfersTable.dispatchedAt to SortOrder.DESC)
-            .limit(500)
-            .map { row -> loadTransferSummary(row[StockTransfersTable.id].value) }
+        query.orderBy(StockTransfersTable.transferDate to SortOrder.DESC, StockTransfersTable.dispatchedAt to SortOrder.DESC, StockTransfersTable.id to SortOrder.DESC)
+        val page = Paging.fetch(query, paging) { it }
+        page.withItems(transferSummaries(page.items))
     }
 
     fun getTransfer(id: UUID): StockTransferSummary = tenantScopedTransaction.execute {
@@ -357,61 +359,74 @@ class InventoryOperationsService(
         val row = StockTransfersTable.selectAll()
             .andWhere { (StockTransfersTable.id eq transferId) and (StockTransfersTable.tenantId eq tenantId) }
             .firstOrNull() ?: throw ApiErrors.transferNotFound()
-        val source = stockLocations.get(row[StockTransfersTable.sourceLocationId])
-        val destination = stockLocations.get(row[StockTransfersTable.destinationLocationId])
-        val areaNames = mutableMapOf<UUID, String>()
-        fun areaName(id: UUID?) = id?.let { areaNames.getOrPut(it) { stockLocations.get(it).name } }
-        val unitName = RawExpression<String>({ +"(select u.name from units_of_measure u where u.id = "; +StockItemsTable.unitOfMeasureId; +")" })
-        val lines = StockTransferLinesTable
+        return transferSummaries(listOf(row)).single()
+    }
+
+    /** Summaries for several transfers with one query for all their lines and one for every location named. */
+    private fun transferSummaries(rows: List<ResultRow>): List<StockTransferSummary> {
+        if (rows.isEmpty()) return emptyList()
+        val ids = rows.map { it[StockTransfersTable.id].value }
+        val unitName = StockSql.unitName(StockItemsTable.unitOfMeasureId)
+        val lineRows = StockTransferLinesTable
             .join(StockItemsTable, JoinType.INNER, StockTransferLinesTable.stockItemId, StockItemsTable.id)
             .select(StockTransferLinesTable.columns + StockItemsTable.code + StockItemsTable.name + unitName)
-            .where { StockTransferLinesTable.stockTransferId eq transferId }
+            .where { StockTransferLinesTable.stockTransferId inList ids }
             .orderBy(StockTransferLinesTable.id to SortOrder.ASC)
-            .map {
-                val sent = it[StockTransferLinesTable.qtySent]
-                val received = it[StockTransferLinesTable.qtyReceived]
-                val rejected = it[StockTransferLinesTable.qtyRejected]
-                StockTransferLineSummary(
-                    id = it[StockTransferLinesTable.id].value,
-                    stockItemId = it[StockTransferLinesTable.stockItemId].value,
-                    stockItemCode = it[StockItemsTable.code],
-                    stockItemName = it[StockItemsTable.name],
-                    unit = it.getOrNull(unitName),
-                    qtySent = sent,
-                    qtyReceived = received,
-                    qtyRejected = rejected,
-                    outstanding = sent - (received ?: BigDecimal.ZERO) - (rejected ?: BigDecimal.ZERO),
-                    fromLocationId = it[StockTransferLinesTable.fromLocationId],
-                    fromLocationName = areaName(it[StockTransferLinesTable.fromLocationId]),
-                    receivedIntoLocationId = it[StockTransferLinesTable.receivedIntoLocationId],
-                    receivedIntoLocationName = areaName(it[StockTransferLinesTable.receivedIntoLocationId]),
-                    batchNo = it[StockTransferLinesTable.batchNo],
-                    rejectionNote = it[StockTransferLinesTable.rejectionNote],
-                )
-            }
-        return StockTransferSummary(
-            id = row[StockTransfersTable.id].value,
-            waybillRef = row[StockTransfersTable.waybillRef],
-            sourceLocationId = source.id,
-            sourceLocationName = source.label,
-            sourceLocationType = source.rootType,
-            destinationLocationId = destination.id,
-            destinationLocationName = destination.label,
-            destinationLocationType = destination.rootType,
-            status = row[StockTransfersTable.status],
-            driverId = row[StockTransfersTable.driverId],
-            driverName = row[StockTransfersTable.driverName],
-            driverVehicle = row[StockTransfersTable.driverVehicle],
-            transferDate = row[StockTransfersTable.transferDate],
-            dispatchedAt = row[StockTransfersTable.dispatchedAt],
-            receivedDate = row[StockTransfersTable.receivedDate],
-            receivedAt = row[StockTransfersTable.receivedAt],
-            receiptNote = row[StockTransfersTable.receiptNote],
-            totalSent = lines.fold(BigDecimal.ZERO) { sum, line -> sum + line.qtySent },
-            totalRejected = lines.fold(BigDecimal.ZERO) { sum, line -> sum + (line.qtyRejected ?: BigDecimal.ZERO) },
-            waybillUrl = "/api/v1/inventory/stock/transfers/$transferId/waybill.pdf",
-            lines = lines,
-        )
+            .toList()
+        val locationIds = rows.flatMap { listOf(it[StockTransfersTable.sourceLocationId], it[StockTransfersTable.destinationLocationId]) } +
+            lineRows.flatMap { listOfNotNull(it[StockTransferLinesTable.fromLocationId], it[StockTransferLinesTable.receivedIntoLocationId]) }
+        val locations = stockLocations.getAll(locationIds)
+        val linesByTransfer = lineRows.groupBy({ it[StockTransferLinesTable.stockTransferId].value }) {
+            val sent = it[StockTransferLinesTable.qtySent]
+            val received = it[StockTransferLinesTable.qtyReceived]
+            val rejected = it[StockTransferLinesTable.qtyRejected]
+            StockTransferLineSummary(
+                id = it[StockTransferLinesTable.id].value,
+                stockItemId = it[StockTransferLinesTable.stockItemId].value,
+                stockItemCode = it[StockItemsTable.code],
+                stockItemName = it[StockItemsTable.name],
+                unit = it.getOrNull(unitName),
+                qtySent = sent,
+                qtyReceived = received,
+                qtyRejected = rejected,
+                outstanding = sent - (received ?: BigDecimal.ZERO) - (rejected ?: BigDecimal.ZERO),
+                fromLocationId = it[StockTransferLinesTable.fromLocationId],
+                fromLocationName = it[StockTransferLinesTable.fromLocationId]?.let { id -> locations[id]?.name },
+                receivedIntoLocationId = it[StockTransferLinesTable.receivedIntoLocationId],
+                receivedIntoLocationName = it[StockTransferLinesTable.receivedIntoLocationId]?.let { id -> locations[id]?.name },
+                batchNo = it[StockTransferLinesTable.batchNo],
+                rejectionNote = it[StockTransferLinesTable.rejectionNote],
+            )
+        }
+        return rows.map { row ->
+            val transferId = row[StockTransfersTable.id].value
+            val source = locations[row[StockTransfersTable.sourceLocationId]] ?: stockLocations.get(row[StockTransfersTable.sourceLocationId])
+            val destination = locations[row[StockTransfersTable.destinationLocationId]] ?: stockLocations.get(row[StockTransfersTable.destinationLocationId])
+            val lines = linesByTransfer[transferId].orEmpty()
+            StockTransferSummary(
+                id = transferId,
+                waybillRef = row[StockTransfersTable.waybillRef],
+                sourceLocationId = source.id,
+                sourceLocationName = source.label,
+                sourceLocationType = source.rootType,
+                destinationLocationId = destination.id,
+                destinationLocationName = destination.label,
+                destinationLocationType = destination.rootType,
+                status = row[StockTransfersTable.status],
+                driverId = row[StockTransfersTable.driverId],
+                driverName = row[StockTransfersTable.driverName],
+                driverVehicle = row[StockTransfersTable.driverVehicle],
+                transferDate = row[StockTransfersTable.transferDate],
+                dispatchedAt = row[StockTransfersTable.dispatchedAt],
+                receivedDate = row[StockTransfersTable.receivedDate],
+                receivedAt = row[StockTransfersTable.receivedAt],
+                receiptNote = row[StockTransfersTable.receiptNote],
+                totalSent = lines.fold(BigDecimal.ZERO) { sum, line -> sum + line.qtySent },
+                totalRejected = lines.fold(BigDecimal.ZERO) { sum, line -> sum + (line.qtyRejected ?: BigDecimal.ZERO) },
+                waybillUrl = "/api/v1/inventory/stock/transfers/$transferId/waybill.pdf",
+                lines = lines,
+            )
+        }
     }
 
     private fun requireActiveItem(itemId: UUID) {
@@ -502,7 +517,7 @@ class InventoryOperationsService(
         .join(adjustmentRoot, JoinType.LEFT, adjustmentArea[LocationsTable.parentLocationId], adjustmentRoot[LocationsTable.id])
         .join(AppUsersTable, JoinType.LEFT, QuantityAdjustmentsTable.performedByUserId, AppUsersTable.id)
 
-    private val adjustmentUnit = RawExpression<String>({ +"(select u.name from units_of_measure u where u.id = "; +StockItemsTable.unitOfMeasureId; +")" })
+    private val adjustmentUnit = StockSql.unitName(StockItemsTable.unitOfMeasureId)
 
     private val adjustmentFilters = FilterSpec(
         fields = listOf(

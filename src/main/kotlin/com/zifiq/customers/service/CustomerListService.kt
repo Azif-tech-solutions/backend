@@ -1,5 +1,6 @@
 package com.zifiq.customers.service
 
+import com.zifiq.common.paging.PagingPolicy
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.filter.Facets
 import com.zifiq.common.filter.FilterCollection
@@ -197,7 +198,7 @@ class CustomerListService(
         val result = Paging.fetch(query, page, support::toSummary)
 
         val facets = request.facets.take(Facets.MAX_FACETS).associateWith { key ->
-            val others = request.params.filterKeys { it.substringBefore('.').removeSuffix("!").removeSuffix("Min").removeSuffix("Max") != key }
+            val others = Facets.paramsWithout(request.params, key)
             val facetCondition = listOfNotNull(scope, searchCondition, filters.fromParams(others, context), jsonCondition).allOf()
             facet(key, facetCondition, filters)
         }
@@ -253,7 +254,7 @@ class CustomerListService(
         val similarity = RawExpression<Double>({ +"similarity(f_unaccent(lower("; +CustomersTable.name; +")), f_unaccent(lower("; text(text); +")))" })
         val close: Op<Boolean> = RawOp { +"similarity(f_unaccent(lower("; +CustomersTable.name; +")), f_unaccent(lower("; text(text); +"))) >= 0.3" }
         return CustomersTable.select(CustomersTable.name).where(scope and close)
-            .orderBy(similarity to SortOrder.DESC).limit(3).map { it[CustomersTable.name] }.distinct()
+            .orderBy(similarity to SortOrder.DESC).limit(PagingPolicy.SUGGESTIONS).map { it[CustomersTable.name] }.distinct()
     }
 
     /** Register header tiles: one grouped query, never a row scan in memory. */
@@ -327,7 +328,7 @@ class CustomerListService(
         Paging.limitStatementTime()
         return support.joined().selectAll().where(parts.allOf()!!)
             .orderBy(*(search.rank(parsed) + (CustomersTable.name to SortOrder.ASC) + (CustomersTable.id to SortOrder.ASC)).toTypedArray())
-            .limit(limit.coerceIn(1, 50))
+            .limit(PagingPolicy.lookupLimit(limit))
             .map(support::toRef)
     }
 

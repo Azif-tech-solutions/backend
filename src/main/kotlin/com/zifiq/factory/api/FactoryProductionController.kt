@@ -1,5 +1,8 @@
 package com.zifiq.factory.api
 
+import org.springdoc.core.annotations.ParameterObject
+import com.zifiq.common.paging.PageResult
+import com.zifiq.common.paging.PageParams
 import com.zifiq.factory.dto.*
 import com.zifiq.factory.service.ProductionService
 import com.zifiq.platform.api.ApiEnvelope
@@ -25,8 +28,9 @@ class FactoryProductionController(
     override fun listRecipes(
         @RequestParam(required = false) locationId: UUID?,
         @RequestParam(required = false) status: String?,
-    ): ApiEnvelope<List<RecipeSummary>> =
-        ApiEnvelope(productionService.listRecipes(locationId, status))
+        @ParameterObject paging: PageParams,
+    ): ApiEnvelope<PageResult<RecipeSummary>> =
+        ApiEnvelope(productionService.listRecipes(locationId, status, paging.toRequest()))
 
     @PostMapping("/production/cost-calculator")
     @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'factory.production.manage')")
@@ -59,8 +63,9 @@ class FactoryProductionController(
         @RequestParam(required = false) locationId: UUID?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate?,
-    ): ApiEnvelope<List<ProductionRunSummary>> =
-        ApiEnvelope(productionService.listProductionRuns(locationId, from, to))
+        @ParameterObject paging: PageParams,
+    ): ApiEnvelope<PageResult<ProductionRunSummary>> =
+        ApiEnvelope(productionService.listProductionRuns(locationId, from, to, paging.toRequest()))
 
     @GetMapping("/production/total-cost")
     @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'factory.costing.read')")
@@ -90,6 +95,7 @@ class FactoryProductionController(
     override fun listSpecialProductionRuns(
         @RequestParam(required = false) locationId: UUID?,
         @RequestParam(required = false) clientId: UUID?,
-    ): ApiEnvelope<List<SpecialProductionRunSummary>> =
-        ApiEnvelope(productionService.listSpecialProductionRuns(locationId, clientId))
+        @ParameterObject paging: PageParams,
+    ): ApiEnvelope<PageResult<SpecialProductionRunSummary>> =
+        ApiEnvelope(productionService.listSpecialProductionRuns(locationId, clientId, paging.toRequest()))
 }

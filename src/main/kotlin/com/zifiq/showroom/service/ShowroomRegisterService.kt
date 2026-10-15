@@ -1,5 +1,6 @@
 package com.zifiq.showroom.service
 
+import com.zifiq.platform.security.AccessCaches
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.search.SearchField
 import com.zifiq.common.search.SearchKind
@@ -297,6 +298,7 @@ class ShowroomRegisterService(
     }
 
     private fun insertArea(showroomId: UUID, showroomCode: String, name: String, kind: String): UUID {
+        AccessCaches.locationsChanged(tenantContext.requireTenantId(), showroomId)
         val suffix = AREA_SUFFIXES.getValue(kind)
         val taken = LocationsTable.select(LocationsTable.code).where { LocationsTable.parentLocationId eq showroomId }.map { it[LocationsTable.code] }.toSet()
         val code = generateSequence(1) { it + 1 }.map { n -> if (n == 1 && kind != "OTHER") "$showroomCode-$suffix" else "$showroomCode-$suffix$n" }

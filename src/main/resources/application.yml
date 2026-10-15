@@ -15,6 +15,11 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    postgresql:
+      # Lock with a session advisory lock, not inside an open transaction: CREATE INDEX CONCURRENTLY
+      # (V13) waits for every older transaction to finish, so a transactional lock would make it wait
+      # on Flyway itself forever. Tests set the same flag (PostgresIntegrationTest).
+      transactional-lock: false
   servlet:
     multipart:
       # Hard ceiling for any upload; each file purpose sets its own lower limit (docs/03 §8.4).

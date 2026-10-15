@@ -1,5 +1,7 @@
 package com.zifiq.factory.api
 
+import com.zifiq.common.paging.PageResult
+import com.zifiq.common.paging.PageParams
 import com.zifiq.factory.dto.*
 import com.zifiq.platform.api.ApiEnvelope
 import io.swagger.v3.oas.annotations.Operation
@@ -21,7 +23,7 @@ interface FactoryProductionApi {
     fun registerRecipe(request: RecipeRequest): ApiEnvelope<RecipeSummary>
 
     @Operation(summary = "List in-house recipes")
-    fun listRecipes(locationId: UUID?, status: String?): ApiEnvelope<List<RecipeSummary>>
+    fun listRecipes(locationId: UUID?, status: String?, paging: PageParams): ApiEnvelope<PageResult<RecipeSummary>>
 
     @Operation(summary = "Run the Production Cost Calculator (QC — response omits cost figures)")
     fun createCostCalculation(request: ProductionCostingRequest): ApiEnvelope<ProductionCostingSummary>
@@ -39,7 +41,7 @@ interface FactoryProductionApi {
     fun commitProductionRun(request: ProductionRunRequest): ApiEnvelope<ProductionRunSummary>
 
     @Operation(summary = "List production runs")
-    fun listProductionRuns(locationId: UUID?, from: LocalDate?, to: LocalDate?): ApiEnvelope<List<ProductionRunSummary>>
+    fun listProductionRuns(locationId: UUID?, from: LocalDate?, to: LocalDate?, paging: PageParams): ApiEnvelope<PageResult<ProductionRunSummary>>
 
     @Operation(summary = "Total Cost for Selected Recipes over their production history")
     fun totalCostForRecipes(recipeIds: List<UUID>): ApiEnvelope<List<RecipeCostAggregate>>
@@ -54,5 +56,5 @@ interface FactoryProductionApi {
     fun updateSpecialProductionStatus(id: UUID, request: SpecialProductionStatusRequest): ApiEnvelope<SpecialProductionRunSummary>
 
     @Operation(summary = "List special production runs")
-    fun listSpecialProductionRuns(locationId: UUID?, clientId: UUID?): ApiEnvelope<List<SpecialProductionRunSummary>>
+    fun listSpecialProductionRuns(locationId: UUID?, clientId: UUID?, paging: PageParams): ApiEnvelope<PageResult<SpecialProductionRunSummary>>
 }

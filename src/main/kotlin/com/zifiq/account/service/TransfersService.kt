@@ -1,5 +1,7 @@
 package com.zifiq.account.service
 
+import com.zifiq.platform.directory.Names
+import com.zifiq.common.money.Money
 import com.zifiq.account.dto.CashLodgementRequest
 import com.zifiq.account.dto.CashLodgementRow
 import com.zifiq.account.dto.FundConfirmRequest
@@ -91,7 +93,7 @@ class FundDisbursementService(
         if (destination.locationId != destinationLocation) throw ApiErrors.invalidDestinationAccount("${destination.code} does not belong to the destination location")
         if (!destination.bank && destination.kind !in setOf("VAULT", "TILL")) throw ApiErrors.invalidDestinationAccount("Cash is received into a vault or till, not ${destination.code}")
         if (source.id == destination.id) throw ApiErrors.invalidDestinationAccount("The source and destination are the same account")
-        val amount = AccountSupport.money(request.sentAmount!!)
+        val amount = Money.round(request.sentAmount!!)
 
         val ref = sequences.next("BF")
         val id = FundDisbursementsTable.insertAndGetId {
@@ -110,11 +112,11 @@ class FundDisbursementService(
             it[status] = "AWAITING"
         }.value
         moves.out(source, amount, LedgerPosting(ref, "Funds sent to ${destination.code}: ${request.purpose.trim()}", "FUND_DISBURSEMENT_OUT", id, entryDate = support.today(), userId = support.userId()))
-        val eventId = support.record("account.funds.disbursed", "fund_disbursement", id, ref, "$ref: ${AccountSupport.naira(amount)} sent to ${destination.code}",
+        val eventId = support.record("account.funds.disbursed", "fund_disbursement", id, ref, "$ref: ${Money.naira(amount)} sent to ${destination.code}",
             mapOf("amount" to amount, "channel" to channel), destinationLocation)
         notify.holdersOf(
             permission = "accounting.funds.confirm", locationId = destinationLocation, category = NotificationCategory.APPROVAL_REQUIRED,
-            title = "Funds sent to your location — $ref", body = "${AccountSupport.naira(amount)} into ${destination.code}: ${request.purpose.trim()}. Confirm what you received.",
+            title = "Funds sent to your location — $ref", body = "${Money.naira(amount)} into ${destination.code}: ${request.purpose.trim()}. Confirm what you received.",
             linkType = "fund-disbursement", linkRef = id.toString(), sourceEventId = eventId, exclude = support.userId(),
         )
         row(id).let(::toRow)
@@ -125,7 +127,7 @@ class FundDisbursementService(
         val row = awaiting(id)
         val ref = row[FundDisbursementsTable.ref]
         val sent = row[FundDisbursementsTable.sentAmount]
-        val received = AccountSupport.money(request.receivedAmount!!)
+        val received = Money.round(request.receivedAmount!!)
         if (received > sent) throw ApiErrors.receivedExceedsSent()
         val reason = request.shortfallReason?.trim()?.ifEmpty { null }
         if (received < sent && reason == null) throw ApiErrors.shortfallReasonRequired()
@@ -148,17 +150,17 @@ class FundDisbursementService(
             it[status] = if (shortfall.signum() == 0) "CONFIRMED" else "PARTIALLY_CONFIRMED"
         }
         val location = row[FundDisbursementsTable.destinationLocationId]
-        val eventId = support.record("account.funds.confirmed", "fund_disbursement", id, ref, "$ref: ${AccountSupport.naira(received)} of ${AccountSupport.naira(sent)} received",
+        val eventId = support.record("account.funds.confirmed", "fund_disbursement", id, ref, "$ref: ${Money.naira(received)} of ${Money.naira(sent)} received",
             mapOf("sent" to sent, "received" to received), location)
         notify.inApp(listOf(row[FundDisbursementsTable.sentByUserId]), NotificationCategory.CONFIRMATION, "Funds received — $ref",
-            "${AccountSupport.naira(received)} of ${AccountSupport.naira(sent)} was confirmed.", "fund-disbursement", id.toString(), eventId, exclude = support.userId())
+            "${Money.naira(received)} of ${Money.naira(sent)} was confirmed.", "fund-disbursement", id.toString(), eventId, exclude = support.userId())
         if (shortfall.signum() > 0) {
             // Money that left the source but didn't arrive: reported for investigation, not re-credited anywhere.
-            val shortfallEvent = support.record("account.funds.shortfall", "fund_disbursement", id, ref, "$ref: shortfall of ${AccountSupport.naira(shortfall)} — $reason",
+            val shortfallEvent = support.record("account.funds.shortfall", "fund_disbursement", id, ref, "$ref: shortfall of ${Money.naira(shortfall)} — $reason",
                 mapOf("sent" to sent, "received" to received, "shortfall" to shortfall, "reason" to reason), location)
             val recipients = (listOf(row[FundDisbursementsTable.sentByUserId]) + notifyManagement(location)).toSet()
             notify.inApp(recipients, NotificationCategory.ALERT, "Funds shortfall — $ref",
-                "${AccountSupport.naira(shortfall)} of ${AccountSupport.naira(sent)} did not arrive: $reason", "fund-disbursement", id.toString(), shortfallEvent, exclude = support.userId())
+                "${Money.naira(shortfall)} of ${Money.naira(sent)} did not arrive: $reason", "fund-disbursement", id.toString(), shortfallEvent, exclude = support.userId())
         }
         row(id).let(::toRow)
     }
@@ -197,8 +199,8 @@ class FundDisbursementService(
             val awaiting = all.filter { it[FundDisbursementsTable.status] == "AWAITING" }
             mapOf(
                 "awaiting" to awaiting.size,
-                "valueAwaiting" to AccountSupport.money(awaiting.fold(BigDecimal.ZERO) { s, it -> s + it[FundDisbursementsTable.sentAmount] }),
-                "shortfallTotal" to AccountSupport.money(all.fold(BigDecimal.ZERO) { s, it -> s + (it[FundDisbursementsTable.shortfallAmount] ?: BigDecimal.ZERO) }),
+                "valueAwaiting" to Money.round(awaiting.fold(BigDecimal.ZERO) { s, it -> s + it[FundDisbursementsTable.sentAmount] }),
+                "shortfallTotal" to Money.round(all.fold(BigDecimal.ZERO) { s, it -> s + (it[FundDisbursementsTable.shortfallAmount] ?: BigDecimal.ZERO) }),
             )
         } else null
         page.withItems(toRows(page.items)).copy(summary = summary, meta = PageMeta(ignoredQualifiers = parsed.ignoredQualifiers))
@@ -241,7 +243,7 @@ class FundDisbursementService(
     private fun toRow(row: ResultRow) = toRows(listOf(row)).single()
 
     private fun toRows(rows: List<ResultRow>): List<FundDisbursementRow> {
-        val users = support.userNames(rows.flatMap { listOfNotNull(it[FundDisbursementsTable.sentByUserId], it[FundDisbursementsTable.confirmedByUserId]) })
+        val users = Names.users(rows.flatMap { listOfNotNull(it[FundDisbursementsTable.sentByUserId], it[FundDisbursementsTable.confirmedByUserId]) })
         return rows.map { row ->
             FundDisbursementRow(
                 id = row[FundDisbursementsTable.id].value, ref = row[FundDisbursementsTable.ref], date = row[FundDisbursementsTable.sentAt],
@@ -308,8 +310,8 @@ class CashLodgementService(
         if (till.locationId != locationId) throw ApiErrors.invalidPayingAccount("${till.code} is not at this location")
         // Takings go into any active company account, including head office's collection account.
         val bank = moves.bank(request.bankAccountId!!, checkAccess = false)
-        val takings = AccountSupport.money(request.takings!!)
-        val banked = AccountSupport.money(request.banked!!)
+        val takings = Money.round(request.takings!!)
+        val banked = Money.round(request.banked!!)
         if (banked > takings) throw ApiErrors.bankedExceedsTakings()
         val date = request.depositDate!!
         support.requireNotFuture("depositDate", date)
@@ -332,7 +334,7 @@ class CashLodgementService(
         }.value
         val posted = moves.out(till, banked, LedgerPosting(ref, "Cash lodgement to ${bank.code} ${bank.name} — $ref", "CASH_LODGEMENT", id, entryDate = date, userId = support.userId()))
         CashLodgementsTable.update({ CashLodgementsTable.id eq id }) { it[cashTransactionId] = posted.cashTransactionId }
-        support.record("account.lodgement.recorded", "cash_lodgement", id, ref, "$ref: ${AccountSupport.naira(banked)} of ${AccountSupport.naira(takings)} taken to ${bank.code}",
+        support.record("account.lodgement.recorded", "cash_lodgement", id, ref, "$ref: ${Money.naira(banked)} of ${Money.naira(takings)} taken to ${bank.code}",
             mapOf("takings" to takings, "banked" to banked), locationId)
         toRow(row(id))
     }
@@ -347,7 +349,7 @@ class CashLodgementService(
         CashLodgementsTable.update({ CashLodgementsTable.id eq id }) {
             it[status] = "CONFIRMED"; it[confirmedByUserId] = support.userId(); it[confirmedAt] = Instant.now(); it[bankTransactionId] = posted.id
         }
-        support.record("account.lodgement.confirmed", "cash_lodgement", id, ref, "$ref confirmed: ${AccountSupport.naira(row[CashLodgementsTable.banked])} credited to ${bank.code}",
+        support.record("account.lodgement.confirmed", "cash_lodgement", id, ref, "$ref confirmed: ${Money.naira(row[CashLodgementsTable.banked])} credited to ${bank.code}",
             mapOf("banked" to row[CashLodgementsTable.banked]), row[CashLodgementsTable.locationId])
         toRow(row(id))
     }
@@ -360,12 +362,12 @@ class CashLodgementService(
             it[status] = "REJECTED"; it[rejectionReason] = reason.trim(); it[confirmedByUserId] = support.userId(); it[confirmedAt] = Instant.now()
         }
         val eventId = support.record("account.lodgement.rejected", "cash_lodgement", id, ref,
-            "$ref rejected — ${AccountSupport.naira(row[CashLodgementsTable.banked])} not received by the bank: ${reason.trim()}",
+            "$ref rejected — ${Money.naira(row[CashLodgementsTable.banked])} not received by the bank: ${reason.trim()}",
             mapOf("banked" to row[CashLodgementsTable.banked], "reason" to reason.trim()), row[CashLodgementsTable.locationId])
         notify.holdersOf(
             permission = CashAccountService.MANAGEMENT_ALERTS, locationId = row[CashLodgementsTable.locationId], category = NotificationCategory.ALERT,
             title = "Cash lodgement not received — $ref",
-            body = "${AccountSupport.naira(row[CashLodgementsTable.banked])} taken to the bank was not received: ${reason.trim()}",
+            body = "${Money.naira(row[CashLodgementsTable.banked])} taken to the bank was not received: ${reason.trim()}",
             linkType = "cash-lodgement", linkRef = id.toString(), sourceEventId = eventId, exclude = support.userId(),
         )
         toRow(row(id))
@@ -389,9 +391,9 @@ class CashLodgementService(
         val summary = if (request.summary) {
             val all = joined.select(CashLodgementsTable.takings, CashLodgementsTable.banked, CashLodgementsTable.retained).where(condition).toList()
             mapOf(
-                "takings" to AccountSupport.money(all.fold(BigDecimal.ZERO) { s, it -> s + it[CashLodgementsTable.takings] }),
-                "banked" to AccountSupport.money(all.fold(BigDecimal.ZERO) { s, it -> s + it[CashLodgementsTable.banked] }),
-                "retained" to AccountSupport.money(all.fold(BigDecimal.ZERO) { s, it -> s + it[CashLodgementsTable.retained] }),
+                "takings" to Money.round(all.fold(BigDecimal.ZERO) { s, it -> s + it[CashLodgementsTable.takings] }),
+                "banked" to Money.round(all.fold(BigDecimal.ZERO) { s, it -> s + it[CashLodgementsTable.banked] }),
+                "retained" to Money.round(all.fold(BigDecimal.ZERO) { s, it -> s + it[CashLodgementsTable.retained] }),
             )
         } else null
         page.withItems(toRows(page.items)).copy(summary = summary, meta = PageMeta(ignoredQualifiers = parsed.ignoredQualifiers))
@@ -401,7 +403,7 @@ class CashLodgementService(
 
     fun search(q: String, limit: Int): List<SearchHit> =
         list(ListSearchRequest(q = q, size = limit, summary = false)).items.map {
-            SearchHit("lodgement", it.id, it.ref, "${it.showroom ?: ""} · ${AccountSupport.naira(it.banked)} · ${it.status.lowercase().replace('_', ' ')}", it.ref, "/account/cash-lodgements/${it.id}")
+            SearchHit("lodgement", it.id, it.ref, "${it.showroom ?: ""} · ${Money.naira(it.banked)} · ${it.status.lowercase().replace('_', ' ')}", it.ref, "/account/cash-lodgements/${it.id}")
         }
 
     private fun awaiting(id: UUID): ResultRow {
@@ -428,7 +430,7 @@ class CashLodgementService(
     private fun toRow(row: ResultRow) = toRows(listOf(row)).single()
 
     private fun toRows(rows: List<ResultRow>): List<CashLodgementRow> {
-        val users = support.userNames(rows.flatMap { listOfNotNull(it[CashLodgementsTable.depositedByUserId], it[CashLodgementsTable.confirmedByUserId]) })
+        val users = Names.users(rows.flatMap { listOfNotNull(it[CashLodgementsTable.depositedByUserId], it[CashLodgementsTable.confirmedByUserId]) })
         return rows.map { row ->
             CashLodgementRow(
                 id = row[CashLodgementsTable.id].value, ref = row[CashLodgementsTable.ref], date = row[CashLodgementsTable.depositDate],

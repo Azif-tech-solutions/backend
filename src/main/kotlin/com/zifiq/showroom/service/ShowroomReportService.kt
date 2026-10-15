@@ -1,5 +1,6 @@
 package com.zifiq.showroom.service
 
+import com.zifiq.inventory.repository.StockSql
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.filter.FilterContext
 import com.zifiq.common.filter.FilterField
@@ -120,7 +121,7 @@ class ShowroomReportService(
 
         val itemIds = quantities.keys.map { it.second }.toSet()
         val categoryName = RawExpression<String>({ +"coalesce((select c.name from categories c where c.id = "; +StockItemsTable.categoryId; +"), 'Ungrouped')" })
-        val unitName = RawExpression<String>({ +"(select u.name from units_of_measure u where u.id = "; +StockItemsTable.unitOfMeasureId; +")" })
+        val unitName = StockSql.unitName(StockItemsTable.unitOfMeasureId)
         val items = if (itemIds.isEmpty()) emptyMap() else StockItemsTable.select(StockItemsTable.columns + categoryName + unitName)
             .where { StockItemsTable.id inList itemIds }.associateBy { it[StockItemsTable.id].value }
         val locationRows = LocationsTable.selectAll().where { LocationsTable.id inList locations }.associateBy { it[LocationsTable.id].value }
@@ -195,7 +196,7 @@ class ShowroomReportService(
     private val destinationName = locationLabel(StockTransfersTable.destinationLocationId)
     private val route = RawExpression<String>({ +"("; +sourceType; +" || '_TO_' || "; +destinationType; +")" })
     private val reportStatus = RawExpression<String>({ +"(CASE WHEN "; +StockTransfersTable.status; +" = 'RECEIVED' THEN 'RECEIVED' ELSE 'IN_TRANSIT' END)" })
-    private val unitName = RawExpression<String>({ +"(select u.name from units_of_measure u where u.id = "; +StockItemsTable.unitOfMeasureId; +")" })
+    private val unitName = StockSql.unitName(StockItemsTable.unitOfMeasureId)
 
     private val transferFilters = FilterSpec(
         fields = listOf(

@@ -1,5 +1,10 @@
 package com.zifiq.invoicing.service
 
+import com.zifiq.platform.directory.Names
+import com.zifiq.account.spi.Channel
+import com.zifiq.settings.spi.logoDataUri
+import com.zifiq.common.money.Money
+import com.zifiq.common.paging.PagingPolicy
 import com.zifiq.account.spi.ConfirmationStatus
 import com.zifiq.account.spi.Receipts
 import com.zifiq.common.errors.ApiErrors
@@ -107,7 +112,7 @@ class InvoiceQueryService(
         val sorted = if (request.sort.isEmpty()) request.copy(sort = listOf(SortField("voidedAt", "desc"))) else request
         val page = listing.page(sorted, d, InvoicesTable.status eq "VOID")
         val rows = page.result.items
-        val users = support.userNames(rows.mapNotNull { it[InvoicesTable.voidedByUserId]?.value })
+        val users = Names.users(rows.mapNotNull { it[InvoicesTable.voidedByUserId]?.value })
         val replacements = numbers(rows.mapNotNull { it[InvoicesTable.replacedByInvoiceId] })
         val items = rows.map { row ->
             VoidedInvoiceRow(
@@ -119,7 +124,7 @@ class InvoiceQueryService(
         }
         val summary = if (request.summary) {
             val all = listing.joined().select(InvoicesTable.taxInclusiveAmount).where(page.condition).toList()
-            mapOf("count" to all.size, "value" to InvoiceSupport.money(all.fold(BigDecimal.ZERO) { s, it -> s + it[InvoicesTable.taxInclusiveAmount] }))
+            mapOf("count" to all.size, "value" to Money.round(all.fold(BigDecimal.ZERO) { s, it -> s + it[InvoicesTable.taxInclusiveAmount] }))
         } else null
         page.result.withItems(items).copy(summary = summary, meta = PageMeta(ignoredQualifiers = page.ignoredQualifiers))
     }
@@ -156,7 +161,7 @@ class InvoiceQueryService(
                 "issued" to issued, "delivered" to delivered,
                 "deliveredPct" to if (issued == 0L) BigDecimal.ZERO.setScale(1) else BigDecimal(delivered * 100).divide(BigDecimal(issued), 1, java.math.RoundingMode.HALF_UP),
                 "failed" to (row[failed] as Number).toLong(), "noEmailCount" to (row[noEmail] as Number).toLong(),
-                "noEmailValue" to InvoiceSupport.money(row[noEmailValue] as BigDecimal),
+                "noEmailValue" to Money.round(row[noEmailValue] as BigDecimal),
             )
         } else null
         page.result.withItems(items).copy(summary = summary, facets = listing.facets(request, page, d).ifEmpty { null }, meta = PageMeta(ignoredQualifiers = page.ignoredQualifiers))
@@ -169,7 +174,7 @@ class InvoiceQueryService(
     // ---- Lookups (§9) ----
 
     /** Picker: `number · customer · balance`. Issued invoices only; [openOnly] keeps those with a balance. */
-    fun lookup(q: String?, openOnly: Boolean, customerId: UUID?, limit: Int = 20): List<InvoiceLookupRow> = tx.execute {
+    fun lookup(q: String?, openOnly: Boolean, customerId: UUID?, limit: Int = PagingPolicy.LOOKUP_DEFAULT): List<InvoiceLookupRow> = tx.execute {
         val d = listing.expressions()
         val parsed = d.searchSpec.parse(q)
         val condition = listOfNotNull(
@@ -181,14 +186,14 @@ class InvoiceQueryService(
         ).allOf()!!
         val order = if (!parsed.isEmpty) d.searchSpec.rank(parsed) else listOf(InvoicesTable.issuedAt to SortOrder.DESC)
         listing.joined().select(InvoicesTable.columns + listOf(d.balance, d.displayStatus)).where(condition)
-            .orderBy(*order.toTypedArray()).limit(limit.coerceIn(1, 50)).map { row ->
-                val balance = InvoiceSupport.money(row[d.balance])
+            .orderBy(*order.toTypedArray()).limit(PagingPolicy.lookupLimit(limit)).map { row ->
+                val balance = Money.round(row[d.balance])
                 val number = row[InvoicesTable.number]!!
                 InvoiceLookupRow(
                     id = row[InvoicesTable.id].value, number = number, customerId = row[InvoicesTable.customerId], customer = row[InvoicesTable.buyerName],
                     issued = row[InvoicesTable.issueDate], total = row[InvoicesTable.taxInclusiveAmount], balance = balance,
                     displayStatus = InvoiceExpressions.label(row[d.displayStatus]),
-                    label = "$number · ${row[InvoicesTable.buyerName]} · ${InvoiceSupport.naira(balance)}",
+                    label = "$number · ${row[InvoicesTable.buyerName]} · ${Money.naira(balance)}",
                 )
             }
     }
@@ -239,7 +244,7 @@ class InvoiceQueryService(
     fun search(q: String, limit: Int): List<SearchHit> =
         list(ListSearchRequest(q = q, size = limit, summary = false)).items.map {
             SearchHit("invoice", it.id, it.number ?: "Draft (${it.sourceRef})",
-                "${it.customer} · ${InvoiceSupport.naira(it.total)} · ${it.displayStatus}" + if (it.daysOverdue > 0) " ${it.daysOverdue}d" else "",
+                "${it.customer} · ${Money.naira(it.total)} · ${it.displayStatus}" + if (it.daysOverdue > 0) " ${it.daysOverdue}d" else "",
                 it.number, "/invoicing/invoices/${it.id}")
         }
 
@@ -254,7 +259,7 @@ class InvoiceQueryService(
         val fromPos = RawExpression<Long>({ +"count(*) filter (where "; +InvoicesTable.sourceType; +" = 'POS_SALE')" })
         val withWaybills = RawExpression<Long>({ +"count(*) filter (where "; +d.hasWaybills; +")" })
         val row = listing.joined().select(count, combined, outstanding, overdue, fromProForma, fromPos, withWaybills).where(condition).single()
-        fun money(e: Expression<*>) = InvoiceSupport.money(row[e] as BigDecimal)
+        fun money(e: Expression<*>) = Money.round(row[e] as BigDecimal)
         fun long(e: Expression<*>) = (row[e] as Number).toLong()
         return mapOf(
             "invoicesOnFile" to long(count), "combinedValue" to money(combined), "outstanding" to money(outstanding), "overdue" to money(overdue),
@@ -287,7 +292,7 @@ class InvoiceQueryService(
             CreditNoteRef(it[CreditNotesTable.id].value, it[CreditNotesTable.number], it[CreditNotesTable.issuedAt], it[CreditNotesTable.reason],
                 it[CreditNotesTable.total], it[CreditNotesTable.appliedToInvoice], it[CreditNotesTable.excessRefunded])
         }
-        val users = support.userNames(listOfNotNull(row[InvoicesTable.issuedByUserId]?.value, row[InvoicesTable.voidedByUserId]?.value))
+        val users = Names.users(listOfNotNull(row[InvoicesTable.issuedByUserId]?.value, row[InvoicesTable.voidedByUserId]?.value))
         val linkedNumbers = numbers(listOfNotNull(row[InvoicesTable.reissueOfInvoiceId], row[InvoicesTable.replacedByInvoiceId]))
         val customerCode = row[InvoicesTable.customerId]?.let { runCatching { customers.get(it).code }.getOrNull() }
         val status = row[InvoicesTable.status]
@@ -314,7 +319,7 @@ class InvoiceQueryService(
             totals = InvoiceTotals(
                 lineExtension = row[InvoicesTable.lineExtensionAmount], discount = row[InvoicesTable.discountTotal], vat = row[InvoicesTable.vatTotal],
                 total = row[InvoicesTable.taxInclusiveAmount], paid = row[InvoicesTable.amountPaid], credited = row[InvoicesTable.amountCredited],
-                balance = if (status == "ISSUED") InvoiceSupport.money(row[d.balance]) else BigDecimal.ZERO.setScale(2), pendingConfirmation = pending,
+                balance = if (status == "ISSUED") Money.round(row[d.balance]) else BigDecimal.ZERO.setScale(2), pendingConfirmation = pending,
             ),
             vat = InvoiceVat(row[InvoicesTable.vatEnabled], row[InvoicesTable.locationVatRate]),
             linked = LinkedDocuments(
@@ -387,7 +392,7 @@ class InvoiceQueryService(
                 sourceRef = row[InvoicesTable.sourceRef], proForma = row[InvoicesTable.proFormaRef],
                 waybills = waybills[row[InvoicesTable.id].value].orEmpty(),
                 total = row[InvoicesTable.taxInclusiveAmount], paid = row[InvoicesTable.amountPaid], credited = row[InvoicesTable.amountCredited],
-                balance = if (status == "ISSUED") InvoiceSupport.money(row[d.balance]) else BigDecimal.ZERO.setScale(2),
+                balance = if (status == "ISSUED") Money.round(row[d.balance]) else BigDecimal.ZERO.setScale(2),
                 daysOverdue = row[d.daysOverdue], delivery = InvoiceExpressions.deliveryLabel(row[d.delivery]),
             )
         }
@@ -406,7 +411,7 @@ class InvoiceQueryService(
             "number" to (detail.number ?: "DRAFT"),
             "title" to if (detail.status == "DRAFT") "Draft Invoice" else "Tax Invoice",
             "status" to detail.status,
-            "logo" to company.logo?.let { "data:${company.logoContentType};base64," + Base64.getEncoder().encodeToString(it) },
+            "logo" to company.logoDataUri(),
             "issuer" to mapOf(
                 "tradingName" to (issuer?.tradingName ?: company.tradingName), "legalName" to issuer?.legalName, "address" to (issuer?.address ?: company.streetAddress),
                 "phone" to (issuer?.phone ?: company.phone), "email" to issuer?.email, "tin" to issuer?.tin, "vatRegistrationNumber" to issuer?.vatRegistrationNumber,
@@ -427,22 +432,22 @@ class InvoiceQueryService(
             "lines" to detail.lines.map { line ->
                 mapOf(
                     "no" to line.lineNo, "name" to line.name, "code" to line.code, "quantity" to line.quantity.stripTrailingZeros().toPlainString(),
-                    "unit" to line.unit, "price" to InvoiceSupport.naira(line.unitPrice),
-                    "discount" to if (line.discountAmount.signum() > 0) InvoiceSupport.naira(line.discountAmount) else "—",
-                    "vat" to if (line.vatAmount.signum() > 0) "${line.vatRate.stripTrailingZeros().toPlainString()}% ${InvoiceSupport.naira(line.vatAmount)}" else vatWord(line.vatCategory),
-                    "amount" to InvoiceSupport.naira(line.lineTotal),
+                    "unit" to line.unit, "price" to Money.naira(line.unitPrice),
+                    "discount" to if (line.discountAmount.signum() > 0) Money.naira(line.discountAmount) else "—",
+                    "vat" to if (line.vatAmount.signum() > 0) "${line.vatRate.stripTrailingZeros().toPlainString()}% ${Money.naira(line.vatAmount)}" else vatWord(line.vatCategory),
+                    "amount" to Money.naira(line.lineTotal),
                 )
             },
             "payments" to detail.linked.payments.filter { it.status != "Declined" && it.status != "Voided" }.map {
                 mapOf("date" to LocalDateTime.ofInstant(it.date, support.zone()).format(DATE), "method" to it.methodLabel, "receipt" to it.receipt,
-                    "amount" to InvoiceSupport.naira(it.amount), "pending" to (it.status == PENDING_LABEL))
+                    "amount" to Money.naira(it.amount), "pending" to (it.status == PENDING_LABEL))
             },
             "totals" to mapOf(
-                "lineExtension" to InvoiceSupport.naira(detail.totals.lineExtension), "discount" to InvoiceSupport.naira(detail.totals.discount),
-                "hasDiscount" to (detail.totals.discount.signum() > 0), "vat" to InvoiceSupport.naira(detail.totals.vat),
-                "total" to InvoiceSupport.naira(detail.totals.total), "paid" to InvoiceSupport.naira(detail.totals.paid),
-                "hasPaid" to (detail.totals.paid.signum() > 0), "credited" to InvoiceSupport.naira(detail.totals.credited),
-                "hasCredited" to (detail.totals.credited.signum() > 0), "balance" to InvoiceSupport.naira(detail.totals.balance),
+                "lineExtension" to Money.naira(detail.totals.lineExtension), "discount" to Money.naira(detail.totals.discount),
+                "hasDiscount" to (detail.totals.discount.signum() > 0), "vat" to Money.naira(detail.totals.vat),
+                "total" to Money.naira(detail.totals.total), "paid" to Money.naira(detail.totals.paid),
+                "hasPaid" to (detail.totals.paid.signum() > 0), "credited" to Money.naira(detail.totals.credited),
+                "hasCredited" to (detail.totals.credited.signum() > 0), "balance" to Money.naira(detail.totals.balance),
                 "showBalance" to (detail.status == "ISSUED"),
             ),
             "vatLabel" to if (detail.vat.enabled) "VAT (${detail.vat.rate.stripTrailingZeros().toPlainString()}%)" else "VAT (not collected at this showroom)",
@@ -485,15 +490,7 @@ class InvoiceQueryService(
 
         fun label(status: String): String = InvoiceExpressions.label(status)
 
-        fun methodLabel(method: String): String = when (method) {
-            "CASH" -> "Cash"
-            "POS" -> "POS (card)"
-            "FUND_TRANSFER" -> "Fund transfer"
-            "CHEQUE" -> "Cheque"
-            "WALLET" -> "Wallet"
-            "DEPOSIT" -> "Deposit"
-            else -> method
-        }
+        fun methodLabel(method: String): String = Channel.labelOf(method)
 
         private fun vatWord(category: String) = when (category) {
             "ZERO_RATED" -> "Zero-rated"

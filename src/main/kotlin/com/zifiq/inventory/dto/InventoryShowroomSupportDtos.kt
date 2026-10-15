@@ -109,7 +109,9 @@ data class GroupCardHeader(
     val groupType: String,
     val groupId: UUID,
     val groupName: String,
+    /** The first members by name ([memberCount] in all). */
     val members: List<GroupCardMember>,
+    val memberCount: Long,
     val openingBalance: BigDecimal,
     val totalReceived: BigDecimal,
     val totalIssued: BigDecimal,
@@ -128,6 +130,6 @@ data class GroupStockCardRow(
     val qtyRemain: BigDecimal,
 )
 
-data class GroupStockCard(val header: GroupCardHeader, val rows: List<GroupStockCardRow>)
+data class GroupStockCard(val header: GroupCardHeader, val rows: com.zifiq.common.paging.PageResult<GroupStockCardRow>)
 
-data class GroupBinCard(val header: GroupCardHeader, val rows: List<BinCardRow>)
+data class GroupBinCard(val header: GroupCardHeader, val rows: com.zifiq.common.paging.PageResult<BinCardRow>)

@@ -1,5 +1,7 @@
 package com.zifiq.inventory.api
 
+import org.springdoc.core.annotations.ParameterObject
+import com.zifiq.common.paging.PageParams
 import com.zifiq.common.filter.FilterMetadata
 import com.zifiq.common.filter.ListSearchRequest
 import com.zifiq.common.paging.PageResult
@@ -47,12 +49,13 @@ class InventoryOperationsController(
         @RequestParam(required = false) q: String?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate?,
-    ): ApiEnvelope<List<StockTransferSummary>> =
+        @ParameterObject paging: PageParams,
+    ): ApiEnvelope<PageResult<StockTransferSummary>> =
         ApiEnvelope(
             inventoryOperationsService.listTransfers(
                 locationId,
                 status.orEmpty().flatMap { it.split(',') }.map { it.trim() }.filter { it.isNotEmpty() }.toSet(),
-                direction, q, from, to,
+                direction, q, from, to, paging.toRequest(),
             ),
         )
 

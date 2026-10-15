@@ -1,5 +1,6 @@
 package com.zifiq.platform.accesscontrol
 
+import com.zifiq.platform.security.AccessCaches
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.platform.accesscontrol.model.PermissionCatalogTable
 import com.zifiq.platform.accesscontrol.model.RolePermissionsTable
@@ -100,6 +101,7 @@ class RoleManagementService(
             }
         }
 
+        AccessCaches.permissionsChanged(actor.tenantId)
         TenantRoleSummary(roleId, command.name.trim(), command.description?.trim(), normalizedPermissions.sorted())
     }
 }

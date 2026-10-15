@@ -1,5 +1,6 @@
 package com.zifiq.account.service
 
+import com.zifiq.common.money.Money
 import com.zifiq.account.model.CashAccountsTable
 import com.zifiq.account.model.PaymentReceiptsTable
 import com.zifiq.account.repository.LedgerPosting
@@ -51,7 +52,7 @@ class ReceiptWriter(
     private val documents: DocumentRegistry,
 ) {
     fun record(request: ReceiptRequest): ReceiptRef {
-        val amount = AccountSupport.money(request.amount)
+        val amount = Money.round(request.amount)
         if (amount.signum() <= 0) throw ApiErrors.validationFailed(mapOf("amount" to "must be positive"))
         request.locationId?.let { support.validateLocation(it) }
         if ((request.sourceType == "OTHER_INCOME") != (request.incomeCategory != null)) {
@@ -98,7 +99,7 @@ class ReceiptWriter(
 
     /** A refund is the company paying, so it posts at once: cash out, a bank debit, or (WALLET) nothing — the caller credited the wallet. */
     fun refund(request: RefundRequest): ReceiptRef {
-        val amount = AccountSupport.money(request.amount)
+        val amount = Money.round(request.amount)
         request.locationId?.let { support.validateLocation(it) }
         val ref = sequences.next("RCT")
         when (request.channel) {

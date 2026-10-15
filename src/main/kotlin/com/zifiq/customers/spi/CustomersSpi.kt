@@ -146,7 +146,7 @@ interface CustomerDirectory {
     fun findActiveByPhone(phone: String): CustomerRef?
 
     /** Picker search (code, name, phone). Not location-restricted: a customer can buy anywhere. */
-    fun search(q: String, limit: Int = 20, types: Set<CustomerType>? = null): List<CustomerRef>
+    fun search(q: String, limit: Int = com.zifiq.common.paging.PagingPolicy.LOOKUP_DEFAULT, types: Set<CustomerType>? = null): List<CustomerRef>
 }
 
 interface WalletLedger {

@@ -1,5 +1,6 @@
 package com.zifiq.platform.settings
 
+import com.zifiq.platform.security.AccessCaches
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.JsonNodeFactory
 import com.zifiq.common.errors.ApiErrors
@@ -93,7 +94,8 @@ class ModuleSettings(
     fun zone(): ZoneId = ZoneId.of(string(TENANT_TIMEZONE))
 
     /** The stored value, or the registered default when unset or no longer valid. */
-    fun value(key: String): Any = values(listOf(key)).single().value
+    fun value(key: String): Any =
+        AccessCaches.settings.get(AccessCaches.SettingKey(tenantContext.requireTenantId(), key)) { values(listOf(key)).single().value }
 
     fun values(keys: Collection<String> = definitions.keys): List<SettingValue> {
         val wanted = keys.map(::definition)
@@ -124,6 +126,7 @@ class ModuleSettings(
             it[updatedByUserId] = userId
             it[updatedAt] = Instant.now()
         }
+        AccessCaches.settingChanged(tenantContext.requireTenantId(), key)
         return values(listOf(key)).single()
     }
 
@@ -133,6 +136,7 @@ class ModuleSettings(
         ModuleSettingsTable.deleteWhere {
             (tenantId eq tenantContext.requireTenantId()) and (settingKey eq key)
         }
+        AccessCaches.settingChanged(tenantContext.requireTenantId(), key)
     }
 
     private fun parse(definition: SettingDefinition, raw: JsonNode): Any {

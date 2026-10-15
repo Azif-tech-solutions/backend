@@ -1,5 +1,7 @@
 package com.zifiq.platform.tenancy
 
+import org.jetbrains.exposed.sql.transactions.TransactionManager
+import org.jetbrains.exposed.sql.Key
 import java.util.UUID
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.VarCharColumnType
@@ -12,10 +14,12 @@ class TenantScopedTransaction(
     private val tenantContext: TenantContext,
 ) {
     fun <T> execute(block: () -> T): T = transaction(database) {
+        val tenantId = tenantContext.requireTenantId()
         exec(
             "select set_config('app.tenant_id', ?, true)",
-            listOf(VarCharColumnType() to tenantContext.requireTenantId().toString()),
+            listOf(VarCharColumnType() to tenantId.toString()),
         )
+        putUserData(RLS_TENANT, tenantId)
         block()
     }
 
@@ -33,5 +37,17 @@ class TenantScopedTransaction(
         } finally {
             if (previous != null) tenantContext.set(previous) else tenantContext.clear()
         }
+    }
+
+    companion object {
+        private val RLS_TENANT = Key<UUID>()
+
+        /**
+         * The tenant row-level security is enforcing in the current transaction (set with
+         * `app.tenant_id` by [execute]). In-process caches of tenant data key on this, so a cached
+         * value can only ever be served to the tenant whose RLS scope produced it.
+         */
+        fun rlsTenant(): UUID = TransactionManager.current().getUserData(RLS_TENANT)
+            ?: throw IllegalStateException("Not inside a tenant-scoped transaction")
     }
 }

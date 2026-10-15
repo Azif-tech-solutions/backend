@@ -1,5 +1,7 @@
 package com.zifiq.account.service
 
+import com.zifiq.platform.directory.Names
+import com.zifiq.common.money.Money
 import com.zifiq.account.dto.RunningCostRequest
 import com.zifiq.account.dto.RunningCostView
 import com.zifiq.account.model.BankAccountsTable
@@ -118,9 +120,9 @@ class RunningCostService(
             it[cashTransactionId] = posted.cashTransactionId
             it[bankTransactionId] = posted.bankTransactionId
         }
-        val eventId = support.record("account.running-cost.approved", "running_cost", id, ref, "$ref approved: ${AccountSupport.naira(amount)} to ${row[OperatingCostsTable.payee]}",
+        val eventId = support.record("account.running-cost.approved", "running_cost", id, ref, "$ref approved: ${Money.naira(amount)} to ${row[OperatingCostsTable.payee]}",
             mapOf("amount" to amount, "account" to account.code), row[OperatingCostsTable.locationId])
-        tellSubmitter(row, NotificationCategory.CONFIRMATION, "Running cost approved — $ref", "${AccountSupport.naira(amount)} to ${row[OperatingCostsTable.payee]} was approved and paid from ${account.code}.", eventId)
+        tellSubmitter(row, NotificationCategory.CONFIRMATION, "Running cost approved — $ref", "${Money.naira(amount)} to ${row[OperatingCostsTable.payee]} was approved and paid from ${account.code}.", eventId)
         view(id)
     }
 
@@ -135,7 +137,7 @@ class RunningCostService(
             it[approvedAt] = Instant.now()
         }
         val eventId = support.record("account.running-cost.rejected", "running_cost", id, ref, "$ref rejected: ${reason.trim()}", mapOf("amount" to row[OperatingCostsTable.amount]), row[OperatingCostsTable.locationId])
-        tellSubmitter(row, NotificationCategory.ALERT, "Running cost rejected — $ref", "${AccountSupport.naira(row[OperatingCostsTable.amount])} to ${row[OperatingCostsTable.payee]}: ${reason.trim()}", eventId)
+        tellSubmitter(row, NotificationCategory.ALERT, "Running cost rejected — $ref", "${Money.naira(row[OperatingCostsTable.amount])} to ${row[OperatingCostsTable.payee]}: ${reason.trim()}", eventId)
         view(id)
     }
 
@@ -188,9 +190,9 @@ class RunningCostService(
             val pending = all.filter { it[OperatingCostsTable.status] == "PENDING_APPROVAL" }
             mapOf(
                 "count" to all.size,
-                "total" to AccountSupport.money(all.fold(BigDecimal.ZERO) { s, it -> s + it[OperatingCostsTable.amount] }),
+                "total" to Money.round(all.fold(BigDecimal.ZERO) { s, it -> s + it[OperatingCostsTable.amount] }),
                 "pendingCount" to pending.size,
-                "pendingValue" to AccountSupport.money(pending.fold(BigDecimal.ZERO) { s, it -> s + it[OperatingCostsTable.amount] }),
+                "pendingValue" to Money.round(pending.fold(BigDecimal.ZERO) { s, it -> s + it[OperatingCostsTable.amount] }),
             )
         } else null
         page.withItems(toViews(page.items)).copy(summary = summary, meta = PageMeta(ignoredQualifiers = parsed.ignoredQualifiers))
@@ -201,7 +203,7 @@ class RunningCostService(
     /** Global search: running costs by reference, payee or invoice number. */
     fun search(q: String, limit: Int): List<SearchHit> =
         list(ListSearchRequest(q = q, size = limit, summary = false)).items.filter { it.ref != null }.map {
-            SearchHit("running-cost", it.id, it.ref!!, "${it.payee} · ${AccountSupport.naira(it.amount)} · ${it.status.lowercase().replace('_', ' ')}", it.ref, "/account/running-costs/${it.id}")
+            SearchHit("running-cost", it.id, it.ref!!, "${it.payee} · ${Money.naira(it.amount)} · ${it.status.lowercase().replace('_', ' ')}", it.ref, "/account/running-costs/${it.id}")
         }
 
     // ---- Helpers (caller's transaction) ----
@@ -228,13 +230,13 @@ class RunningCostService(
         it[OperatingCostsTable.locationId] = request.locationId
         it[OperatingCostsTable.expenseCategoryId] = request.expenseCategoryId!!
         it[OperatingCostsTable.payee] = request.payee.trim()
-        it[OperatingCostsTable.amount] = AccountSupport.money(request.amount!!)
+        it[OperatingCostsTable.amount] = Money.round(request.amount!!)
         it[OperatingCostsTable.paymentMethod] = request.paymentMethod!!
         it[OperatingCostsTable.payingCashAccountId] = request.payingCashAccountId
         it[OperatingCostsTable.payingBankAccountId] = request.payingBankAccountId
         it[OperatingCostsTable.chequeNumber] = request.chequeNumber?.trim()?.ifEmpty { null }
         it[OperatingCostsTable.invoiceOrReceiptNo] = request.invoiceOrReceiptNo?.trim()?.ifEmpty { null }
-        it[OperatingCostsTable.inputVatAmount] = AccountSupport.money(request.inputVatAmount ?: BigDecimal.ZERO)
+        it[OperatingCostsTable.inputVatAmount] = Money.round(request.inputVatAmount ?: BigDecimal.ZERO)
         it[OperatingCostsTable.supplierTin] = request.supplierTin?.trim()?.uppercase()?.ifEmpty { null }
         it[OperatingCostsTable.paymentDate] = request.paymentDate!!
         it[OperatingCostsTable.description] = request.description?.trim()?.ifEmpty { null }
@@ -275,12 +277,12 @@ class RunningCostService(
             it[submittedAt] = Instant.now()
         }
         val eventId = support.record("account.running-cost.submitted", "running_cost", id, ref,
-            "$ref submitted: ${AccountSupport.naira(amount)} to ${row[OperatingCostsTable.payee]} (${category[ExpenseCategoriesTable.name]})",
+            "$ref submitted: ${Money.naira(amount)} to ${row[OperatingCostsTable.payee]} (${category[ExpenseCategoriesTable.name]})",
             mapOf("amount" to amount, "exceedsMonthlyCap" to exceeds), row[OperatingCostsTable.locationId])
         notify.holdersOf(
             permission = "accounting.running-costs.approve", locationId = row[OperatingCostsTable.locationId], category = NotificationCategory.APPROVAL_REQUIRED,
             title = "Running cost awaiting approval — $ref",
-            body = "$ref ${AccountSupport.naira(amount)} — ${row[OperatingCostsTable.payee]} (${category[ExpenseCategoriesTable.name]})" + (if (exceeds) ". Exceeds the category's monthly cap." else ""),
+            body = "$ref ${Money.naira(amount)} — ${row[OperatingCostsTable.payee]} (${category[ExpenseCategoriesTable.name]})" + (if (exceeds) ". Exceeds the category's monthly cap." else ""),
             linkType = "running-cost", linkRef = id.toString(), sourceEventId = eventId, exclude = support.userId(),
         )
     }
@@ -321,8 +323,8 @@ class RunningCostService(
         toViews(joined().selectAll().where { (OperatingCostsTable.id eq id) and (OperatingCostsTable.tenantId eq support.tenantId()) }.toList()).single()
 
     private fun toViews(rows: List<ResultRow>): List<RunningCostView> {
-        val users = support.userNames(rows.flatMap { listOfNotNull(it[OperatingCostsTable.submittedByUserId], it[OperatingCostsTable.approvedByUserId]) })
-        val locations = support.locationNames(rows.mapNotNull { it[OperatingCostsTable.locationId] })
+        val users = Names.users(rows.flatMap { listOfNotNull(it[OperatingCostsTable.submittedByUserId], it[OperatingCostsTable.approvedByUserId]) })
+        val locations = Names.locations(rows.mapNotNull { it[OperatingCostsTable.locationId] })
         return rows.map { row ->
             RunningCostView(
                 id = row[OperatingCostsTable.id].value, ref = row[OperatingCostsTable.ref], date = row[OperatingCostsTable.paymentDate],

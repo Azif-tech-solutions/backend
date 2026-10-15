@@ -12,8 +12,15 @@ import org.jetbrains.exposed.sql.Count
  * facet's own filter removed, so a chip shows how many rows choosing it would give.
  */
 object Facets {
-    const val MAX_VALUES = 20
-    const val MAX_FACETS = 6
+    const val MAX_VALUES = com.zifiq.common.paging.PagingPolicy.FACET_MAX_VALUES
+    const val MAX_FACETS = com.zifiq.common.paging.PagingPolicy.FACET_MAX_FACETS
+
+    /**
+     * The URL filters minus the facet's own (`key`, `key.op`, `key!`, `keyMin`, `keyMax`), so a facet
+     * counts what choosing each of its values would give.
+     */
+    fun paramsWithout(params: Map<String, List<String>>, key: String): Map<String, List<String>> =
+        params.filterKeys { it.substringBefore('.').removeSuffix("!").removeSuffix("Min").removeSuffix("Max") != key }
 
     fun count(
         base: ColumnSet,

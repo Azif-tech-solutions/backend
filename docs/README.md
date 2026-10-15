@@ -30,4 +30,6 @@ Inventory has no doc of its own: it was built with Factory (02) and extended by 
 
 [frontend-integration.md](frontend-integration.md) is the guide for the frontend team (base URL, auth, conventions, recent API changes).
 
+[database-indexes.md](database-indexes.md) lists every database index, generated from the schema by `scripts/db/index-report.sql`; `scripts/scale/seed.sql` loads a production-size tenant for timing and EXPLAINing queries (implemented/03 §5.1.1).
+
 Code comments refer to docs by number and section (`docs/04 §4.8`), which stays valid when a doc changes folder. Flyway migrations keep the paths they were written with: an applied migration is never edited.

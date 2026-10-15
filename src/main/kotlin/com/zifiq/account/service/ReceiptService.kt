@@ -1,5 +1,10 @@
 package com.zifiq.account.service
 
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.neq
+import com.zifiq.common.sql.Aggregates
+import com.zifiq.platform.directory.Names
+import com.zifiq.settings.spi.logoDataUri
+import com.zifiq.common.money.Money
 import com.zifiq.account.dto.ConfirmationStats
 import com.zifiq.account.dto.OtherIncomeRequest
 import com.zifiq.account.dto.ReceiptRow
@@ -86,7 +91,7 @@ class ReceiptService(
     override fun recordReceipt(request: ReceiptRequest): ReceiptRef = writer.record(request).also { recorded(it, request.locationId, request.sourceRef, request.customerName) }
 
     override fun recordRefund(request: RefundRequest): ReceiptRef = writer.refund(request).also {
-        support.record("account.receipt.recorded", "payment_receipt", it.id, it.ref, "${it.ref}: refund of ${AccountSupport.naira(it.amount)} by ${it.channel.name.lowercase()} for ${request.sourceRef}",
+        support.record("account.receipt.recorded", "payment_receipt", it.id, it.ref, "${it.ref}: refund of ${Money.naira(it.amount)} by ${it.channel.name.lowercase()} for ${request.sourceRef}",
             mapOf("kind" to "REFUND", "channel" to it.channel.name, "amount" to it.amount), request.locationId)
     }
 
@@ -115,7 +120,7 @@ class ReceiptService(
         val fresh = writer.row(id)
         handlerFor(fresh)?.approved(fresh)
         support.record("account.receipt.approved", "payment_receipt", id, fresh[PaymentReceiptsTable.ref],
-            "${fresh[PaymentReceiptsTable.ref]} approved: ${AccountSupport.naira(fresh[PaymentReceiptsTable.amount])} ${channelLabel(fresh)}",
+            "${fresh[PaymentReceiptsTable.ref]} approved: ${Money.naira(fresh[PaymentReceiptsTable.amount])} ${channelLabel(fresh)}",
             mapOf("amount" to fresh[PaymentReceiptsTable.amount], "channel" to fresh[PaymentReceiptsTable.channel]), fresh[PaymentReceiptsTable.locationId])
         rowView(id)
     }
@@ -128,12 +133,12 @@ class ReceiptService(
         handlerFor(fresh)?.declined(fresh, note.trim())
         val ref = fresh[PaymentReceiptsTable.ref]
         val eventId = support.record("account.receipt.declined", "payment_receipt", id, ref,
-            "$ref declined: ${AccountSupport.naira(fresh[PaymentReceiptsTable.amount])} ${channelLabel(fresh)} — ${note.trim()}",
+            "$ref declined: ${Money.naira(fresh[PaymentReceiptsTable.amount])} ${channelLabel(fresh)} — ${note.trim()}",
             mapOf("amount" to fresh[PaymentReceiptsTable.amount], "channel" to fresh[PaymentReceiptsTable.channel], "sourceType" to fresh[PaymentReceiptsTable.sourceType],
                 "sourceId" to fresh[PaymentReceiptsTable.sourceId]), fresh[PaymentReceiptsTable.locationId])
         val people = setOf(receipt[PaymentReceiptsTable.cashierUserId]) + recipients.withPermission("invoicing.receivables.read", receipt[PaymentReceiptsTable.locationId])
         notify.inApp(people, NotificationCategory.ALERT, "Payment declined — $ref",
-            "${AccountSupport.naira(fresh[PaymentReceiptsTable.amount])} ${channelLabel(fresh)} for ${fresh[PaymentReceiptsTable.sourceRef]}: ${note.trim()}",
+            "${Money.naira(fresh[PaymentReceiptsTable.amount])} ${channelLabel(fresh)} for ${fresh[PaymentReceiptsTable.sourceRef]}: ${note.trim()}",
             "receipt", id.toString(), eventId, exclude = support.userId())
         rowView(id)
     }
@@ -149,12 +154,17 @@ class ReceiptService(
         rowView(id)
     }
 
+    /** The confirmation screen's header: one aggregate query over the caller's receipts. */
     fun confirmationStats(locationId: UUID?): ConfirmationStats = tx.execute {
         val today = support.today().atStartOfDay(support.moduleSettings().zone()).toInstant()
-        val rows = PaymentReceiptsTable.selectAll().where(scope(locationId)).toList()
-        val pending = rows.filter { it[PaymentReceiptsTable.confirmationStatus] == "PENDING" && it[PaymentReceiptsTable.status] == "ISSUED" }
-        fun reviewedToday(status: String) = rows.count { it[PaymentReceiptsTable.confirmationStatus] == status && (it[PaymentReceiptsTable.reviewedAt]?.let { at -> at >= today } ?: false) }.toLong()
-        ConfirmationStats(pending.size.toLong(), AccountSupport.money(pending.fold(BigDecimal.ZERO) { s, it -> s + it[PaymentReceiptsTable.amount] }), reviewedToday("APPROVED"), reviewedToday("DECLINED"))
+        val pendingWhere = (PaymentReceiptsTable.confirmationStatus eq "PENDING") and (PaymentReceiptsTable.status eq "ISSUED")
+        fun reviewedToday(status: String) = Aggregates.count((PaymentReceiptsTable.confirmationStatus eq status) and (PaymentReceiptsTable.reviewedAt greaterEq today))
+        val pendingCount = Aggregates.count(pendingWhere)
+        val pendingValue = Aggregates.sum(PaymentReceiptsTable.amount, pendingWhere)
+        val approved = reviewedToday("APPROVED")
+        val declined = reviewedToday("DECLINED")
+        val row = PaymentReceiptsTable.select(pendingCount, pendingValue, approved, declined).where(scope(locationId)).single()
+        ConfirmationStats(Aggregates.long(row, pendingCount), Aggregates.money(row, pendingValue), Aggregates.long(row, approved), Aggregates.long(row, declined))
     }
 
     // ---- Lists ----
@@ -172,17 +182,21 @@ class ReceiptService(
         val joined = joined()
         val page = Paging.fetch(joined.selectAll().where(condition).orderBy(*sort.toTypedArray()), PageRequest.of(request.page, request.size)) { it }
         val summary = if (request.summary) {
-            val all = joined.select(PaymentReceiptsTable.channel, PaymentReceiptsTable.amount, PaymentReceiptsTable.kind, PaymentReceiptsTable.confirmationStatus, PaymentReceiptsTable.status)
-                .where(condition).toList()
-            val live = all.filter { it[PaymentReceiptsTable.status] == "ISSUED" && it[PaymentReceiptsTable.confirmationStatus] != "DECLINED" }
-            val pending = live.filter { it[PaymentReceiptsTable.confirmationStatus] == "PENDING" }
+            // Live = issued and not declined; refunds count against their channel.
+            val live = (PaymentReceiptsTable.status eq "ISSUED") and (PaymentReceiptsTable.confirmationStatus neq "DECLINED")
+            val pendingWhere = live and (PaymentReceiptsTable.confirmationStatus eq "PENDING")
+            val count = Aggregates.count()
+            val pendingCount = Aggregates.count(pendingWhere)
+            val pendingValue = Aggregates.sum(PaymentReceiptsTable.amount, pendingWhere)
+            val totals = joined.select(count, pendingCount, pendingValue).where(condition).single()
+            val signed = RawExpression<BigDecimal>({ +"(case when "; +PaymentReceiptsTable.kind; +" = 'REFUND' then -"; +PaymentReceiptsTable.amount; +" else "; +PaymentReceiptsTable.amount; +" end)" })
+            val byChannel = Aggregates.sum(signed)
             mapOf(
-                "count" to all.size,
-                "totalByChannel" to live.groupBy { it[PaymentReceiptsTable.channel] }.mapValues { (_, rows) ->
-                    AccountSupport.money(rows.fold(BigDecimal.ZERO) { s, it -> if (it[PaymentReceiptsTable.kind] == "REFUND") s - it[PaymentReceiptsTable.amount] else s + it[PaymentReceiptsTable.amount] })
-                },
-                "pendingCount" to pending.size,
-                "pendingValue" to AccountSupport.money(pending.fold(BigDecimal.ZERO) { s, it -> s + it[PaymentReceiptsTable.amount] }),
+                "count" to Aggregates.long(totals, count),
+                "totalByChannel" to joined.select(PaymentReceiptsTable.channel, byChannel).where(condition and live).groupBy(PaymentReceiptsTable.channel)
+                    .associate { it[PaymentReceiptsTable.channel] to Aggregates.money(it, byChannel) },
+                "pendingCount" to Aggregates.long(totals, pendingCount),
+                "pendingValue" to Aggregates.money(totals, pendingValue),
             )
         } else null
         page.withItems(toRows(page.items)).copy(summary = summary, meta = PageMeta(ignoredQualifiers = parsed.ignoredQualifiers))
@@ -212,7 +226,7 @@ class ReceiptService(
         // Its own reference is its source reference, and its own id its source id.
         PaymentReceiptsTable.update({ PaymentReceiptsTable.id eq recorded.id }) { it[sourceRef] = recorded.ref; it[PaymentReceiptsTable.sourceId] = recorded.id }
         support.record("account.other-income.recorded", "payment_receipt", recorded.id, recorded.ref,
-            "${recorded.ref}: ${AccountSupport.naira(recorded.amount)} ${request.incomeCategory!!.lowercase().replace('_', ' ')} from ${request.payerName.trim()}",
+            "${recorded.ref}: ${Money.naira(recorded.amount)} ${request.incomeCategory!!.lowercase().replace('_', ' ')} from ${request.payerName.trim()}",
             mapOf("category" to request.incomeCategory, "amount" to recorded.amount, "channel" to request.channel), request.locationId)
         recorded(recorded, request.locationId, recorded.ref, request.payerName.trim())
         rowView(recorded.id)
@@ -240,7 +254,7 @@ class ReceiptService(
             }
             mapOf(
                 "company" to company,
-                "logo" to company.logo?.let { "data:${company.logoContentType};base64," + Base64.getEncoder().encodeToString(it) },
+                "logo" to company.logoDataUri(),
                 "receipt" to row,
                 "title" to if (row.kind == "REFUND") "Refund Receipt" else "Payment Receipt",
                 "stamp" to stamp,
@@ -249,7 +263,7 @@ class ReceiptService(
                 "receivedAt" to LocalDateTime.ofInstant(row.receivedAt, support.moduleSettings().zone()).format(DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm")),
                 "printedAt" to LocalDateTime.now(support.moduleSettings().zone()).format(DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm")),
                 "duplicate" to documents.isReprint(row.ref),
-                "amount" to AccountSupport.naira(row.amount),
+                "amount" to Money.naira(row.amount),
             )
         }
         return PrintedReceipt((model["receipt"] as ReceiptRow).ref, pdfRenderer.render("receipt", model))
@@ -258,7 +272,7 @@ class ReceiptService(
     /** Global search: receipts by reference, source reference (INV-…, TXN-…), payer reference or customer. */
     fun search(q: String, limit: Int): List<SearchHit> =
         list(ListSearchRequest(q = q, size = limit, summary = false)).items.map {
-            SearchHit("receipt", it.id, it.ref, "${channelName(it.channel)} · ${AccountSupport.naira(it.amount)} · ${it.customerName ?: "Walk-in"} · ${it.confirmationStatus.lowercase().replace('_', ' ')}",
+            SearchHit("receipt", it.id, it.ref, "${channelName(it.channel)} · ${Money.naira(it.amount)} · ${it.customerName ?: "Walk-in"} · ${it.confirmationStatus.lowercase().replace('_', ' ')}",
                 it.ref, "/account/receipts/${it.id}")
         }
 
@@ -266,14 +280,14 @@ class ReceiptService(
 
     private fun recorded(ref: ReceiptRef, locationId: UUID?, sourceRef: String, customerName: String?) {
         val eventId = support.record("account.receipt.recorded", "payment_receipt", ref.id, ref.ref,
-            "${ref.ref}: ${AccountSupport.naira(ref.amount)} by ${channelName(ref.channel.name).lowercase()} for $sourceRef" + (customerName?.let { " — $it" } ?: ""),
+            "${ref.ref}: ${Money.naira(ref.amount)} by ${channelName(ref.channel.name).lowercase()} for $sourceRef" + (customerName?.let { " — $it" } ?: ""),
             mapOf("channel" to ref.channel.name, "amount" to ref.amount, "confirmationStatus" to ref.confirmationStatus.name), locationId)
         // POS / transfer / cheque receipts wait for Accounts; the configured channels notify one by one (card payments are too frequent).
         if (ref.confirmationStatus == ConfirmationStatus.PENDING && ref.channel.name in support.moduleSettings().stringList(AccountingSettings.NOTIFY_PER_RECEIPT_CHANNELS)) {
             notify.holdersOf(
                 permission = "accounting.receipts.confirm", locationId = locationId, category = NotificationCategory.APPROVAL_REQUIRED,
                 title = "${channelName(ref.channel.name)} awaiting confirmation — ${ref.ref}",
-                body = "${AccountSupport.naira(ref.amount)} for $sourceRef" + (customerName?.let { " from $it" } ?: "") + ". Confirm it against the bank.",
+                body = "${Money.naira(ref.amount)} for $sourceRef" + (customerName?.let { " from $it" } ?: "") + ". Confirm it against the bank.",
                 linkType = "receipt", linkRef = ref.id.toString(), sourceEventId = eventId, exclude = support.userId(),
             )
         }
@@ -339,7 +353,7 @@ class ReceiptService(
     private fun rowView(id: UUID): ReceiptRow = toRows(joined().selectAll().where { PaymentReceiptsTable.id eq id }.toList()).single()
 
     private fun toRows(rows: List<ResultRow>): List<ReceiptRow> {
-        val users = support.userNames(rows.flatMap { listOfNotNull(it[PaymentReceiptsTable.cashierUserId], it[PaymentReceiptsTable.reviewedByUserId]) })
+        val users = Names.users(rows.flatMap { listOfNotNull(it[PaymentReceiptsTable.cashierUserId], it[PaymentReceiptsTable.reviewedByUserId]) })
         return rows.map { row ->
             ReceiptRow(
                 id = row[PaymentReceiptsTable.id].value, ref = row[PaymentReceiptsTable.ref], kind = row[PaymentReceiptsTable.kind], receivedAt = row[PaymentReceiptsTable.receivedAt],
@@ -413,15 +427,7 @@ class ReceiptService(
         val CHANNELS = listOf("CASH", "POS", "FUND_TRANSFER", "CHEQUE", "WALLET", "DEPOSIT")
         private val VOIDABLE_HERE = setOf("WALLET_FUNDING", "DEPOSIT_FUNDING", "OTHER_INCOME")
 
-        fun channelName(channel: String): String = when (channel) {
-            "CASH" -> "Cash"
-            "POS" -> "POS (card)"
-            "FUND_TRANSFER" -> "Fund transfer"
-            "CHEQUE" -> "Cheque"
-            "WALLET" -> "Wallet"
-            "DEPOSIT" -> "Deposit"
-            else -> channel
-        }
+        fun channelName(channel: String): String = Channel.labelOf(channel)
     }
 }
 

@@ -1,5 +1,15 @@
 package com.zifiq.inventory.service
 
+import com.zifiq.inventory.repository.StockSql
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.lessEq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
+import org.jetbrains.exposed.sql.TextColumnType
+import com.zifiq.common.search.RawOp
+import com.zifiq.common.search.escapeLike
+import com.zifiq.common.search.RawExpression
+import com.zifiq.common.paging.Paging
+import com.zifiq.common.paging.PageResult
+import com.zifiq.common.paging.PageRequest
 import com.zifiq.inventory.dto.*
 import com.zifiq.inventory.model.StockBalancesTable
 import com.zifiq.inventory.model.StockItemsTable
@@ -80,7 +90,11 @@ class InventoryStockService(
     private val domainEvents: com.zifiq.platform.events.DomainEvents,
     private val stockItemCodes: StockItemCodes,
 ) {
-    fun listStockItems(locationId: UUID?, itemType: String?, status: String?): List<StockItemSummary> =
+    /**
+     * The stock register, paged (docs/03 §5.1). `q` matches the code (prefix) or the name (accent- and
+     * case-insensitive, trigram-indexed). Quantities on hand are summed for the page's items only.
+     */
+    fun listStockItems(locationId: UUID?, itemType: String?, status: String?, q: String?, paging: PageRequest): PageResult<StockItemSummary> =
         tenantScopedTransaction.execute {
             val tenantId = currentActorProvider.current().tenantId
             val effectiveLocationId = locationAccessService.resolveFilterSet(locationId)
@@ -88,10 +102,18 @@ class InventoryStockService(
             if (effectiveLocationId != null) query.andWhere { StockItemsTable.locationId inList effectiveLocationId }
             if (itemType != null) query.andWhere { StockItemsTable.itemType eq itemType }
             if (status != null) query.andWhere { StockItemsTable.status eq status }
-            val rows = query.orderBy(StockItemsTable.name).toList()
+            q?.trim()?.lowercase()?.takeIf { it.isNotEmpty() }?.let { term ->
+                query.andWhere {
+                    RawOp {
+                        +"(lower("; +StockItemsTable.code; +") like "; registerArgument(TextColumnType(), escapeLike(term) + "%")
+                        +" or f_unaccent(lower("; +StockItemsTable.name; +")) like f_unaccent("; registerArgument(TextColumnType(), "%" + escapeLike(term) + "%"); +"))"
+                    }
+                }
+            }
+            val page = Paging.fetch(query.orderBy(StockItemsTable.name to SortOrder.ASC, StockItemsTable.id to SortOrder.ASC), paging) { it }
             // At the requested location (and its areas); with no filter, everywhere the caller can see.
-            val quantities = quantitiesOnHand(tenantId, rows.map { it[StockItemsTable.id].value }, effectiveLocationId ?: locationAccessService.allowedLocationIds())
-            rows.map { rowToStockItemSummary(it, quantities[it[StockItemsTable.id].value] ?: BigDecimal.ZERO) }
+            val quantities = quantitiesOnHand(tenantId, page.items.map { it[StockItemsTable.id].value }, effectiveLocationId ?: locationAccessService.allowedLocationIds())
+            page.withItems(page.items.map { rowToStockItemSummary(it, quantities[it[StockItemsTable.id].value] ?: BigDecimal.ZERO) })
         }
 
     fun registerStockItem(request: StockItemRequest): StockItemSummary = tenantScopedTransaction.execute {
@@ -237,13 +259,13 @@ class InventoryStockService(
         rowToReceiptSummary(StockReceiptsTable.selectAll().andWhere { StockReceiptsTable.id eq id }.single())
     }
 
-    fun listReceipts(locationId: UUID?, condition: String?): List<StockReceiptSummary> = tenantScopedTransaction.execute {
+    fun listReceipts(locationId: UUID?, condition: String?, paging: PageRequest): PageResult<StockReceiptSummary> = tenantScopedTransaction.execute {
         val tenantId = currentActorProvider.current().tenantId
         val effectiveLocationId = locationAccessService.resolveFilterSet(locationId)
         val query = StockReceiptsTable.selectAll().andWhere { StockReceiptsTable.tenantId eq tenantId }
         if (effectiveLocationId != null) query.andWhere { StockReceiptsTable.locationId inList effectiveLocationId }
         if (condition != null) query.andWhere { StockReceiptsTable.condition eq condition }
-        query.orderBy(StockReceiptsTable.createdAt).map(::rowToReceiptSummary)
+        Paging.fetch(query.orderBy(StockReceiptsTable.createdAt to SortOrder.DESC, StockReceiptsTable.id to SortOrder.DESC), paging, ::rowToReceiptSummary)
     }
 
     fun verifyReceipt(id: UUID, condition: String): StockReceiptSummary = tenantScopedTransaction.execute {
@@ -288,60 +310,73 @@ class InventoryStockService(
      * Stock Card: every movement of one item with a running balance. A factory or showroom
      * includes its storage areas unless [includeAreas] is false; an area is just itself.
      */
-    fun stockCard(stockItemId: UUID, locationId: UUID, from: LocalDate?, to: LocalDate?, includeAreas: Boolean = true): List<StockCardRow> =
+    /**
+     * Stock Card, paged: every movement of one item at a location in date order, with the running
+     * balance computed in SQL (opening balance before `from` + a window sum), so a page never reads
+     * the item's whole history into memory.
+     */
+    fun stockCard(stockItemId: UUID, locationId: UUID, from: LocalDate?, to: LocalDate?, includeAreas: Boolean = true, paging: PageRequest): PageResult<StockCardRow> =
         tenantScopedTransaction.execute {
             val tenantId = currentActorProvider.current().tenantId
             locationAccessService.assertAccess(locationId)
             val locations = if (includeAreas) locationHierarchy.withAreas(locationId) else setOf(locationId)
-            val openingBalance = if (from != null) {
-                StockLedgerEntriesTable.selectAll()
-                    .andWhere { StockLedgerEntriesTable.tenantId eq tenantId }
-                    .andWhere { StockLedgerEntriesTable.locationId inList locations }
-                    .andWhere { StockLedgerEntriesTable.stockItemId eq stockItemId }
-                    .andWhere { StockLedgerEntriesTable.entryDate less from }
-                    .fold(BigDecimal.ZERO) { acc, row -> acc + row[StockLedgerEntriesTable.qtyIn] - row[StockLedgerEntriesTable.qtyOut] }
-            } else {
-                BigDecimal.ZERO
-            }
-
-            var running = openingBalance
-            var sn = 0
-            val query = StockLedgerEntriesTable.selectAll()
+            val opening = openingBalance(tenantId, stockItemId, locations, from)
+            val running = StockSql.runningBalance()
+            val query = StockLedgerEntriesTable.select(StockLedgerEntriesTable.columns + running)
                 .andWhere { StockLedgerEntriesTable.tenantId eq tenantId }
-                .andWhere { StockLedgerEntriesTable.locationId inList locations }
                 .andWhere { StockLedgerEntriesTable.stockItemId eq stockItemId }
+                .andWhere { StockLedgerEntriesTable.locationId inList locations }
             if (from != null) query.andWhere { StockLedgerEntriesTable.entryDate greaterEq from }
             if (to != null) query.andWhere { StockLedgerEntriesTable.entryDate lessEq to }
-
-            query.orderBy(StockLedgerEntriesTable.entryDate to SortOrder.ASC, StockLedgerEntriesTable.createdAt to SortOrder.ASC).map { row ->
-                sn += 1
-                running += row[StockLedgerEntriesTable.qtyIn] - row[StockLedgerEntriesTable.qtyOut]
+            query.orderBy(StockLedgerEntriesTable.entryDate to SortOrder.ASC, StockLedgerEntriesTable.createdAt to SortOrder.ASC, StockLedgerEntriesTable.id to SortOrder.ASC)
+            Paging.fetchNumbered(query, paging) { sn, row ->
                 StockCardRow(
                     sn = sn,
                     date = row[StockLedgerEntriesTable.entryDate],
-                    remark = row[StockLedgerEntriesTable.remark] ?: row[StockLedgerEntriesTable.sourceReference],
+                    remark = row[StockLedgerEntriesTable.remark] ?: "${row[StockLedgerEntriesTable.sourceType]} ${row[StockLedgerEntriesTable.sourceReference]}",
                     qtyIn = row[StockLedgerEntriesTable.qtyIn],
                     qtyOut = row[StockLedgerEntriesTable.qtyOut],
-                    runningBalance = running,
+                    runningBalance = opening + row[running],
                 )
             }
         }
 
-    fun binCard(stockItemId: UUID, locationId: UUID, from: LocalDate?, to: LocalDate?, includeAreas: Boolean = true): List<BinCardRow> {
-        val transactions = stockCard(stockItemId, locationId, from, to, includeAreas)
-        val byDay = transactions.groupBy { it.date }.toSortedMap()
-        var running = transactions.firstOrNull()?.let { it.runningBalance - it.qtyIn + it.qtyOut } ?: BigDecimal.ZERO
-        var sn = 0
-        return byDay.map { (date, rows) ->
-            sn += 1
-            val qtyIn = rows.sumOf { it.qtyIn }
-            val qtyOut = rows.sumOf { it.qtyOut }
-            running += qtyIn - qtyOut
-            BinCardRow(sn, date, qtyIn, qtyOut, running)
+    /** Bin Card, paged: daily totals with the running balance, grouped and summed in SQL. */
+    fun binCard(stockItemId: UUID, locationId: UUID, from: LocalDate?, to: LocalDate?, includeAreas: Boolean = true, paging: PageRequest): PageResult<BinCardRow> =
+        tenantScopedTransaction.execute {
+            val tenantId = currentActorProvider.current().tenantId
+            locationAccessService.assertAccess(locationId)
+            val locations = if (includeAreas) locationHierarchy.withAreas(locationId) else setOf(locationId)
+            val opening = openingBalance(tenantId, stockItemId, locations, from)
+            val qtyIn = StockLedgerEntriesTable.qtyIn.sum()
+            val qtyOut = StockLedgerEntriesTable.qtyOut.sum()
+            val running = StockSql.dailyRunningBalance()
+            val query = StockLedgerEntriesTable.select(StockLedgerEntriesTable.entryDate, qtyIn, qtyOut, running)
+                .andWhere { StockLedgerEntriesTable.tenantId eq tenantId }
+                .andWhere { StockLedgerEntriesTable.stockItemId eq stockItemId }
+                .andWhere { StockLedgerEntriesTable.locationId inList locations }
+            if (from != null) query.andWhere { StockLedgerEntriesTable.entryDate greaterEq from }
+            if (to != null) query.andWhere { StockLedgerEntriesTable.entryDate lessEq to }
+            query.groupBy(StockLedgerEntriesTable.entryDate).orderBy(StockLedgerEntriesTable.entryDate to SortOrder.ASC)
+            Paging.fetchNumbered(query, paging) { sn, row ->
+                BinCardRow(sn, row[StockLedgerEntriesTable.entryDate], row[qtyIn] ?: BigDecimal.ZERO, row[qtyOut] ?: BigDecimal.ZERO, opening + row[running])
+            }
         }
+
+    /** Σ(in − out) before [from], in SQL; zero when there's no `from`. */
+    private fun openingBalance(tenantId: UUID, stockItemId: UUID, locations: Set<UUID>, from: LocalDate?): BigDecimal {
+        if (from == null) return BigDecimal.ZERO
+        val net = StockSql.net()
+        return StockLedgerEntriesTable.select(net)
+            .andWhere { StockLedgerEntriesTable.tenantId eq tenantId }
+            .andWhere { StockLedgerEntriesTable.stockItemId eq stockItemId }
+            .andWhere { StockLedgerEntriesTable.locationId inList locations }
+            .andWhere { StockLedgerEntriesTable.entryDate less from }
+            .single()[net] ?: BigDecimal.ZERO
     }
 
-    fun comprehensiveStockReport(locationId: UUID?, view: String): List<ComprehensiveStockRow> = tenantScopedTransaction.execute {
+    /** Comprehensive Stock Report, paged; `summary` totals the whole report in SQL (costs masked without factory.costing.read). */
+    fun comprehensiveStockReport(locationId: UUID?, view: String, paging: PageRequest): PageResult<ComprehensiveStockRow> = tenantScopedTransaction.execute {
         val tenantId = currentActorProvider.current().tenantId
         val effectiveLocationId = locationAccessService.resolveFilterSet(locationId)
         // factory.costing.read (not an Inventory-owned code) deliberately gates cost visibility
@@ -355,25 +390,31 @@ class InventoryStockService(
         // latter. When no locationId filter is given, INNER-join so an item's row appears once
         // per location it actually has stock at (rather than home-location-only).
         val joinType = if (effectiveLocationId != null) org.jetbrains.exposed.sql.JoinType.INNER else org.jetbrains.exposed.sql.JoinType.LEFT
-        val itemsQuery = StockItemsTable
-            .join(StockBalancesTable, joinType) { StockItemsTable.id eq StockBalancesTable.stockItemId }
-            .selectAll()
-            .andWhere { StockItemsTable.tenantId eq tenantId }
-        if (effectiveLocationId != null) itemsQuery.andWhere { StockBalancesTable.locationId inList effectiveLocationId }
-        if (view == "GROUP") itemsQuery.andWhere { StockItemsTable.itemType eq "FINISHED_PRODUCT" }
-
-        itemsQuery.orderBy(StockItemsTable.name).mapIndexed { index, row ->
+        val joined = StockItemsTable.join(StockBalancesTable, joinType) { StockItemsTable.id eq StockBalancesTable.stockItemId }
+        fun scoped(query: org.jetbrains.exposed.sql.Query) = query.apply {
+            andWhere { StockItemsTable.tenantId eq tenantId }
+            if (effectiveLocationId != null) andWhere { StockBalancesTable.locationId inList effectiveLocationId }
+            if (view == "GROUP") andWhere { StockItemsTable.itemType eq "FINISHED_PRODUCT" }
+        }
+        val query = scoped(joined.selectAll()).orderBy(StockItemsTable.name to SortOrder.ASC, StockItemsTable.id to SortOrder.ASC)
+        val totalQty = RawExpression<BigDecimal?>({ +"coalesce(sum("; +StockBalancesTable.quantityOnHand; +"), 0)" })
+        val totalCost = RawExpression<BigDecimal?>({ +"coalesce(sum("; +StockBalancesTable.quantityOnHand; +" * coalesce("; +StockItemsTable.landingCost; +", 0)), 0)" })
+        val totals = scoped(joined.select(totalQty, totalCost)).single()
+        Paging.fetchNumbered(query, paging) { sn, row ->
             val qty = row.getOrNull(StockBalancesTable.quantityOnHand) ?: BigDecimal.ZERO
             val unitCost = row[StockItemsTable.landingCost] ?: BigDecimal.ZERO
             ComprehensiveStockRow(
-                lineNumber = index + 1,
+                lineNumber = sn,
                 groupingLabel = row[StockItemsTable.categoryId]?.toString() ?: "Uncategorized",
                 stockDetail = row[StockItemsTable.name],
                 unitCost = costVisibility.maskIfUnauthorized(unitCost, canSeeCost, BigDecimal.ZERO),
                 quantityLeft = qty,
                 totalCost = costVisibility.maskIfUnauthorized(unitCost * qty, canSeeCost, BigDecimal.ZERO),
             )
-        }
+        }.copy(summary = mapOf(
+            "totalQuantity" to (totals[totalQty] ?: BigDecimal.ZERO),
+            "totalCost" to costVisibility.maskIfUnauthorized(totals[totalCost] ?: BigDecimal.ZERO, canSeeCost, BigDecimal.ZERO),
+        ))
     }
 
     /**
@@ -389,7 +430,8 @@ class InventoryStockService(
         sourceType: String?,
         from: LocalDate?,
         to: LocalDate?,
-    ): List<StockMovementRow> = tenantScopedTransaction.execute {
+        paging: PageRequest,
+    ): PageResult<StockMovementRow> = tenantScopedTransaction.execute {
         val tenantId = currentActorProvider.current().tenantId
         val effectiveLocationId = locationAccessService.resolveFilterSet(locationId)
         val query = StockLedgerEntriesTable
@@ -401,25 +443,24 @@ class InventoryStockService(
         if (sourceType != null) query.andWhere { StockLedgerEntriesTable.sourceType eq sourceType }
         if (from != null) query.andWhere { StockLedgerEntriesTable.entryDate greaterEq from }
         if (to != null) query.andWhere { StockLedgerEntriesTable.entryDate lessEq to }
-
-        query.orderBy(StockLedgerEntriesTable.entryDate).orderBy(StockLedgerEntriesTable.createdAt)
-            .mapIndexed { index, row ->
-                StockMovementRow(
-                    sn = index + 1,
-                    date = row[StockLedgerEntriesTable.entryDate],
-                    locationId = row[StockLedgerEntriesTable.locationId],
-                    stockItemId = row[StockItemsTable.id].value,
-                    itemCode = row[StockItemsTable.code],
-                    itemName = row[StockItemsTable.name],
-                    sourceType = row[StockLedgerEntriesTable.sourceType],
-                    sourceReference = row[StockLedgerEntriesTable.sourceReference],
-                    qtyIn = row[StockLedgerEntriesTable.qtyIn],
-                    qtyOut = row[StockLedgerEntriesTable.qtyOut],
-                )
-            }
+        query.orderBy(StockLedgerEntriesTable.entryDate to SortOrder.ASC, StockLedgerEntriesTable.createdAt to SortOrder.ASC, StockLedgerEntriesTable.id to SortOrder.ASC)
+        Paging.fetchNumbered(query, paging) { sn, row ->
+            StockMovementRow(
+                sn = sn,
+                date = row[StockLedgerEntriesTable.entryDate],
+                locationId = row[StockLedgerEntriesTable.locationId],
+                stockItemId = row[StockItemsTable.id].value,
+                itemCode = row[StockItemsTable.code],
+                itemName = row[StockItemsTable.name],
+                sourceType = row[StockLedgerEntriesTable.sourceType],
+                sourceReference = row[StockLedgerEntriesTable.sourceReference],
+                qtyIn = row[StockLedgerEntriesTable.qtyIn],
+                qtyOut = row[StockLedgerEntriesTable.qtyOut],
+            )
+        }
     }
 
-    fun reOrderReport(locationId: UUID?): List<ReOrderRow> = tenantScopedTransaction.execute {
+    fun reOrderReport(locationId: UUID?, paging: PageRequest): PageResult<ReOrderRow> = tenantScopedTransaction.execute {
         val tenantId = currentActorProvider.current().tenantId
         val effectiveLocationId = locationAccessService.resolveFilterSet(locationId)
         val query = StockItemsTable
@@ -428,8 +469,8 @@ class InventoryStockService(
             .andWhere { StockItemsTable.tenantId eq tenantId }
             .andWhere { StockBalancesTable.quantityOnHand lessEq StockItemsTable.reorderLevel }
         if (effectiveLocationId != null) query.andWhere { StockBalancesTable.locationId inList effectiveLocationId }
-
-        query.map { row ->
+        query.orderBy(StockItemsTable.name to SortOrder.ASC, StockBalancesTable.locationId to SortOrder.ASC)
+        Paging.fetch(query, paging) { row ->
             ReOrderRow(
                 stockItemId = row[StockItemsTable.id].value,
                 itemName = row[StockItemsTable.name],
@@ -438,4 +479,5 @@ class InventoryStockService(
             )
         }
     }
+
 }

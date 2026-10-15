@@ -1,5 +1,7 @@
 package com.zifiq.account.service
 
+import com.zifiq.platform.directory.Names
+import com.zifiq.common.money.Money
 import com.zifiq.account.dto.AccountLookupRow
 import com.zifiq.account.dto.BankAccountRequest
 import com.zifiq.account.dto.BankAccountUpdateRequest
@@ -78,7 +80,7 @@ class BankAccountService(
         ensureNumberFree(bank, number, null)
         val openingDate = request.openingBalanceDate ?: support.today()
         if (openingDate.isAfter(support.today())) throw ApiErrors.validationFailed(mapOf("openingBalanceDate" to "can't be in the future"))
-        val opening = AccountSupport.money(request.openingBalance ?: BigDecimal.ZERO)
+        val opening = Money.round(request.openingBalance ?: BigDecimal.ZERO)
         val code = generateSequence { sequences.next("BA") }.first { candidate ->
             BankAccountsTable.selectAll().where { (BankAccountsTable.tenantId eq support.tenantId()) and (BankAccountsTable.code eq candidate) }.empty()
         }
@@ -139,7 +141,7 @@ class BankAccountService(
         val order = if (sort?.substringAfter(',', "")?.trim().equals("desc", true)) SortOrder.DESC_NULLS_LAST else SortOrder.ASC_NULLS_LAST
         val rows = BankAccountsTable.selectAll().where(condition)
             .orderBy(*(searchSpec().rank(parsed) + (sortColumn to order) + (BankAccountsTable.code to SortOrder.ASC)).toTypedArray()).toList()
-        val names = support.locationNames(rows.mapNotNull { it[BankAccountsTable.locationId] })
+        val names = Names.locations(rows.mapNotNull { it[BankAccountsTable.locationId] })
         rows.map { toView(it, names) }
     }
 
@@ -197,7 +199,7 @@ class BankAccountService(
         }
         if (type == BankEntryType.DEBIT && request.expenseCategoryId == null) throw ApiErrors.validationFailed(mapOf("expenseCategoryId" to "is required for a debit"))
         request.expenseCategoryId?.let { categories.requireUsable(it) }
-        val amount = AccountSupport.money(request.amount!!)
+        val amount = Money.round(request.amount!!)
         val reference = sequences.next("MAN")
         val posted = ledger.postBank(
             support.tenantId(), id, type, amount,
@@ -205,7 +207,7 @@ class BankAccountService(
         )
         support.record(
             "account.bank.manual-entry-posted", "bank_account", id, reference,
-            "$reference: ${type.name.lowercase()} of ${AccountSupport.naira(amount)} on ${account[BankAccountsTable.code]} — ${request.description.trim()}",
+            "$reference: ${type.name.lowercase()} of ${Money.naira(amount)} on ${account[BankAccountsTable.code]} — ${request.description.trim()}",
             mapOf("entryType" to type.name, "amount" to amount, "entryId" to posted.id), account[BankAccountsTable.locationId],
         )
         BankEntryView(posted.id, reference, type.name, amount, posted.balanceAfter, date, request.description.trim())
@@ -242,7 +244,7 @@ class BankAccountService(
                 type = if (credit) "Credit" else "Debit",
                 credit = if (credit) row[BankTransactionsTable.amount] else null,
                 debit = if (credit) null else row[BankTransactionsTable.amount],
-                balance = AccountSupport.money(BigDecimal(row[runningBalance].toString())),
+                balance = Money.round(BigDecimal(row[runningBalance].toString())),
                 sourceType = row[BankTransactionsTable.sourceType],
                 expenseCategoryName = row[BankTransactionsTable.expenseCategoryId]?.let(categoryNames::get),
                 createdAt = row[BankTransactionsTable.createdAt],
@@ -263,8 +265,8 @@ class BankAccountService(
                     "status" to account[BankAccountsTable.status],
                 ),
                 "period" to mapOf("from" to from, "to" to to),
-                "openingBalance" to AccountSupport.money(opening),
-                "closingBalance" to AccountSupport.money(closing),
+                "openingBalance" to Money.round(opening),
+                "closingBalance" to Money.round(closing),
                 "totalCredits" to total(inPeriod, "CREDIT"),
                 "totalDebits" to total(inPeriod, "DEBIT"),
             )
@@ -290,7 +292,7 @@ class BankAccountService(
                     type = "bank-transaction",
                     id = row[BankTransactionsTable.id].value,
                     title = row[BankTransactionsTable.reference],
-                    subtitle = "${account[BankAccountsTable.code]} · ${row[BankTransactionsTable.entryType].lowercase()} ${AccountSupport.naira(row[BankTransactionsTable.amount])} · ${row[BankTransactionsTable.entryDate]}",
+                    subtitle = "${account[BankAccountsTable.code]} · ${row[BankTransactionsTable.entryType].lowercase()} ${Money.naira(row[BankTransactionsTable.amount])} · ${row[BankTransactionsTable.entryDate]}",
                     ref = row[BankTransactionsTable.reference],
                     route = "/account/bank-accounts/${account[BankAccountsTable.id].value}/statement?q=${row[BankTransactionsTable.reference]}",
                 )
@@ -310,7 +312,7 @@ class BankAccountService(
         return row
     }
 
-    private fun view(row: ResultRow) = toView(row, support.locationNames(listOfNotNull(row[BankAccountsTable.locationId])))
+    private fun view(row: ResultRow) = toView(row, Names.locations(listOfNotNull(row[BankAccountsTable.locationId])))
 
     private fun toView(row: ResultRow, locationNames: Map<UUID, String>): BankAccountView {
         val number = row[BankAccountsTable.accountNumber]
@@ -409,7 +411,7 @@ class BankAccountService(
 
     private fun total(condition: Op<Boolean>, type: String): BigDecimal {
         val sum = Sum(BankTransactionsTable.amount, DecimalColumnType(16, 2))
-        return AccountSupport.money(BankTransactionsTable.select(sum).where(condition and (BankTransactionsTable.entryType eq type)).single()[sum] ?: BigDecimal.ZERO)
+        return Money.round(BankTransactionsTable.select(sum).where(condition and (BankTransactionsTable.entryType eq type)).single()[sum] ?: BigDecimal.ZERO)
     }
 
     private fun context() = FilterContext(costVisible = true, zone = support.moduleSettings().zone())

@@ -1,5 +1,7 @@
 package com.zifiq.account.service
 
+import com.zifiq.platform.directory.Names
+import com.zifiq.common.money.Money
 import com.zifiq.account.dto.WalletFundingRequest
 import com.zifiq.account.dto.WalletFundingRow
 import com.zifiq.account.dto.WalletWithdrawalRequest
@@ -82,7 +84,7 @@ class WalletMoneyService(
         val balanceType = BalanceType.valueOf(request.balanceType!!)
         checkHolder(customer, balanceType)
         val channel = Channel.valueOf(request.channel!!)
-        val amount = AccountSupport.money(request.amount!!)
+        val amount = Money.round(request.amount!!)
         val id = UUID.randomUUID()
         val ref = sequences.next("WF")
         val receipt = receipts.record(
@@ -110,7 +112,7 @@ class WalletMoneyService(
             it[createdAt] = Instant.now()
         }
         support.record("account.wallet-funding.created", "wallet_funding", id, ref,
-            "$ref: ${AccountSupport.naira(amount)} ${balanceType.name.lowercase()} funding for ${customer.code} ${customer.name} by ${ReceiptService.channelName(channel.name).lowercase()}",
+            "$ref: ${Money.naira(amount)} ${balanceType.name.lowercase()} funding for ${customer.code} ${customer.name} by ${ReceiptService.channelName(channel.name).lowercase()}",
             mapOf("amount" to amount, "channel" to channel.name, "receipt" to receipt.ref), request.locationId)
         // Cash is in the till already: credit now. Anything else waits for Accounts to confirm the receipt.
         if (channel == Channel.CASH) credit(id)
@@ -132,7 +134,7 @@ class WalletMoneyService(
         val page = Paging.fetch(joined.selectAll().where(condition).orderBy(*sort.toTypedArray()), PageRequest.of(request.page, request.size)) { it }
         val summary = if (request.summary) {
             val all = joined.select(WalletFundingsTable.status, WalletFundingsTable.amount).where(condition).toList()
-            fun sum(status: String?) = AccountSupport.money(all.filter { status == null || it[WalletFundingsTable.status] == status }.fold(BigDecimal.ZERO) { s, it -> s + it[WalletFundingsTable.amount] })
+            fun sum(status: String?) = Money.round(all.filter { status == null || it[WalletFundingsTable.status] == status }.fold(BigDecimal.ZERO) { s, it -> s + it[WalletFundingsTable.amount] })
             mapOf("total" to sum(null), "confirmed" to sum("CONFIRMED"), "awaiting" to sum("AWAITING_CONFIRMATION"))
         } else null
         page.withItems(toFundingRows(page.items)).copy(summary = summary, meta = PageMeta(ignoredQualifiers = parsed.ignoredQualifiers))
@@ -176,7 +178,7 @@ class WalletMoneyService(
         )
         WalletFundingsTable.update({ WalletFundingsTable.id eq fundingId }) { it[status] = "CONFIRMED"; it[customerLedgerEntryId] = entry.id }
         support.record("account.wallet-funding.confirmed", "wallet_funding", fundingId, ref,
-            "$ref confirmed: ${AccountSupport.naira(funding[WalletFundingsTable.amount])} credited to ${funding[WalletFundingsTable.customerCode]} (balance ${AccountSupport.naira(entry.balanceAfter)})",
+            "$ref confirmed: ${Money.naira(funding[WalletFundingsTable.amount])} credited to ${funding[WalletFundingsTable.customerCode]} (balance ${Money.naira(entry.balanceAfter)})",
             mapOf("amount" to funding[WalletFundingsTable.amount], "balanceAfter" to entry.balanceAfter), funding[WalletFundingsTable.locationId])
     }
 
@@ -193,7 +195,7 @@ class WalletMoneyService(
         val dealerInitiated = reason in DEALER_REASONS
         val balanceType = BalanceType.valueOf(request.balanceType!!)
         val payoutKind = request.payoutKind!!
-        val amount = AccountSupport.money(request.amount!!)
+        val amount = Money.round(request.amount!!)
         val date = request.withdrawalDate!!
         support.requireNotFuture("withdrawalDate", date)
         request.locationId?.let { support.validateLocation(it) }
@@ -271,7 +273,7 @@ class WalletMoneyService(
         }
         val verified = request.otpChallengeId != null && reason == "DEALER_REQUEST"
         support.record("account.wallet.withdrawn", "wallet_withdrawal", id, ref,
-            "$ref: ${AccountSupport.naira(amount)} ${reason.lowercase().replace('_', ' ')} for ${customer.code} ${customer.name} (${if (dealerInitiated) "dealer" else "company"}-initiated" +
+            "$ref: ${Money.naira(amount)} ${reason.lowercase().replace('_', ' ')} for ${customer.code} ${customer.name} (${if (dealerInitiated) "dealer" else "company"}-initiated" +
                 (if (verified) ", OTP verified" else "") + ")",
             mapOf("amount" to amount, "reason" to reason, "initiatedBy" to if (dealerInitiated) "DEALER" else "COMPANY", "otpVerified" to verified), request.locationId)
         withdrawalRow(id)
@@ -293,7 +295,7 @@ class WalletMoneyService(
         val summary = if (request.summary) {
             val all = joined.select(WalletWithdrawalsTable.initiatedBy, WalletWithdrawalsTable.amount, WalletWithdrawalsTable.auditStatus).where(condition).toList()
                 .filter { it[WalletWithdrawalsTable.auditStatus] != "REVERSED" }
-            fun sum(by: String?) = AccountSupport.money(all.filter { by == null || it[WalletWithdrawalsTable.initiatedBy] == by }.fold(BigDecimal.ZERO) { s, it -> s + it[WalletWithdrawalsTable.amount] })
+            fun sum(by: String?) = Money.round(all.filter { by == null || it[WalletWithdrawalsTable.initiatedBy] == by }.fold(BigDecimal.ZERO) { s, it -> s + it[WalletWithdrawalsTable.amount] })
             mapOf("totalWithdrawn" to sum(null), "dealerInitiated" to sum("DEALER"), "companyInitiated" to sum("COMPANY"))
         } else null
         page.withItems(toWithdrawalRows(page.items)).copy(summary = summary, meta = PageMeta(ignoredQualifiers = parsed.ignoredQualifiers))
@@ -351,7 +353,7 @@ class WalletMoneyService(
         val challenge = otp.verifiedChallenge(id, "WALLET_WITHDRAWAL") ?: throw ApiErrors.otpNotVerified()
         if (challenge.targetReference != customer.id.toString()) throw ApiErrors.otpMismatch("it was issued for another customer")
         val issuedFor = challenge.context["amount"]?.toString()?.toBigDecimalOrNull()
-        if (issuedFor == null || issuedFor.compareTo(amount) != 0) throw ApiErrors.otpMismatch("it was issued for ${issuedFor?.let(AccountSupport::naira) ?: "no amount"}, not ${AccountSupport.naira(amount)}")
+        if (issuedFor == null || issuedFor.compareTo(amount) != 0) throw ApiErrors.otpMismatch("it was issued for ${issuedFor?.let(Money::naira) ?: "no amount"}, not ${Money.naira(amount)}")
         if (!WalletWithdrawalsTable.selectAll().where { WalletWithdrawalsTable.otpChallengeId eq id }.empty()) throw ApiErrors.otpAlreadyUsed()
     }
 
@@ -364,8 +366,8 @@ class WalletMoneyService(
             .singleOrNull() ?: throw ApiErrors.walletFundingNotFound()
 
     private fun toFundingRows(rows: List<ResultRow>): List<WalletFundingRow> {
-        val users = support.userNames(rows.map { it[WalletFundingsTable.createdByUserId] })
-        val locations = support.locationNames(rows.mapNotNull { it[WalletFundingsTable.locationId] })
+        val users = Names.users(rows.map { it[WalletFundingsTable.createdByUserId] })
+        val locations = Names.locations(rows.mapNotNull { it[WalletFundingsTable.locationId] })
         return rows.map { row ->
             WalletFundingRow(
                 id = row[WalletFundingsTable.id].value, ref = row[WalletFundingsTable.ref], date = row[WalletFundingsTable.createdAt],
@@ -401,7 +403,7 @@ class WalletMoneyService(
     }
 
     private fun toWithdrawalRows(rows: List<ResultRow>): List<WalletWithdrawalRow> {
-        val users = support.userNames(rows.flatMap { listOfNotNull(it[WalletWithdrawalsTable.createdByUserId], it[WalletWithdrawalsTable.authorisedByUserId]) })
+        val users = Names.users(rows.flatMap { listOfNotNull(it[WalletWithdrawalsTable.createdByUserId], it[WalletWithdrawalsTable.authorisedByUserId]) })
         return rows.map { row ->
             WalletWithdrawalRow(
                 id = row[WalletWithdrawalsTable.id].value, ref = row[WalletWithdrawalsTable.ref], date = row[WalletWithdrawalsTable.withdrawalDate],

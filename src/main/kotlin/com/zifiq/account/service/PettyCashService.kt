@@ -1,5 +1,7 @@
 package com.zifiq.account.service
 
+import com.zifiq.platform.directory.Names
+import com.zifiq.common.money.Money
 import com.zifiq.account.dto.AccountBrief
 import com.zifiq.account.dto.CategoryUtilisation
 import com.zifiq.account.dto.FundingEntry
@@ -90,7 +92,7 @@ class PettyCashService(
         val target = moves.cash(request.pettyCashAccountId!!, setOf("PETTY_CASH"))
         val source = moves.source(request.sourceKind!!, request.sourceBankAccountId, request.sourceCashAccountId)
         if (!source.bank && source.id == target.id) throw ApiErrors.validationFailed(mapOf("sourceCashAccountId" to "can't fund a petty cash box from itself"))
-        val amount = AccountSupport.money(request.amount!!)
+        val amount = Money.round(request.amount!!)
         val date = request.fundingDate!!
         support.requireNotFuture("fundingDate", date)
         target.floatLimit?.let { limit -> if (target.balance + amount > limit) throw ApiErrors.floatLimitExceeded(target.code, limit, target.balance + amount) }
@@ -115,7 +117,7 @@ class PettyCashService(
         val remark = request.description.clean() ?: "Petty cash top-up for ${target.code}"
         moves.out(source, amount, LedgerPosting(ref, "$remark — $ref", "PETTY_CASH_FUNDING", id, entryDate = date, userId = support.userId()))
         moves.into(target, amount, LedgerPosting(ref, "Funding from ${source.label} — $ref", "PETTY_CASH_FUNDING", id, entryDate = date, userId = support.userId()))
-        support.record("account.petty-cash.funded", "petty_cash_funding", id, ref, "$ref: ${AccountSupport.naira(amount)} into ${target.code} from ${source.code}",
+        support.record("account.petty-cash.funded", "petty_cash_funding", id, ref, "$ref: ${Money.naira(amount)} into ${target.code} from ${source.code}",
             mapOf("amount" to amount, "source" to source.code), target.locationId)
         fundingRows(PettyCashFundingsTable.id eq id).single()
     }
@@ -174,12 +176,12 @@ class PettyCashService(
     fun pay(request: PettyCashPaymentRequest): PettyCashPaymentView = tx.execute {
         val box = moves.cash(request.pettyCashAccountId!!, setOf("PETTY_CASH"))
         val category = categories.requireUsable(request.expenseCategoryId!!, forPettyCash = true)
-        val amount = AccountSupport.money(request.amount!!)
+        val amount = Money.round(request.amount!!)
         val date = request.paymentDate!!
         support.requireNotFuture("paymentDate", date)
         category[ExpenseCategoriesTable.monthlyCap]?.let { cap ->
             val spent = categories.spentThisMonth()[category[ExpenseCategoriesTable.id].value] ?: BigDecimal.ZERO
-            if (spent + amount > cap) throw ApiErrors.monthlyCapExceeded(category[ExpenseCategoriesTable.name], cap, AccountSupport.money(spent))
+            if (spent + amount > cap) throw ApiErrors.monthlyCapExceeded(category[ExpenseCategoriesTable.name], cap, Money.round(spent))
         }
         if (amount > box.balance) throw ApiErrors.insufficientCash(box.code, box.balance, amount)
 
@@ -200,7 +202,7 @@ class PettyCashService(
         }.value
         val remark = "${category[ExpenseCategoriesTable.name]} — ${request.paidTo.trim()}" + (request.description.clean()?.let { ": $it" } ?: "")
         moves.out(box, amount, LedgerPosting(ref, remark, "PETTY_CASH_PAYMENT", id, category[ExpenseCategoriesTable.id].value, date, support.userId()))
-        support.record("account.petty-cash.paid", "petty_cash_payment", id, ref, "$ref: ${AccountSupport.naira(amount)} to ${request.paidTo.trim()} from ${box.code}",
+        support.record("account.petty-cash.paid", "petty_cash_payment", id, ref, "$ref: ${Money.naira(amount)} to ${request.paidTo.trim()} from ${box.code}",
             mapOf("amount" to amount, "category" to category[ExpenseCategoriesTable.name]), box.locationId)
         payment(id)
     }
@@ -259,7 +261,7 @@ class PettyCashService(
         val pageRequest = PageRequest.of(request.page, request.size)
         val page = Paging.fetch(query, pageRequest) { it }
         val categoryNames = categories.names(page.items.mapNotNull { it[CashTransactionsTable.expenseCategoryId] })
-        val approvers = support.userNames(page.items.mapNotNull { it[oc[OperatingCostsTable.approvedByUserId]] })
+        val approvers = Names.users(page.items.mapNotNull { it[oc[OperatingCostsTable.approvedByUserId]] })
         val items = page.items.mapIndexed { index, row ->
             PettyCashHistoryRow(
                 sn = pageRequest.offset + index + 1,
@@ -280,9 +282,9 @@ class PettyCashService(
             val live = joined.select(CashTransactionsTable.amount, CashTransactionsTable.expenseCategoryId).where(condition and RawOp { +"coalesce(pcp.status, oc.status) <> 'REVERSED'" }).toList()
             mapOf(
                 "paymentsMade" to live.size,
-                "totalPaidOut" to AccountSupport.money(live.fold(BigDecimal.ZERO) { sum, it -> sum + it[CashTransactionsTable.amount] }),
+                "totalPaidOut" to Money.round(live.fold(BigDecimal.ZERO) { sum, it -> sum + it[CashTransactionsTable.amount] }),
                 "categoriesUsed" to live.mapNotNull { it[CashTransactionsTable.expenseCategoryId] }.distinct().size,
-                "largestPayment" to AccountSupport.money(live.maxOfOrNull { it[CashTransactionsTable.amount] } ?: BigDecimal.ZERO),
+                "largestPayment" to Money.round(live.maxOfOrNull { it[CashTransactionsTable.amount] } ?: BigDecimal.ZERO),
             )
         } else null
         page.withItems(items).copy(summary = summary, meta = PageMeta(ignoredQualifiers = parsed.ignoredQualifiers))
@@ -339,7 +341,7 @@ class PettyCashService(
                 direction = directionLabel(row[CashTransactionsTable.sourceType], inflow),
                 `in` = if (inflow) row[CashTransactionsTable.amount] else BigDecimal.ZERO.setScale(2),
                 out = if (inflow) BigDecimal.ZERO.setScale(2) else row[CashTransactionsTable.amount],
-                balance = AccountSupport.money(balance),
+                balance = Money.round(balance),
                 accountCode = codes[row[CashTransactionsTable.cashAccountId]] ?: "",
             )
         }
@@ -350,20 +352,20 @@ class PettyCashService(
         val spending = rows.filter { it[CashTransactionsTable.expenseCategoryId] != null }
         val byCategory = spending.groupBy { it[CashTransactionsTable.expenseCategoryId]!! }.map { (categoryId, entries) ->
             val outs = entries.filter { it[CashTransactionsTable.direction] == "OUT" }
-            CategoryUtilisation(categoryNames[categoryId] ?: "", outs.size.toLong() - entries.count { it[CashTransactionsTable.direction] == "IN" }, AccountSupport.money(entries.fold(BigDecimal.ZERO) { sum, it -> sum - signed(it) }))
+            CategoryUtilisation(categoryNames[categoryId] ?: "", outs.size.toLong() - entries.count { it[CashTransactionsTable.direction] == "IN" }, Money.round(entries.fold(BigDecimal.ZERO) { sum, it -> sum - signed(it) }))
         }.filter { it.amount.signum() != 0 }.sortedByDescending { it.amount }
         val utilised = byCategory.fold(BigDecimal.ZERO) { sum, it -> sum + it.amount }
         val available = opening + fundingTotal
-        val locationNames = support.locationNames(accounts.mapNotNull { it.locationId })
+        val locationNames = Names.locations(accounts.mapNotNull { it.locationId })
         PettyCashStatementView(
             accounts = accounts.map { AccountBrief(it.id, it.code, it.name, it.locationId?.let(locationNames::get)) },
             period = mapOf("from" to periodFrom, "to" to periodTo),
             ledger = ledger,
             statement = PettyCashStatementSummary(
-                funding = PettyCashStatementSection(AccountSupport.money(opening), fundingRows.map { FundingEntry(it[CashTransactionsTable.reference], it[CashTransactionsTable.entryDate], it[CashTransactionsTable.amount]) }, AccountSupport.money(available)),
+                funding = PettyCashStatementSection(Money.round(opening), fundingRows.map { FundingEntry(it[CashTransactionsTable.reference], it[CashTransactionsTable.entryDate], it[CashTransactionsTable.amount]) }, Money.round(available)),
                 utilisationByCategory = byCategory,
-                totalUtilised = AccountSupport.money(utilised),
-                closingBalance = AccountSupport.money(balance),
+                totalUtilised = Money.round(utilised),
+                closingBalance = Money.round(balance),
                 utilisedPct = if (available.signum() > 0) utilised.multiply(BigDecimal(100)).divide(available, 1, RoundingMode.HALF_UP) else BigDecimal.ZERO.setScale(1),
             ),
         )
@@ -378,7 +380,7 @@ class PettyCashService(
         if (destination.kind != "PETTY_CASH") throw ApiErrors.invalidDestinationAccount("${destination.code} is not a petty cash account")
         val destinationLocation = destination.locationId ?: throw ApiErrors.invalidDestinationAccount("Petty cash is sent to a branch's petty cash, not head office's")
         if (source.locationId == destinationLocation) throw ApiErrors.invalidDestinationAccount("The source and the destination are at the same location; fund the petty cash directly instead")
-        val amount = AccountSupport.money(request.amount!!)
+        val amount = Money.round(request.amount!!)
         val ref = sequences.next("PPC")
         val id = PettyCashAllocationsTable.insertAndGetId {
             it[tenantId] = EntityID(support.tenantId(), TenantsTable)
@@ -396,10 +398,10 @@ class PettyCashService(
         }.value
         moves.out(source, amount, LedgerPosting(ref, "Petty cash sent to ${destination.code}: ${request.purpose.trim()}", "PETTY_CASH_ALLOCATION_OUT", id, entryDate = support.today(), userId = support.userId()))
         val eventId = support.record("account.petty-cash.allocation-sent", "petty_cash_allocation", id, ref,
-            "$ref: ${AccountSupport.naira(amount)} petty cash sent to ${destination.code}", mapOf("amount" to amount, "purpose" to request.purpose.trim()), destinationLocation)
+            "$ref: ${Money.naira(amount)} petty cash sent to ${destination.code}", mapOf("amount" to amount, "purpose" to request.purpose.trim()), destinationLocation)
         notify.holdersOf(
             permission = "accounting.petty-cash.respond", locationId = destinationLocation, category = NotificationCategory.APPROVAL_REQUIRED,
-            title = "Petty cash sent to your branch — $ref", body = "${AccountSupport.naira(amount)} for ${destination.code}: ${request.purpose.trim()}. Accept or reject it.",
+            title = "Petty cash sent to your branch — $ref", body = "${Money.naira(amount)} for ${destination.code}: ${request.purpose.trim()}. Accept or reject it.",
             linkType = "petty-cash-allocation", linkRef = id.toString(), sourceEventId = eventId, exclude = support.userId(),
         )
         allocation(id)
@@ -442,8 +444,8 @@ class PettyCashService(
             val all = joined.select(PettyCashAllocationsTable.status, PettyCashAllocationsTable.amount).where(condition).toList()
             mapOf(
                 "awaitingCount" to all.count { it[PettyCashAllocationsTable.status] == "PENDING" },
-                "valuePending" to AccountSupport.money(all.filter { it[PettyCashAllocationsTable.status] == "PENDING" }.fold(BigDecimal.ZERO) { s, it -> s + it[PettyCashAllocationsTable.amount] }),
-                "acceptedValue" to AccountSupport.money(all.filter { it[PettyCashAllocationsTable.status] == "ACCEPTED" }.fold(BigDecimal.ZERO) { s, it -> s + it[PettyCashAllocationsTable.amount] }),
+                "valuePending" to Money.round(all.filter { it[PettyCashAllocationsTable.status] == "PENDING" }.fold(BigDecimal.ZERO) { s, it -> s + it[PettyCashAllocationsTable.amount] }),
+                "acceptedValue" to Money.round(all.filter { it[PettyCashAllocationsTable.status] == "ACCEPTED" }.fold(BigDecimal.ZERO) { s, it -> s + it[PettyCashAllocationsTable.amount] }),
                 "rejectedCount" to all.count { it[PettyCashAllocationsTable.status] == "REJECTED" },
             )
         } else null
@@ -476,7 +478,7 @@ class PettyCashService(
             "$ref $verb by the branch" + (note?.let { ": $it" } ?: ""), mapOf("amount" to row[PettyCashAllocationsTable.amount]), row[PettyCashAllocationsTable.destinationLocationId])
         notify.inApp(
             listOf(row[PettyCashAllocationsTable.sentByUserId]), if (status == "ACCEPTED") NotificationCategory.CONFIRMATION else NotificationCategory.ALERT,
-            "Petty cash $verb — $ref", "${AccountSupport.naira(row[PettyCashAllocationsTable.amount])} was $verb" + (note?.let { ": $it" } ?: "."),
+            "Petty cash $verb — $ref", "${Money.naira(row[PettyCashAllocationsTable.amount])} was $verb" + (note?.let { ": $it" } ?: "."),
             "petty-cash-allocation", id.toString(), eventId, exclude = support.userId(),
         )
     }
@@ -509,7 +511,7 @@ class PettyCashService(
     private fun fundingRows(condition: Op<Boolean>): List<PettyCashFundingRow> = toFundingRows(fundingJoin().selectAll().where(condition).toList())
 
     private fun toFundingRows(rows: List<ResultRow>): List<PettyCashFundingRow> {
-        val users = support.userNames(rows.map { it[PettyCashFundingsTable.createdByUserId] })
+        val users = Names.users(rows.map { it[PettyCashFundingsTable.createdByUserId] })
         return rows.map { row ->
             PettyCashFundingRow(
                 id = row[PettyCashFundingsTable.id].value, ref = row[PettyCashFundingsTable.ref], date = row[PettyCashFundingsTable.fundingDate],
@@ -534,9 +536,9 @@ class PettyCashService(
         val opening = entries.firstOrNull { it[CashTransactionsTable.sourceType] == "OPENING" }?.get(CashTransactionsTable.amount) ?: BigDecimal.ZERO
         return mapOf(
             "pettyCashAccountId" to accountId, "code" to account.code,
-            "openingBalance" to AccountSupport.money(opening),
-            "fundedToDate" to AccountSupport.money(net(FUNDING_SOURCES, inflow = true)),
-            "utilisedToDate" to AccountSupport.money(net(setOf("PETTY_CASH_PAYMENT", "RUNNING_COST"), inflow = false)),
+            "openingBalance" to Money.round(opening),
+            "fundedToDate" to Money.round(net(FUNDING_SOURCES, inflow = true)),
+            "utilisedToDate" to Money.round(net(setOf("PETTY_CASH_PAYMENT", "RUNNING_COST"), inflow = false)),
             "currentBalance" to account.balance,
         )
     }
@@ -554,7 +556,7 @@ class PettyCashService(
             .singleOrNull() ?: throw ApiErrors.allocationNotFound()
 
     private fun toAllocationRows(rows: List<ResultRow>): List<PettyCashAllocationRow> {
-        val users = support.userNames(rows.flatMap { listOfNotNull(it[PettyCashAllocationsTable.sentByUserId], it[PettyCashAllocationsTable.respondedByUserId]) })
+        val users = Names.users(rows.flatMap { listOfNotNull(it[PettyCashAllocationsTable.sentByUserId], it[PettyCashAllocationsTable.respondedByUserId]) })
         return rows.map { row ->
             PettyCashAllocationRow(
                 id = row[PettyCashAllocationsTable.id].value, ref = row[PettyCashAllocationsTable.ref], date = row[PettyCashAllocationsTable.sentAt],

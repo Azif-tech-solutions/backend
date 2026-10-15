@@ -1,5 +1,6 @@
 package com.zifiq.customers.api
 
+import com.zifiq.common.paging.PagingPolicy
 import com.zifiq.common.filter.FilterMetadata
 import com.zifiq.common.filter.ListSearchRequest
 import com.zifiq.common.paging.PageResult
@@ -73,7 +74,7 @@ class CustomerController(
         @RequestParam(required = false) q: String?,
         @RequestParam(required = false) types: Set<CustomerType>?,
         @RequestParam(defaultValue = "false") forSale: Boolean,
-        @RequestParam(defaultValue = "20") limit: Int,
+        @RequestParam(defaultValue = "${PagingPolicy.LOOKUP_DEFAULT}") limit: Int,
     ): ApiEnvelope<List<CustomerLookupRow>> = ApiEnvelope(customerListService.lookup(q, types, forSale, limit))
 
     @GetMapping("/me")

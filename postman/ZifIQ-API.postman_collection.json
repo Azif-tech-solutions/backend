@@ -2540,7 +2540,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"2698eacb-361f-4674-96cf-5bd46d4476aa\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"004336a6-5fcd-429c-99a9-e493efef761d\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -2631,7 +2631,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"910e7fdd-b0e0-410d-b809-d522a47c0bed\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"f9e8b92a-da11-4829-9491-34bd66c4605e\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -6848,7 +6848,7 @@
                 "exec": [
                   "if (pm.response.code >= 200 && pm.response.code < 300) {",
                   "    const json = pm.response.json();",
-                  "    pm.test('every item carries its quantity on hand', () => json.data.forEach(i => pm.expect(i.quantityOnHand).to.be.a('number')));",
+                  "    pm.test('every item carries its quantity on hand', () => json.data.items.forEach(i => pm.expect(i.quantityOnHand).to.be.a('number')));",
                   "}",
                   "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
                 ]
@@ -6901,7 +6901,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{rawMaterialId}}\",\n      \"locationId\": \"{{factoryId}}\",\n      \"itemType\": \"RAW_MATERIAL\",\n      \"code\": \"ITM-1\",\n      \"name\": \"Cocoa Powder\",\n      \"categoryId\": \"{{categoryId}}\",\n      \"brand\": null,\n      \"unitOfMeasureId\": \"{{unitId}}\",\n      \"reorderLevel\": 10.0,\n      \"barcode\": null,\n      \"landingCost\": 5.0,\n      \"markupCost\": null,\n      \"vatCategoryId\": \"{{standardRateVatCategoryId}}\",\n      \"hsnSectionId\": \"{{hsnSectionId}}\",\n      \"isicSectionId\": \"{{isicSectionId}}\",\n      \"status\": \"ACTIVE\",\n      \"createdAt\": \"2026-10-01T10:15:30Z\",\n      \"quantityOnHand\": 0.0\n    }\n  ]\n}"
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": \"{{rawMaterialId}}\",\n        \"locationId\": \"{{factoryId}}\",\n        \"itemType\": \"RAW_MATERIAL\",\n        \"code\": \"ITM-1\",\n        \"name\": \"Cocoa Powder\",\n        \"categoryId\": \"{{categoryId}}\",\n        \"brand\": null,\n        \"unitOfMeasureId\": \"{{unitId}}\",\n        \"reorderLevel\": 10.0,\n        \"barcode\": null,\n        \"landingCost\": 5.0,\n        \"markupCost\": null,\n        \"vatCategoryId\": \"{{standardRateVatCategoryId}}\",\n        \"hsnSectionId\": \"{{hsnSectionId}}\",\n        \"isicSectionId\": \"{{isicSectionId}}\",\n        \"status\": \"ACTIVE\",\n        \"createdAt\": \"2026-10-01T10:15:30Z\",\n        \"quantityOnHand\": 0.0\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": null,\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
             }
           ]
         },
@@ -7461,7 +7461,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{stockReceiptId}}\",\n      \"ref\": \"DL-1\",\n      \"stockItemId\": \"{{rawMaterialId}}\",\n      \"supplierId\": \"{{supplierId}}\",\n      \"manufacturerId\": \"{{manufacturerId}}\",\n      \"quantity\": 100.0,\n      \"unitCost\": 5.0,\n      \"manufacturedDate\": \"2026-09-01\",\n      \"expiryDate\": \"2027-09-01\",\n      \"verifiedByUserId\": null,\n      \"offloadedAt\": null,\n      \"condition\": \"PENDING_VERIFICATION\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": \"{{stockReceiptId}}\",\n        \"ref\": \"DL-1\",\n        \"stockItemId\": \"{{rawMaterialId}}\",\n        \"supplierId\": \"{{supplierId}}\",\n        \"manufacturerId\": \"{{manufacturerId}}\",\n        \"quantity\": 100.0,\n        \"unitCost\": 5.0,\n        \"manufacturedDate\": \"2026-09-01\",\n        \"expiryDate\": \"2027-09-01\",\n        \"verifiedByUserId\": null,\n        \"offloadedAt\": null,\n        \"condition\": \"PENDING_VERIFICATION\"\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": null,\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
             }
           ]
         },
@@ -7675,7 +7675,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"sn\": 1,\n      \"date\": \"2026-10-01\",\n      \"remark\": \"DL-1\",\n      \"qtyIn\": 100.0,\n      \"qtyOut\": 0.0,\n      \"runningBalance\": 100.0\n    }\n  ]\n}"
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"sn\": 1,\n        \"date\": \"2026-10-01\",\n        \"remark\": \"DL-1\",\n        \"qtyIn\": 100.0,\n        \"qtyOut\": 0.0,\n        \"runningBalance\": 100.0\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": null,\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
             }
           ]
         },
@@ -7773,7 +7773,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"sn\": 1,\n      \"date\": \"2026-10-01\",\n      \"qtyIn\": 100.0,\n      \"qtyOut\": 0.0,\n      \"balance\": 100.0\n    }\n  ]\n}"
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"sn\": 1,\n        \"date\": \"2026-10-01\",\n        \"qtyIn\": 100.0,\n        \"qtyOut\": 0.0,\n        \"balance\": 100.0\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": null,\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
             }
           ]
         },
@@ -7879,7 +7879,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"lineNumber\": 1,\n      \"groupingLabel\": \"Chemicals\",\n      \"stockDetail\": \"Cocoa Powder\",\n      \"unitCost\": 5.0,\n      \"quantityLeft\": 100.0,\n      \"totalCost\": 500.0\n    }\n  ]\n}"
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"lineNumber\": 1,\n        \"groupingLabel\": \"Chemicals\",\n        \"stockDetail\": \"Cocoa Powder\",\n        \"unitCost\": 5.0,\n        \"quantityLeft\": 100.0,\n        \"totalCost\": 500.0\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": null,\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
             }
           ]
         },
@@ -7977,7 +7977,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"sn\": 1,\n      \"date\": \"2026-10-01\",\n      \"locationId\": \"{{factoryId}}\",\n      \"stockItemId\": \"{{rawMaterialId}}\",\n      \"itemCode\": \"ITM-1\",\n      \"itemName\": \"Cocoa Powder\",\n      \"sourceType\": \"RECEIVE\",\n      \"sourceReference\": \"DL-1\",\n      \"qtyIn\": 100.0,\n      \"qtyOut\": 0.0\n    },\n    {\n      \"sn\": 2,\n      \"date\": \"2026-10-01\",\n      \"locationId\": \"{{factoryId}}\",\n      \"stockItemId\": \"{{rawMaterialId}}\",\n      \"itemCode\": \"ITM-1\",\n      \"itemName\": \"Cocoa Powder\",\n      \"sourceType\": \"TRANSFER_OUT\",\n      \"sourceReference\": \"WB-1\",\n      \"qtyIn\": 0.0,\n      \"qtyOut\": 10.0\n    }\n  ]\n}"
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"sn\": 1,\n        \"date\": \"2026-10-01\",\n        \"locationId\": \"{{factoryId}}\",\n        \"stockItemId\": \"{{rawMaterialId}}\",\n        \"itemCode\": \"ITM-1\",\n        \"itemName\": \"Cocoa Powder\",\n        \"sourceType\": \"RECEIVE\",\n        \"sourceReference\": \"DL-1\",\n        \"qtyIn\": 100.0,\n        \"qtyOut\": 0.0\n      },\n      {\n        \"sn\": 2,\n        \"date\": \"2026-10-01\",\n        \"locationId\": \"{{factoryId}}\",\n        \"stockItemId\": \"{{rawMaterialId}}\",\n        \"itemCode\": \"ITM-1\",\n        \"itemName\": \"Cocoa Powder\",\n        \"sourceType\": \"TRANSFER_OUT\",\n        \"sourceReference\": \"WB-1\",\n        \"qtyIn\": 0.0,\n        \"qtyOut\": 10.0\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 2,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": null,\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
             }
           ]
         },
@@ -8075,7 +8075,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": []\n}"
+              "body": "{\n  \"data\": {\n    \"items\": [],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 0,\n    \"totalPages\": 0,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": null,\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
             }
           ]
         }
@@ -8412,7 +8412,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{transferId}}\",\n      \"waybillRef\": \"WB-1\",\n      \"sourceLocationId\": \"{{factoryId}}\",\n      \"destinationLocationId\": \"{{factoryId2}}\",\n      \"status\": \"RECEIVED\",\n      \"dispatchedAt\": \"2026-10-01T10:15:30Z\",\n      \"receivedAt\": \"2026-10-01T10:15:30Z\",\n      \"lines\": [\n        {\n          \"id\": \"{{transferLineId}}\",\n          \"stockItemId\": \"{{rawMaterialId}}\",\n          \"qtySent\": 10.0,\n          \"qtyReceived\": 10.0,\n          \"qtyRejected\": null\n        }\n      ]\n    }\n  ]\n}"
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": \"{{transferId}}\",\n        \"waybillRef\": \"WB-1\",\n        \"sourceLocationId\": \"{{factoryId}}\",\n        \"destinationLocationId\": \"{{factoryId2}}\",\n        \"status\": \"RECEIVED\",\n        \"dispatchedAt\": \"2026-10-01T10:15:30Z\",\n        \"receivedAt\": \"2026-10-01T10:15:30Z\",\n        \"lines\": [\n          {\n            \"id\": \"{{transferLineId}}\",\n            \"stockItemId\": \"{{rawMaterialId}}\",\n            \"qtySent\": 10.0,\n            \"qtyReceived\": 10.0,\n            \"qtyRejected\": null\n          }\n        ]\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": null,\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
             }
           ]
         },
@@ -8945,7 +8945,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{recipeId}}\",\n      \"code\": \"RCP-1\",\n      \"name\": \"Premium Blend Base\",\n      \"sourcing\": \"IN_HOUSE_PRODUCTION\",\n      \"yieldQty\": 100,\n      \"status\": \"ACTIVE\",\n      \"ingredients\": [\n        {\n          \"rawMaterialStockItemId\": \"{{rawMaterialId}}\",\n          \"quantity\": 10,\n          \"unitId\": \"{{unitId}}\"\n        }\n      ]\n    }\n  ]\n}"
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": \"{{recipeId}}\",\n        \"code\": \"RCP-1\",\n        \"name\": \"Premium Blend Base\",\n        \"sourcing\": \"IN_HOUSE_PRODUCTION\",\n        \"yieldQty\": 100,\n        \"status\": \"ACTIVE\",\n        \"ingredients\": [\n          {\n            \"rawMaterialStockItemId\": \"{{rawMaterialId}}\",\n            \"quantity\": 10,\n            \"unitId\": \"{{unitId}}\"\n          }\n        ]\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": null,\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
             }
           ]
         },
@@ -9572,7 +9572,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"batchRef\": \"PB-1\",\n      \"targetStockItemId\": \"{{finishedProductId}}\",\n      \"quantityProduced\": 50.0,\n      \"unitLandingCost\": 2.6,\n      \"totalLandingCost\": 130.0,\n      \"runAt\": \"2026-10-01T10:15:30Z\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"batchRef\": \"PB-1\",\n        \"targetStockItemId\": \"{{finishedProductId}}\",\n        \"quantityProduced\": 50.0,\n        \"unitLandingCost\": 2.6,\n        \"totalLandingCost\": 130.0,\n        \"runAt\": \"2026-10-01T10:15:30Z\"\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": null,\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
             }
           ]
         },
@@ -10114,7 +10114,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{specialRunId}}\",\n      \"orderRef\": \"SO-1\",\n      \"batchRef\": \"SB-1\",\n      \"clientId\": \"{{specialClientId}}\",\n      \"quantity\": 25.0,\n      \"price\": 7.5,\n      \"status\": \"AWAITING_DISPATCH\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": \"{{specialRunId}}\",\n        \"orderRef\": \"SO-1\",\n        \"batchRef\": \"SB-1\",\n        \"clientId\": \"{{specialClientId}}\",\n        \"quantity\": 25.0,\n        \"price\": 7.5,\n        \"status\": \"AWAITING_DISPATCH\"\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": null,\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
             }
           ]
         }
@@ -10445,7 +10445,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{tradeOfferId}}\",\n      \"ref\": \"FT-1\",\n      \"fromLocationId\": \"{{factoryId2}}\",\n      \"toLocationId\": \"{{factoryId}}\",\n      \"stockItemId\": \"{{rawMaterialId}}\",\n      \"quantity\": 5.0,\n      \"reason\": \"SURPLUS\",\n      \"status\": \"ACCEPTED\",\n      \"offeredAt\": \"2026-10-01T10:15:30Z\",\n      \"expiresAt\": \"2026-12-31T00:00:00Z\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": \"{{tradeOfferId}}\",\n        \"ref\": \"FT-1\",\n        \"fromLocationId\": \"{{factoryId2}}\",\n        \"toLocationId\": \"{{factoryId}}\",\n        \"stockItemId\": \"{{rawMaterialId}}\",\n        \"quantity\": 5.0,\n        \"reason\": \"SURPLUS\",\n        \"status\": \"ACCEPTED\",\n        \"offeredAt\": \"2026-10-01T10:15:30Z\",\n        \"expiresAt\": \"2026-12-31T00:00:00Z\"\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": null,\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
             }
           ]
         }
@@ -19782,7 +19782,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{driverId}}\",\n      \"name\": \"Musa Bello\",\n      \"phone\": \"0803 000 1111\",\n      \"vehicleNumber\": \"KN-482-ABC\",\n      \"licenceNumber\": \"KAN-77821\",\n      \"status\": \"ACTIVE\",\n      \"createdAt\": \"2026-10-01T10:15:30Z\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": \"{{driverId}}\",\n        \"name\": \"Musa Bello\",\n        \"phone\": \"0803 000 1111\",\n        \"vehicleNumber\": \"KN-482-ABC\",\n        \"licenceNumber\": \"KAN-77821\",\n        \"status\": \"ACTIVE\",\n        \"createdAt\": \"2026-10-01T10:15:30Z\"\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": null,\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
             }
           ]
         },
@@ -19958,7 +19958,7 @@
                 "exec": [
                   "if (pm.response.code >= 200 && pm.response.code < 300) {",
                   "    const json = pm.response.json();",
-                  "    pm.test('the new transfer is awaiting receipt', () => pm.expect(json.data.map(t => t.id)).to.include(pm.collectionVariables.get('transfer2Id')));",
+                  "    pm.test('the new transfer is awaiting receipt', () => pm.expect(json.data.items.map(t => t.id)).to.include(pm.collectionVariables.get('transfer2Id')));",
                   "}",
                   "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
                 ]
@@ -20020,7 +20020,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{transfer2Id}}\",\n      \"waybillRef\": \"WB-2\",\n      \"sourceLocationId\": \"{{factoryId}}\",\n      \"sourceLocationName\": \"Apex Plant A (Updated)\",\n      \"sourceLocationType\": \"FACTORY\",\n      \"destinationLocationId\": \"{{factoryId2}}\",\n      \"destinationLocationName\": \"Apex Plant B\",\n      \"destinationLocationType\": \"FACTORY\",\n      \"status\": \"DISPATCHED\",\n      \"driverId\": \"{{driverId}}\",\n      \"driverName\": \"Musa Bello\",\n      \"driverVehicle\": \"KN-482-ABC\",\n      \"transferDate\": \"2026-10-08\",\n      \"dispatchedAt\": \"2026-10-01T10:15:30Z\",\n      \"receivedDate\": null,\n      \"receivedAt\": null,\n      \"receiptNote\": null,\n      \"totalSent\": 5.0,\n      \"totalRejected\": 0,\n      \"waybillUrl\": \"/api/v1/inventory/stock/transfers/{{transfer2Id}}/waybill.pdf\",\n      \"lines\": [\n        {\n          \"id\": \"{{transfer2LineId}}\",\n          \"stockItemId\": \"{{finishedProductId}}\",\n          \"stockItemCode\": \"ITM-2\",\n          \"stockItemName\": \"Premium Blend\",\n          \"unit\": \"Kilogram\",\n          \"qtySent\": 5.0,\n          \"qtyReceived\": null,\n          \"qtyRejected\": null,\n          \"outstanding\": 5.0,\n          \"fromLocationId\": null,\n          \"fromLocationName\": null,\n          \"receivedIntoLocationId\": null,\n          \"receivedIntoLocationName\": null,\n          \"batchNo\": \"B-2026-10-01\",\n          \"rejectionNote\": null\n        }\n      ]\n    }\n  ]\n}"
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": \"{{transfer2Id}}\",\n        \"waybillRef\": \"WB-2\",\n        \"sourceLocationId\": \"{{factoryId}}\",\n        \"sourceLocationName\": \"Apex Plant A (Updated)\",\n        \"sourceLocationType\": \"FACTORY\",\n        \"destinationLocationId\": \"{{factoryId2}}\",\n        \"destinationLocationName\": \"Apex Plant B\",\n        \"destinationLocationType\": \"FACTORY\",\n        \"status\": \"DISPATCHED\",\n        \"driverId\": \"{{driverId}}\",\n        \"driverName\": \"Musa Bello\",\n        \"driverVehicle\": \"KN-482-ABC\",\n        \"transferDate\": \"2026-10-08\",\n        \"dispatchedAt\": \"2026-10-01T10:15:30Z\",\n        \"receivedDate\": null,\n        \"receivedAt\": null,\n        \"receiptNote\": null,\n        \"totalSent\": 5.0,\n        \"totalRejected\": 0,\n        \"waybillUrl\": \"/api/v1/inventory/stock/transfers/{{transfer2Id}}/waybill.pdf\",\n        \"lines\": [\n          {\n            \"id\": \"{{transfer2LineId}}\",\n            \"stockItemId\": \"{{finishedProductId}}\",\n            \"stockItemCode\": \"ITM-2\",\n            \"stockItemName\": \"Premium Blend\",\n            \"unit\": \"Kilogram\",\n            \"qtySent\": 5.0,\n            \"qtyReceived\": null,\n            \"qtyRejected\": null,\n            \"outstanding\": 5.0,\n            \"fromLocationId\": null,\n            \"fromLocationName\": null,\n            \"receivedIntoLocationId\": null,\n            \"receivedIntoLocationName\": null,\n            \"batchNo\": \"B-2026-10-01\",\n            \"rejectionNote\": null\n          }\n        ]\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": null,\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
             }
           ]
         },
@@ -20773,7 +20773,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": {\n    \"items\": [],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 0,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": {\n      \"count\": 2,\n      \"qtyAdded\": 0,\n      \"qtyRemoved\": 62,\n      \"netEffect\": -62\n    },\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+              "body": "{\n  \"data\": {\n    \"items\": [],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 0,\n    \"totalPages\": 0,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": {\n      \"count\": 2,\n      \"qtyAdded\": 0,\n      \"qtyRemoved\": 62,\n      \"netEffect\": -62\n    },\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
             }
           ]
         },
@@ -21376,8 +21376,8 @@
                 "exec": [
                   "if (pm.response.code >= 200 && pm.response.code < 300) {",
                   "    const json = pm.response.json();",
-                  "    pm.collectionVariables.set('scheduledPriceId', json.data[0].id || json.data[0].priceId);",
-                  "    pm.test('newest first: scheduled, then current', () => pm.expect(json.data.map(p => p.state)).to.eql(['SCHEDULED', 'CURRENT']));",
+                  "    pm.collectionVariables.set('scheduledPriceId', json.data.items[0].id || json.data.items[0].priceId);",
+                  "    pm.test('newest first: scheduled, then current', () => pm.expect(json.data.items.map(p => p.state)).to.eql(['SCHEDULED', 'CURRENT']));",
                   "}",
                   "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
                 ]
@@ -21425,7 +21425,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"priceId\": \"{{scheduledPriceId}}\",\n      \"retailPrice\": 5500.0,\n      \"dealerPrice\": 5000.0,\n      \"effectiveFrom\": \"2099-01-01\",\n      \"batchRef\": \"PL-2\",\n      \"note\": \"Long-term test price\",\n      \"setByUserId\": \"{{userId}}\",\n      \"createdAt\": \"2026-10-01T10:15:30Z\",\n      \"state\": \"SCHEDULED\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"priceId\": \"{{scheduledPriceId}}\",\n        \"retailPrice\": 5500.0,\n        \"dealerPrice\": 5000.0,\n        \"effectiveFrom\": \"2099-01-01\",\n        \"batchRef\": \"PL-2\",\n        \"note\": \"Long-term test price\",\n        \"setByUserId\": \"{{userId}}\",\n        \"createdAt\": \"2026-10-01T10:15:30Z\",\n        \"state\": \"SCHEDULED\"\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": null,\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
             }
           ]
         },
@@ -21655,7 +21655,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": {\n    \"header\": {\n      \"groupType\": \"CATEGORY\",\n      \"groupId\": \"{{categoryId}}\",\n      \"groupName\": \"Beverages\",\n      \"members\": [],\n      \"openingBalance\": 0,\n      \"totalReceived\": 0,\n      \"totalIssued\": 0,\n      \"closingBalance\": 0\n    },\n    \"rows\": []\n  }\n}"
+              "body": "{\n  \"data\": {\n    \"header\": {\n      \"groupType\": \"CATEGORY\",\n      \"groupId\": \"{{categoryId}}\",\n      \"groupName\": \"Beverages\",\n      \"members\": [],\n      \"openingBalance\": 0,\n      \"memberCount\": 0,\n      \"totalReceived\": 0,\n      \"totalIssued\": 0,\n      \"closingBalance\": 0\n    },\n    \"rows\": {\n      \"items\": [],\n      \"page\": 0,\n      \"size\": 50,\n      \"totalItems\": 0,\n      \"totalPages\": 0,\n      \"totalIsEstimate\": false,\n      \"facets\": null,\n      \"summary\": null,\n      \"meta\": {\n        \"appliedFilters\": {},\n        \"ignoredQualifiers\": [],\n        \"suggestions\": [],\n        \"matches\": {}\n      }\n    }\n  }\n}"
             }
           ]
         },
@@ -21769,7 +21769,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": {\n    \"header\": {\n      \"groupType\": \"CATEGORY\",\n      \"groupId\": \"{{categoryId}}\",\n      \"groupName\": \"Beverages\",\n      \"members\": [],\n      \"openingBalance\": 0,\n      \"totalReceived\": 0,\n      \"totalIssued\": 0,\n      \"closingBalance\": 0\n    },\n    \"rows\": []\n  }\n}"
+              "body": "{\n  \"data\": {\n    \"header\": {\n      \"groupType\": \"CATEGORY\",\n      \"groupId\": \"{{categoryId}}\",\n      \"groupName\": \"Beverages\",\n      \"members\": [],\n      \"openingBalance\": 0,\n      \"memberCount\": 0,\n      \"totalReceived\": 0,\n      \"totalIssued\": 0,\n      \"closingBalance\": 0\n    },\n    \"rows\": {\n      \"items\": [],\n      \"page\": 0,\n      \"size\": 50,\n      \"totalItems\": 0,\n      \"totalPages\": 0,\n      \"totalIsEstimate\": false,\n      \"facets\": null,\n      \"summary\": null,\n      \"meta\": {\n        \"appliedFilters\": {},\n        \"ignoredQualifiers\": [],\n        \"suggestions\": [],\n        \"matches\": {}\n      }\n    }\n  }\n}"
             }
           ]
         }
@@ -23612,7 +23612,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": {\n    \"items\": [],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 0,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": null,\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+              "body": "{\n  \"data\": {\n    \"items\": [],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 0,\n    \"totalPages\": 0,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": null,\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
             }
           ]
         },
@@ -24172,7 +24172,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": {\n    \"items\": [],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 0,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": null,\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+              "body": "{\n  \"data\": {\n    \"items\": [],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 0,\n    \"totalPages\": 0,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": null,\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
             }
           ]
         },
@@ -24942,7 +24942,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": {\n    \"items\": [],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 0,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": {\n      \"returns\": 1,\n      \"units\": 2,\n      \"valueCredited\": 10000.0,\n      \"resaleableValue\": 5000.0,\n      \"quarantineValue\": 0.0,\n      \"writeOffValue\": 5000.0,\n      \"byReason\": [\n        {\n          \"reason\": \"PRODUCT_DEFECT\",\n          \"lines\": 1,\n          \"units\": 1,\n          \"value\": 5000.0\n        }\n      ]\n    },\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+              "body": "{\n  \"data\": {\n    \"items\": [],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 0,\n    \"totalPages\": 0,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": {\n      \"returns\": 1,\n      \"units\": 2,\n      \"valueCredited\": 10000.0,\n      \"resaleableValue\": 5000.0,\n      \"quarantineValue\": 0.0,\n      \"writeOffValue\": 5000.0,\n      \"byReason\": [\n        {\n          \"reason\": \"PRODUCT_DEFECT\",\n          \"lines\": 1,\n          \"units\": 1,\n          \"value\": 5000.0\n        }\n      ]\n    },\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
             }
           ]
         },
@@ -25146,7 +25146,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": {\n    \"items\": [],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 0,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": {\n      \"transfers\": 1,\n      \"totalQuantity\": 6,\n      \"inTransit\": 0,\n      \"locationsInvolved\": 2\n    },\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+              "body": "{\n  \"data\": {\n    \"items\": [],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 0,\n    \"totalPages\": 0,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": {\n      \"transfers\": 1,\n      \"totalQuantity\": 6,\n      \"inTransit\": 0,\n      \"locationsInvolved\": 2\n    },\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
             }
           ]
         },
@@ -39527,7 +39527,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": {\n    \"items\": [],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 0,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": {\n      \"outstandingTotal\": 0.0,\n      \"outstandingCount\": 0,\n      \"overdueTotal\": 0.0,\n      \"overdueCount\": 0,\n      \"partiallyPaidTotal\": 0.0,\n      \"partiallyPaidCount\": 0,\n      \"voidedCount\": 2,\n      \"outstandingByCustomer\": []\n    },\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+              "body": "{\n  \"data\": {\n    \"items\": [],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 0,\n    \"totalPages\": 0,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": {\n      \"outstandingTotal\": 0.0,\n      \"outstandingCount\": 0,\n      \"overdueTotal\": 0.0,\n      \"overdueCount\": 0,\n      \"partiallyPaidTotal\": 0.0,\n      \"partiallyPaidCount\": 0,\n      \"voidedCount\": 2,\n      \"outstandingByCustomer\": []\n    },\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
             }
           ]
         },

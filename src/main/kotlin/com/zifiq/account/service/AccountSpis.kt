@@ -1,5 +1,6 @@
 package com.zifiq.account.service
 
+import com.zifiq.common.money.Money
 import com.zifiq.account.model.BankAccountsTable
 import com.zifiq.account.model.CashAccountsTable
 import com.zifiq.account.model.CashTransactionsTable
@@ -41,7 +42,7 @@ class CashAccountsSpi(private val support: AccountSupport) : CashAccounts {
                     (CashTransactionsTable.createdAt greaterEq from) and (CashTransactionsTable.createdAt less to)
             }
             .forEach { if (it[CashTransactionsTable.direction] == "IN") cashIn += it[CashTransactionsTable.amount] else cashOut += it[CashTransactionsTable.amount] }
-        return CashMovementSummary(AccountSupport.money(cashIn), AccountSupport.money(cashOut), AccountSupport.money(cashIn - cashOut))
+        return CashMovementSummary(Money.round(cashIn), Money.round(cashOut), Money.round(cashIn - cashOut))
     }
 
     private fun cashRef(row: ResultRow) = CashAccountRef(

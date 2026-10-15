@@ -1,5 +1,9 @@
 package com.zifiq.factory.service
 
+import org.jetbrains.exposed.sql.SortOrder
+import com.zifiq.common.paging.Paging
+import com.zifiq.common.paging.PageResult
+import com.zifiq.common.paging.PageRequest
 import com.zifiq.factory.dto.FactoryTradeOfferRequest
 import com.zifiq.factory.dto.FactoryTradeOfferSummary
 import com.zifiq.factory.model.FactoryTradeOffersTable
@@ -113,7 +117,7 @@ class FactoryTradeService(
         rowToTradeOfferSummary(FactoryTradeOffersTable.selectAll().andWhere { FactoryTradeOffersTable.id eq id }.single())
     }
 
-    fun listTrades(locationId: UUID?, status: String?): List<FactoryTradeOfferSummary> = tenantScopedTransaction.execute {
+    fun listTrades(locationId: UUID?, status: String?, paging: PageRequest): PageResult<FactoryTradeOfferSummary> = tenantScopedTransaction.execute {
         val tenantId = currentActorProvider.current().tenantId
         val effectiveLocationId = locationAccessService.resolveFilterSet(locationId)
         val query = FactoryTradeOffersTable.selectAll().andWhere { FactoryTradeOffersTable.tenantId eq tenantId }
@@ -121,7 +125,7 @@ class FactoryTradeService(
             query.andWhere { (FactoryTradeOffersTable.fromLocationId inList effectiveLocationId) or (FactoryTradeOffersTable.toLocationId inList effectiveLocationId) }
         }
         if (status != null) query.andWhere { FactoryTradeOffersTable.status eq status }
-        query.orderBy(FactoryTradeOffersTable.offeredAt).map(::rowToTradeOfferSummary)
+        Paging.fetch(query.orderBy(FactoryTradeOffersTable.offeredAt to SortOrder.DESC, FactoryTradeOffersTable.id to SortOrder.DESC), paging, ::rowToTradeOfferSummary)
     }
 
     private fun rowToTradeOfferSummary(row: ResultRow) = FactoryTradeOfferSummary(

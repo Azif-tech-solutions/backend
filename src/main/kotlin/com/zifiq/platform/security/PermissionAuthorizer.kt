@@ -23,23 +23,18 @@ class PermissionAuthorizer(
         return hasPermission(actor.userId, permission)
     }
 
-    fun hasPermission(userId: UUID, permission: String): Boolean = tenantScopedTransaction.execute {
+    fun hasPermission(userId: UUID, permission: String): Boolean = permission in permissions(userId)
+
+    /**
+     * Every permission code the user holds in the current tenant, through any of their roles.
+     * Cached per tenant and user ([AccessCaches]); role and assignment changes clear it.
+     */
+    fun permissions(userId: UUID): Set<String> {
         val tenantId = currentActorProvider.current().tenantId
-        UserRoleAssignmentsTable
-            .join(TenantRolesTable, JoinType.INNER) { UserRoleAssignmentsTable.roleId eq TenantRolesTable.id }
-            .join(RolePermissionsTable, JoinType.INNER) { TenantRolesTable.id eq RolePermissionsTable.roleId }
-            .join(PermissionCatalogTable, JoinType.INNER) { RolePermissionsTable.permissionId eq PermissionCatalogTable.id }
-            .selectAll()
-            .andWhere { UserRoleAssignmentsTable.userId eq userId }
-            .andWhere { UserRoleAssignmentsTable.tenantId eq tenantId }
-            .andWhere { PermissionCatalogTable.code eq permission }
-            .limit(1)
-            .any()
+        return AccessCaches.permissions.get(AccessCaches.UserKey(tenantId, userId)) { load(tenantId, userId) }
     }
 
-    /** Every permission code the user holds in the current tenant, through any of their roles. */
-    fun permissions(userId: UUID): Set<String> = tenantScopedTransaction.execute {
-        val tenantId = currentActorProvider.current().tenantId
+    private fun load(tenantId: UUID, userId: UUID): Set<String> = tenantScopedTransaction.execute {
         UserRoleAssignmentsTable
             .join(TenantRolesTable, JoinType.INNER) { UserRoleAssignmentsTable.roleId eq TenantRolesTable.id }
             .join(RolePermissionsTable, JoinType.INNER) { TenantRolesTable.id eq RolePermissionsTable.roleId }

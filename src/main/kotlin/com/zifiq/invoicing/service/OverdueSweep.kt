@@ -1,5 +1,6 @@
 package com.zifiq.invoicing.service
 
+import com.zifiq.common.money.Money
 import com.zifiq.common.search.RawOp
 import com.zifiq.customers.spi.Correspondents
 import com.zifiq.invoicing.model.InvoiceDeliveriesTable
@@ -64,7 +65,7 @@ class OverdueSweep(
             if (claimed == 0) return@forEach
             alerts++
             val number = invoice[InvoicesTable.number]!!
-            val balance = InvoiceSupport.naira(invoice[d.balance])
+            val balance = Money.naira(invoice[d.balance])
             val locationId = invoice[InvoicesTable.locationId].value
             val eventId = support.record("invoicing.invoice.overdue", id, number, "$number overdue: $balance outstanding from ${invoice[InvoicesTable.buyerName]}",
                 mapOf("balance" to invoice[d.balance], "dueDate" to invoice[InvoicesTable.dueDate].toString(), "customerId" to invoice[InvoicesTable.customerId]), locationId)

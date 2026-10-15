@@ -1,5 +1,8 @@
 package com.zifiq.factory.api
 
+import org.springdoc.core.annotations.ParameterObject
+import com.zifiq.common.paging.PageResult
+import com.zifiq.common.paging.PageParams
 import com.zifiq.factory.dto.FactoryTradeOfferRequest
 import com.zifiq.factory.dto.FactoryTradeOfferSummary
 import com.zifiq.factory.dto.FactoryTradeRespondRequest
@@ -33,6 +36,7 @@ class FactoryTradeController(
     override fun listTrades(
         @RequestParam(required = false) locationId: UUID?,
         @RequestParam(required = false) status: String?,
-    ): ApiEnvelope<List<FactoryTradeOfferSummary>> =
-        ApiEnvelope(factoryTradeService.listTrades(locationId, status))
+        @ParameterObject paging: PageParams,
+    ): ApiEnvelope<PageResult<FactoryTradeOfferSummary>> =
+        ApiEnvelope(factoryTradeService.listTrades(locationId, status, paging.toRequest()))
 }

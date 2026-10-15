@@ -1,5 +1,8 @@
 package com.zifiq.inventory.api
 
+import org.springdoc.core.annotations.ParameterObject
+import com.zifiq.common.paging.PageParams
+import com.zifiq.common.paging.PagingPolicy
 import com.zifiq.common.filter.FilterMetadata
 import com.zifiq.common.filter.ListSearchRequest
 import com.zifiq.common.paging.PageResult
@@ -23,7 +26,7 @@ import org.springframework.web.bind.annotation.*
 @SecurityRequirement(name = "bearerAuth")
 interface DriversApi {
     @Operation(summary = "List drivers (q: name, vehicle, phone, licence; status)")
-    fun list(q: String?, status: String?): ApiEnvelope<List<DriverSummary>>
+    fun list(q: String?, status: String?, paging: PageParams): ApiEnvelope<PageResult<DriverSummary>>
 
     @Operation(summary = "Driver picker (active drivers)")
     fun lookup(q: String?): ApiEnvelope<List<DriverSummary>>
@@ -43,13 +46,13 @@ interface DriversApi {
 class DriversController(private val driverService: DriverService) : DriversApi {
     @GetMapping
     @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'inventory.drivers.read')")
-    override fun list(@RequestParam(required = false) q: String?, @RequestParam(required = false) status: String?): ApiEnvelope<List<DriverSummary>> =
-        ApiEnvelope(driverService.list(q, status))
+    override fun list(@RequestParam(required = false) q: String?, @RequestParam(required = false) status: String?, @ParameterObject paging: PageParams): ApiEnvelope<PageResult<DriverSummary>> =
+        ApiEnvelope(driverService.page(q, status, paging.toRequest()))
 
     @GetMapping("/lookup")
     @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'inventory.drivers.read')")
     override fun lookup(@RequestParam(required = false) q: String?): ApiEnvelope<List<DriverSummary>> =
-        ApiEnvelope(driverService.list(q, "ACTIVE", limit = 20))
+        ApiEnvelope(driverService.list(q, "ACTIVE", limit = PagingPolicy.LOOKUP_DEFAULT))
 
     @PostMapping
     @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'inventory.drivers.manage')")
@@ -85,7 +88,7 @@ interface PriceListApi {
     fun updateEntry(priceId: UUID, request: PriceEntryUpdateRequest): ApiEnvelope<PriceHistoryRow>
 
     @Operation(summary = "One product's full price history")
-    fun itemHistory(stockItemId: UUID): ApiEnvelope<List<PriceHistoryRow>>
+    fun itemHistory(stockItemId: UUID, paging: PageParams): ApiEnvelope<PageResult<PriceHistoryRow>>
 }
 
 @RestController
@@ -115,17 +118,18 @@ class PriceListController(private val priceListService: PriceListService) : Pric
 
     @GetMapping("/stock-items/{stockItemId}/prices")
     @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'inventory.pricing.read')")
-    override fun itemHistory(@PathVariable stockItemId: UUID): ApiEnvelope<List<PriceHistoryRow>> = ApiEnvelope(priceListService.itemHistory(stockItemId))
+    override fun itemHistory(@PathVariable stockItemId: UUID, @ParameterObject paging: PageParams): ApiEnvelope<PageResult<PriceHistoryRow>> =
+        ApiEnvelope(priceListService.itemHistory(stockItemId, paging.toRequest()))
 }
 
 @Tag(name = "Inventory — group cards", description = "Stock and bin cards for a whole group of products (docs/05 §4.10)")
 @SecurityRequirement(name = "bearerAuth")
 interface GroupCardsApi {
     @Operation(summary = "Group Stock Card: every movement of every item in the group, with a running group total")
-    fun groupCard(groupBy: String, groupId: UUID, locationId: UUID?, from: LocalDate?, to: LocalDate?): ApiEnvelope<GroupStockCard>
+    fun groupCard(groupBy: String, groupId: UUID, locationId: UUID?, from: LocalDate?, to: LocalDate?, paging: PageParams): ApiEnvelope<GroupStockCard>
 
     @Operation(summary = "Group Bin Card: daily totals for the group")
-    fun groupBinCard(groupBy: String, groupId: UUID, locationId: UUID?, from: LocalDate?, to: LocalDate?): ApiEnvelope<GroupBinCard>
+    fun groupBinCard(groupBy: String, groupId: UUID, locationId: UUID?, from: LocalDate?, to: LocalDate?, paging: PageParams): ApiEnvelope<GroupBinCard>
 }
 
 private const val READ_STOCK = "@permissionAuthorizer.hasPermission(authentication, 'inventory.stock.read') or @permissionAuthorizer.hasPermission(authentication, 'showroom.stock.read')"
@@ -141,7 +145,8 @@ class GroupCardsController(private val groupCardService: GroupCardService) : Gro
         @RequestParam(required = false) locationId: UUID?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate?,
-    ): ApiEnvelope<GroupStockCard> = ApiEnvelope(groupCardService.stockCard(groupBy, groupId, locationId, from, to))
+        @ParameterObject paging: PageParams,
+    ): ApiEnvelope<GroupStockCard> = ApiEnvelope(groupCardService.stockCard(groupBy, groupId, locationId, from, to, paging.toRequest()))
 
     @GetMapping("/group-bin-card")
     @PreAuthorize(READ_STOCK)
@@ -151,5 +156,6 @@ class GroupCardsController(private val groupCardService: GroupCardService) : Gro
         @RequestParam(required = false) locationId: UUID?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate?,
-    ): ApiEnvelope<GroupBinCard> = ApiEnvelope(groupCardService.binCard(groupBy, groupId, locationId, from, to))
+        @ParameterObject paging: PageParams,
+    ): ApiEnvelope<GroupBinCard> = ApiEnvelope(groupCardService.binCard(groupBy, groupId, locationId, from, to, paging.toRequest()))
 }

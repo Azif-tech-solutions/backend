@@ -1,5 +1,6 @@
 package com.zifiq.inventory.api
 
+import com.zifiq.common.paging.PageParams
 import com.zifiq.common.filter.FilterMetadata
 import com.zifiq.common.filter.ListSearchRequest
 import com.zifiq.common.paging.PageResult
@@ -23,7 +24,7 @@ interface InventoryOperationsApi {
     fun receiveTransfer(id: UUID, request: StockTransferReceiveRequest): ApiEnvelope<StockTransferSummary>
 
     @Operation(summary = "List transfers (status repeatable: DISPATCHED,PARTIALLY_RECEIVED = incoming consignments)")
-    fun listTransfers(locationId: UUID?, status: List<String>?, direction: String?, q: String?, from: LocalDate?, to: LocalDate?): ApiEnvelope<List<StockTransferSummary>>
+    fun listTransfers(locationId: UUID?, status: List<String>?, direction: String?, q: String?, from: LocalDate?, to: LocalDate?, paging: PageParams): ApiEnvelope<PageResult<StockTransferSummary>>
 
     @Operation(summary = "One transfer with its lines")
     fun getTransfer(id: UUID): ApiEnvelope<StockTransferSummary>

@@ -31,3 +31,6 @@ data class CompanyProfile(
     val logoContentType: String?,
     val documentFooter: String?,
 )
+
+/** The logo as a `data:` URI for HTML/PDF templates; null when no logo is set. */
+fun CompanyProfile.logoDataUri(): String? = logo?.let { "data:$logoContentType;base64," + java.util.Base64.getEncoder().encodeToString(it) }

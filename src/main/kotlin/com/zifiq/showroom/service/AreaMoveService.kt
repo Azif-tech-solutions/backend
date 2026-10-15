@@ -1,5 +1,6 @@
 package com.zifiq.showroom.service
 
+import com.zifiq.inventory.repository.StockSql
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.paging.PageRequest
 import com.zifiq.common.paging.PageResult
@@ -123,7 +124,7 @@ class AreaMoveService(
 
     private fun summary(id: UUID): AreaMoveSummary {
         val move = StorageAreaMovesTable.selectAll().where { StorageAreaMovesTable.id eq id }.single()
-        val unit = RawExpression<String>({ +"(select u.name from units_of_measure u where u.id = "; +StockItemsTable.unitOfMeasureId; +")" })
+        val unit = StockSql.unitName(StockItemsTable.unitOfMeasureId)
         val lines = StorageAreaMoveLinesTable
             .join(StockItemsTable, JoinType.INNER, StorageAreaMoveLinesTable.stockItemId, StockItemsTable.id)
             .select(StorageAreaMoveLinesTable.columns + StockItemsTable.code + StockItemsTable.name + unit)

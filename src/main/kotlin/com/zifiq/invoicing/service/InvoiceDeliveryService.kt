@@ -1,5 +1,8 @@
 package com.zifiq.invoicing.service
 
+import com.zifiq.platform.directory.Names
+import com.zifiq.settings.spi.logoDataUri
+import com.zifiq.common.money.Money
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.search.RawOp
 import com.zifiq.customers.spi.CustomerDirectory
@@ -134,17 +137,17 @@ class InvoiceDeliveryService(
         val outstanding = rows.fold(BigDecimal.ZERO) { s, it -> s + it[d.balance] }
         val model = mapOf(
             "company" to company,
-            "logo" to company.logo?.let { "data:${company.logoContentType};base64," + Base64.getEncoder().encodeToString(it) },
+            "logo" to company.logoDataUri(),
             "customer" to customer,
             "asOf" to d.today.format(DATE),
             "rows" to rows.map {
                 mapOf("number" to it[InvoicesTable.number], "issued" to it[InvoicesTable.issueDate]?.format(DATE), "due" to it[InvoicesTable.dueDate]?.format(DATE),
-                    "total" to InvoiceSupport.naira(it[InvoicesTable.taxInclusiveAmount]),
-                    "paid" to InvoiceSupport.naira(it[InvoicesTable.amountPaid] + it[InvoicesTable.amountCredited]),
-                    "balance" to InvoiceSupport.naira(it[d.balance]), "overdue" to if (it[d.daysOverdue] > 0) "${it[d.daysOverdue]} days" else "—")
+                    "total" to Money.naira(it[InvoicesTable.taxInclusiveAmount]),
+                    "paid" to Money.naira(it[InvoicesTable.amountPaid] + it[InvoicesTable.amountCredited]),
+                    "balance" to Money.naira(it[d.balance]), "overdue" to if (it[d.daysOverdue] > 0) "${it[d.daysOverdue]} days" else "—")
             },
-            "ageing" to InvoiceExpressions.AGEING.map { mapOf("label" to InvoiceExpressions.ageingLabel(it), "amount" to InvoiceSupport.naira(ageing.getValue(it))) },
-            "outstanding" to InvoiceSupport.naira(outstanding),
+            "ageing" to InvoiceExpressions.AGEING.map { mapOf("label" to InvoiceExpressions.ageingLabel(it), "amount" to Money.naira(ageing.getValue(it))) },
+            "outstanding" to Money.naira(outstanding),
             "printedAt" to LocalDateTime.now(support.zone()).format(DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm")),
         )
         DocumentAttachment("statement-${customer.code}-${d.today}.pdf", "application/pdf", pdfRenderer.render("statement", model))
@@ -155,8 +158,8 @@ class InvoiceDeliveryService(
     private fun compose(invoice: ResultRow, template: String, message: String?, company: String): Pair<String, String> {
         val number = invoice[InvoicesTable.number]!!
         val buyer = invoice[InvoicesTable.buyerName]
-        val total = InvoiceSupport.naira(invoice[InvoicesTable.taxInclusiveAmount])
-        val balance = InvoiceSupport.naira((invoice[InvoicesTable.taxInclusiveAmount] - invoice[InvoicesTable.amountPaid] - invoice[InvoicesTable.amountCredited]).max(BigDecimal.ZERO))
+        val total = Money.naira(invoice[InvoicesTable.taxInclusiveAmount])
+        val balance = Money.naira((invoice[InvoicesTable.taxInclusiveAmount] - invoice[InvoicesTable.amountPaid] - invoice[InvoicesTable.amountCredited]).max(BigDecimal.ZERO))
         val due = invoice[InvoicesTable.dueDate]?.format(DATE) ?: "on receipt"
         val note = message?.let { "\n\n$it" } ?: ""
         return when (template) {
@@ -182,7 +185,7 @@ class InvoiceDeliveryService(
             recipient = row[InvoiceDeliveriesTable.recipientEmail], template = row[InvoiceDeliveriesTable.template], trigger = row[InvoiceDeliveriesTable.trigger],
             status = when (row[NotificationOutboxTable.status]) { "SENT" -> "Sent"; "FAILED" -> "Failed"; else -> "Queued" },
             requestedAt = row[InvoiceDeliveriesTable.requestedAt], sentAt = row[NotificationOutboxTable.sentAt],
-            requestedBy = requestedBy?.let { support.userNames(listOf(it))[it] } ?: "Automatic",
+            requestedBy = requestedBy?.let { Names.users(listOf(it))[it] } ?: "Automatic",
         )
     }
 

@@ -258,7 +258,7 @@ class InventoryShowroomSupportIntegrationTest : PostgresIntegrationTest() {
         assertThat(balance(showroomFloor, malt)).isEqualByComparingTo("5")
 
         val incoming = operations.listTransfers(pending, setOf("DISPATCHED", "PARTIALLY_RECEIVED"), "INTO", null, null, null)
-        assertThat(incoming.map { it.id }).contains(toPending.id)
+        assertThat(incoming.items.map { it.id }).contains(toPending.id)
     }
 
     @Test
@@ -311,7 +311,7 @@ class InventoryShowroomSupportIntegrationTest : PostgresIntegrationTest() {
         assertThat(row.margin).isEqualByComparingTo("1500")
         assertThat(prices.list(ListSearchRequest(params = mapOf("belowCost" to listOf("true")))).items.map { it.code }).containsExactly("ITM-2")
 
-        val history = prices.itemHistory(citrus)
+        val history = prices.itemHistory(citrus).items
         assertThat(history.map { it.state }).containsExactly("SCHEDULED", "CURRENT")
         failsWith { prices.updateEntry(history.last().priceId, PriceEntryUpdateRequest(BigDecimal(1), BigDecimal(1))) }.isEqualTo(ErrorCode.PRICE_ALREADY_EFFECTIVE)
         assertThat(prices.updateEntry(history.first().priceId, PriceEntryUpdateRequest(BigDecimal(4900), BigDecimal(4500))).retailPrice).isEqualByComparingTo("4900")
@@ -330,7 +330,8 @@ class InventoryShowroomSupportIntegrationTest : PostgresIntegrationTest() {
         stockUp(showroomFloor, malt, "3")
         val card = groupCards.stockCard("CATEGORY", drinks, showroom, null, null)
         assertThat(card.header.members.map { it.code }).containsExactly("ITM-1", "ITM-2")
-        assertThat(card.header.closingBalance).isEqualByComparingTo(card.rows.last().qtyRemain)
+        assertThat(card.header.memberCount).isEqualTo(2)
+        assertThat(card.header.closingBalance).isEqualByComparingTo(card.rows.items.last().qtyRemain)
         assertThat(card.header.closingBalance).isEqualByComparingTo(
             listOf(showroom, showroomWarehouse, showroomFloor).sumOf { balance(it, citrus) + balance(it, malt) },
         )

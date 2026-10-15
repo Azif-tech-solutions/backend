@@ -1,5 +1,12 @@
 package com.zifiq.factory.service
 
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
+import org.jetbrains.exposed.sql.SortOrder
+import com.zifiq.common.paging.Paging
+import com.zifiq.common.paging.PageResult
+import com.zifiq.common.paging.PageRequest
 import com.zifiq.factory.dto.*
 import com.zifiq.factory.model.*
 import com.zifiq.inventory.model.StockItemsTable
@@ -32,6 +39,7 @@ class ProductionService(
     private val stockLedgerRepository: com.zifiq.inventory.repository.StockLedgerRepository,
     private val costVisibility: CostVisibility,
     private val locationAccessService: LocationAccessService,
+    private val moduleSettings: com.zifiq.platform.settings.ModuleSettings,
 ) {
     // ---- Recipes ----
 
@@ -68,16 +76,21 @@ class ProductionService(
         RecipeSummary(id, code, request.name.trim(), request.sourcing, request.yieldQty, "ACTIVE", request.ingredients)
     }
 
-    fun listRecipes(locationId: UUID?, status: String?): List<RecipeSummary> = tenantScopedTransaction.execute {
+    /** Recipes, paged; the page's ingredients come from one query. */
+    fun listRecipes(locationId: UUID?, status: String?, paging: PageRequest): PageResult<RecipeSummary> = tenantScopedTransaction.execute {
         val tenantId = currentActorProvider.current().tenantId
         val effectiveLocationId = locationAccessService.resolveFilterSet(locationId)
         val query = RecipesTable.selectAll().andWhere { RecipesTable.tenantId eq tenantId }
         if (effectiveLocationId != null) query.andWhere { RecipesTable.locationId inList effectiveLocationId }
         if (status != null) query.andWhere { RecipesTable.status eq status }
-        query.orderBy(RecipesTable.name).map { row ->
-            val ingredients = RecipeIngredientsTable.selectAll()
-                .andWhere { RecipeIngredientsTable.recipeId eq row[RecipesTable.id].value }
-                .map { RecipeIngredientInput(it[RecipeIngredientsTable.rawMaterialStockItemId].value, it[RecipeIngredientsTable.quantity], it[RecipeIngredientsTable.unitId]) }
+        val page = Paging.fetch(query.orderBy(RecipesTable.name to SortOrder.ASC, RecipesTable.id to SortOrder.ASC), paging) { it }
+        val ingredientsByRecipe = RecipeIngredientsTable.selectAll()
+            .where { RecipeIngredientsTable.recipeId inList page.items.map { it[RecipesTable.id].value } }
+            .groupBy({ it[RecipeIngredientsTable.recipeId].value }) {
+                RecipeIngredientInput(it[RecipeIngredientsTable.rawMaterialStockItemId].value, it[RecipeIngredientsTable.quantity], it[RecipeIngredientsTable.unitId])
+            }
+        page.withItems(page.items.map { row ->
+            val ingredients = ingredientsByRecipe[row[RecipesTable.id].value].orEmpty()
             RecipeSummary(
                 id = row[RecipesTable.id].value,
                 code = row[RecipesTable.code],
@@ -87,7 +100,7 @@ class ProductionService(
                 status = row[RecipesTable.status],
                 ingredients = ingredients,
             )
-        }
+        })
     }
 
     // ---- Production Cost Calculator ----
@@ -278,14 +291,18 @@ class ProductionService(
         )
     }
 
-    fun listProductionRuns(locationId: UUID?, from: LocalDate?, to: LocalDate?): List<ProductionRunSummary> =
+    /** Production runs, newest first, paged; `from`/`to` bound the run date in the tenant's timezone. */
+    fun listProductionRuns(locationId: UUID?, from: LocalDate?, to: LocalDate?, paging: PageRequest): PageResult<ProductionRunSummary> =
         tenantScopedTransaction.execute {
             val actor = currentActorProvider.current()
             val canSeeCost = permissionAuthorizer.hasPermission(actor.userId, "factory.costing.read")
             val effectiveLocationId = locationAccessService.resolveFilterSet(locationId)
+            val zone = moduleSettings.zone()
             val query = ProductionRunsTable.selectAll().andWhere { ProductionRunsTable.tenantId eq actor.tenantId }
             if (effectiveLocationId != null) query.andWhere { ProductionRunsTable.locationId inList effectiveLocationId }
-            query.map { row ->
+            if (from != null) query.andWhere { ProductionRunsTable.runAt greaterEq from.atStartOfDay(zone).toInstant() }
+            if (to != null) query.andWhere { ProductionRunsTable.runAt less to.plusDays(1).atStartOfDay(zone).toInstant() }
+            Paging.fetch(query.orderBy(ProductionRunsTable.runAt to SortOrder.DESC, ProductionRunsTable.id to SortOrder.DESC), paging) { row ->
                 ProductionRunSummary(
                     batchRef = row[ProductionRunsTable.batchRef],
                     targetStockItemId = row[ProductionRunsTable.productionCostingId].value,
@@ -398,13 +415,13 @@ class ProductionService(
         )
     }
 
-    fun listSpecialProductionRuns(locationId: UUID?, clientId: UUID?): List<SpecialProductionRunSummary> = tenantScopedTransaction.execute {
+    fun listSpecialProductionRuns(locationId: UUID?, clientId: UUID?, paging: PageRequest): PageResult<SpecialProductionRunSummary> = tenantScopedTransaction.execute {
         val tenantId = currentActorProvider.current().tenantId
         val effectiveLocationId = locationAccessService.resolveFilterSet(locationId)
         val query = SpecialProductionRunsTable.selectAll().andWhere { SpecialProductionRunsTable.tenantId eq tenantId }
         if (effectiveLocationId != null) query.andWhere { SpecialProductionRunsTable.locationId inList effectiveLocationId }
         if (clientId != null) query.andWhere { SpecialProductionRunsTable.clientId eq clientId }
-        query.map { row ->
+        Paging.fetch(query.orderBy(SpecialProductionRunsTable.createdAt to SortOrder.DESC, SpecialProductionRunsTable.id to SortOrder.DESC), paging) { row ->
             SpecialProductionRunSummary(
                 row[SpecialProductionRunsTable.id].value, row[SpecialProductionRunsTable.orderRef], row[SpecialProductionRunsTable.batchRef],
                 row[SpecialProductionRunsTable.clientId].value, row[SpecialProductionRunsTable.quantity],

@@ -1,5 +1,8 @@
 package com.zifiq.account.service
 
+import com.zifiq.platform.directory.Names
+import com.zifiq.account.spi.Channel
+import com.zifiq.common.money.Money
 import com.zifiq.account.dto.LocationVatHistoryRow
 import com.zifiq.account.dto.LocationVatList
 import com.zifiq.account.dto.LocationVatRequest
@@ -72,11 +75,11 @@ class TenderableService(
     fun payable(locationId: UUID?, cashierUserId: UUID?, from: LocalDate?, to: LocalDate?): List<TenderablePayableRow> = tx.execute {
         val zone = support.moduleSettings().zone()
         val rows = receipts(locationId, cashierUserId, from, to)
-        val names = support.userNames(rows.map { it[PaymentReceiptsTable.cashierUserId] })
+        val names = Names.users(rows.map { it[PaymentReceiptsTable.cashierUserId] })
         rows.groupBy { LocalDate.ofInstant(it[PaymentReceiptsTable.receivedAt], zone) to it[PaymentReceiptsTable.cashierUserId] }
             .map { (key, group) ->
                 val t = takings(group)
-                TenderablePayableRow(key.first, key.second, names[key.second], t.ftf, t.cash, t.pos, t.wallet, t.deposit, t.refund, AccountSupport.money(t.total), t.pending, t.declined)
+                TenderablePayableRow(key.first, key.second, names[key.second], t.ftf, t.cash, t.pos, t.wallet, t.deposit, t.refund, Money.round(t.total), t.pending, t.declined)
             }
             .sortedWith(compareByDescending<TenderablePayableRow> { it.date }.thenBy { it.cashier ?: "" })
     }
@@ -85,16 +88,16 @@ class TenderableService(
     fun generalReport(locationId: UUID?, from: LocalDate?, to: LocalDate?): TenderableGeneralReport = tx.execute {
         val zone = support.moduleSettings().zone()
         val rows = receipts(locationId, null, from, to)
-        val names = support.userNames(rows.map { it[PaymentReceiptsTable.cashierUserId] })
+        val names = Names.users(rows.map { it[PaymentReceiptsTable.cashierUserId] })
         val perCashier = rows.groupBy { it[PaymentReceiptsTable.cashierUserId] }.map { (cashier, group) ->
             val t = takings(group)
             TenderableGeneralRow(cashier, names[cashier], group.map { LocalDate.ofInstant(it[PaymentReceiptsTable.receivedAt], zone) }.distinct().size,
-                t.ftf, t.cash, t.pos, t.wallet, t.deposit, t.refund, AccountSupport.money(t.total))
+                t.ftf, t.cash, t.pos, t.wallet, t.deposit, t.refund, Money.round(t.total))
         }.sortedBy { it.cashier ?: "" }
         val all = takings(rows)
         val totals = if (rows.isEmpty()) null else TenderableGeneralRow(UUID(0, 0), "All cashiers",
             rows.map { LocalDate.ofInstant(it[PaymentReceiptsTable.receivedAt], zone) }.distinct().size,
-            all.ftf, all.cash, all.pos, all.wallet, all.deposit, all.refund, AccountSupport.money(all.total))
+            all.ftf, all.cash, all.pos, all.wallet, all.deposit, all.refund, Money.round(all.total))
         TenderableGeneralReport(mapOf("from" to from, "to" to to), perCashier, totals)
     }
 
@@ -114,13 +117,13 @@ class TenderableService(
         val receipts = PaymentReceiptsTable.selectAll().where { PaymentReceiptsTable.id inList fundings.map { it[WalletFundingsTable.paymentReceiptId] }.ifEmpty { listOf(UUID(0, 0)) } }
             .associateBy { it[PaymentReceiptsTable.id].value }
         val banks = BankAccountsTable.selectAll().where { BankAccountsTable.tenantId eq support.tenantId() }.associate { it[BankAccountsTable.id].value to "${it[BankAccountsTable.code]} ${it[BankAccountsTable.bankName]}" }
-        val reviewers = support.userNames(receipts.values.mapNotNull { it[PaymentReceiptsTable.reviewedByUserId] } + fundings.map { it[WalletFundingsTable.createdByUserId] })
+        val reviewers = Names.users(receipts.values.mapNotNull { it[PaymentReceiptsTable.reviewedByUserId] } + fundings.map { it[WalletFundingsTable.createdByUserId] })
         val fromFundings = fundings.map { row ->
             val receipt = receipts[row[WalletFundingsTable.paymentReceiptId]]
             TenderableWalletFundRow(
                 ref = row[WalletFundingsTable.ref], date = row[WalletFundingsTable.createdAt], customerId = row[WalletFundingsTable.customerId],
                 dealer = "${row[WalletFundingsTable.customerCode]} ${row[WalletFundingsTable.customerName]}",
-                method = when (row[WalletFundingsTable.channel]) { "CASH" -> "Cash deposit"; "FUND_TRANSFER" -> "Fund transfer"; "POS" -> "POS"; else -> "Cheque" },
+                method = Channel.labelOf(row[WalletFundingsTable.channel]),
                 bank = receipt?.get(PaymentReceiptsTable.receivingBankAccountId)?.let(banks::get), amount = row[WalletFundingsTable.amount],
                 confirmedBy = receipt?.get(PaymentReceiptsTable.reviewedByUserId)?.let(reviewers::get) ?: if (row[WalletFundingsTable.channel] == "CASH") reviewers[row[WalletFundingsTable.createdByUserId]] else null,
                 status = when (row[WalletFundingsTable.status]) { "CONFIRMED" -> "Confirmed"; "AWAITING_CONFIRMATION" -> "Awaiting confirmation"; "DECLINED" -> "Declined"; else -> "Voided" },
@@ -137,7 +140,7 @@ class TenderableService(
         val confirmed = all.filter { it.status == "Confirmed" }.fold(BigDecimal.ZERO) { s, it -> s + it.amount }
         val awaiting = all.filter { it.status == "Awaiting confirmation" }.fold(BigDecimal.ZERO) { s, it -> s + it.amount }
         PageResult(items, request.page, request.size, all.size.toLong(), ((all.size + request.size - 1) / request.size), false,
-            summary = mapOf("total" to AccountSupport.money(confirmed + awaiting), "confirmed" to AccountSupport.money(confirmed), "awaiting" to AccountSupport.money(awaiting)))
+            summary = mapOf("total" to Money.round(confirmed + awaiting), "confirmed" to Money.round(confirmed), "awaiting" to Money.round(awaiting)))
     }
 
     private fun receipts(locationId: UUID?, cashierUserId: UUID?, from: LocalDate?, to: LocalDate?): List<ResultRow> {
@@ -156,7 +159,7 @@ class TenderableService(
     }
 
     private fun takings(rows: List<ResultRow>): Takings {
-        fun sum(filter: (ResultRow) -> Boolean) = AccountSupport.money(rows.filter(filter).fold(BigDecimal.ZERO) { s, it -> s + it[PaymentReceiptsTable.amount] })
+        fun sum(filter: (ResultRow) -> Boolean) = Money.round(rows.filter(filter).fold(BigDecimal.ZERO) { s, it -> s + it[PaymentReceiptsTable.amount] })
         fun counted(row: ResultRow) = row[PaymentReceiptsTable.confirmationStatus] in setOf("NOT_REQUIRED", "APPROVED")
         fun receipt(row: ResultRow, vararg channels: String) = row[PaymentReceiptsTable.kind] == "RECEIPT" && counted(row) && row[PaymentReceiptsTable.channel] in channels
         return Takings(
@@ -197,7 +200,7 @@ class LocationVatService(
         val settings = LocationVatSettingsTable.selectAll()
             .where { (LocationVatSettingsTable.tenantId eq support.tenantId()) and (LocationVatSettingsTable.locationId inList locations.map { it[LocationsTable.id].value }.ifEmpty { listOf(UUID(0, 0)) }) }
             .toList().groupBy { it[LocationVatSettingsTable.locationId] }
-        val users = support.userNames(settings.values.flatten().map { it[LocationVatSettingsTable.updatedByUserId] })
+        val users = Names.users(settings.values.flatten().map { it[LocationVatSettingsTable.updatedByUserId] })
         val rows = locations.map { location ->
             val id = location[LocationsTable.id].value
             val all = settings[id].orEmpty()
@@ -249,7 +252,7 @@ class LocationVatService(
         val rows = LocationVatSettingsTable.selectAll()
             .where { (LocationVatSettingsTable.tenantId eq support.tenantId()) and (LocationVatSettingsTable.locationId eq locationId) }
             .orderBy(LocationVatSettingsTable.effectiveFrom to SortOrder.DESC).toList()
-        val users = support.userNames(rows.map { it[LocationVatSettingsTable.updatedByUserId] })
+        val users = Names.users(rows.map { it[LocationVatSettingsTable.updatedByUserId] })
         val inForce = rows.firstOrNull { !it[LocationVatSettingsTable.effectiveFrom].isAfter(today) }?.get(LocationVatSettingsTable.id)?.value
         rows.map {
             LocationVatHistoryRow(

@@ -1,5 +1,6 @@
 package com.zifiq.account.service
 
+import com.zifiq.common.money.Money
 import com.zifiq.account.dto.AccountLookupRow
 import com.zifiq.account.dto.ExpenseCategoryRequest
 import com.zifiq.account.dto.ExpenseCategoryView
@@ -80,7 +81,7 @@ class ExpenseCategoryService(
 
     fun lookup(q: String?, pettyCashAllowed: Boolean?, activeOnly: Boolean): List<AccountLookupRow> =
         list(q, emptySet(), if (activeOnly) "ACTIVE" else null, pettyCashAllowed, null, null).take(50).map {
-            AccountLookupRow(it.id, it.code, it.name, it.monthlyCap?.let { cap -> "${AccountSupport.naira(it.spentThisMonth)} of ${AccountSupport.naira(cap)} this month" } ?: it.accountHead, it.status)
+            AccountLookupRow(it.id, it.code, it.name, it.monthlyCap?.let { cap -> "${Money.naira(it.spentThisMonth)} of ${Money.naira(cap)} this month" } ?: it.accountHead, it.status)
         }
 
     fun create(request: ExpenseCategoryRequest): ExpenseCategoryView = tx.execute {
@@ -186,7 +187,7 @@ class ExpenseCategoryService(
             monthlyCap = cap,
             pettyCashAllowed = row[ExpenseCategoriesTable.pettyCashAllowed],
             status = row[ExpenseCategoriesTable.status],
-            spentThisMonth = AccountSupport.money(spent),
+            spentThisMonth = Money.round(spent),
             overCap = cap != null && spent > cap,
             createdAt = row[ExpenseCategoriesTable.createdAt],
         )

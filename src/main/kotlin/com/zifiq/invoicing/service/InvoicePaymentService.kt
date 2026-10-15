@@ -1,5 +1,6 @@
 package com.zifiq.invoicing.service
 
+import com.zifiq.common.money.Money
 import com.zifiq.account.spi.Channel
 import com.zifiq.account.spi.MoneyLedger
 import com.zifiq.account.spi.ReceiptRequest
@@ -50,7 +51,7 @@ class InvoicePaymentService(
     /** Records a payment the customer made against the invoice (HTTP). */
     fun record(invoiceId: UUID, request: RecordPaymentRequest): Recorded = tx.execute {
         val invoice = openForPayment(invoiceId, scoped = true)
-        val amount = InvoiceSupport.money(request.amount!!)
+        val amount = Money.round(request.amount!!)
         checkAmount(invoice, amount)
         val paidAt = request.paidAt ?: Instant.now()
         if (paidAt.isAfter(Instant.now().plusSeconds(300))) throw ApiErrors.validationFailed(mapOf("paidAt" to "can't be in the future"))
@@ -88,7 +89,7 @@ class InvoicePaymentService(
     /** spi: a POS checkout payment Sales & POS already receipted (caller's transaction). */
     fun attach(invoiceId: UUID, link: PaymentLink) {
         val invoice = openForPayment(invoiceId, scoped = false)
-        val amount = InvoiceSupport.money(link.amount)
+        val amount = Money.round(link.amount)
         checkAmount(invoice, amount)
         val method = runCatching { Channel.valueOf(link.method) }.getOrElse { throw ApiErrors.validationFailed(mapOf("method" to "unknown payment method ${link.method}")) }
         insert(invoiceId, method.name, amount, link.receiptId, link.receiptRef, link.customerLedgerEntryId, link.paidAt, "POS_CHECKOUT", support.userId())
@@ -141,12 +142,12 @@ class InvoicePaymentService(
             val locationId = invoice[InvoicesTable.locationId].value
             val word = if (status == "DECLINED") "declined" else "voided"
             val eventId = support.record("invoicing.payment.reversed", id, number,
-                "$ref $word — $number balance ${InvoiceSupport.naira(balance)} again",
+                "$ref $word — $number balance ${Money.naira(balance)} again",
                 mapOf("receiptId" to receiptId, "receiptRef" to ref, "amount" to amount, "status" to status), locationId)
             if (invoice[InvoicesTable.status] == "ISSUED") {
                 notify.holdersOf(
                     permission = "invoicing.receivables.read", locationId = locationId, category = NotificationCategory.ALERT,
-                    title = "Payment $word — $number", body = "$ref (${InvoiceSupport.naira(amount)}) $word: $number balance ${InvoiceSupport.naira(balance)} again.",
+                    title = "Payment $word — $number", body = "$ref (${Money.naira(amount)}) $word: $number balance ${Money.naira(balance)} again.",
                     linkType = "invoice", linkRef = id.toString(), sourceEventId = eventId, exclude = runCatching { support.userId() }.getOrNull(),
                 )
             }
@@ -216,7 +217,7 @@ class InvoicePaymentService(
         val balance = balanceOf(updated)
         val locationId = updated[InvoicesTable.locationId].value
         support.record("invoicing.payment.recorded", id, number,
-            "$receiptRef: ${InvoiceSupport.naira(amount)} ${InvoiceQueryService.methodLabel(method).lowercase()} against $number, balance ${InvoiceSupport.naira(balance)}",
+            "$receiptRef: ${Money.naira(amount)} ${InvoiceQueryService.methodLabel(method).lowercase()} against $number, balance ${Money.naira(balance)}",
             mapOf("amount" to amount, "method" to method, "receiptRef" to receiptRef, "balance" to balance), locationId)
         if (balance <= support.tolerance()) {
             support.record("invoicing.invoice.paid", id, number, "$number paid in full", mapOf("total" to updated[InvoicesTable.taxInclusiveAmount]), locationId)

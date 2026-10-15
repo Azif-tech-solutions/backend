@@ -1,5 +1,6 @@
 package com.zifiq.platform.security
 
+import java.util.Optional
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.platform.tenancy.LocationHierarchy
 import com.zifiq.platform.tenancy.model.UserLocationAssignmentsTable
@@ -29,9 +30,13 @@ class LocationAccessService(
     /** Null = unrestricted (no assignment row, or explicit ALL_LOCATIONS). Otherwise the one location the current user is assigned to. */
     private fun restriction(): UUID? {
         val actor = currentActorProvider.current()
+        return AccessCaches.restrictions.get(AccessCaches.UserKey(actor.tenantId, actor.userId)) { Optional.ofNullable(load(actor.tenantId, actor.userId)) }.orElse(null)
+    }
+
+    private fun load(tenantId: UUID, userId: UUID): UUID? {
         val row = UserLocationAssignmentsTable.selectAll()
-            .andWhere { UserLocationAssignmentsTable.tenantId eq actor.tenantId }
-            .andWhere { UserLocationAssignmentsTable.userId eq actor.userId }
+            .andWhere { UserLocationAssignmentsTable.tenantId eq tenantId }
+            .andWhere { UserLocationAssignmentsTable.userId eq userId }
             .firstOrNull() ?: return null
         return if (row[UserLocationAssignmentsTable.accessScope] == "SINGLE_LOCATION") {
             row[UserLocationAssignmentsTable.locationId]

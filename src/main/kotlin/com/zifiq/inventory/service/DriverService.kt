@@ -1,5 +1,9 @@
 package com.zifiq.inventory.service
 
+import com.zifiq.common.paging.PagingPolicy
+import com.zifiq.common.paging.Paging
+import com.zifiq.common.paging.PageResult
+import com.zifiq.common.paging.PageRequest
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.phone.PhoneNumbers
 import com.zifiq.common.search.SearchField
@@ -44,8 +48,23 @@ class DriverService(
         ),
     )
 
-    /** Unpaged: a company has tens of drivers, not thousands. */
-    fun list(q: String?, status: String?, limit: Int = 500): List<DriverSummary> = tx.execute {
+    /** The register, paged. */
+    fun page(q: String?, status: String?, paging: PageRequest): PageResult<DriverSummary> = tx.execute {
+        val parsed = searchSpec.parse(q)
+        val parts = listOfNotNull<Op<Boolean>>(
+            DriversTable.tenantId eq tenantContext.requireTenantId(),
+            status?.let { DriversTable.status eq it.uppercase() },
+            searchSpec.condition(parsed),
+        )
+        Paging.fetch(
+            DriversTable.selectAll().where(parts.allOf()!!)
+                .orderBy(*(searchSpec.rank(parsed) + (DriversTable.name to SortOrder.ASC) + (DriversTable.id to SortOrder.ASC)).toTypedArray()),
+            paging, ::toSummary,
+        )
+    }
+
+    /** Picker: at most [PagingPolicy.LOOKUP_MAX] matches. */
+    fun list(q: String?, status: String?, limit: Int = PagingPolicy.LOOKUP_DEFAULT): List<DriverSummary> = tx.execute {
         val parsed = searchSpec.parse(q)
         val parts = listOfNotNull<Op<Boolean>>(
             DriversTable.tenantId eq tenantContext.requireTenantId(),
@@ -54,7 +73,7 @@ class DriverService(
         )
         DriversTable.selectAll().where(parts.allOf()!!)
             .orderBy(*(searchSpec.rank(parsed) + (DriversTable.name to SortOrder.ASC) + (DriversTable.id to SortOrder.ASC)).toTypedArray())
-            .limit(limit)
+            .limit(PagingPolicy.lookupLimit(limit))
             .map(::toSummary)
     }
 

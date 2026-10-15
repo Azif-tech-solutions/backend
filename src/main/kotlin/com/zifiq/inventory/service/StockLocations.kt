@@ -1,5 +1,6 @@
 package com.zifiq.inventory.service
 
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.platform.tenancy.model.LocationsTable
 import java.util.UUID
@@ -47,6 +48,16 @@ class StockLocations {
             .firstOrNull() ?: throw ApiErrors.invalidLocation("Location not found")
         return toLocation(row)
     }
+
+    /** Several locations in one query (missing ids are simply absent). */
+    fun getAll(ids: Collection<UUID>): Map<UUID, StockLocation> =
+        if (ids.isEmpty()) emptyMap()
+        else LocationsTable
+            .join(parent, JoinType.LEFT, LocationsTable.parentLocationId, parent[LocationsTable.id])
+            .selectAll()
+            .where { LocationsTable.id inList ids.toSet() }
+            .map(::toLocation)
+            .associateBy { it.id }
 
     private fun toLocation(row: ResultRow): StockLocation {
         val hasParent = row[LocationsTable.parentLocationId] != null

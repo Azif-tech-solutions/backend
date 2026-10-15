@@ -1,5 +1,8 @@
 package com.zifiq.inventory.api
 
+import org.springdoc.core.annotations.ParameterObject
+import com.zifiq.common.paging.PageResult
+import com.zifiq.common.paging.PageParams
 import com.zifiq.inventory.dto.*
 import com.zifiq.inventory.service.InventoryStockService
 import com.zifiq.platform.api.ApiEnvelope
@@ -21,8 +24,10 @@ class InventoryStockController(
         @RequestParam(required = false) locationId: UUID?,
         @RequestParam(required = false) itemType: String?,
         @RequestParam(required = false) status: String?,
-    ): ApiEnvelope<List<StockItemSummary>> =
-        ApiEnvelope(inventoryStockService.listStockItems(locationId, itemType, status))
+        @RequestParam(required = false) q: String?,
+        @ParameterObject paging: PageParams,
+    ): ApiEnvelope<PageResult<StockItemSummary>> =
+        ApiEnvelope(inventoryStockService.listStockItems(locationId, itemType, status, q, paging.toRequest()))
 
     @PostMapping("/stock-items")
     @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'inventory.stock.manage')")
@@ -52,8 +57,9 @@ class InventoryStockController(
     override fun listReceipts(
         @RequestParam(required = false) locationId: UUID?,
         @RequestParam(required = false) condition: String?,
-    ): ApiEnvelope<List<StockReceiptSummary>> =
-        ApiEnvelope(inventoryStockService.listReceipts(locationId, condition))
+        @ParameterObject paging: PageParams,
+    ): ApiEnvelope<PageResult<StockReceiptSummary>> =
+        ApiEnvelope(inventoryStockService.listReceipts(locationId, condition, paging.toRequest()))
 
     @PostMapping("/stock/receipts/{id}/verify")
     @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'inventory.stock.manage')")
@@ -71,8 +77,9 @@ class InventoryStockController(
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate?,
         @RequestParam(defaultValue = "true") includeAreas: Boolean,
-    ): ApiEnvelope<List<StockCardRow>> =
-        ApiEnvelope(inventoryStockService.stockCard(stockItemId, locationId, from, to, includeAreas))
+        @ParameterObject paging: PageParams,
+    ): ApiEnvelope<PageResult<StockCardRow>> =
+        ApiEnvelope(inventoryStockService.stockCard(stockItemId, locationId, from, to, includeAreas, paging.toRequest()))
 
     @GetMapping("/stock/bin-card/{stockItemId}")
     @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'inventory.stock.read')")
@@ -82,16 +89,18 @@ class InventoryStockController(
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate?,
         @RequestParam(defaultValue = "true") includeAreas: Boolean,
-    ): ApiEnvelope<List<BinCardRow>> =
-        ApiEnvelope(inventoryStockService.binCard(stockItemId, locationId, from, to, includeAreas))
+        @ParameterObject paging: PageParams,
+    ): ApiEnvelope<PageResult<BinCardRow>> =
+        ApiEnvelope(inventoryStockService.binCard(stockItemId, locationId, from, to, includeAreas, paging.toRequest()))
 
     @GetMapping("/stock/comprehensive-report")
     @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'inventory.stock.read')")
     override fun comprehensiveStockReport(
         @RequestParam(required = false) locationId: UUID?,
         @RequestParam(defaultValue = "CATEGORY") view: String,
-    ): ApiEnvelope<List<ComprehensiveStockRow>> =
-        ApiEnvelope(inventoryStockService.comprehensiveStockReport(locationId, view))
+        @ParameterObject paging: PageParams,
+    ): ApiEnvelope<PageResult<ComprehensiveStockRow>> =
+        ApiEnvelope(inventoryStockService.comprehensiveStockReport(locationId, view, paging.toRequest()))
 
     @GetMapping("/stock/movement-report")
     @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'inventory.stock.read')")
@@ -101,11 +110,12 @@ class InventoryStockController(
         @RequestParam(required = false) sourceType: String?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate?,
-    ): ApiEnvelope<List<StockMovementRow>> =
-        ApiEnvelope(inventoryStockService.stockMovementReport(locationId, stockItemId, sourceType, from, to))
+        @ParameterObject paging: PageParams,
+    ): ApiEnvelope<PageResult<StockMovementRow>> =
+        ApiEnvelope(inventoryStockService.stockMovementReport(locationId, stockItemId, sourceType, from, to, paging.toRequest()))
 
     @GetMapping("/stock/re-order-report")
     @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'inventory.stock.read')")
-    override fun reOrderReport(@RequestParam(required = false) locationId: UUID?): ApiEnvelope<List<ReOrderRow>> =
-        ApiEnvelope(inventoryStockService.reOrderReport(locationId))
+    override fun reOrderReport(@RequestParam(required = false) locationId: UUID?, @ParameterObject paging: PageParams): ApiEnvelope<PageResult<ReOrderRow>> =
+        ApiEnvelope(inventoryStockService.reOrderReport(locationId, paging.toRequest()))
 }
