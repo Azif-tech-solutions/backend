@@ -1,5 +1,6 @@
 package com.zifiq.inventory.dto
 
+import com.zifiq.platform.directory.UserRef
 import jakarta.validation.Valid
 import jakarta.validation.constraints.DecimalMin
 import jakarta.validation.constraints.NotEmpty
@@ -129,7 +130,6 @@ data class QuantityAdjustmentSummary(
     val reason: String,
     val note: String?,
     val otpVerified: Boolean,
-    val performedBy: UUID,
-    val performedByName: String?,
+    val performedBy: UserRef,
     val at: Instant,
 )

@@ -1,5 +1,6 @@
 package com.zifiq.account.service
 
+import com.zifiq.platform.directory.UserRef
 import com.zifiq.platform.directory.Names
 import com.zifiq.common.money.Money
 import com.zifiq.account.dto.RunningCostRequest
@@ -323,7 +324,6 @@ class RunningCostService(
         toViews(joined().selectAll().where { (OperatingCostsTable.id eq id) and (OperatingCostsTable.tenantId eq support.tenantId()) }.toList()).single()
 
     private fun toViews(rows: List<ResultRow>): List<RunningCostView> {
-        val users = Names.users(rows.flatMap { listOfNotNull(it[OperatingCostsTable.submittedByUserId], it[OperatingCostsTable.approvedByUserId]) })
         val locations = Names.locations(rows.mapNotNull { it[OperatingCostsTable.locationId] })
         return rows.map { row ->
             RunningCostView(
@@ -336,8 +336,8 @@ class RunningCostService(
                 invoiceOrReceiptNo = row[OperatingCostsTable.invoiceOrReceiptNo], chequeNumber = row[OperatingCostsTable.chequeNumber],
                 locationId = row[OperatingCostsTable.locationId], locationName = row[OperatingCostsTable.locationId]?.let(locations::get),
                 status = row[OperatingCostsTable.status], exceedsMonthlyCap = row[OperatingCostsTable.exceedsMonthlyCap],
-                submittedBy = row[OperatingCostsTable.submittedByUserId]?.let(users::get), submittedAt = row[OperatingCostsTable.submittedAt],
-                approvedBy = row[OperatingCostsTable.approvedByUserId]?.let(users::get), approvedAt = row[OperatingCostsTable.approvedAt],
+                submittedBy = UserRef.of(row[OperatingCostsTable.submittedByUserId]), submittedAt = row[OperatingCostsTable.submittedAt],
+                approvedBy = UserRef.of(row[OperatingCostsTable.approvedByUserId]), approvedAt = row[OperatingCostsTable.approvedAt],
                 rejectionReason = row[OperatingCostsTable.rejectionReason], reversalReason = row[OperatingCostsTable.reversalReason],
                 createdAt = row[OperatingCostsTable.createdAt],
             )

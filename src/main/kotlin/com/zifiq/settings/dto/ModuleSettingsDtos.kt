@@ -1,5 +1,6 @@
 package com.zifiq.settings.dto
 
+import com.zifiq.platform.directory.UserRef
 import com.fasterxml.jackson.databind.JsonNode
 import jakarta.validation.constraints.NotNull
 import java.math.BigDecimal
@@ -16,7 +17,7 @@ data class ModuleSettingView(
     val min: BigDecimal?,
     val max: BigDecimal?,
     val options: List<String>,
-    val updatedByUserId: UUID?,
+    val updatedBy: UserRef?,
     val updatedAt: Instant?,
 )
 

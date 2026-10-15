@@ -1,5 +1,6 @@
 package com.zifiq.factory.service
 
+import com.zifiq.platform.directory.UserRef
 import com.zifiq.factory.dto.*
 import com.zifiq.factory.model.CategoriesTable
 import com.zifiq.platform.tenancy.model.LocationsTable
@@ -28,7 +29,7 @@ private fun rowToFactorySummary(row: ResultRow) = FactorySummary(
     address = row[LocationsTable.address],
     state = row[LocationsTable.state],
     phone = row[LocationsTable.phone],
-    managerUserId = row[LocationsTable.managerUserId]?.value,
+    manager = UserRef.of(row[LocationsTable.managerUserId]?.value),
     vatRate = row[LocationsTable.vatRate],
     vatEnabled = row[LocationsTable.vatEnabled],
     vatRegistrationNumber = row[LocationsTable.vatRegistrationNumber],

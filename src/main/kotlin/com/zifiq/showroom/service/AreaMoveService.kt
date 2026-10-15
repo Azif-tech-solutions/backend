@@ -1,5 +1,6 @@
 package com.zifiq.showroom.service
 
+import com.zifiq.platform.directory.UserRef
 import com.zifiq.inventory.repository.StockSql
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.paging.PageRequest
@@ -138,7 +139,7 @@ class AreaMoveService(
             fromLocationId = move[StorageAreaMovesTable.fromLocationId], fromLocationName = stockLocations.get(move[StorageAreaMovesTable.fromLocationId]).name,
             toLocationId = move[StorageAreaMovesTable.toLocationId], toLocationName = stockLocations.get(move[StorageAreaMovesTable.toLocationId]).name,
             movedDate = move[StorageAreaMovesTable.movedDate], note = move[StorageAreaMovesTable.note], lines = lines,
-            movedByUserId = move[StorageAreaMovesTable.createdByUserId].value, createdAt = move[StorageAreaMovesTable.createdAt],
+            movedBy = UserRef(move[StorageAreaMovesTable.createdByUserId].value), createdAt = move[StorageAreaMovesTable.createdAt],
         )
     }
 }

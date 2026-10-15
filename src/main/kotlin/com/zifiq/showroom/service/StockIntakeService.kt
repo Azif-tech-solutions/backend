@@ -1,5 +1,6 @@
 package com.zifiq.showroom.service
 
+import com.zifiq.platform.directory.UserRef
 import com.zifiq.common.money.Money
 import com.zifiq.inventory.repository.StockSql
 import com.zifiq.common.errors.ApiErrors
@@ -350,8 +351,7 @@ class StockIntakeService(
             partnerReference = entry[ShowroomStockEntriesTable.partnerReference], paymentTerms = entry[ShowroomStockEntriesTable.paymentTerms],
             checkedBy = entry[ShowroomStockEntriesTable.checkedBy], receivedDate = entry[ShowroomStockEntriesTable.receivedDate], lines = lines,
             totalCost = mask(entry[ShowroomStockEntriesTable.totalCost]), totalInputVat = mask(entry[ShowroomStockEntriesTable.totalInputVat]),
-            enteredByUserId = userId,
-            enteredByName = AppUsersTable.select(AppUsersTable.displayName).where { AppUsersTable.id eq userId }.firstOrNull()?.get(AppUsersTable.displayName),
+            enteredBy = UserRef(userId),
             createdAt = entry[ShowroomStockEntriesTable.createdAt], costVisible = visible, warnings = warnings,
         )
     }
@@ -442,7 +442,7 @@ class StockIntakeService(
                 partnerReference = it[ShowroomStockEntriesTable.partnerReference], batchNo = it[ShowroomStockEntryLinesTable.batchNo],
                 expiryDate = it[ShowroomStockEntryLinesTable.expiryDate], quantity = it[ShowroomStockEntryLinesTable.quantity], unit = it.getOrNull(unitName),
                 unitCost = mask(it[ShowroomStockEntryLinesTable.unitCost]), lineCost = mask(it[ShowroomStockEntryLinesTable.lineCost]),
-                inputVatAmount = it[ShowroomStockEntryLinesTable.inputVatAmount], enteredByName = it.getOrNull(AppUsersTable.displayName),
+                inputVatAmount = it[ShowroomStockEntryLinesTable.inputVatAmount], enteredBy = UserRef(it[ShowroomStockEntriesTable.createdByUserId].value),
             )
         }
         val summary = if (request.summary) {

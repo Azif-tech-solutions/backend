@@ -1,5 +1,6 @@
 package com.zifiq.platform.files
 
+import com.zifiq.platform.directory.UserRef
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.platform.api.ApiEnvelope
 import com.zifiq.platform.events.DomainEvents
@@ -64,7 +65,7 @@ data class StoredFileView(
     val status: String,
     val linkedType: String?,
     val linkedId: UUID?,
-    val uploadedByUserId: UUID,
+    val uploadedBy: UserRef,
     val uploadedAt: Instant,
 )
 
@@ -248,7 +249,7 @@ class FileService(
         status = row[StoredFilesTable.status],
         linkedType = row[StoredFilesTable.linkedType],
         linkedId = row[StoredFilesTable.linkedId],
-        uploadedByUserId = row[StoredFilesTable.uploadedByUserId].value,
+        uploadedBy = UserRef(row[StoredFilesTable.uploadedByUserId].value),
         uploadedAt = row[StoredFilesTable.uploadedAt],
     )
 }

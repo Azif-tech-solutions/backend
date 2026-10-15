@@ -1,5 +1,6 @@
 package com.zifiq.inventory.dto
 
+import com.zifiq.platform.directory.UserRef
 import jakarta.validation.Valid
 import jakarta.validation.constraints.DecimalMax
 import jakarta.validation.constraints.DecimalMin
@@ -95,7 +96,7 @@ data class PriceHistoryRow(
     val effectiveFrom: LocalDate,
     val batchRef: String,
     val note: String?,
-    val setByUserId: UUID,
+    val setBy: UserRef,
     val createdAt: Instant,
     /** CURRENT, SUPERSEDED or SCHEDULED, relative to today. */
     val state: String,

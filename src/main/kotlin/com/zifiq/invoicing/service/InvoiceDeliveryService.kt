@@ -1,5 +1,6 @@
 package com.zifiq.invoicing.service
 
+import com.zifiq.platform.directory.UserRef
 import com.zifiq.platform.directory.Names
 import com.zifiq.common.money.Money
 import com.zifiq.common.errors.ApiErrors
@@ -178,13 +179,12 @@ class InvoiceDeliveryService(
     private fun view(id: UUID): DeliveryView = toView(joined().selectAll().where { InvoiceDeliveriesTable.id eq id }.single())
 
     private fun toView(row: ResultRow): DeliveryView {
-        val requestedBy = row[InvoiceDeliveriesTable.requestedByUserId]?.value
         return DeliveryView(
             id = row[InvoiceDeliveriesTable.id].value, invoiceId = row[InvoiceDeliveriesTable.invoiceId].value, number = row[InvoicesTable.number],
             recipient = row[InvoiceDeliveriesTable.recipientEmail], template = row[InvoiceDeliveriesTable.template], trigger = row[InvoiceDeliveriesTable.trigger],
             status = when (row[NotificationOutboxTable.status]) { "SENT" -> "Sent"; "FAILED" -> "Failed"; else -> "Queued" },
             requestedAt = row[InvoiceDeliveriesTable.requestedAt], sentAt = row[NotificationOutboxTable.sentAt],
-            requestedBy = requestedBy?.let { Names.users(listOf(it))[it] } ?: "Automatic",
+            requestedBy = UserRef.of(row[InvoiceDeliveriesTable.requestedByUserId]?.value),
         )
     }
 

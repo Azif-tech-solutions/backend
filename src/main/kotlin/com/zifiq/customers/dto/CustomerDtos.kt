@@ -1,5 +1,6 @@
 package com.zifiq.customers.dto
 
+import com.zifiq.platform.directory.UserRef
 import com.zifiq.customers.spi.BalanceType
 import com.zifiq.customers.spi.CustomerStatus
 import com.zifiq.customers.spi.CustomerType
@@ -193,7 +194,7 @@ data class ReclassificationSummary(
     val toCreditLimit: BigDecimal,
     val toDealerCategoryName: String?,
     val walletBalanceCarriedOver: BigDecimal,
-    val authorisedByUserId: UUID,
+    val authorisedBy: UserRef,
     val appliedAt: Instant?,
     val createdAt: Instant,
 )
@@ -214,7 +215,7 @@ data class LedgerRow(
     val balanceAfter: BigDecimal,
     val locationId: UUID?,
     val sourceModule: String,
-    val performedByUserId: UUID?,
+    val performedBy: UserRef?,
     val reversible: Boolean,
     val reversedByEntryId: UUID?,
     val createdAt: Instant,
@@ -322,7 +323,7 @@ data class CorrespondentHistoryRow(
     val locationName: String?,
     val effectiveFrom: LocalDate,
     val note: String?,
-    val performedByUserId: UUID,
+    val performedBy: UserRef,
     val createdAt: Instant,
 )
 

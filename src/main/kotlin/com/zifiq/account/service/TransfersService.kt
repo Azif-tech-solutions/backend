@@ -1,5 +1,6 @@
 package com.zifiq.account.service
 
+import com.zifiq.platform.directory.UserRef
 import com.zifiq.platform.directory.Names
 import com.zifiq.common.money.Money
 import com.zifiq.account.dto.CashLodgementRequest
@@ -243,7 +244,6 @@ class FundDisbursementService(
     private fun toRow(row: ResultRow) = toRows(listOf(row)).single()
 
     private fun toRows(rows: List<ResultRow>): List<FundDisbursementRow> {
-        val users = Names.users(rows.flatMap { listOfNotNull(it[FundDisbursementsTable.sentByUserId], it[FundDisbursementsTable.confirmedByUserId]) })
         return rows.map { row ->
             FundDisbursementRow(
                 id = row[FundDisbursementsTable.id].value, ref = row[FundDisbursementsTable.ref], date = row[FundDisbursementsTable.sentAt],
@@ -251,10 +251,10 @@ class FundDisbursementService(
                 purpose = row[FundDisbursementsTable.purpose], channel = row[FundDisbursementsTable.channel],
                 sourceAccount = row[sourceBank[BankAccountsTable.code]] ?: row[sourceCash[CashAccountsTable.code]],
                 destinationAccount = row[destinationBank[BankAccountsTable.code]] ?: row[destinationCash[CashAccountsTable.code]],
-                sentBy = users[row[FundDisbursementsTable.sentByUserId]], sent = row[FundDisbursementsTable.sentAmount],
+                sentBy = UserRef(row[FundDisbursementsTable.sentByUserId]), sent = row[FundDisbursementsTable.sentAmount],
                 received = row[FundDisbursementsTable.receivedAmount], shortfall = row[FundDisbursementsTable.shortfallAmount],
                 shortfallReason = row[FundDisbursementsTable.shortfallReason], status = row[FundDisbursementsTable.status],
-                confirmedBy = row[FundDisbursementsTable.confirmedByUserId]?.let(users::get), dateReceived = row[FundDisbursementsTable.dateReceived],
+                confirmedBy = UserRef.of(row[FundDisbursementsTable.confirmedByUserId]), dateReceived = row[FundDisbursementsTable.dateReceived],
                 rejectionReason = row[FundDisbursementsTable.rejectionReason],
             )
         }
@@ -430,15 +430,14 @@ class CashLodgementService(
     private fun toRow(row: ResultRow) = toRows(listOf(row)).single()
 
     private fun toRows(rows: List<ResultRow>): List<CashLodgementRow> {
-        val users = Names.users(rows.flatMap { listOfNotNull(it[CashLodgementsTable.depositedByUserId], it[CashLodgementsTable.confirmedByUserId]) })
         return rows.map { row ->
             CashLodgementRow(
                 id = row[CashLodgementsTable.id].value, ref = row[CashLodgementsTable.ref], date = row[CashLodgementsTable.depositDate],
                 locationId = row[CashLodgementsTable.locationId], showroom = row[LocationsTable.name], cashAccountCode = row[CashAccountsTable.code],
                 takings = row[CashLodgementsTable.takings], banked = row[CashLodgementsTable.banked], retained = row[CashLodgementsTable.retained],
                 bank = "${row[BankAccountsTable.code]} ${row[BankAccountsTable.bankName]}", accountNumberMasked = BankAccountService.mask(row[BankAccountsTable.accountNumber]),
-                depositedBy = users[row[CashLodgementsTable.depositedByUserId]], teller = row[CashLodgementsTable.tellerReference],
-                status = row[CashLodgementsTable.status], confirmedBy = row[CashLodgementsTable.confirmedByUserId]?.let(users::get),
+                depositedBy = UserRef(row[CashLodgementsTable.depositedByUserId]), teller = row[CashLodgementsTable.tellerReference],
+                status = row[CashLodgementsTable.status], confirmedBy = UserRef.of(row[CashLodgementsTable.confirmedByUserId]),
                 confirmedAt = row[CashLodgementsTable.confirmedAt], rejectionReason = row[CashLodgementsTable.rejectionReason],
             )
         }

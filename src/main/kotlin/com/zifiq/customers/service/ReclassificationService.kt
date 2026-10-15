@@ -1,5 +1,6 @@
 package com.zifiq.customers.service
 
+import com.zifiq.platform.directory.UserRef
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.filter.FilterContext
 import com.zifiq.common.filter.FilterField
@@ -347,7 +348,7 @@ class ReclassificationService(
         toCreditLimit = row[CustomerReclassificationsTable.toCreditLimit],
         toDealerCategoryName = row.getOrNull(DealerCategoriesTable.name),
         walletBalanceCarriedOver = row[CustomersTable.walletBalance],
-        authorisedByUserId = row[CustomerReclassificationsTable.authorisedByUserId],
+        authorisedBy = UserRef(row[CustomerReclassificationsTable.authorisedByUserId]),
         appliedAt = row[CustomerReclassificationsTable.appliedAt],
         createdAt = row[CustomerReclassificationsTable.createdAt],
     )

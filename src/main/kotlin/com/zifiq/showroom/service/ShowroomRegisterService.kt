@@ -1,5 +1,6 @@
 package com.zifiq.showroom.service
 
+import com.zifiq.platform.directory.UserRef
 import com.zifiq.platform.security.AccessCaches
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.search.SearchField
@@ -279,7 +280,7 @@ class ShowroomRegisterService(
             id = id, code = row[LocationsTable.code], name = row[LocationsTable.name],
             stateCode = stateCode, stateName = stateCode?.let { stateNames()[it] },
             streetAddress = row[LocationsTable.streetAddress], city = row[LocationsTable.city], phone = row[LocationsTable.phone],
-            email = row[LocationsTable.email], managerName = row[LocationsTable.managerName], managerUserId = row[LocationsTable.managerUserId]?.value,
+            email = row[LocationsTable.email], managerName = row[LocationsTable.managerName], manager = UserRef.of(row[LocationsTable.managerUserId]?.value),
             dateOpened = row[LocationsTable.dateOpened], storageCapacity = row[LocationsTable.storageCapacity], operatingHours = row[LocationsTable.operatingHours],
             status = row[LocationsTable.status], vatRate = row[LocationsTable.vatRate], vatEnabled = row[LocationsTable.vatEnabled],
             vatRegistrationNumber = row[LocationsTable.vatRegistrationNumber], areas = areas(id),

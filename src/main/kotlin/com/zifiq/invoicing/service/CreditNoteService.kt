@@ -1,5 +1,6 @@
 package com.zifiq.invoicing.service
 
+import com.zifiq.platform.directory.UserRef
 import com.zifiq.common.sql.Aggregates
 import com.zifiq.platform.directory.Names
 import com.zifiq.common.money.Money
@@ -193,14 +194,13 @@ class CreditNoteService(
         val condition = listOfNotNull(scope, search, filterSpec.fromParams(request.params, context), filterSpec.fromJson(request.filter, context)).allOf()!!
         val sort = if (request.sort.isEmpty() && !parsed.isEmpty) searchSpec.rank(parsed) + filterSpec.sort(emptyList(), context) else filterSpec.sort(request.sortParams, context)
         val page = Paging.fetch(joined().selectAll().where(condition).orderBy(*sort.toTypedArray()), PageRequest.of(request.page, request.size)) { it }
-        val users = Names.users(page.items.map { it[CreditNotesTable.issuedByUserId].value })
         val items = page.items.map { row ->
             CreditNoteRow(
                 id = row[CreditNotesTable.id].value, number = row[CreditNotesTable.number], invoiceId = row[CreditNotesTable.invoiceId].value,
                 invoiceNumber = row[InvoicesTable.number], customerId = row[InvoicesTable.customerId], customer = row[InvoicesTable.buyerName],
                 showroom = row.getOrNull(LocationsTable.name), reason = row[CreditNotesTable.reason], reasonNote = row[CreditNotesTable.reasonNote],
                 total = row[CreditNotesTable.total], appliedToInvoice = row[CreditNotesTable.appliedToInvoice], excessRefunded = row[CreditNotesTable.excessRefunded],
-                issuedBy = users[row[CreditNotesTable.issuedByUserId].value], issuedAt = row[CreditNotesTable.issuedAt],
+                issuedBy = UserRef(row[CreditNotesTable.issuedByUserId].value), issuedAt = row[CreditNotesTable.issuedAt],
             )
         }
         val summary = if (request.summary) {
@@ -317,7 +317,7 @@ class CreditNoteService(
             reason = row[CreditNotesTable.reason], reasonNote = row[CreditNotesTable.reasonNote], lines = lines,
             lineExtension = row[CreditNotesTable.lineExtensionAmount], vat = row[CreditNotesTable.vatTotal], total = row[CreditNotesTable.total],
             appliedToInvoice = row[CreditNotesTable.appliedToInvoice], excessRefunded = row[CreditNotesTable.excessRefunded],
-            issuedBy = Names.users(listOf(row[CreditNotesTable.issuedByUserId].value)).values.firstOrNull(), issuedAt = row[CreditNotesTable.issuedAt],
+            issuedBy = UserRef(row[CreditNotesTable.issuedByUserId].value), issuedAt = row[CreditNotesTable.issuedAt],
         )
     }
 

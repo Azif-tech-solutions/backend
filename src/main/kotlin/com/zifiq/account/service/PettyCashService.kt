@@ -1,5 +1,6 @@
 package com.zifiq.account.service
 
+import com.zifiq.platform.directory.UserRef
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.notLike
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.isNotNull
 import org.jetbrains.exposed.sql.max
@@ -534,7 +535,6 @@ class PettyCashService(
     private fun fundingRows(condition: Op<Boolean>): List<PettyCashFundingRow> = toFundingRows(fundingJoin().selectAll().where(condition).toList())
 
     private fun toFundingRows(rows: List<ResultRow>): List<PettyCashFundingRow> {
-        val users = Names.users(rows.map { it[PettyCashFundingsTable.createdByUserId] })
         return rows.map { row ->
             PettyCashFundingRow(
                 id = row[PettyCashFundingsTable.id].value, ref = row[PettyCashFundingsTable.ref], date = row[PettyCashFundingsTable.fundingDate],
@@ -544,7 +544,7 @@ class PettyCashService(
                     ?: "${row[sourceCash[CashAccountsTable.code]]} ${row[sourceCash[CashAccountsTable.name]]}",
                 amount = row[PettyCashFundingsTable.amount], transferOrChequeReference = row[PettyCashFundingsTable.transferOrChequeReference],
                 authorisedBy = row[PettyCashFundingsTable.authorisedBy], description = row[PettyCashFundingsTable.description],
-                fundedBy = users[row[PettyCashFundingsTable.createdByUserId]], status = row[PettyCashFundingsTable.status],
+                fundedBy = UserRef(row[PettyCashFundingsTable.createdByUserId]), status = row[PettyCashFundingsTable.status],
                 reversalReason = row[PettyCashFundingsTable.reversalReason], createdAt = row[PettyCashFundingsTable.createdAt],
             )
         }
@@ -580,7 +580,6 @@ class PettyCashService(
             .singleOrNull() ?: throw ApiErrors.allocationNotFound()
 
     private fun toAllocationRows(rows: List<ResultRow>): List<PettyCashAllocationRow> {
-        val users = Names.users(rows.flatMap { listOfNotNull(it[PettyCashAllocationsTable.sentByUserId], it[PettyCashAllocationsTable.respondedByUserId]) })
         return rows.map { row ->
             PettyCashAllocationRow(
                 id = row[PettyCashAllocationsTable.id].value, ref = row[PettyCashAllocationsTable.ref], date = row[PettyCashAllocationsTable.sentAt],
@@ -588,8 +587,8 @@ class PettyCashService(
                     ?: "${row[sourceCash[CashAccountsTable.code]]} ${row[sourceCash[CashAccountsTable.name]]}",
                 destinationLocationId = row[PettyCashAllocationsTable.destinationLocationId], branch = row[LocationsTable.name],
                 destinationAccountCode = row[destinationAccount[CashAccountsTable.code]], purpose = row[PettyCashAllocationsTable.purpose],
-                sentBy = users[row[PettyCashAllocationsTable.sentByUserId]], amount = row[PettyCashAllocationsTable.amount],
-                status = row[PettyCashAllocationsTable.status], respondedBy = row[PettyCashAllocationsTable.respondedByUserId]?.let(users::get),
+                sentBy = UserRef(row[PettyCashAllocationsTable.sentByUserId]), amount = row[PettyCashAllocationsTable.amount],
+                status = row[PettyCashAllocationsTable.status], respondedBy = UserRef.of(row[PettyCashAllocationsTable.respondedByUserId]),
                 respondedOn = row[PettyCashAllocationsTable.respondedAt], note = row[PettyCashAllocationsTable.note],
             )
         }

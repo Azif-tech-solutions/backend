@@ -1,5 +1,6 @@
 package com.zifiq.inventory.dto
 
+import com.zifiq.platform.directory.UserRef
 import jakarta.validation.constraints.DecimalMin
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
@@ -86,7 +87,7 @@ data class RefillSummary(
     val ref: String,
     val stockItemId: UUID,
     val quantity: BigDecimal,
-    val performedBy: UUID,
+    val performedBy: UserRef,
     val at: Instant,
 )
 
@@ -106,7 +107,7 @@ data class StockReceiptSummary(
     val unitCost: BigDecimal,
     val manufacturedDate: LocalDate?,
     val expiryDate: LocalDate?,
-    val verifiedByUserId: UUID?,
+    val verifiedBy: UserRef?,
     val offloadedAt: Instant?,
     val condition: String,
 )

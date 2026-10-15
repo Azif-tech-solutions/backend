@@ -1,5 +1,6 @@
 package com.zifiq.showroom.service
 
+import com.zifiq.platform.directory.UserRef
 import com.zifiq.common.money.Money
 import com.zifiq.inventory.repository.StockSql
 import com.zifiq.common.errors.ApiErrors
@@ -320,8 +321,7 @@ class CustomerReturnService(
             writeOffValue = header[CustomerReturnsTable.writeOffValue], walletBalanceBefore = header[CustomerReturnsTable.walletBalanceBefore],
             walletCredit = header[CustomerReturnsTable.totalValue], walletBalanceAfter = header[CustomerReturnsTable.walletBalanceAfter],
             status = header[CustomerReturnsTable.status], reversedReason = header[CustomerReturnsTable.reversedReason], reversedAt = header[CustomerReturnsTable.reversedAt],
-            processedByUserId = userId,
-            processedByName = AppUsersTable.select(AppUsersTable.displayName).where { AppUsersTable.id eq userId }.firstOrNull()?.get(AppUsersTable.displayName),
+            processedBy = UserRef(userId),
             createdAt = header[CustomerReturnsTable.createdAt],
         )
     }

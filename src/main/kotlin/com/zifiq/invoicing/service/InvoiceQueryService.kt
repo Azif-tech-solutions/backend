@@ -1,5 +1,6 @@
 package com.zifiq.invoicing.service
 
+import com.zifiq.platform.directory.UserRef
 import com.zifiq.platform.directory.Names
 import com.zifiq.account.spi.Channel
 import com.zifiq.common.money.Money
@@ -113,13 +114,12 @@ class InvoiceQueryService(
         val sorted = if (request.sort.isEmpty()) request.copy(sort = listOf(SortField("voidedAt", "desc"))) else request
         val page = listing.page(sorted, d, InvoicesTable.status eq "VOID")
         val rows = page.result.items
-        val users = Names.users(rows.mapNotNull { it[InvoicesTable.voidedByUserId]?.value })
         val replacements = numbers(rows.mapNotNull { it[InvoicesTable.replacedByInvoiceId] })
         val items = rows.map { row ->
             VoidedInvoiceRow(
                 id = row[InvoicesTable.id].value, number = row[InvoicesTable.number]!!, voidReason = row[InvoicesTable.voidReason],
                 customer = row[InvoicesTable.buyerName], issued = row[InvoicesTable.issueDate], total = row[InvoicesTable.taxInclusiveAmount],
-                voidedBy = row[InvoicesTable.voidedByUserId]?.value?.let(users::get), voidedAt = row[InvoicesTable.voidedAt],
+                voidedBy = UserRef.of(row[InvoicesTable.voidedByUserId]?.value), voidedAt = row[InvoicesTable.voidedAt],
                 replacedById = row[InvoicesTable.replacedByInvoiceId], replacedBy = row[InvoicesTable.replacedByInvoiceId]?.let(replacements::get),
             )
         }
@@ -293,7 +293,6 @@ class InvoiceQueryService(
             CreditNoteRef(it[CreditNotesTable.id].value, it[CreditNotesTable.number], it[CreditNotesTable.issuedAt], it[CreditNotesTable.reason],
                 it[CreditNotesTable.total], it[CreditNotesTable.appliedToInvoice], it[CreditNotesTable.excessRefunded])
         }
-        val users = Names.users(listOfNotNull(row[InvoicesTable.issuedByUserId]?.value, row[InvoicesTable.voidedByUserId]?.value))
         val linkedNumbers = numbers(listOfNotNull(row[InvoicesTable.reissueOfInvoiceId], row[InvoicesTable.replacedByInvoiceId]))
         val customerCode = row[InvoicesTable.customerId]?.let { runCatching { customers.get(it).code }.getOrNull() }
         val status = row[InvoicesTable.status]
@@ -306,7 +305,7 @@ class InvoiceQueryService(
             issueDate = row[InvoicesTable.issueDate], issueTime = row[InvoicesTable.issueTime], dueDate = row[InvoicesTable.dueDate],
             paymentTermsDays = row[InvoicesTable.paymentTermsDays], paymentTermsNote = row[InvoicesTable.paymentTermsNote],
             daysOverdue = row[d.daysOverdue],
-            issuedBy = row[InvoicesTable.issuedByUserId]?.value?.let(users::get), issuedAt = row[InvoicesTable.issuedAt], createdAt = row[InvoicesTable.createdAt],
+            issuedBy = UserRef.of(row[InvoicesTable.issuedByUserId]?.value), issuedAt = row[InvoicesTable.issuedAt], createdAt = row[InvoicesTable.createdAt],
             showroom = InvoiceLocation(row[InvoicesTable.locationId].value, row.getOrNull(LocationsTable.name)),
             issuer = issuerBlock(row),
             buyer = BuyerBlock(
@@ -335,7 +334,7 @@ class InvoiceQueryService(
                 lastAttemptAt = latest?.at, recipient = latest?.recipient ?: row[InvoicesTable.buyerEmail], attempts = latest?.attempts ?: 0,
             ),
             regulatory = RegulatoryBlock(row[InvoicesTable.irn], null, null, "Not in this phase", row[InvoicesTable.nrsSubmissionStatus]),
-            voidReason = row[InvoicesTable.voidReason], voidedBy = row[InvoicesTable.voidedByUserId]?.value?.let(users::get), voidedAt = row[InvoicesTable.voidedAt],
+            voidReason = row[InvoicesTable.voidReason], voidedBy = UserRef.of(row[InvoicesTable.voidedByUserId]?.value), voidedAt = row[InvoicesTable.voidedAt],
         )
     }
 

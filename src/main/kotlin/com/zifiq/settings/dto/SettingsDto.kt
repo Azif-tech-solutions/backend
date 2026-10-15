@@ -1,5 +1,6 @@
 package com.zifiq.settings.dto
 
+import com.zifiq.platform.directory.UserRef
 import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
@@ -66,7 +67,7 @@ data class CompanyProfileView(
     val documentFooter: String?,
     val financialYearStartMonth: Int,
     val nrsReadiness: NrsReadiness,
-    val updatedBy: String?,
+    val updatedBy: UserRef?,
     val updatedAt: Instant,
 )
 

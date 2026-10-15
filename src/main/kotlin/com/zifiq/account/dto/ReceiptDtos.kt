@@ -1,5 +1,6 @@
 package com.zifiq.account.dto
 
+import com.zifiq.platform.directory.UserRef
 import jakarta.validation.constraints.DecimalMax
 import jakarta.validation.constraints.DecimalMin
 import jakarta.validation.constraints.NotBlank
@@ -22,8 +23,7 @@ data class ReceiptRow(
     val locationName: String?,
     val cashAccountId: UUID?,
     val till: String?,
-    val cashierUserId: UUID,
-    val cashier: String?,
+    val cashier: UserRef,
     val customerId: UUID?,
     val customerName: String?,
     val channel: String,
@@ -38,7 +38,7 @@ data class ReceiptRow(
     val terminalRef: String?,
     val payerReference: String?,
     val confirmationStatus: String,
-    val reviewedBy: String?,
+    val reviewedBy: UserRef?,
     val reviewedAt: Instant?,
     val declineNote: String?,
     val status: String,
@@ -97,7 +97,7 @@ data class WalletFundingRow(
     val receiptRef: String?,
     val confirmationStatus: String?,
     val status: String,
-    val createdBy: String?,
+    val createdBy: UserRef,
 )
 
 // ---- Wallet withdrawal and deposit refund (docs/07 §4.13) ----
@@ -141,8 +141,8 @@ data class WalletWithdrawalRow(
     val paidVia: String?,
     /** "Verified" when an OTP authorised it, else "Not required". */
     val otp: String,
-    val authorisedBy: String?,
-    val processedBy: String?,
+    val authorisedBy: UserRef?,
+    val processedBy: UserRef,
     val auditStatus: String,
     val reversalReason: String?,
     val note: String?,
@@ -153,8 +153,7 @@ data class WalletWithdrawalRow(
 
 data class TenderablePayableRow(
     val date: LocalDate,
-    val cashierUserId: UUID,
-    val cashier: String?,
+    val cashier: UserRef,
     val ftf: BigDecimal,
     val cash: BigDecimal,
     val pos: BigDecimal,
@@ -168,8 +167,8 @@ data class TenderablePayableRow(
 )
 
 data class TenderableGeneralRow(
-    val cashierUserId: UUID,
-    val cashier: String?,
+    /** Null on the report's totals row (all cashiers). */
+    val cashier: UserRef?,
     val daysActive: Int,
     val ftf: BigDecimal,
     val cash: BigDecimal,
@@ -191,7 +190,7 @@ data class TenderableWalletFundRow(
     val method: String,
     val bank: String?,
     val amount: BigDecimal,
-    val confirmedBy: String?,
+    val confirmedBy: UserRef?,
     /** Confirmed, Awaiting confirmation, Declined. */
     val status: String,
 )
@@ -209,7 +208,7 @@ data class LocationVatRow(
     val rate: BigDecimal,
     val enabled: Boolean,
     val effectiveFrom: LocalDate?,
-    val updatedBy: String?,
+    val updatedBy: UserRef?,
     val scheduled: ScheduledVat?,
 )
 
@@ -230,7 +229,7 @@ data class LocationVatHistoryRow(
     val registration: String?,
     val effectiveFrom: LocalDate,
     val note: String?,
-    val updatedBy: String?,
+    val updatedBy: UserRef,
     val createdAt: Instant,
     /** In force today, scheduled for later, or superseded. */
     val state: String,

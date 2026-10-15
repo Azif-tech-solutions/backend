@@ -1,5 +1,6 @@
 package com.zifiq.showroom.dto
 
+import com.zifiq.platform.directory.UserRef
 import jakarta.validation.Valid
 import jakarta.validation.constraints.DecimalMax
 import jakarta.validation.constraints.DecimalMin
@@ -63,7 +64,7 @@ data class ShowroomDetail(
     val phone: String?,
     val email: String?,
     val managerName: String?,
-    val managerUserId: UUID?,
+    val manager: UserRef?,
     val dateOpened: LocalDate?,
     val storageCapacity: String?,
     val operatingHours: String?,
@@ -180,8 +181,7 @@ data class StockEntrySummary(
     val lines: List<StockEntryLineView>,
     val totalCost: BigDecimal,
     val totalInputVat: BigDecimal,
-    val enteredByUserId: UUID,
-    val enteredByName: String?,
+    val enteredBy: UserRef,
     val createdAt: Instant,
     val costVisible: Boolean,
     /** E.g. a price not changed because the item already has a price published for that date. */
@@ -209,7 +209,7 @@ data class StockEntryLineRow(
     val unitCost: BigDecimal,
     val lineCost: BigDecimal,
     val inputVatAmount: BigDecimal,
-    val enteredByName: String?,
+    val enteredBy: UserRef,
 )
 
 // ---- Storage-area moves (docs/05 §4.7) ----
@@ -241,7 +241,7 @@ data class AreaMoveSummary(
     val movedDate: LocalDate,
     val note: String?,
     val lines: List<AreaMoveLineView>,
-    val movedByUserId: UUID,
+    val movedBy: UserRef,
     val createdAt: Instant,
 )
 
@@ -314,8 +314,7 @@ data class ReturnSummary(
     val status: String,
     val reversedReason: String?,
     val reversedAt: Instant?,
-    val processedByUserId: UUID,
-    val processedByName: String?,
+    val processedBy: UserRef,
     val createdAt: Instant,
 )
 

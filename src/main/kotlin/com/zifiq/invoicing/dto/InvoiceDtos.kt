@@ -1,5 +1,6 @@
 package com.zifiq.invoicing.dto
 
+import com.zifiq.platform.directory.UserRef
 import com.zifiq.common.paging.PageResult
 import jakarta.validation.Valid
 import jakarta.validation.constraints.DecimalMin
@@ -206,7 +207,7 @@ data class InvoiceDetail(
     val paymentTermsDays: Int,
     val paymentTermsNote: String?,
     val daysOverdue: Int,
-    val issuedBy: String?,
+    val issuedBy: UserRef?,
     val issuedAt: Instant?,
     val createdAt: Instant,
     val showroom: InvoiceLocation,
@@ -219,7 +220,7 @@ data class InvoiceDetail(
     val delivery: InvoiceDelivery,
     val regulatory: RegulatoryBlock,
     val voidReason: String?,
-    val voidedBy: String?,
+    val voidedBy: UserRef?,
     val voidedAt: Instant?,
 )
 
@@ -238,7 +239,7 @@ data class VoidedInvoiceRow(
     val customer: String,
     val issued: LocalDate?,
     val total: BigDecimal,
-    val voidedBy: String?,
+    val voidedBy: UserRef?,
     val voidedAt: Instant?,
     val replacedById: UUID?,
     val replacedBy: String?,
@@ -359,7 +360,7 @@ data class CreditNoteDetail(
     val appliedToInvoice: BigDecimal,
     /** Credited to the customer's wallet because it was more than the invoice's balance. */
     val excessRefunded: BigDecimal,
-    val issuedBy: String?,
+    val issuedBy: UserRef,
     val issuedAt: Instant,
 )
 
@@ -376,7 +377,7 @@ data class CreditNoteRow(
     val total: BigDecimal,
     val appliedToInvoice: BigDecimal,
     val excessRefunded: BigDecimal,
-    val issuedBy: String?,
+    val issuedBy: UserRef,
     val issuedAt: Instant,
 )
 
@@ -400,7 +401,8 @@ data class DeliveryView(
     val status: String,
     val requestedAt: Instant,
     val sentAt: Instant?,
-    val requestedBy: String?,
+    /** Null for deliveries the system sent on its own (on issue, overdue reminders). */
+    val requestedBy: UserRef?,
 )
 
 data class DeliveryRow(

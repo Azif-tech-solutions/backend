@@ -1,5 +1,6 @@
 package com.zifiq.account.dto
 
+import com.zifiq.platform.directory.UserRef
 import com.zifiq.common.paging.PageResult
 import jakarta.validation.constraints.DecimalMin
 import jakarta.validation.constraints.NotBlank
@@ -40,7 +41,7 @@ data class PettyCashFundingRow(
     val transferOrChequeReference: String?,
     val authorisedBy: String?,
     val description: String?,
-    val fundedBy: String?,
+    val fundedBy: UserRef,
     val status: String,
     val reversalReason: String?,
     val createdAt: Instant,
@@ -151,10 +152,10 @@ data class PettyCashAllocationRow(
     val branch: String?,
     val destinationAccountCode: String,
     val purpose: String,
-    val sentBy: String?,
+    val sentBy: UserRef,
     val amount: BigDecimal,
     val status: String,
-    val respondedBy: String?,
+    val respondedBy: UserRef?,
     val respondedOn: Instant?,
     val note: String?,
 )
@@ -202,9 +203,9 @@ data class RunningCostView(
     val locationName: String?,
     val status: String,
     val exceedsMonthlyCap: Boolean,
-    val submittedBy: String?,
+    val submittedBy: UserRef?,
     val submittedAt: Instant?,
-    val approvedBy: String?,
+    val approvedBy: UserRef?,
     val approvedAt: Instant?,
     val rejectionReason: String?,
     val reversalReason: String?,
@@ -241,13 +242,13 @@ data class FundDisbursementRow(
     val channel: String,
     val sourceAccount: String?,
     val destinationAccount: String?,
-    val sentBy: String?,
+    val sentBy: UserRef,
     val sent: BigDecimal,
     val received: BigDecimal?,
     val shortfall: BigDecimal?,
     val shortfallReason: String?,
     val status: String,
-    val confirmedBy: String?,
+    val confirmedBy: UserRef?,
     val dateReceived: LocalDate?,
     val rejectionReason: String?,
 )
@@ -276,10 +277,10 @@ data class CashLodgementRow(
     val retained: BigDecimal,
     val bank: String?,
     val accountNumberMasked: String?,
-    val depositedBy: String?,
+    val depositedBy: UserRef,
     val teller: String?,
     val status: String,
-    val confirmedBy: String?,
+    val confirmedBy: UserRef?,
     val confirmedAt: Instant?,
     val rejectionReason: String?,
 )

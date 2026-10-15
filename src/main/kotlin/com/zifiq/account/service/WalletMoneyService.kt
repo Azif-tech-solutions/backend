@@ -1,5 +1,6 @@
 package com.zifiq.account.service
 
+import com.zifiq.platform.directory.UserRef
 import com.zifiq.platform.directory.Names
 import com.zifiq.common.money.Money
 import com.zifiq.account.dto.WalletFundingRequest
@@ -366,7 +367,6 @@ class WalletMoneyService(
             .singleOrNull() ?: throw ApiErrors.walletFundingNotFound()
 
     private fun toFundingRows(rows: List<ResultRow>): List<WalletFundingRow> {
-        val users = Names.users(rows.map { it[WalletFundingsTable.createdByUserId] })
         val locations = Names.locations(rows.mapNotNull { it[WalletFundingsTable.locationId] })
         return rows.map { row ->
             WalletFundingRow(
@@ -376,7 +376,7 @@ class WalletMoneyService(
                 locationId = row[WalletFundingsTable.locationId], locationName = row[WalletFundingsTable.locationId]?.let(locations::get),
                 receiptId = row[WalletFundingsTable.paymentReceiptId], receiptRef = row[fundingReceipt[PaymentReceiptsTable.ref]],
                 confirmationStatus = row[fundingReceipt[PaymentReceiptsTable.confirmationStatus]], status = row[WalletFundingsTable.status],
-                createdBy = users[row[WalletFundingsTable.createdByUserId]],
+                createdBy = UserRef(row[WalletFundingsTable.createdByUserId]),
             )
         }
     }
@@ -403,7 +403,6 @@ class WalletMoneyService(
     }
 
     private fun toWithdrawalRows(rows: List<ResultRow>): List<WalletWithdrawalRow> {
-        val users = Names.users(rows.flatMap { listOfNotNull(it[WalletWithdrawalsTable.createdByUserId], it[WalletWithdrawalsTable.authorisedByUserId]) })
         return rows.map { row ->
             WalletWithdrawalRow(
                 id = row[WalletWithdrawalsTable.id].value, ref = row[WalletWithdrawalsTable.ref], date = row[WalletWithdrawalsTable.withdrawalDate],
@@ -412,7 +411,7 @@ class WalletMoneyService(
                 balanceBefore = row[WalletWithdrawalsTable.balanceBefore], amount = row[WalletWithdrawalsTable.amount], balanceAfter = row[WalletWithdrawalsTable.balanceAfter],
                 payoutKind = row[WalletWithdrawalsTable.payoutKind], payoutAccount = row[payoutCash[CashAccountsTable.code]] ?: row[payoutBank[BankAccountsTable.code]],
                 paidVia = row[WalletWithdrawalsTable.paidVia], otp = if (row[WalletWithdrawalsTable.otpChallengeId] != null) "Verified" else "Not required",
-                authorisedBy = row[WalletWithdrawalsTable.authorisedByUserId]?.let(users::get), processedBy = users[row[WalletWithdrawalsTable.createdByUserId]],
+                authorisedBy = UserRef.of(row[WalletWithdrawalsTable.authorisedByUserId]), processedBy = UserRef(row[WalletWithdrawalsTable.createdByUserId]),
                 auditStatus = row[WalletWithdrawalsTable.auditStatus], reversalReason = row[WalletWithdrawalsTable.reversalReason], note = row[WalletWithdrawalsTable.note],
                 createdAt = row[WalletWithdrawalsTable.createdAt],
             )

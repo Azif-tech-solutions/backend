@@ -1,5 +1,6 @@
 package com.zifiq.account.service
 
+import com.zifiq.platform.directory.UserRef
 import com.zifiq.platform.directory.Names
 import com.zifiq.account.dto.ExchangeRateHistoryRow
 import com.zifiq.account.dto.ExchangeRateRow
@@ -62,7 +63,6 @@ class ExchangeRateService(
         val tracked = tracked()
         val zone = support.moduleSettings().zone()
         val latest = latestTwo(tracked)
-        val publishers = Names.users(latest.values.flatten().map { it.publishedBy }.distinct())
         tracked.map { code ->
             val currency = Currencies.get(code)
             val (now, before) = latest[code].orEmpty().let { it.getOrNull(0) to it.getOrNull(1) }
@@ -78,7 +78,7 @@ class ExchangeRateService(
                 move = move,
                 movePct = if (move != null && before!!.buy.signum() != 0) move.multiply(BigDecimal(100)).divide(before.buy, 2, RoundingMode.HALF_UP) else null,
                 updatedAt = now?.publishedAt,
-                updatedBy = now?.publishedBy?.let(publishers::get),
+                updatedBy = UserRef.of(now?.publishedBy),
                 freshness = now?.let { if (LocalDate.ofInstant(it.publishedAt, zone) == support.today()) "Current" else "Stale" },
             )
         }
@@ -118,7 +118,7 @@ class ExchangeRateService(
         )
         val stored = ExchangeRatesTable.selectAll().where { ExchangeRatesTable.publicationId eq publicationId }
             .map { PublishedRate(it[ExchangeRatesTable.id].value, it[ExchangeRatesTable.currencyCode], it[ExchangeRatesTable.buyRate], it[ExchangeRatesTable.sellRate]) }
-        RatePublicationView(publicationId, ref, now, Names.users(listOf(support.userId()))[support.userId()], stored)
+        RatePublicationView(publicationId, ref, now, UserRef(support.userId()), stored)
     }
 
     fun history(request: ListSearchRequest): PageResult<ExchangeRateHistoryRow> = tx.execute {
@@ -133,7 +133,6 @@ class ExchangeRateService(
         val joined = ExchangeRatesTable.join(ExchangeRatePublicationsTable, JoinType.INNER, ExchangeRatesTable.publicationId, ExchangeRatePublicationsTable.id)
         val sort = if (request.sort.isEmpty() && !parsed.isEmpty) historySearch.rank(parsed) + historyFilters.sort(emptyList(), context) else historyFilters.sort(request.sortParams, context)
         val page = Paging.fetch(joined.selectAll().where(condition).orderBy(*sort.toTypedArray()), PageRequest.of(request.page, request.size)) { it }
-        val names = Names.users(page.items.map { it[ExchangeRatePublicationsTable.publishedByUserId] })
         page.withItems(
             page.items.map {
                 ExchangeRateHistoryRow(
@@ -143,7 +142,7 @@ class ExchangeRateService(
                     buyRate = it[ExchangeRatesTable.buyRate],
                     sellRate = it[ExchangeRatesTable.sellRate],
                     publishedAt = it[ExchangeRatesTable.publishedAt],
-                    publishedBy = names[it[ExchangeRatePublicationsTable.publishedByUserId]],
+                    publishedBy = UserRef(it[ExchangeRatePublicationsTable.publishedByUserId]),
                 )
             },
         ).copy(meta = PageMeta(ignoredQualifiers = parsed.ignoredQualifiers))

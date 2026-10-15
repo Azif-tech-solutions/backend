@@ -1,5 +1,6 @@
 package com.zifiq.platform.documents
 
+import com.zifiq.platform.directory.UserRef
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.filter.FilterContext
 import com.zifiq.common.filter.FilterField
@@ -65,8 +66,7 @@ data class IssuedDocumentRow(
     val partyCustomerId: UUID?,
     /** Selling value, not a cost, so never masked; null for documents without one (transfer waybills). */
     val valueAmount: BigDecimal?,
-    val issuedByUserId: UUID,
-    val issuedByName: String?,
+    val issuedBy: UserRef,
     val issuedAt: Instant,
     val status: String,
     val reprintCount: Int,
@@ -202,8 +202,7 @@ class DocumentService(
         partyName = row[IssuedDocumentsTable.partyName],
         partyCustomerId = row[IssuedDocumentsTable.partyCustomerId],
         valueAmount = row[IssuedDocumentsTable.valueAmount],
-        issuedByUserId = row[IssuedDocumentsTable.issuedByUserId].value,
-        issuedByName = row.getOrNull(AppUsersTable.displayName),
+        issuedBy = UserRef(row[IssuedDocumentsTable.issuedByUserId].value),
         issuedAt = row[IssuedDocumentsTable.issuedAt],
         status = row[IssuedDocumentsTable.status],
         reprintCount = row[IssuedDocumentsTable.reprintCount],

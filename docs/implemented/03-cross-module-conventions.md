@@ -345,6 +345,10 @@ Only small, bounded reference lists stay unpaged (`{"data": [...]}`): VAT catego
 - **Cross-module joins in SQL** go through columns the owning module publishes in its spi for that purpose (`customers.spi.CustomerColumns`), never its internal tables.
 - **Caching.** `platform.security.AccessCaches` holds the lookups every request repeats (permission codes, location scope, storage areas, module setting values). Every key carries the tenant, and storage-area lookups key on the tenant the transaction's row-level security is enforcing (`TenantScopedTransaction.rlsTenant()`), so a cached value is only ever served to the tenant whose RLS produced it. Writers clear the affected entries at once; entries expire after 30 s (5–30 min for the location hierarchy) to bound staleness across app instances.
 
+### 5.1.2 Users in responses
+
+Every user a response mentions — who recorded, issued, approved, uploaded, voided, the cashier, a manager who is a user — is a `platform.directory.UserRef`, serialized as `{ "id", "name", "email" }`. Never a bare `…UserId` and never a bare display name. A service only writes `UserRef(id)` (or `UserRef.of(nullableId)`); `UserRefResolver`, a `ResponseBodyAdvice`, finds every reference in the response however deeply it is nested (pages, lists, maps, details) and fills them all with one primary-key query on `app_users` just before the response is written. So a page of 50 rows naming 50 users is one lookup, and no service resolves names itself. Output the HTTP layer doesn't see (a PDF, an e-mail) calls `UserRefs.resolve(model)` in its transaction and prints `ref.name`. Free-text names a user types (petty cash "approved by Mrs Okafor") stay strings; request bodies keep plain ids (`managerUserId`).
+
 ### 5.2 Simple filters (query parameters)
 
 Each endpoint declares a **`FilterSpec`**: the whitelisted filterable fields with type and operators. Simple filters use query parameters following one convention:

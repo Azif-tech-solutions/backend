@@ -1,5 +1,6 @@
 package com.zifiq.factory.dto
 
+import com.zifiq.platform.directory.UserRef
 import jakarta.validation.constraints.DecimalMin
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotEmpty
@@ -67,7 +68,7 @@ data class ProductionCostingSummary(
     val targetStockItemId: UUID,
     val batchSizeQty: BigDecimal,
     val status: String,
-    val computedByUserId: UUID,
+    val computedBy: UserRef,
     val createdAt: Instant,
 )
 
@@ -82,8 +83,8 @@ data class ProductionCostingDetail(
     val computedUnitCost: BigDecimal,
     val computedTotalCost: BigDecimal,
     val status: String,
-    val computedByUserId: UUID,
-    val approvedByUserId: UUID?,
+    val computedBy: UserRef,
+    val approvedBy: UserRef?,
     val approvedAt: Instant?,
     val rejectionReason: String?,
 )

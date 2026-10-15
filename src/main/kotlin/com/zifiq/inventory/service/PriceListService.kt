@@ -1,5 +1,6 @@
 package com.zifiq.inventory.service
 
+import com.zifiq.platform.directory.UserRef
 import com.zifiq.inventory.repository.StockSql
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.lessEq
 import com.zifiq.common.errors.ApiErrors
@@ -290,7 +291,7 @@ class PriceListService(
             effectiveFrom = row[StockItemPricesTable.effectiveFrom],
             batchRef = row[StockItemPricesTable.batchRef],
             note = row[StockItemPricesTable.note],
-            setByUserId = row[StockItemPricesTable.setByUserId].value,
+            setBy = UserRef(row[StockItemPricesTable.setByUserId].value),
             createdAt = row[StockItemPricesTable.createdAt],
             state = when {
                 row[StockItemPricesTable.effectiveFrom].isAfter(today) -> "SCHEDULED"

@@ -1,5 +1,6 @@
 package com.zifiq.customers.service
 
+import com.zifiq.platform.directory.UserRef
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.filter.FilterContext
 import com.zifiq.common.filter.FilterField
@@ -141,7 +142,7 @@ class CustomerLedgerService(
                 balanceAfter = row[CustomerLedgerEntriesTable.balanceAfter],
                 locationId = row[CustomerLedgerEntriesTable.locationId],
                 sourceModule = row[CustomerLedgerEntriesTable.sourceModule],
-                performedByUserId = row[CustomerLedgerEntriesTable.performedByUserId],
+                performedBy = UserRef.of(row[CustomerLedgerEntriesTable.performedByUserId]),
                 reversible = row[CustomerLedgerEntriesTable.sourceModule] == SOURCE_MODULE &&
                     type != LedgerEntryType.REVERSAL_CREDIT && type != LedgerEntryType.REVERSAL_DEBIT && id !in reversedBy,
                 reversedByEntryId = reversedBy[id],

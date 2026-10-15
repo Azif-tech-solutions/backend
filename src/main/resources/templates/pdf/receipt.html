@@ -53,7 +53,7 @@
     <tr th:if="${receipt.receivingBank != null}"><td class="label">Bank</td><td th:text="${receipt.receivingBank}">BA-1</td></tr>
     <tr th:if="${receipt.locationName != null}"><td class="label">Location</td><td th:text="${receipt.locationName}">Showroom</td></tr>
     <tr th:if="${receipt.till != null}"><td class="label">Till</td><td th:text="${receipt.till}">TILL-1</td></tr>
-    <tr><td class="label">Cashier</td><td th:text="${receipt.cashier}">Cashier</td></tr>
+    <tr><td class="label">Cashier</td><td th:text="${receipt.cashier.name}">Cashier</td></tr>
 </table>
 
 <div class="amount" th:text="${amount}">₦0.00</div>

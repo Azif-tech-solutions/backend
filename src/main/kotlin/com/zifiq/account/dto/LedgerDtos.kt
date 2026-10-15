@@ -1,5 +1,6 @@
 package com.zifiq.account.dto
 
+import com.zifiq.platform.directory.UserRef
 import jakarta.validation.Valid
 import jakarta.validation.constraints.DecimalMin
 import jakarta.validation.constraints.NotBlank
@@ -242,7 +243,7 @@ data class ExchangeRateRow(
     val move: BigDecimal?,
     val movePct: BigDecimal?,
     val updatedAt: Instant?,
-    val updatedBy: String?,
+    val updatedBy: UserRef?,
     /** "Current" when published today (tenant time), "Stale" otherwise, null when never published. */
     val freshness: String?,
 )
@@ -257,7 +258,7 @@ data class PublishRatesRequest(@field:NotEmpty @field:Valid val rates: List<Rate
 
 data class PublishedRate(val id: UUID, val currencyCode: String, val buyRate: BigDecimal, val sellRate: BigDecimal)
 
-data class RatePublicationView(val id: UUID, val ref: String, val publishedAt: Instant, val publishedBy: String?, val rates: List<PublishedRate>)
+data class RatePublicationView(val id: UUID, val ref: String, val publishedAt: Instant, val publishedBy: UserRef, val rates: List<PublishedRate>)
 
 data class ExchangeRateHistoryRow(
     val id: UUID,
@@ -266,5 +267,5 @@ data class ExchangeRateHistoryRow(
     val buyRate: BigDecimal,
     val sellRate: BigDecimal,
     val publishedAt: Instant,
-    val publishedBy: String?,
+    val publishedBy: UserRef,
 )

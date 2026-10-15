@@ -1,5 +1,6 @@
 package com.zifiq.factory.service
 
+import com.zifiq.platform.directory.UserRef
 import com.zifiq.common.paging.PagingPolicy
 import com.zifiq.common.sql.Aggregates
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
@@ -157,7 +158,7 @@ class ProductionService(
             it[ProductionCostingsTable.createdAt] = Instant.now()
         }.value
 
-        ProductionCostingSummary(id, request.targetStockItemId, request.batchSizeQty, "PENDING", actor.userId, Instant.now())
+        ProductionCostingSummary(id, request.targetStockItemId, request.batchSizeQty, "PENDING", UserRef(actor.userId), Instant.now())
     }
 
     fun getCostingDetail(id: UUID): ProductionCostingDetail = tenantScopedTransaction.execute {
@@ -177,8 +178,8 @@ class ProductionService(
         computedUnitCost = row[ProductionCostingsTable.computedUnitCost],
         computedTotalCost = row[ProductionCostingsTable.computedTotalCost],
         status = row[ProductionCostingsTable.status],
-        computedByUserId = row[ProductionCostingsTable.computedByUserId].value,
-        approvedByUserId = row[ProductionCostingsTable.approvedByUserId]?.value,
+        computedBy = UserRef(row[ProductionCostingsTable.computedByUserId].value),
+        approvedBy = UserRef.of(row[ProductionCostingsTable.approvedByUserId]?.value),
         approvedAt = row[ProductionCostingsTable.approvedAt],
         rejectionReason = row[ProductionCostingsTable.rejectionReason],
     )

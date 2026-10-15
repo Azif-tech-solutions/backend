@@ -1,5 +1,6 @@
 package com.zifiq.settings.service
 
+import com.zifiq.platform.directory.UserRef
 import com.fasterxml.jackson.databind.JsonNode
 import com.zifiq.platform.events.DomainEvents
 import com.zifiq.platform.security.CurrentActorProvider
@@ -84,7 +85,7 @@ class ModuleSettingsService(
         min = value.definition.min,
         max = value.definition.max,
         options = value.definition.options,
-        updatedByUserId = value.updatedByUserId,
+        updatedBy = UserRef.of(value.updatedByUserId),
         updatedAt = value.updatedAt,
     )
 }

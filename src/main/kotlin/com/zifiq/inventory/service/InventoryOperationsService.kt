@@ -1,5 +1,6 @@
 package com.zifiq.inventory.service
 
+import com.zifiq.platform.directory.UserRef
 import com.zifiq.inventory.repository.StockSql
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.filter.FilterContext
@@ -604,8 +605,7 @@ class InventoryOperationsService(
             reason = row[QuantityAdjustmentsTable.reason],
             note = row[QuantityAdjustmentsTable.note],
             otpVerified = row[QuantityAdjustmentsTable.otpChallengeId] != null,
-            performedBy = row[QuantityAdjustmentsTable.performedByUserId].value,
-            performedByName = row.getOrNull(AppUsersTable.displayName),
+            performedBy = UserRef(row[QuantityAdjustmentsTable.performedByUserId].value),
             at = row[QuantityAdjustmentsTable.createdAt],
         )
     }

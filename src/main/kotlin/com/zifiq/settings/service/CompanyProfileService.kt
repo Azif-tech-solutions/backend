@@ -1,5 +1,6 @@
 package com.zifiq.settings.service
 
+import com.zifiq.platform.directory.UserRef
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.phone.PhoneNumbers
 import com.zifiq.common.tax.NigeriaLgasTable
@@ -211,9 +212,7 @@ class CompanyProfileService(
             documentFooter = row[CompanyProfilesTable.documentFooter],
             financialYearStartMonth = row[CompanyProfilesTable.financialYearStartMonth],
             nrsReadiness = NrsReadiness(ready = missing.isEmpty(), missing = missing),
-            updatedBy = row[CompanyProfilesTable.updatedByUserId]?.let { id ->
-                AppUsersTable.select(AppUsersTable.displayName).where { AppUsersTable.id eq id }.firstOrNull()?.get(AppUsersTable.displayName)
-            },
+            updatedBy = UserRef.of(row[CompanyProfilesTable.updatedByUserId]),
             updatedAt = row[CompanyProfilesTable.updatedAt],
         )
     }

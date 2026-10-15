@@ -1,5 +1,6 @@
 package com.zifiq.platform.views
 
+import com.zifiq.platform.directory.UserRef
 import com.fasterxml.jackson.databind.JsonNode
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.json.Json
@@ -71,7 +72,7 @@ data class SavedView(
     val visibility: ViewVisibility,
     val definition: JsonNode,
     val isDefault: Boolean,
-    val ownerUserId: UUID,
+    val owner: UserRef,
     val mine: Boolean,
     val updatedAt: Instant,
 )
@@ -184,7 +185,7 @@ class SavedViewService(
         visibility = ViewVisibility.valueOf(row[SavedViewsTable.visibility]),
         definition = row[SavedViewsTable.definition],
         isDefault = row[SavedViewsTable.isDefault] && row[SavedViewsTable.ownerUserId] == userId,
-        ownerUserId = row[SavedViewsTable.ownerUserId],
+        owner = UserRef(row[SavedViewsTable.ownerUserId]),
         mine = row[SavedViewsTable.ownerUserId] == userId,
         updatedAt = row[SavedViewsTable.updatedAt],
     )

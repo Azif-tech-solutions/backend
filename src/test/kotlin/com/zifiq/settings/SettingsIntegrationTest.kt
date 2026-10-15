@@ -1,5 +1,6 @@
 package com.zifiq.settings
 
+import com.zifiq.platform.directory.UserRefs
 import com.zifiq.settings.service.CompanyLogos
 import com.zifiq.platform.InMemoryObjectStorage
 import com.zifiq.platform.companyProfiles
@@ -153,7 +154,11 @@ class SettingsIntegrationTest : PostgresIntegrationTest() {
         assertThat(view.email).isEqualTo("info@zif.ng")
         assertThat(view.stateName).isEqualTo("Abia")
         assertThat(view.lgaName).isEqualTo("Aba North")
-        assertThat(view.updatedBy).isEqualTo("Alice Admin")
+        // The editor is a user reference; one lookup fills in name and e-mail (the HTTP layer does this for every response).
+        assertThat(view.updatedBy!!.id).isEqualTo(admin)
+        tx.execute { UserRefs.resolve(view) }
+        assertThat(view.updatedBy!!.name).isEqualTo("Alice Admin")
+        assertThat(view.updatedBy!!.email).isEqualTo("st-$admin@test.com")
         assertThat(view.nrsReadiness.missing).containsExactlyInAnyOrder("nrsBusinessId", "businessDescription")
         assertThat(sql("select phone_e164 from company_profiles") { it.next(); it.getString(1) }).isEqualTo("+2348034127781")
 

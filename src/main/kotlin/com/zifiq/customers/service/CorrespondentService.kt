@@ -1,5 +1,6 @@
 package com.zifiq.customers.service
 
+import com.zifiq.platform.directory.UserRef
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.Expression
 import com.zifiq.common.paging.PagingPolicy
@@ -328,7 +329,7 @@ class CorrespondentService(
                     locationName = it.getOrNull(LocationsTable.name),
                     effectiveFrom = it[CorrespondentAssignmentHistoryTable.effectiveFrom],
                     note = it[CorrespondentAssignmentHistoryTable.note],
-                    performedByUserId = it[CorrespondentAssignmentHistoryTable.performedByUserId],
+                    performedBy = UserRef(it[CorrespondentAssignmentHistoryTable.performedByUserId]),
                     createdAt = it[CorrespondentAssignmentHistoryTable.createdAt],
                 )
             }

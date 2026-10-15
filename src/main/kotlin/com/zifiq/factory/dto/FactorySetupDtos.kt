@@ -1,5 +1,6 @@
 package com.zifiq.factory.dto
 
+import com.zifiq.platform.directory.UserRef
 import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Pattern
@@ -37,7 +38,7 @@ data class FactorySummary(
     val address: String?,
     val state: String?,
     val phone: String?,
-    val managerUserId: UUID?,
+    val manager: UserRef?,
     val vatRate: BigDecimal,
     val vatEnabled: Boolean,
     val vatRegistrationNumber: String?,

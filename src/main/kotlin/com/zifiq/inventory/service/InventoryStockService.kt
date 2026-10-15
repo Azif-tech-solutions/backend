@@ -1,5 +1,6 @@
 package com.zifiq.inventory.service
 
+import com.zifiq.platform.directory.UserRef
 import com.zifiq.inventory.repository.StockSql
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.lessEq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
@@ -215,7 +216,7 @@ class InventoryStockService(
             summary = "$ref: ${request.quantity.stripTrailingZeros().toPlainString()} finished product received into stock",
             payload = mapOf("quantity" to request.quantity), locationId = request.locationId,
         )
-        RefillSummary(ref, request.stockItemId, request.quantity, actor.userId, Instant.now())
+        RefillSummary(ref, request.stockItemId, request.quantity, UserRef(actor.userId), Instant.now())
     }
 
     fun refillRawMaterial(request: RawMaterialRefillRequest): StockReceiptSummary = tenantScopedTransaction.execute {
@@ -301,7 +302,7 @@ class InventoryStockService(
         unitCost = row[StockReceiptsTable.unitCost],
         manufacturedDate = row[StockReceiptsTable.manufacturedDate],
         expiryDate = row[StockReceiptsTable.expiryDate],
-        verifiedByUserId = row[StockReceiptsTable.verifiedByUserId]?.value,
+        verifiedBy = UserRef.of(row[StockReceiptsTable.verifiedByUserId]?.value),
         offloadedAt = row[StockReceiptsTable.offloadedAt],
         condition = row[StockReceiptsTable.condition],
     )

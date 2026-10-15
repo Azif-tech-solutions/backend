@@ -1,5 +1,6 @@
 package com.zifiq.account.service
 
+import com.zifiq.platform.directory.UserRef
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.Expression
@@ -89,7 +90,7 @@ class TenderableService(
             .orderBy(day to SortOrder.DESC, AppUsersTable.displayName to SortOrder.ASC_NULLS_LAST, PaymentReceiptsTable.cashierUserId to SortOrder.ASC)
         Paging.fetch(query, paging) { row ->
             val k = t.read(row)
-            TenderablePayableRow(LocalDate.parse(row[day]), row[PaymentReceiptsTable.cashierUserId], row[AppUsersTable.displayName],
+            TenderablePayableRow(LocalDate.parse(row[day]), UserRef(row[PaymentReceiptsTable.cashierUserId]),
                 k.ftf, k.cash, k.pos, k.wallet, k.deposit, k.refund, Money.round(k.total), k.pending, k.declined)
         }
     }
@@ -107,12 +108,12 @@ class TenderableService(
             .orderBy(AppUsersTable.displayName to SortOrder.ASC_NULLS_FIRST, PaymentReceiptsTable.cashierUserId to SortOrder.ASC)
             .map { row ->
                 val k = t.read(row)
-                TenderableGeneralRow(row[PaymentReceiptsTable.cashierUserId], row[AppUsersTable.displayName], Aggregates.long(row, days).toInt(),
+                TenderableGeneralRow(UserRef(row[PaymentReceiptsTable.cashierUserId]), Aggregates.long(row, days).toInt(),
                     k.ftf, k.cash, k.pos, k.wallet, k.deposit, k.refund, Money.round(k.total))
             }
         val all = PaymentReceiptsTable.select(listOf(count, days) + t.all).where(condition).single()
         val totals = if (Aggregates.long(all, count) == 0L) null else t.read(all).let { k ->
-            TenderableGeneralRow(UUID(0, 0), "All cashiers", Aggregates.long(all, days).toInt(), k.ftf, k.cash, k.pos, k.wallet, k.deposit, k.refund, Money.round(k.total))
+            TenderableGeneralRow(null, Aggregates.long(all, days).toInt(), k.ftf, k.cash, k.pos, k.wallet, k.deposit, k.refund, Money.round(k.total))
         }
         TenderableGeneralReport(mapOf("from" to from, "to" to to), perCashier, totals)
     }
@@ -138,7 +139,6 @@ class TenderableService(
         val receipts = PaymentReceiptsTable.selectAll().where { PaymentReceiptsTable.id inList fundings.map { it[WalletFundingsTable.paymentReceiptId] }.ifEmpty { listOf(UUID(0, 0)) } }
             .associateBy { it[PaymentReceiptsTable.id].value }
         val banks = BankAccountsTable.selectAll().where { BankAccountsTable.tenantId eq support.tenantId() }.associate { it[BankAccountsTable.id].value to "${it[BankAccountsTable.code]} ${it[BankAccountsTable.bankName]}" }
-        val reviewers = Names.users(receipts.values.mapNotNull { it[PaymentReceiptsTable.reviewedByUserId] } + fundings.map { it[WalletFundingsTable.createdByUserId] })
         val fromFundings = fundings.map { row ->
             val receipt = receipts[row[WalletFundingsTable.paymentReceiptId]]
             TenderableWalletFundRow(
@@ -146,7 +146,7 @@ class TenderableService(
                 dealer = "${row[WalletFundingsTable.customerCode]} ${row[WalletFundingsTable.customerName]}",
                 method = Channel.labelOf(row[WalletFundingsTable.channel]),
                 bank = receipt?.get(PaymentReceiptsTable.receivingBankAccountId)?.let(banks::get), amount = row[WalletFundingsTable.amount],
-                confirmedBy = receipt?.get(PaymentReceiptsTable.reviewedByUserId)?.let(reviewers::get) ?: if (row[WalletFundingsTable.channel] == "CASH") reviewers[row[WalletFundingsTable.createdByUserId]] else null,
+                confirmedBy = UserRef.of(receipt?.get(PaymentReceiptsTable.reviewedByUserId) ?: row[WalletFundingsTable.createdByUserId].takeIf { row[WalletFundingsTable.channel] == "CASH" }),
                 status = when (row[WalletFundingsTable.status]) { "CONFIRMED" -> "Confirmed"; "AWAITING_CONFIRMATION" -> "Awaiting confirmation"; "DECLINED" -> "Declined"; else -> "Voided" },
             )
         }
@@ -242,7 +242,6 @@ class LocationVatService(
         val settings = LocationVatSettingsTable.selectAll()
             .where { (LocationVatSettingsTable.tenantId eq support.tenantId()) and (LocationVatSettingsTable.locationId inList locations.map { it[LocationsTable.id].value }.ifEmpty { listOf(UUID(0, 0)) }) }
             .toList().groupBy { it[LocationVatSettingsTable.locationId] }
-        val users = Names.users(settings.values.flatten().map { it[LocationVatSettingsTable.updatedByUserId] })
         val rows = locations.map { location ->
             val id = location[LocationsTable.id].value
             val all = settings[id].orEmpty()
@@ -253,7 +252,7 @@ class LocationVatService(
                 registration = current?.get(LocationVatSettingsTable.vatRegistrationNumber) ?: location[LocationsTable.vatRegistrationNumber],
                 rate = current?.get(LocationVatSettingsTable.vatRate) ?: location[LocationsTable.vatRate],
                 enabled = current?.get(LocationVatSettingsTable.vatEnabled) ?: location[LocationsTable.vatEnabled],
-                effectiveFrom = current?.get(LocationVatSettingsTable.effectiveFrom), updatedBy = current?.get(LocationVatSettingsTable.updatedByUserId)?.let(users::get),
+                effectiveFrom = current?.get(LocationVatSettingsTable.effectiveFrom), updatedBy = UserRef.of(current?.get(LocationVatSettingsTable.updatedByUserId)),
                 scheduled = next?.let { ScheduledVat(it[LocationVatSettingsTable.vatRate], it[LocationVatSettingsTable.vatEnabled], it[LocationVatSettingsTable.effectiveFrom]) },
             )
         }
@@ -294,13 +293,12 @@ class LocationVatService(
         val rows = LocationVatSettingsTable.selectAll()
             .where { (LocationVatSettingsTable.tenantId eq support.tenantId()) and (LocationVatSettingsTable.locationId eq locationId) }
             .orderBy(LocationVatSettingsTable.effectiveFrom to SortOrder.DESC).toList()
-        val users = Names.users(rows.map { it[LocationVatSettingsTable.updatedByUserId] })
         val inForce = rows.firstOrNull { !it[LocationVatSettingsTable.effectiveFrom].isAfter(today) }?.get(LocationVatSettingsTable.id)?.value
         rows.map {
             LocationVatHistoryRow(
                 id = it[LocationVatSettingsTable.id].value, enabled = it[LocationVatSettingsTable.vatEnabled], rate = it[LocationVatSettingsTable.vatRate],
                 registration = it[LocationVatSettingsTable.vatRegistrationNumber], effectiveFrom = it[LocationVatSettingsTable.effectiveFrom], note = it[LocationVatSettingsTable.note],
-                updatedBy = users[it[LocationVatSettingsTable.updatedByUserId]], createdAt = it[LocationVatSettingsTable.createdAt],
+                updatedBy = UserRef(it[LocationVatSettingsTable.updatedByUserId]), createdAt = it[LocationVatSettingsTable.createdAt],
                 state = when {
                     it[LocationVatSettingsTable.effectiveFrom].isAfter(today) -> "Scheduled"
                     it[LocationVatSettingsTable.id].value == inForce -> "In force"

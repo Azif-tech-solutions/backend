@@ -1,8 +1,9 @@
 package com.zifiq.account.service
 
+import com.zifiq.platform.directory.UserRef
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.neq
 import com.zifiq.common.sql.Aggregates
-import com.zifiq.platform.directory.Names
+import com.zifiq.platform.directory.UserRefs
 import com.zifiq.common.money.Money
 import com.zifiq.account.dto.ConfirmationStats
 import com.zifiq.account.dto.OtherIncomeRequest
@@ -242,7 +243,7 @@ class ReceiptService(
         val model = tx.execute {
             val receipt = writer.row(id)
             assertVisible(receipt)
-            val row = rowView(id)
+            val row = rowView(id).also(UserRefs::resolve)
             val company = companyProfile.get()
             val stamp = when {
                 row.status == "VOIDED" -> "Void"
@@ -352,20 +353,19 @@ class ReceiptService(
     private fun rowView(id: UUID): ReceiptRow = toRows(joined().selectAll().where { PaymentReceiptsTable.id eq id }.toList()).single()
 
     private fun toRows(rows: List<ResultRow>): List<ReceiptRow> {
-        val users = Names.users(rows.flatMap { listOfNotNull(it[PaymentReceiptsTable.cashierUserId], it[PaymentReceiptsTable.reviewedByUserId]) })
         return rows.map { row ->
             ReceiptRow(
                 id = row[PaymentReceiptsTable.id].value, ref = row[PaymentReceiptsTable.ref], kind = row[PaymentReceiptsTable.kind], receivedAt = row[PaymentReceiptsTable.receivedAt],
                 locationId = row[PaymentReceiptsTable.locationId], locationName = row.getOrNull(LocationsTable.name),
                 cashAccountId = row[PaymentReceiptsTable.cashAccountId], till = row.getOrNull(till[CashAccountsTable.code]),
-                cashierUserId = row[PaymentReceiptsTable.cashierUserId], cashier = users[row[PaymentReceiptsTable.cashierUserId]],
+                cashier = UserRef(row[PaymentReceiptsTable.cashierUserId]),
                 customerId = row[PaymentReceiptsTable.customerId], customerName = row[PaymentReceiptsTable.customerName],
                 channel = row[PaymentReceiptsTable.channel], amount = row[PaymentReceiptsTable.amount], sourceModule = row[PaymentReceiptsTable.sourceModule],
                 sourceType = row[PaymentReceiptsTable.sourceType], sourceRef = row[PaymentReceiptsTable.sourceRef], incomeCategory = row[PaymentReceiptsTable.incomeCategory],
                 description = row[PaymentReceiptsTable.description], receivingBankAccountId = row[PaymentReceiptsTable.receivingBankAccountId],
                 receivingBank = row.getOrNull(bank[BankAccountsTable.code])?.let { "$it ${row[bank[BankAccountsTable.bankName]]}" },
                 terminalRef = row[PaymentReceiptsTable.terminalRef], payerReference = row[PaymentReceiptsTable.payerReference],
-                confirmationStatus = row[PaymentReceiptsTable.confirmationStatus], reviewedBy = row[PaymentReceiptsTable.reviewedByUserId]?.let(users::get),
+                confirmationStatus = row[PaymentReceiptsTable.confirmationStatus], reviewedBy = UserRef.of(row[PaymentReceiptsTable.reviewedByUserId]),
                 reviewedAt = row[PaymentReceiptsTable.reviewedAt], declineNote = row[PaymentReceiptsTable.declineNote], status = row[PaymentReceiptsTable.status],
                 voidReason = row[PaymentReceiptsTable.voidReason],
             )

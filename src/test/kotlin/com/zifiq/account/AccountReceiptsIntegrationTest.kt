@@ -210,7 +210,7 @@ class AccountReceiptsIntegrationTest : PostgresIntegrationTest() {
         assertThat(funded.status).isEqualTo("CONFIRMED")
         assertThat(funded.confirmationStatus).isEqualTo("NOT_REQUIRED")
         assertThat(balanceOf(dealer) - before).isEqualByComparingTo("75000")
-        assertThat(receipts.list(ListSearchRequest()).items.map { it.cashierUserId }.toSet()).containsExactly(cashier)
+        assertThat(receipts.list(ListSearchRequest()).items.map { it.cashier.id }.toSet()).containsExactly(cashier)
 
         signIn(accounts)
         assertThat(cash.get(ikejaTill).currentBalance).isEqualByComparingTo("75000")

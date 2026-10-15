@@ -31,6 +31,9 @@ def ep(folder, name, method, path, auth=None, body=None, resp=None, status=200, 
 
 NOW = "2026-10-01T10:15:30Z"
 
+# Every user a response mentions comes back like this (platform.directory.UserRef).
+USER = {"id": "{{userId}}", "name": "Alice Admin", "email": "admin@apex.com"}
+
 
 def PAGED(items, summary=None, **extra):
     """A paged response example (common/paging PageResult), one page holding [items]."""
@@ -264,7 +267,7 @@ PROFILE = {
     "stateCode": "NG-AB", "stateName": "Abia", "lgaCode": "NG-AB-ANO", "lgaName": "Aba North", "countryCode": "NG",
     "hasLogo": False, "logoUrl": None, "logoUrlExpiresAt": None, "logoContentType": None, "logoInDocuments": False, "logoUpdatedAt": None, "documentFooter": "Goods sold in good condition are not returnable except under our returns policy.",
     "financialYearStartMonth": 1, "nrsReadiness": {"ready": False, "missing": ["nrsBusinessId"]},
-    "updatedBy": "Alice Admin", "updatedAt": NOW,
+    "updatedBy": USER, "updatedAt": NOW,
 }
 PROFILE_BODY = {k: PROFILE[k] for k in (
     "tradingName", "legalName", "registrationNumber", "tin", "vatRegistrationNumber", "businessDescription", "email", "phone",
@@ -349,7 +352,7 @@ ep(F, "C1 List Module Settings", "GET", "/api/v1/settings/module-settings",
    resp={"data": [{"module": "inventory", "editable": True, "settings": [
        {"key": "inventory.adjustment.otpThresholdQty", "label": "Quantity adjustments above this quantity need an Admin-issued OTP",
         "type": "DECIMAL", "value": 50, "default": 50, "isDefault": True, "min": 1, "max": 1000000, "options": [],
-        "updatedByUserId": None, "updatedAt": None}]}]},
+        "updatedBy": None, "updatedAt": None}]}]},
    desc="Grouped by module. Holders of settings.module-settings.manage see and may change everything; anyone else sees, read-only (editable: false), "
         "the settings of modules where they hold a <module>.*.manage permission. Filters: q (key, label, module), module, type, modified=true (changed from default).")
 
@@ -357,7 +360,7 @@ ep(F, "C2 Change Module Setting", "PUT", "/api/v1/settings/module-settings/inven
    body={"value": 100},
    resp={"data": {"key": "inventory.adjustment.otpThresholdQty", "label": "Quantity adjustments above this quantity need an Admin-issued OTP",
                   "type": "DECIMAL", "value": 100, "default": 50, "isDefault": False, "min": 1, "max": 1000000, "options": [],
-                  "updatedByUserId": "{{userId}}", "updatedAt": NOW}},
+                  "updatedBy": USER, "updatedAt": NOW}},
    tests=["const json = pm.response.json();", "pm.test('value changed', () => pm.expect(json.data.isDefault).to.eql(false));"],
    desc="Perm settings.module-settings.manage. Validated against the setting's type and bounds; takes effect on the next request, no restart.")
 
@@ -370,7 +373,7 @@ ep(F, "C3 Change Module Setting (error: out of range)", "PUT", "/api/v1/settings
 ep(F, "C4 Reset Module Setting", "DELETE", "/api/v1/settings/module-settings/inventory.adjustment.otpThresholdQty",
    resp={"data": {"key": "inventory.adjustment.otpThresholdQty", "label": "Quantity adjustments above this quantity need an Admin-issued OTP",
                   "type": "DECIMAL", "value": 50, "default": 50, "isDefault": True, "min": 1, "max": 1000000, "options": [],
-                  "updatedByUserId": None, "updatedAt": None}},
+                  "updatedBy": None, "updatedAt": None}},
    tests=["const json = pm.response.json();", "pm.test('back to the default', () => pm.expect(json.data.isDefault).to.eql(true));"],
    desc="Back to the default (the later Inventory folders rely on the default threshold of 50).")
 
@@ -418,7 +421,7 @@ ep("06 - Factory Setup", "Create Factory", "POST", "/api/v1/factory/setup/factor
    body={"name": "Apex Plant A", "address": "12 Industrial Way, Lagos", "state": "Lagos", "phone": "+234-800-100-0001",
          "vatRate": 7.5, "vatEnabled": True, "vatRegistrationNumber": "VAT-APEX-001"},
    resp={"data": {"id": "{{factoryId}}", "code": "FAC-1", "name": "Apex Plant A", "address": "12 Industrial Way, Lagos", "state": "Lagos",
-                  "phone": "+234-800-100-0001", "managerUserId": None, "vatRate": 7.5, "vatEnabled": True,
+                  "phone": "+234-800-100-0001", "manager": None, "vatRate": 7.5, "vatEnabled": True,
                   "vatRegistrationNumber": "VAT-APEX-001", "status": "ACTIVE"}},
    tests=["const json = pm.response.json();", "pm.collectionVariables.set('factoryId', json.data.id);"],
    desc="code auto-generates (FAC-1, FAC-2, ...) when omitted.")
@@ -426,32 +429,32 @@ ep("06 - Factory Setup", "Create Factory", "POST", "/api/v1/factory/setup/factor
 ep("06 - Factory Setup", "Create Second Factory (for Transfers/Trade)", "POST", "/api/v1/factory/setup/factories",
    body={"name": "Apex Plant B", "address": "4 Coastal Road, Port Harcourt", "state": "Rivers"},
    resp={"data": {"id": "{{factoryId2}}", "code": "FAC-2", "name": "Apex Plant B", "address": "4 Coastal Road, Port Harcourt",
-                  "state": "Rivers", "phone": None, "managerUserId": None, "vatRate": 7.5, "vatEnabled": True,
+                  "state": "Rivers", "phone": None, "manager": None, "vatRate": 7.5, "vatEnabled": True,
                   "vatRegistrationNumber": None, "status": "ACTIVE"}},
    tests=["const json = pm.response.json();", "pm.collectionVariables.set('factoryId2', json.data.id);"])
 
 ep("06 - Factory Setup", "List Factories", "GET", "/api/v1/factory/setup/factories",
    resp={"data": [{"id": "{{factoryId}}", "code": "FAC-1", "name": "Apex Plant A", "address": "12 Industrial Way, Lagos", "state": "Lagos",
-                   "phone": "+234-800-100-0001", "managerUserId": None, "vatRate": 7.5, "vatEnabled": True,
+                   "phone": "+234-800-100-0001", "manager": None, "vatRate": 7.5, "vatEnabled": True,
                    "vatRegistrationNumber": "VAT-APEX-001", "status": "ACTIVE"}]})
 
 ep("06 - Factory Setup", "Update Factory", "PUT", "/api/v1/factory/setup/factories/{{factoryId}}",
    body={"name": "Apex Plant A (Updated)", "address": "12 Industrial Way, Lagos", "state": "Lagos", "phone": "+234-800-100-0099",
          "vatRate": 7.5, "vatEnabled": True, "vatRegistrationNumber": "VAT-APEX-001"},
    resp={"data": {"id": "{{factoryId}}", "code": "FAC-1", "name": "Apex Plant A (Updated)", "address": "12 Industrial Way, Lagos",
-                  "state": "Lagos", "phone": "+234-800-100-0099", "managerUserId": None, "vatRate": 7.5, "vatEnabled": True,
+                  "state": "Lagos", "phone": "+234-800-100-0099", "manager": None, "vatRate": 7.5, "vatEnabled": True,
                   "vatRegistrationNumber": "VAT-APEX-001", "status": "ACTIVE"}})
 
 ep("06 - Factory Setup", "Update Factory Status", "PUT", "/api/v1/factory/setup/factories/{{factoryId}}/status",
    body={"status": "SUSPENDED"},
    resp={"data": {"id": "{{factoryId}}", "code": "FAC-1", "name": "Apex Plant A (Updated)", "address": "12 Industrial Way, Lagos",
-                  "state": "Lagos", "phone": "+234-800-100-0099", "managerUserId": None, "vatRate": 7.5, "vatEnabled": True,
+                  "state": "Lagos", "phone": "+234-800-100-0099", "manager": None, "vatRate": 7.5, "vatEnabled": True,
                   "vatRegistrationNumber": "VAT-APEX-001", "status": "SUSPENDED"}})
 
 ep("06 - Factory Setup", "Reactivate Factory", "PUT", "/api/v1/factory/setup/factories/{{factoryId}}/status",
    body={"status": "ACTIVE"},
    resp={"data": {"id": "{{factoryId}}", "code": "FAC-1", "name": "Apex Plant A (Updated)", "address": "12 Industrial Way, Lagos",
-                  "state": "Lagos", "phone": "+234-800-100-0099", "managerUserId": None, "vatRate": 7.5, "vatEnabled": True,
+                  "state": "Lagos", "phone": "+234-800-100-0099", "manager": None, "vatRate": 7.5, "vatEnabled": True,
                   "vatRegistrationNumber": "VAT-APEX-001", "status": "ACTIVE"}},
    desc="Back to ACTIVE: a SUSPENDED location can't move stock (transfers, adjustments), and the following folders use this factory.")
 
@@ -562,7 +565,7 @@ ep("07 - Inventory Stock", "Reactivate Stock Item", "PUT", "/api/v1/inventory/st
 
 ep("07 - Inventory Stock", "Refill Finished Product", "POST", "/api/v1/inventory/stock/refill/finished-product",
    body={"locationId": "{{factoryId}}", "stockItemId": "{{finishedProductId}}", "quantity": 50, "note": "Initial stocking"},
-   resp={"data": {"ref": "RF-1", "stockItemId": "{{finishedProductId}}", "quantity": 50, "performedBy": "{{userId}}", "at": NOW}})
+   resp={"data": {"ref": "RF-1", "stockItemId": "{{finishedProductId}}", "quantity": 50, "performedBy": USER, "at": NOW}})
 
 ep("07 - Inventory Stock", "Refill Raw Material (Receive)", "POST", "/api/v1/inventory/stock/refill/raw-material",
    body={"locationId": "{{factoryId}}", "stockItemId": "{{rawMaterialId}}", "supplierId": "{{supplierId}}",
@@ -570,7 +573,7 @@ ep("07 - Inventory Stock", "Refill Raw Material (Receive)", "POST", "/api/v1/inv
          "manufacturedDate": "2026-09-01", "expiryDate": "2027-09-01"},
    resp={"data": {"id": "{{stockReceiptId}}", "ref": "DL-1", "stockItemId": "{{rawMaterialId}}", "supplierId": "{{supplierId}}",
                   "manufacturerId": "{{manufacturerId}}", "quantity": 100.000, "unitCost": 5.00, "manufacturedDate": "2026-09-01",
-                  "expiryDate": "2027-09-01", "verifiedByUserId": None, "offloadedAt": None, "condition": "PENDING_VERIFICATION"}},
+                  "expiryDate": "2027-09-01", "verifiedBy": None, "offloadedAt": None, "condition": "PENDING_VERIFICATION"}},
    tests=["const json = pm.response.json();", "pm.collectionVariables.set('stockReceiptId', json.data.id);"],
    desc="This is also the Material/Recipe Receive Report's data source (same table, see List Stock Receipts).")
 
@@ -578,13 +581,13 @@ ep("07 - Inventory Stock", "List Stock Receipts (Material Receive Report)", "GET
    query=[{"key": "locationId", "value": "{{factoryId}}"}],
    resp=PAGED([{"id": "{{stockReceiptId}}", "ref": "DL-1", "stockItemId": "{{rawMaterialId}}", "supplierId": "{{supplierId}}",
                    "manufacturerId": "{{manufacturerId}}", "quantity": 100.000, "unitCost": 5.00, "manufacturedDate": "2026-09-01",
-                   "expiryDate": "2027-09-01", "verifiedByUserId": None, "offloadedAt": None, "condition": "PENDING_VERIFICATION"}]))
+                   "expiryDate": "2027-09-01", "verifiedBy": None, "offloadedAt": None, "condition": "PENDING_VERIFICATION"}]))
 
 ep("07 - Inventory Stock", "Verify Stock Receipt", "POST", "/api/v1/inventory/stock/receipts/{{stockReceiptId}}/verify",
    body={"condition": "ACCEPTED"},
    resp={"data": {"id": "{{stockReceiptId}}", "ref": "DL-1", "stockItemId": "{{rawMaterialId}}", "supplierId": "{{supplierId}}",
                   "manufacturerId": "{{manufacturerId}}", "quantity": 100.000, "unitCost": 5.00, "manufacturedDate": "2026-09-01",
-                  "expiryDate": "2027-09-01", "verifiedByUserId": "{{userId}}", "offloadedAt": NOW, "condition": "ACCEPTED"}})
+                  "expiryDate": "2027-09-01", "verifiedBy": USER, "offloadedAt": NOW, "condition": "ACCEPTED"}})
 
 ep("07 - Inventory Stock", "Stock Card (per-transaction)", "GET", "/api/v1/inventory/stock/card/{{rawMaterialId}}",
    query=[{"key": "locationId", "value": "{{factoryId}}"}],
@@ -646,20 +649,20 @@ ep("08 - Inventory Operations", "Post Quantity Adjustment (below OTP threshold)"
    body={"locationId": "{{factoryId}}", "stockItemId": "{{rawMaterialId}}", "direction": "NEGATIVE", "quantity": 3,
          "reason": "DAMAGED_BROKEN", "note": "Bag torn in storage", "otpChallengeId": None},
    resp={"data": {"ref": "QA-1", "stockItemId": "{{rawMaterialId}}", "direction": "NEGATIVE", "quantity": 3, "reason": "DAMAGED_BROKEN",
-                  "note": "Bag torn in storage", "performedBy": "{{userId}}", "at": NOW}},
+                  "note": "Bag torn in storage", "performedBy": USER, "at": NOW}},
    desc="Adjustments at or below the 50-unit threshold (FactoryOperationsService.ADJUSTMENT_OTP_THRESHOLD) need no OTP.")
 
 ep("08 - Inventory Operations", "Post Quantity Adjustment (above threshold, OTP-gated)", "POST", "/api/v1/inventory/quantity-adjustments",
    body={"locationId": "{{factoryId}}", "stockItemId": "{{rawMaterialId}}", "direction": "NEGATIVE", "quantity": 60,
          "reason": "STOCKTAKE_VARIANCE", "note": "Annual stocktake correction", "otpChallengeId": "{{otpChallengeId}}"},
    resp={"data": {"ref": "QA-2", "stockItemId": "{{rawMaterialId}}", "direction": "NEGATIVE", "quantity": 60, "reason": "STOCKTAKE_VARIANCE",
-                  "note": "Annual stocktake correction", "performedBy": "{{userId}}", "at": NOW}},
+                  "note": "Annual stocktake correction", "performedBy": USER, "at": NOW}},
    desc="Run the OTP folder's three requests first (request -> issue -> verify) so otpChallengeId is USED, or this returns 403 OTP_REQUIRED.")
 
 ep("08 - Inventory Operations", "List Quantity Adjustments", "GET", "/api/v1/inventory/quantity-adjustments",
    query=[{"key": "locationId", "value": "{{factoryId}}"}],
    resp={"data": [{"ref": "QA-1", "stockItemId": "{{rawMaterialId}}", "direction": "NEGATIVE", "quantity": 3, "reason": "DAMAGED_BROKEN",
-                   "note": "Bag torn in storage", "performedBy": "{{userId}}", "at": NOW}]})
+                   "note": "Bag torn in storage", "performedBy": USER, "at": NOW}]})
 
 # ============================== FACTORY PRODUCTION ==============================
 ep("09 - Factory Production", "Register Recipe", "POST", "/api/v1/factory/recipes",
@@ -682,7 +685,7 @@ ep("09 - Factory Production", "Run Cost Calculator (QC - blind)", "POST", "/api/
    body={"locationId": "{{factoryId}}", "targetStockItemId": "{{finishedProductId}}", "recipeId": None, "batchSizeQty": 50,
          "materials": [{"stockItemId": "{{rawMaterialId}}", "quantity": 20}], "overheads": [{"label": "Labour", "amount": 30}]},
    resp={"data": {"id": "{{costingId}}", "targetStockItemId": "{{finishedProductId}}", "batchSizeQty": 50, "status": "PENDING",
-                  "computedByUserId": "{{userId}}", "createdAt": NOW}},
+                  "computedBy": USER, "createdAt": NOW}},
    tests=["const json = pm.response.json();", "pm.collectionVariables.set('costingId', json.data.id);"],
    desc="Deliberately omits computedUnitCost/computedTotalCost -- QC (the typical caller) completes costing blind per the PRD. Pass either materials[] or recipeId.")
 
@@ -690,21 +693,21 @@ ep("09 - Factory Production", "Get Costing Detail (Management/Admin only)", "GET
    resp={"data": {"id": "{{costingId}}", "targetStockItemId": "{{finishedProductId}}", "recipeId": None, "batchSizeQty": 50.000,
                   "materialsSnapshot": [{"stockItemId": "{{rawMaterialId}}", "name": "Cocoa Powder", "quantity": 20, "unitCost": 5.0}],
                   "overheadSnapshot": [{"label": "Labour", "amount": 30}], "computedUnitCost": 2.60, "computedTotalCost": 130.00,
-                  "status": "PENDING", "computedByUserId": "{{userId}}", "approvedByUserId": None, "approvedAt": None, "rejectionReason": None}},
+                  "status": "PENDING", "computedBy": USER, "approvedBy": None, "approvedAt": None, "rejectionReason": None}},
    desc="Requires factory.costing.read -- this is the one endpoint that reveals the figure QC's own calculator just produced.")
 
 ep("09 - Factory Production", "Approve Costing", "POST", "/api/v1/factory/production/cost-calculator/{{costingId}}/approve",
    resp={"data": {"id": "{{costingId}}", "targetStockItemId": "{{finishedProductId}}", "recipeId": None, "batchSizeQty": 50.000,
                   "materialsSnapshot": [{"stockItemId": "{{rawMaterialId}}", "name": "Cocoa Powder", "quantity": 20, "unitCost": 5.0}],
                   "overheadSnapshot": [{"label": "Labour", "amount": 30}], "computedUnitCost": 2.60, "computedTotalCost": 130.00,
-                  "status": "APPROVED", "computedByUserId": "{{userId}}", "approvedByUserId": "{{userId}}", "approvedAt": NOW, "rejectionReason": None}})
+                  "status": "APPROVED", "computedBy": USER, "approvedBy": USER, "approvedAt": NOW, "rejectionReason": None}})
 
 ep("09 - Factory Production", "Reject Costing (alternative to Approve)", "POST", "/api/v1/factory/production/cost-calculator/{{costingId}}/reject",
    body={"rejectionReason": "Material substitution needed -- cost too high"},
    resp={"data": {"id": "{{costingId}}", "targetStockItemId": "{{finishedProductId}}", "recipeId": None, "batchSizeQty": 50.000,
                   "materialsSnapshot": [{"stockItemId": "{{rawMaterialId}}", "name": "Cocoa Powder", "quantity": 20, "unitCost": 5.0}],
                   "overheadSnapshot": [{"label": "Labour", "amount": 30}], "computedUnitCost": 2.60, "computedTotalCost": 130.00,
-                  "status": "REJECTED", "computedByUserId": "{{userId}}", "approvedByUserId": None, "approvedAt": None,
+                  "status": "REJECTED", "computedBy": USER, "approvedBy": None, "approvedAt": None,
                   "rejectionReason": "Material substitution needed -- cost too high"}},
    expect_error={"status": 409, "code": "ALREADY_DECIDED"},
    desc="Mutually exclusive with Approve -- in a full sequential run, Approve Costing (just above) already decided this same costing, "
@@ -890,7 +893,7 @@ CORR = {"id": "{{correspondentId}}", "code": "CR-1", "name": "Bisi Adeyemi", "ph
 CORR2 = dict(CORR, id="{{correspondent2Id}}", code="CR-2", name="Emeka Eze", phone="0805 999 0000", region="South West",
              responsibilities="Ibadan and Abeokuta walk-in accounts", customerCount=0, dealerCount=0)
 HISTORY_ROW = {"action": "ASSIGNED", "region": "Lagos Mainland", "locationId": "{{customerLocationId}}", "locationName": "Customer Home Plant",
-               "effectiveFrom": "2026-10-08", "note": None, "performedByUserId": "{{userId}}", "createdAt": NOW}
+               "effectiveFrom": "2026-10-08", "note": None, "performedBy": USER, "createdAt": NOW}
 CATEGORY = {"id": "{{diamondCategoryId}}", "name": "Diamond", "discountPct": 7.50, "suggestedCreditLimit": 5000000.00, "sortOrder": 5,
             "status": "ACTIVE", "dealerCount": 0}
 ENTRY = {"id": "{{adjustmentEntryId}}", "customerId": "{{dealerId}}", "balanceType": "WALLET", "entryType": "ADJUSTMENT_CREDIT",
@@ -898,7 +901,7 @@ ENTRY = {"id": "{{adjustmentEntryId}}", "customerId": "{{dealerId}}", "balanceTy
 RECLASS = {"id": "{{reclassificationId}}", "customerId": "{{customerId}}", "customerCode": "CU-1", "customerName": "Chidi Nwosu",
            "fromType": "ORDINARY_CUSTOMER", "toType": "SPECIAL_CUSTOMER", "direction": "PROMOTION", "reason": "MET_PURCHASE_VOLUME",
            "note": "Crossed N5m in 90 days", "effectiveFrom": "2026-10-08", "status": "APPLIED", "fromCreditLimit": 0.00,
-           "toCreditLimit": 0.00, "toDealerCategoryName": None, "walletBalanceCarriedOver": 0.00, "authorisedByUserId": "{{userId}}",
+           "toCreditLimit": 0.00, "toDealerCategoryName": None, "walletBalanceCarriedOver": 0.00, "authorisedBy": USER,
            "appliedAt": NOW, "createdAt": NOW}
 
 # ---- A. Setup ----
@@ -1184,7 +1187,7 @@ ep(C, "F5 Customer Ledger (wallet)", "GET", "/api/v1/customers/{{dealerId}}/ledg
                   "totalDebits": 0.00, "items": [{"id": "{{adjustmentEntryId}}", "entryDate": "2026-10-08", "reference": "WLT-1",
                   "entryType": "ADJUSTMENT_CREDIT", "displayType": "Adjustment", "direction": "CREDIT",
                   "description": "Adjustment: Opening balance migration", "paymentMethod": "Wallet adjustment", "amount": 2500.00,
-                  "balanceAfter": 2500.00, "locationId": "{{customerLocationId}}", "sourceModule": "customers", "performedByUserId": "{{userId}}",
+                  "balanceAfter": 2500.00, "locationId": "{{customerLocationId}}", "sourceModule": "customers", "performedBy": USER,
                   "reversible": True, "reversedByEntryId": None, "createdAt": NOW}],
                   "page": 0, "size": 50, "totalItems": 1, "totalPages": 1}},
    tests=["const json = pm.response.json();", "pm.test('closing balance 2500', () => pm.expect(json.data.closingBalance).to.eql(2500));"],
@@ -1350,8 +1353,8 @@ ep(C, "J2 My Ledger (self-service)", "GET", "/api/v1/customers/me/ledger",
 D = "13 - Documents"
 DOC = {"id": "8d2c1f0e-3333-4c4c-9a9a-000000000003", "ref": "WB-1", "docType": "WAYBILL", "sourceModule": "inventory",
        "sourceId": "{{transferId}}", "locationId": "{{factoryId}}", "locationName": "Apex Plant A (Updated)",
-       "partyName": "Apex Plant B", "partyCustomerId": None, "valueAmount": None, "issuedByUserId": "{{userId}}",
-       "issuedByName": "Alice Admin", "issuedAt": NOW, "status": "ISSUED", "reprintCount": 0, "pdfUrl": None}
+       "partyName": "Apex Plant B", "partyCustomerId": None, "valueAmount": None, "issuedBy": USER,
+       "issuedAt": NOW, "status": "ISSUED", "reprintCount": 0, "pdfUrl": None}
 
 ep(D, "List Issued Documents", "GET", "/api/v1/documents",
    query=[{"key": "type", "value": "WAYBILL"}],
@@ -1383,7 +1386,7 @@ ep(D, "Document Filter Metadata", "GET", "/api/v1/documents/filters",
 F = "14 - Files"
 FILE = {"id": "{{fileId}}", "purpose": "general.attachment", "originalName": "sample-attachment.pdf", "contentType": "application/pdf",
         "sizeBytes": 160, "sha256": "9f2b5c0e7a1d4b3c8e6f2a9d0c1b7e4f3a2d5c8b9e0f1a2b3c4d5e6f7a8b9c0d1", "status": "ACTIVE",
-        "linkedType": None, "linkedId": None, "uploadedByUserId": "{{userId}}", "uploadedAt": NOW}
+        "linkedType": None, "linkedId": None, "uploadedBy": USER, "uploadedAt": NOW}
 
 ep(F, "List Upload Purposes", "GET", "/api/v1/files/purposes",
    resp={"data": [{"code": "general.attachment", "label": "Attachment (PDF, image or CSV, up to 10 MB)",
@@ -1507,8 +1510,8 @@ ep(I, "Counted Adjustment", "POST", "/api/v1/inventory/quantity-adjustments",
    resp={"data": {"id": "5c1d2e3f-4444-4c4c-9a9a-000000000004", "ref": "QA-3", "locationId": "{{factoryId2}}", "locationName": "Apex Plant B",
                   "rootLocationName": "Apex Plant B", "stockItemId": "{{finishedProductId}}", "productCode": "ITM-2", "productName": "Premium Blend",
                   "unit": "Kilogram", "mode": "COUNTED", "direction": "NEGATIVE", "quantity": 2.000, "recordedQuantity": 4.000, "newQuantity": 2.000,
-                  "reason": "STOCKTAKE_VARIANCE", "note": "Monthly count", "otpVerified": False, "performedBy": "{{userId}}",
-                  "performedByName": "Alice Admin", "at": NOW}},
+                  "reason": "STOCKTAKE_VARIANCE", "note": "Monthly count", "otpVerified": False, "performedBy": USER,
+                  "at": NOW}},
    tests=["const json = pm.response.json();", "pm.test('difference worked out from what was on hand', () => pm.expect(json.data.newQuantity).to.eql(2));"],
    desc="mode COUNTED: send what was counted; the server locks the balance and posts the difference (here 4 on hand → 2 counted = −2). "
         "mode DELTA (default) takes direction + quantity. Above the OTP threshold an Admin-issued OTP is needed either way.")
@@ -1566,14 +1569,14 @@ ep(I, "Price List", "GET", "/api/v1/inventory/price-list", query=[{"key": "q", "
 
 ep(I, "Product Price History", "GET", "/api/v1/inventory/stock-items/{{finishedProductId}}/prices",
    resp=PAGED([{"priceId": "{{scheduledPriceId}}", "retailPrice": 5500.00, "dealerPrice": 5000.00, "effectiveFrom": "2099-01-01", "batchRef": "PL-2",
-                   "note": "Long-term test price", "setByUserId": "{{userId}}", "createdAt": NOW, "state": "SCHEDULED"}]),
+                   "note": "Long-term test price", "setBy": USER, "createdAt": NOW, "state": "SCHEDULED"}]),
    tests=["const json = pm.response.json();", "pm.collectionVariables.set('scheduledPriceId', json.data.items[0].id || json.data.items[0].priceId);",
           "pm.test('newest first: scheduled, then current', () => pm.expect(json.data.items.map(p => p.state)).to.eql(['SCHEDULED', 'CURRENT']));"])
 
 ep(I, "Change Scheduled Price", "PUT", "/api/v1/inventory/price-list/entries/{{scheduledPriceId}}",
    body={"retailPrice": 5600, "dealerPrice": 5100, "note": "Revised"},
    resp={"data": {"priceId": "{{scheduledPriceId}}", "retailPrice": 5600.00, "dealerPrice": 5100.00, "effectiveFrom": "2099-01-01", "batchRef": "PL-2",
-                  "note": "Revised", "setByUserId": "{{userId}}", "createdAt": NOW, "state": "SCHEDULED"}},
+                  "note": "Revised", "setBy": USER, "createdAt": NOW, "state": "SCHEDULED"}},
    desc="Only a price not yet in force can change (409 PRICE_ALREADY_EFFECTIVE otherwise).")
 
 ep(I, "Group Stock Card", "GET", "/api/v1/inventory/stock/group-card",
@@ -1595,7 +1598,7 @@ AREAS = [{"id": "{{floorAreaId}}", "code": "SHR-1-SF", "name": "Shop Floor", "ki
          {"id": "{{warehouseAreaId}}", "code": "SHR-1-WH", "name": "Warehouse", "kind": "WAREHOUSE", "status": "ACTIVE", "unitsOnHand": 0}]
 SHOWROOM = {"id": "{{showroomId}}", "code": "SHR-1", "name": "Showroom Ikeja", "stateCode": "NG-LA", "stateName": "Lagos",
             "streetAddress": "48 Allen Avenue", "city": "Ikeja", "phone": "0803 000 1111", "email": "ikeja@apex.ng", "managerName": "Ngozi Eze",
-            "managerUserId": None, "dateOpened": "2026-10-01", "storageCapacity": "1,200 cartons", "operatingHours": "Mon–Sat 8am–7pm",
+            "manager": None, "dateOpened": "2026-10-01", "storageCapacity": "1,200 cartons", "operatingHours": "Mon–Sat 8am–7pm",
             "status": "ACTIVE", "vatRate": 7.50, "vatEnabled": True, "vatRegistrationNumber": None, "areas": AREAS,
             "defaultReceivingLocationId": "{{warehouseAreaId}}", "defaultSellingLocationId": "{{floorAreaId}}", "createdAt": NOW, "warnings": []}
 ENTRY_LINE = {"lineNo": 1, "stockItemId": "{{directItemId}}", "code": "ITM-9", "description": "Local Groundnuts 500g", "quantity": 20.000,
@@ -1608,7 +1611,7 @@ RETURN = {"id": "{{returnId}}", "ref": "RT-1", "returnType": "NON_DEALER", "loca
                      "unitPrice": 5000.00, "lineValue": 5000.00, "reason": "PRODUCT_DEFECT", "condition": "RESALEABLE",
                      "intoLocationId": "{{warehouseAreaId}}", "intoLocationName": "Showroom Ikeja — Warehouse", "note": None}],
           "totalValue": 10000.00, "writeOffValue": 5000.00, "walletBalanceBefore": 0.00, "walletCredit": 10000.00, "walletBalanceAfter": 10000.00,
-          "status": "POSTED", "reversedReason": None, "reversedAt": None, "processedByUserId": "{{userId}}", "processedByName": "Alice Admin", "createdAt": NOW}
+          "status": "POSTED", "reversedReason": None, "reversedAt": None, "processedBy": USER, "createdAt": NOW}
 
 # ---- A. Showroom register ----
 ep(S, "A1 Register Showroom", "POST", "/api/v1/showroom/showrooms",
@@ -1680,7 +1683,7 @@ ep(S, "B1 Direct Stock Entry", "POST", "/api/v1/showroom/direct-entries",
                   "intoLocationId": "{{warehouseAreaId}}", "intoLocationName": "Showroom Ikeja — Warehouse", "supplierId": None,
                   "supplierName": "Independent local vendor", "manufacturerId": None, "partnerName": None, "partnerReference": "INV-7781",
                   "paymentTerms": "Cash on delivery", "checkedBy": None, "receivedDate": "2026-10-09", "lines": [ENTRY_LINE], "totalCost": 16000.00,
-                  "totalInputVat": 1200.00, "enteredByUserId": "{{userId}}", "enteredByName": "Alice Admin", "createdAt": NOW, "costVisible": True, "warnings": []}},
+                  "totalInputVat": 1200.00, "enteredBy": USER, "createdAt": NOW, "costVisible": True, "warnings": []}},
    tests=["const json = pm.response.json();", "pm.collectionVariables.set('entryId', json.data.id);",
           "pm.collectionVariables.set('directItemId', json.data.lines[0].stockItemId);",
           "pm.test('goes to the warehouse by default', () => pm.expect(json.data.intoLocationId).to.eql(pm.collectionVariables.get('warehouseAreaId')));"],
@@ -1692,7 +1695,7 @@ ep(S, "B2 Direct Entries Report", "GET", "/api/v1/showroom/direct-entries", quer
    resp=PAGED([{"entryId": "{{entryId}}", "lineId": "1a2b3c4d-7777-4c4c-9a9a-000000000007", "date": "2026-10-09", "ref": "DE-1", "kind": "DIRECT_ENTRY",
                "locationId": "{{showroomId}}", "locationName": "Showroom Ikeja", "stockItemId": "{{directItemId}}", "productCode": "ITM-9",
                "product": "Local Groundnuts 500g", "party": "Independent local vendor", "partnerReference": "INV-7781", "batchNo": None, "expiryDate": None,
-               "quantity": 20.000, "unit": "Kilogram", "unitCost": 800.00, "lineCost": 16000.00, "inputVatAmount": 1200.00, "enteredByName": "Alice Admin"}],
+               "quantity": 20.000, "unit": "Kilogram", "unitCost": 800.00, "lineCost": 16000.00, "inputVatAmount": 1200.00}],
              summary={"entries": 1, "lines": 1, "units": 20, "totalCost": 16000.00, "inputVat": 1200.00, "costVisible": True}),
    desc="One row per line. Filters: locationId, supplierId, stockItemId, receivedDate/from/to/period, expiryDate, hasBatch, inputVatRate, quantity, lineCost "
         "(cost), enteredBy. q: reference, invoice no., product, supplier, batch. Costs are 0 without factory.costing.read.")
@@ -1749,7 +1752,7 @@ ep(S, "D1 Move Warehouse → Shop Floor", "POST", "/api/v1/showroom/area-moves",
                   "fromLocationId": "{{warehouseAreaId}}", "fromLocationName": "Warehouse", "toLocationId": "{{floorAreaId}}", "toLocationName": "Shop Floor",
                   "movedDate": "2026-10-09", "note": "Restock the floor",
                   "lines": [{"lineNo": 1, "stockItemId": "{{finishedProductId}}", "code": "ITM-2", "name": "Premium Blend", "quantity": 2.000, "unit": "Kilogram"}],
-                  "movedByUserId": "{{userId}}", "createdAt": NOW}},
+                  "movedBy": USER, "createdAt": NOW}},
    desc="Perm showroom.stock.manage. Both areas must belong to the same showroom/factory (400 NOT_SAME_LOCATION). Leaving a QUARANTINE area needs a note.")
 
 ep(S, "D2 Move (error: more than available)", "POST", "/api/v1/showroom/area-moves",
@@ -2029,7 +2032,7 @@ ep(A, "D1 Current Exchange Rates", "GET", "/api/v1/account/exchange-rates",
 
 ep(A, "D2 Publish Exchange Rates", "POST", "/api/v1/account/exchange-rates/publish",
    body={"rates": [{"currencyCode": "USD", "buyRate": 1505.50, "sellRate": 1525.00}, {"currencyCode": "GBP", "buyRate": 1910.00, "sellRate": 1945.00}]},
-   resp={"data": {"id": "{{fxPublicationId}}", "ref": "FX-1", "publishedAt": NOW, "publishedBy": "Alice Admin", "rates": [
+   resp={"data": {"id": "{{fxPublicationId}}", "ref": "FX-1", "publishedAt": NOW, "publishedBy": USER, "rates": [
        {"id": "{{fxRateId}}", "currencyCode": "USD", "buyRate": 1505.500000, "sellRate": 1525.000000},
        {"id": "{{fxRateId}}", "currencyCode": "GBP", "buyRate": 1910.000000, "sellRate": 1945.000000}]}},
    tests=["const json = pm.response.json();", "pm.test('one publication with both rates', () => pm.expect(json.data.rates.length).to.eql(2));"],
@@ -2044,19 +2047,19 @@ ep(A, "D3 Publish Exchange Rates (error: untracked currency)", "POST", "/api/v1/
 
 ep(A, "D4 Exchange Rate History", "GET", "/api/v1/account/exchange-rates/history", query=[{"key": "currencyCode", "value": "USD"}],
    resp={"data": {"items": [{"id": "{{fxRateId}}", "publicationRef": "FX-1", "currencyCode": "USD", "buyRate": 1505.500000, "sellRate": 1525.000000,
-                             "publishedAt": NOW, "publishedBy": "Alice Admin"}],
+                             "publishedAt": NOW, "publishedBy": USER}],
                   "page": 0, "size": 50, "totalItems": 1, "totalPages": 1, "totalIsEstimate": False, "facets": None, "summary": None,
                   "meta": {"appliedFilters": {}, "ignoredQualifiers": [], "suggestions": [], "matches": {}}}},
    desc="Paged, newest first. Filters: currencyCode, publishedBy, buyRate, from/to (publishedAt); q matches the FX-n reference.")
 
 FUNDING = {"id": "{{pettyFundingId}}", "ref": "PCF-1", "date": "2026-10-12", "pettyCashAccountId": "{{pettyCashAccountId}}", "pettyCashAccountCode": "PC-IKJ",
            "sourceKind": "BANK", "sourceName": "BA-1 Guaranty Trust Bank", "amount": 50000.00, "transferOrChequeReference": "TRF-20931",
-           "authorisedBy": "Alice Admin", "description": "Weekly top-up", "fundedBy": "Alice Admin", "status": "POSTED", "reversalReason": None, "createdAt": NOW}
+           "authorisedBy": "Alice Admin", "description": "Weekly top-up", "fundedBy": USER, "status": "POSTED", "reversalReason": None, "createdAt": NOW}
 PAYMENT = {"id": "{{pettyPaymentId}}", "ref": "PCP-1", "date": "2026-10-12", "pettyCashAccountId": "{{pettyCashAccountId}}", "pettyCashAccountCode": "PC-IKJ",
            "expenseCategoryId": "{{expenseCategoryId}}", "category": "Generator Diesel", "amount": 12000.00, "paidTo": "Total filling station",
            "approvedBy": "Mrs Okafor", "description": "20 litres", "status": "POSTED", "reversalReason": None, "balanceAfter": 187000.00, "createdAt": NOW}
 ALLOCATION = {"id": "{{allocationId}}", "ref": "PPC-1", "date": NOW, "sourceName": "BA-1 Guaranty Trust Bank", "destinationLocationId": "{{showroomId}}",
-              "branch": "Showroom Ikeja", "destinationAccountCode": "PC-IKJ", "purpose": "Branch float for October", "sentBy": "Alice Admin",
+              "branch": "Showroom Ikeja", "destinationAccountCode": "PC-IKJ", "purpose": "Branch float for October", "sentBy": USER,
               "amount": 20000.00, "status": "PENDING", "respondedBy": None, "respondedOn": None, "note": None}
 COST = {"id": "{{runningCostId}}", "ref": None, "date": "2026-10-12", "description": "Generator servicing", "expenseCategoryId": "{{expenseCategoryId}}",
         "category": "Generator Diesel", "payee": "CoolAir Ltd", "method": "BANK_TRANSFER", "payingAccountId": "{{bankAccountId}}", "payingAccount": "BA-1",
@@ -2067,12 +2070,12 @@ COST_BODY = {"expenseCategoryId": "{{expenseCategoryId}}", "payee": "CoolAir Ltd
              "payingBankAccountId": "{{bankAccountId}}", "invoiceOrReceiptNo": "INV-889", "inputVatAmount": 3139.53, "supplierTin": "12345678-0001",
              "paymentDate": "{{today}}", "description": "Generator servicing", "submit": False}
 DISBURSEMENT = {"id": "{{disbursementId}}", "ref": "BF-1", "date": NOW, "destinationLocationId": "{{showroomId}}", "branch": "Showroom Ikeja",
-                "purpose": "Restocking float", "channel": "BANK_TRANSFER", "sourceAccount": "BA-1", "destinationAccount": "BA-2", "sentBy": "Alice Admin",
+                "purpose": "Restocking float", "channel": "BANK_TRANSFER", "sourceAccount": "BA-1", "destinationAccount": "BA-2", "sentBy": USER,
                 "sent": 300000.00, "received": None, "shortfall": None, "shortfallReason": None, "status": "AWAITING", "confirmedBy": None,
                 "dateReceived": None, "rejectionReason": None}
 LODGEMENT = {"id": "{{lodgementId}}", "ref": "LDG-1", "date": "2026-10-12", "locationId": "{{showroomId}}", "showroom": "Showroom Ikeja",
              "cashAccountCode": "TILL-IKJ-01", "takings": 32500.00, "banked": 30000.00, "retained": 2500.00, "bank": "BA-1 Guaranty Trust Bank",
-             "accountNumberMasked": "•••• 6789", "depositedBy": "Alice Admin", "teller": "TLR-8812", "status": "AWAITING_CONFIRMATION",
+             "accountNumberMasked": "•••• 6789", "depositedBy": USER, "teller": "TLR-8812", "status": "AWAITING_CONFIRMATION",
              "confirmedBy": None, "confirmedAt": None, "rejectionReason": None}
 
 ep(A, "F1 Fund Petty Cash", "POST", "/api/v1/account/petty-cash/fundings",
@@ -2293,18 +2296,18 @@ ep(A, "E1 Global Search: Bank Entry by Reference", "GET", "/api/v1/search",
    desc="The header search finds a bank entry by its exact reference (perm accounting.read), within the accounts the caller can see.")
 
 RECEIPT = {"id": "{{pendingReceiptId}}", "ref": "RCT-2", "kind": "RECEIPT", "receivedAt": NOW, "locationId": "{{showroomId}}", "locationName": "Showroom Ikeja",
-           "cashAccountId": None, "till": None, "cashierUserId": "{{userId}}", "cashier": "Alice Admin", "customerId": "{{dealerId}}",
+           "cashAccountId": None, "till": None, "cashier": USER, "customerId": "{{dealerId}}",
            "customerName": "Okafor & Sons Distribution", "channel": "FUND_TRANSFER", "amount": 200000.00, "sourceModule": "account",
            "sourceType": "WALLET_FUNDING", "sourceRef": "WF-2", "incomeCategory": None, "description": None, "receivingBankAccountId": "{{bankAccountId}}",
            "receivingBank": "BA-1 Guaranty Trust Bank", "terminalRef": None, "payerReference": "NIP-000123", "confirmationStatus": "PENDING",
            "reviewedBy": None, "reviewedAt": None, "declineNote": None, "status": "ISSUED", "voidReason": None}
 WFUND = {"id": "{{walletFundingId}}", "ref": "WF-1", "date": NOW, "customerId": "{{dealerId}}", "customerCode": "DLR-1", "customerName": "Okafor & Sons Distribution",
          "balanceType": "WALLET", "channel": "CASH", "amount": 75000.00, "locationId": "{{showroomId}}", "locationName": "Showroom Ikeja",
-         "receiptId": "{{fundingReceiptId}}", "receiptRef": "RCT-1", "confirmationStatus": "NOT_REQUIRED", "status": "CONFIRMED", "createdBy": "Alice Admin"}
+         "receiptId": "{{fundingReceiptId}}", "receiptRef": "RCT-1", "confirmationStatus": "NOT_REQUIRED", "status": "CONFIRMED", "createdBy": USER}
 WITHDRAWAL = {"id": "{{withdrawalId}}", "ref": "WW-1", "date": "2026-10-12", "customerId": "{{dealerId}}", "customerCode": "DLR-1",
               "customer": "Okafor & Sons Distribution", "balanceType": "WALLET", "initiatedBy": "DEALER", "reason": "DEALER_REQUEST",
               "balanceBefore": 275000.00, "amount": 20000.00, "balanceAfter": 255000.00, "payoutKind": "BANK", "payoutAccount": "BA-1",
-              "paidVia": "Transfer to Access 0123456789", "otp": "Verified", "authorisedBy": None, "processedBy": "Alice Admin",
+              "paidVia": "Transfer to Access 0123456789", "otp": "Verified", "authorisedBy": None, "processedBy": USER,
               "auditStatus": "COMPLETED", "reversalReason": None, "note": "Dealer request by phone", "createdAt": NOW}
 ep(A, "K1 Fund Dealer Wallet (cash)", "POST", "/api/v1/account/wallet-fundings",
    body={"customerId": "{{dealerId}}", "balanceType": "WALLET", "channel": "CASH", "amount": 75000, "locationId": "{{showroomId}}", "cashAccountId": "{{tillAccountId}}"},
@@ -2406,21 +2409,21 @@ ep(A, "L8 Withdraw (error: invoice settlement)", "POST", "/api/v1/account/wallet
    expect_error={"status": 400, "code": "USE_INVOICE_PAYMENT"})
 
 ep(A, "M1 Tenderable: Payable", "GET", "/api/v1/account/tenderable/payable", query=[{"key": "locationId", "value": "{{showroomId}}"}],
-   resp=PAGED([{"date": "2026-10-12", "cashierUserId": "{{userId}}", "cashier": "Alice Admin", "ftf": 200000.00, "cash": 75000.00, "pos": 0.00,
+   resp=PAGED([{"date": "2026-10-12", "cashier": USER, "ftf": 200000.00, "cash": 75000.00, "pos": 0.00,
                  "wallet": 0.00, "deposit": 0.00, "refund": 0.00, "total": 275000.00, "pendingConfirmation": 0.00, "declined": 0.00}]),
    desc="Perm accounting.tenderable.read. One row per cashier per day, newest day first, paged (page, size): ftf (transfers and cheques), cash, pos, wallet, deposit, refund and total. "
         "Pending and declined receipts are shown apart and never counted in the total.")
 
 ep(A, "M2 Tenderable: General Report", "GET", "/api/v1/account/tenderable/general-report",
-   resp={"data": {"period": {"from": None, "to": None}, "rows": [{"cashierUserId": "{{userId}}", "cashier": "Alice Admin", "daysActive": 1, "ftf": 200000.00,
+   resp={"data": {"period": {"from": None, "to": None}, "rows": [{"cashier": USER, "daysActive": 1, "ftf": 200000.00,
                   "cash": 75000.00, "pos": 0.00, "wallet": 0.00, "deposit": 0.00, "refund": 0.00, "total": 275000.00}],
-                  "totals": {"cashierUserId": "00000000-0000-0000-0000-000000000000", "cashier": "All cashiers", "daysActive": 1, "ftf": 200000.00,
+                  "totals": {"cashier": None, "daysActive": 1, "ftf": 200000.00,
                              "cash": 75000.00, "pos": 0.00, "wallet": 0.00, "deposit": 0.00, "refund": 0.00, "total": 275000.00}}},
    desc="Per cashier for the period (locationId, from, to), with grand totals. GET /tenderable/receipts is the Receipt Track (the receipts list).")
 
 ep(A, "M3 Tenderable: Wallet Funds", "GET", "/api/v1/account/tenderable/wallet-funds", query=[{"key": "customerId", "value": "{{dealerId}}"}],
    resp=PAGED([{"ref": "WF-2", "date": NOW, "customerId": "{{dealerId}}", "dealer": "DLR-1 Okafor & Sons Distribution", "method": "Fund transfer",
-                "bank": "BA-1 Guaranty Trust Bank", "amount": 200000.00, "confirmedBy": "Alice Admin", "status": "Confirmed"}],
+                "bank": "BA-1 Guaranty Trust Bank", "amount": 200000.00, "confirmedBy": USER, "status": "Confirmed"}],
               {"total": 275000.00, "confirmed": 275000.00, "awaiting": 0.00}),
    desc="Dealers' wallet fundings plus the return credits Customers posted for them (method \"Return credit\").")
 
@@ -2447,13 +2450,13 @@ ep(A, "N3 Void Other Income", "POST", "/api/v1/account/receipts/{{otherIncomeId}
 
 ep(A, "O1 VAT per Location", "GET", "/api/v1/account/vat-control/locations",
    resp={"data": {"disabledCount": 0, "locations": [{"locationId": "{{showroomId}}", "code": "SHR-1", "name": "Showroom Ikeja", "type": "SHOWROOM",
-                  "registration": None, "rate": 7.50, "enabled": True, "effectiveFrom": "2026-10-12", "updatedBy": "Alice Admin", "scheduled": None}]}},
+                  "registration": None, "rate": 7.50, "enabled": True, "effectiveFrom": "2026-10-12", "updatedBy": USER, "scheduled": None}]}},
    desc="Perm accounting.read. Each showroom/factory's VAT in force today and any scheduled change; disabledCount drives the screen's warning.")
 
 ep(A, "O2 Schedule a VAT Change", "POST", "/api/v1/account/vat-control/locations/{{showroomId}}",
    body={"vatEnabled": True, "vatRate": 10, "vatRegistrationNumber": "NG-VAT-4471029", "effectiveFrom": "2030-01-01", "note": "Rate review"},
    resp={"data": {"disabledCount": 0, "locations": [{"locationId": "{{showroomId}}", "code": "SHR-1", "name": "Showroom Ikeja", "type": "SHOWROOM",
-                  "registration": None, "rate": 7.50, "enabled": True, "effectiveFrom": "2026-10-12", "updatedBy": "Alice Admin",
+                  "registration": None, "rate": 7.50, "enabled": True, "effectiveFrom": "2026-10-12", "updatedBy": USER,
                   "scheduled": {"rate": 10.00, "enabled": True, "effectiveFrom": "2030-01-01"}}]}},
    desc="Perm accounting.vat.manage. effectiveFrom today or later (past periods keep the VAT they were charged at); one change per location per date "
         "(409 VAT_SETTING_EXISTS_FOR_DATE). Today's change applies at once; later ones apply on their date. A showroom with collection disabled charges no output VAT.")
@@ -2465,7 +2468,7 @@ ep(A, "O3 Schedule a VAT Change (error: same date)", "POST", "/api/v1/account/va
 
 ep(A, "O4 VAT History for a Location", "GET", "/api/v1/account/vat-control/locations/{{showroomId}}/history",
    resp={"data": [{"id": "{{vatSettingId}}", "enabled": True, "rate": 10.00, "registration": "NG-VAT-4471029", "effectiveFrom": "2030-01-01", "note": "Rate review",
-                   "updatedBy": "Alice Admin", "createdAt": NOW, "state": "Scheduled"}]})
+                   "updatedBy": USER, "createdAt": NOW, "state": "Scheduled"}]})
 
 # ============================== ELECTRONIC INVOICING (docs/08, slice 1) ==============================
 I = "18 - Electronic Invoicing"
@@ -2478,7 +2481,7 @@ INVOICE_LINE = {"id": "6d1f0c2e-1b7a-4a8e-9f61-3d2a1c9b7e01", "lineNo": 1, "stoc
 
 INVOICE = {"id": "{{invoiceId}}", "number": "INV-1", "status": "ISSUED", "displayStatus": "Issued", "invoiceTypeCode": "381", "invoiceKind": "B2C",
            "issueDate": "2026-10-15", "issueTime": "11:42:05", "dueDate": "2026-11-14", "paymentTermsDays": 30, "paymentTermsNote": None, "daysOverdue": 0,
-           "issuedBy": "Alice Admin", "issuedAt": NOW, "createdAt": NOW, "showroom": {"id": "{{showroomId}}", "name": "Showroom Ikeja"},
+           "issuedBy": USER, "issuedAt": NOW, "createdAt": NOW, "showroom": {"id": "{{showroomId}}", "name": "Showroom Ikeja"},
            "issuer": {"tradingName": "Apex Industries", "legalName": None, "tin": None, "vatRegistrationNumber": None, "nrsBusinessId": None,
                       "email": None, "phone": "08030000000", "address": "Lagos", "locationName": "Showroom Ikeja", "locationAddress": None},
            "buyer": {"customerId": "{{dealerId}}", "code": "DLR-1", "name": "Okafor & Sons Distribution", "type": "AUTHORISED_DEALER", "email": None,
@@ -2673,7 +2676,7 @@ ep(I, "E4 Void and Reissue to Another Customer", "POST", "/api/v1/invoicing/invo
 
 ep(I, "E5 Voided Invoices", "GET", "/api/v1/invoicing/invoices/voided",
    resp=PAGED([{"id": "{{invoiceId}}", "number": "INV-1", "voidReason": "Billed to the wrong customer at the till", "customer": "Okafor & Sons Distribution",
-                "issued": "2026-10-15", "total": 52890.00, "voidedBy": "Alice Admin", "voidedAt": NOW, "replacedById": "{{reissuedInvoiceId}}", "replacedBy": "INV-4"}],
+                "issued": "2026-10-15", "total": 52890.00, "voidedBy": USER, "voidedAt": NOW, "replacedById": "{{reissuedInvoiceId}}", "replacedBy": "INV-4"}],
               {"count": 2, "value": 61264.25}))
 
 ep(I, "E6 Global Search: Invoice", "GET", "/api/v1/search", query=[{"key": "q", "value": "{{invoiceNumber}}"}, {"key": "types", "value": "invoice"}],
@@ -2689,9 +2692,9 @@ CREDIT_NOTE = {"id": "{{creditNoteId}}", "number": "CN-1", "invoiceTypeCode": "3
                "reason": "PRICING_ERROR", "reasonNote": "Agreed price was 3,800 a carton",
                "lines": [{"id": "0d7e3b8a-2c1f-4e5a-9b6c-7d8e9f0a1b2c", "invoiceLineId": "{{creditLineId}}", "lineNo": 1, "code": "ITM-2", "name": "Citrus Drink 50cl",
                           "quantity": None, "amount": 4000.00, "unitPrice": 4000.00, "vatRate": 7.50, "lineNet": 4000.00, "vatAmount": 300.00, "lineTotal": 4300.00}],
-               "lineExtension": 4000.00, "vat": 300.00, "total": 4300.00, "appliedToInvoice": 4300.00, "excessRefunded": 0.00, "issuedBy": "Alice Admin", "issuedAt": NOW}
+               "lineExtension": 4000.00, "vat": 300.00, "total": 4300.00, "appliedToInvoice": 4300.00, "excessRefunded": 0.00, "issuedBy": USER, "issuedAt": NOW}
 DELIVERY_VIEW = {"id": "5b2c9d1e-3f4a-4b5c-8d6e-7f8091a2b3c4", "invoiceId": "{{draftInvoiceId}}", "number": "INV-3", "recipient": "accounts@gracefoods.ng",
-                 "template": "STANDARD", "trigger": "MANUAL", "status": "Queued", "requestedAt": NOW, "sentAt": None, "requestedBy": "Alice Admin"}
+                 "template": "STANDARD", "trigger": "MANUAL", "status": "Queued", "requestedAt": NOW, "sentAt": None, "requestedBy": USER}
 
 ep(I, "F1 Record Cash Payment", "POST", "/api/v1/invoicing/invoices/{{reissuedInvoiceId}}/payments",
    body={"method": "CASH", "amount": 20000, "cashAccountId": "{{tillAccountId}}"},
@@ -2759,7 +2762,7 @@ ep(I, "G4 Issue Credit Note (error: more than the line)", "POST", "/api/v1/invoi
 ep(I, "G5 List Credit Notes", "GET", "/api/v1/invoicing/credit-notes", query=[{"key": "invoiceId", "value": "{{draftInvoiceId}}"}, {"key": "facets", "value": "reason"}],
    resp=PAGED([{"id": "{{creditNoteId}}", "number": "CN-1", "invoiceId": "{{draftInvoiceId}}", "invoiceNumber": "INV-3", "customerId": "{{specialId}}",
                 "customer": "Grace Foods", "showroom": "Showroom Ikeja", "reason": "PRICING_ERROR", "reasonNote": "Agreed price was 3,800 a carton",
-                "total": 4300.00, "appliedToInvoice": 4300.00, "excessRefunded": 0.00, "issuedBy": "Alice Admin", "issuedAt": NOW}],
+                "total": 4300.00, "appliedToInvoice": 4300.00, "excessRefunded": 0.00, "issuedBy": USER, "issuedAt": NOW}],
               {"count": 2, "total": 12900.00, "excessToWallets": 0.00}),
    desc="Perm invoicing.invoice.read. Filters invoiceId, customerId, reason, locationId, issuedBy, total, from/to, hasExcessRefunded; q matches the CN or "
         "invoice number, customer and reason note.")
