@@ -176,9 +176,8 @@ data class LinkedDocuments(
     val sourceRef: String,
     val proForma: String?,
     val waybills: List<WaybillLink>,
-    /** Payments and credit notes arrive with slice 2; empty until then. */
-    val payments: List<Map<String, Any?>>,
-    val creditNotes: List<Map<String, Any?>>,
+    val payments: List<InvoicePaymentView>,
+    val creditNotes: List<CreditNoteRef>,
     val reissueOf: InvoiceLinkRef?,
     val replacedBy: InvoiceLinkRef?,
 )
@@ -227,7 +226,8 @@ data class InvoiceLocation(val id: UUID, val name: String?)
 
 data class InvoiceVat(val enabled: Boolean, val rate: BigDecimal)
 
-data class InvoiceDelivery(val status: String, val lastAttemptAt: Instant?, val recipient: String?)
+/** [code] SENT, FAILED, NO_EMAIL or NOT_SENT (queued or never sent); [status] its label ("Queued" while the outbox holds it). */
+data class InvoiceDelivery(val code: String, val status: String, val lastAttemptAt: Instant?, val recipient: String?, val attempts: Int)
 
 /** A voided invoice (§4.9). */
 data class VoidedInvoiceRow(
@@ -255,3 +255,240 @@ data class InvoiceLookupRow(
     val displayStatus: String,
     val label: String,
 )
+
+// ---- Payments (docs/08 §4.6) ----
+
+data class RecordPaymentRequest(
+    @field:NotNull @field:Pattern(regexp = "CASH|POS|FUND_TRANSFER|CHEQUE|WALLET|DEPOSIT", message = "must be CASH, POS, FUND_TRANSFER, CHEQUE, WALLET or DEPOSIT")
+    val method: String?,
+    @field:NotNull @field:DecimalMin(value = "0.01") val amount: BigDecimal?,
+    /** When the money was received; defaults to now, never in the future. */
+    val paidAt: Instant? = null,
+    /** CASH: the till or vault taking it; POS: the till the card was taken at. */
+    val cashAccountId: UUID? = null,
+    /** FUND_TRANSFER / CHEQUE (required); POS when the till has no settlement account. */
+    val receivingBankAccountId: UUID? = null,
+    @field:Size(max = 40) val terminalRef: String? = null,
+    @field:Size(max = 80) val payerReference: String? = null,
+)
+
+data class ReasonBody(@field:NotBlank @field:Size(min = 5, max = 300) val reason: String)
+
+data class InvoicePaymentView(
+    val id: UUID,
+    val date: Instant,
+    val method: String,
+    val methodLabel: String,
+    val amount: BigDecimal,
+    val receiptId: UUID,
+    val receipt: String,
+    /** Confirmed, Pending confirmation, Declined or Voided. */
+    val status: String,
+    /** POS_CHECKOUT, RECORDED or REISSUE_TRANSFER. */
+    val source: String,
+    val reversalReason: String?,
+)
+
+data class RecordedPayment(
+    val paymentId: UUID,
+    val receiptId: UUID,
+    val receiptRef: String,
+    /** NOT_REQUIRED (cash, wallet) or PENDING (POS, transfer, cheque: Accounts confirms it). */
+    val confirmationStatus: String,
+    val invoice: InvoiceDetail,
+)
+
+// ---- Credit notes (docs/08 §4.5) ----
+
+data class CreditNoteLineRequest(
+    @field:NotNull val invoiceLineId: UUID?,
+    /** Quantity-based credit at the line's own price; or [amount], a net value. Exactly one. */
+    @field:DecimalMin(value = "0.001") val quantity: BigDecimal? = null,
+    @field:DecimalMin(value = "0.01") val amount: BigDecimal? = null,
+)
+
+data class CreditNoteRequest(
+    @field:NotNull @field:Pattern(regexp = "PRICING_ERROR|OVERCHARGE|DISCOUNT_GRANTED_AFTER_ISSUE|DUPLICATE_BILLING|GOODWILL|OTHER",
+        message = "must be PRICING_ERROR, OVERCHARGE, DISCOUNT_GRANTED_AFTER_ISSUE, DUPLICATE_BILLING, GOODWILL or OTHER")
+    val reason: String?,
+    @field:NotBlank @field:Size(max = 300) val reasonNote: String,
+    @field:NotEmpty @field:Valid val lines: List<CreditNoteLineRequest>,
+)
+
+data class CreditNoteRef(
+    val id: UUID,
+    val number: String,
+    val issuedAt: Instant,
+    val reason: String,
+    val total: BigDecimal,
+    val appliedToInvoice: BigDecimal,
+    val excessRefunded: BigDecimal,
+)
+
+data class CreditNoteLineDetail(
+    val id: UUID,
+    val invoiceLineId: UUID,
+    val lineNo: Int,
+    val code: String,
+    val name: String,
+    val quantity: BigDecimal?,
+    val amount: BigDecimal?,
+    val unitPrice: BigDecimal,
+    val vatRate: BigDecimal,
+    val lineNet: BigDecimal,
+    val vatAmount: BigDecimal,
+    val lineTotal: BigDecimal,
+)
+
+data class CreditNoteDetail(
+    val id: UUID,
+    val number: String,
+    val invoiceTypeCode: String,
+    val invoice: InvoiceLinkRef,
+    val invoiceIssueDate: LocalDate?,
+    val customerId: UUID?,
+    val customer: String,
+    val showroom: InvoiceLocation,
+    val reason: String,
+    val reasonNote: String,
+    val lines: List<CreditNoteLineDetail>,
+    val lineExtension: BigDecimal,
+    val vat: BigDecimal,
+    val total: BigDecimal,
+    val appliedToInvoice: BigDecimal,
+    /** Credited to the customer's wallet because it was more than the invoice's balance. */
+    val excessRefunded: BigDecimal,
+    val issuedBy: String?,
+    val issuedAt: Instant,
+)
+
+data class CreditNoteRow(
+    val id: UUID,
+    val number: String,
+    val invoiceId: UUID,
+    val invoiceNumber: String?,
+    val customerId: UUID?,
+    val customer: String,
+    val showroom: String?,
+    val reason: String,
+    val reasonNote: String,
+    val total: BigDecimal,
+    val appliedToInvoice: BigDecimal,
+    val excessRefunded: BigDecimal,
+    val issuedBy: String?,
+    val issuedAt: Instant,
+)
+
+// ---- Delivery (docs/08 §4.8) ----
+
+data class DeliveryRequest(
+    /** Default: the invoice's buyer e-mail; a different address is a redirect. */
+    @field:Email @field:Size(max = 320) val recipientEmail: String? = null,
+    @field:Pattern(regexp = "STANDARD|REMINDER|STATEMENT", message = "must be STANDARD, REMINDER or STATEMENT") val template: String? = null,
+    @field:Size(max = 1000) val message: String? = null,
+)
+
+data class DeliveryView(
+    val id: UUID,
+    val invoiceId: UUID,
+    val number: String?,
+    val recipient: String,
+    val template: String,
+    val trigger: String,
+    /** Queued, Sent or Failed (the outbox row's state). */
+    val status: String,
+    val requestedAt: Instant,
+    val sentAt: Instant?,
+    val requestedBy: String?,
+)
+
+data class DeliveryRow(
+    val invoiceId: UUID,
+    val number: String?,
+    val issued: LocalDate?,
+    val customer: String,
+    val email: String?,
+    val showroom: String?,
+    val total: BigDecimal,
+    val delivery: String,
+    val deliveryCode: String,
+    val lastAttemptAt: Instant?,
+    val attempts: Int,
+)
+
+// ---- Receivables and debtors (docs/08 §4.9–4.10) ----
+
+data class ReceivableRow(
+    val id: UUID,
+    val number: String,
+    val issued: LocalDate?,
+    val due: LocalDate?,
+    val customerId: UUID?,
+    val customer: String,
+    val customerType: String?,
+    val showroom: String?,
+    val total: BigDecimal,
+    val paid: BigDecimal,
+    val credited: BigDecimal,
+    val balance: BigDecimal,
+    /** Issued, Partially Paid or Overdue. */
+    val status: String,
+    val daysOverdue: Int,
+    /** NOT_DUE, WITHIN_30, DAYS_31_60 or OVER_60 (days past due). */
+    val ageingBucket: String,
+)
+
+data class DebtorRow(
+    val customerId: UUID,
+    val code: String,
+    val name: String,
+    val type: String,
+    val phone: String?,
+    val locationId: UUID?,
+    val showroom: String?,
+    val correspondentId: UUID?,
+    val rep: String?,
+    val openInvoices: Int,
+    val outstanding: BigDecimal,
+    val creditLimit: BigDecimal,
+    val overLimit: Boolean,
+    val oldestInvoiceDays: Int,
+    /** WITHIN_30, DAYS_31_60 or OVER_60, on the oldest open invoice's issue date. */
+    val ageing: String,
+    val ageingLabel: String,
+    val lastPaymentAt: Instant?,
+)
+
+data class DebtorAccount(
+    val openInvoices: Int,
+    val lastPaymentAt: Instant?,
+    val totalInvoiced: BigDecimal,
+    val totalPaid: BigDecimal,
+    val totalCredited: BigDecimal,
+    val outstanding: BigDecimal,
+    val creditLimit: BigDecimal,
+    val overLimit: Boolean,
+)
+
+data class DebtorTransaction(
+    val invoiceId: UUID,
+    val date: LocalDate?,
+    val invoice: String,
+    val description: String,
+    val value: BigDecimal,
+    val paid: BigDecimal,
+    val balance: BigDecimal,
+    val dueDate: LocalDate?,
+    val status: String,
+)
+
+data class DebtorDetail(
+    val customer: DebtorRow,
+    val account: DebtorAccount,
+    val transactions: List<DebtorTransaction>,
+    /** Set when the customer is over their credit limit (rule I13; enforced at the till by Sales & POS). */
+    val warning: String?,
+)
+
+/** The NRS invoice JSON this invoice would be submitted as, and what is still missing (docs/08 §4.12). Nothing is transmitted. */
+data class NrsPreview(val ready: Boolean, val missing: List<String>, val invoice: Map<String, Any?>)

@@ -1,20 +1,29 @@
 package com.zifiq.invoicing
 
+import com.zifiq.account.repository.MoneyLedgerRepository
 import com.zifiq.account.service.AccountSupport
 import com.zifiq.account.service.AccountingSettings
 import com.zifiq.account.service.LocationVatService
+import com.zifiq.account.service.MoneyMoves
+import com.zifiq.account.service.ReceiptService
+import com.zifiq.account.service.ReceiptWriter
 import com.zifiq.common.errors.ErrorCode
 import com.zifiq.common.filter.ListSearchRequest
 import com.zifiq.customers.service.CustomerListService
 import com.zifiq.customers.service.CustomerSpiService
 import com.zifiq.customers.service.CustomerSupport
 import com.zifiq.customers.service.CustomersSettings
+import com.zifiq.customers.service.WalletLedgerService
 import com.zifiq.inventory.dto.StockItemClassificationRequest
 import com.zifiq.inventory.service.StockItemClassificationService
 import com.zifiq.inventory.service.StockLocations
 import com.zifiq.invoicing.dto.DraftHeaderRequest
 import com.zifiq.invoicing.dto.ReissueRequest
+import com.zifiq.invoicing.service.CreditNoteService
 import com.zifiq.invoicing.service.InvoiceBuilder
+import com.zifiq.invoicing.service.InvoiceDeliveryService
+import com.zifiq.invoicing.service.InvoiceListing
+import com.zifiq.invoicing.service.InvoicePaymentService
 import com.zifiq.invoicing.service.InvoiceQueryService
 import com.zifiq.invoicing.service.InvoiceService
 import com.zifiq.invoicing.service.InvoiceSupport
@@ -145,8 +154,15 @@ class InvoicingIntegrationTest : PostgresIntegrationTest() {
     private val profiles = CompanyProfileService(tx, tenantContext, actors, events)
     private val support = InvoiceSupport(tenantContext, actors, permissions, LocationAccessService(actors), moduleSettings, events)
     private val builder = InvoiceBuilder(support, StockLocations(), vat, customerDirectory, profiles)
-    private val invoices = InvoiceService(support, tx, builder, sequences, registry, notify)
-    private val queries = InvoiceQueryService(support, tx, registry, PdfRenderer(), profiles, customerDirectory)
+    private val listing = InvoiceListing(support)
+    private val receipts = ReceiptService(accountSupport, tx, ReceiptWriter(accountSupport, MoneyMoves(accountSupport, MoneyLedgerRepository()), sequences, registry),
+        emptyList(), registry, PdfRenderer(), profiles, notify, recipients)
+    private val walletLedger = WalletLedgerService(tenantContext, actors, events)
+    private val queries = InvoiceQueryService(support, tx, listing, registry, PdfRenderer(), profiles, customerDirectory, receipts)
+    private val payments = InvoicePaymentService(support, tx, receipts, walletLedger, notify)
+    private val deliveries = InvoiceDeliveryService(support, tx, listing, profiles, customerDirectory, PdfRenderer())
+    private val creditNotes = CreditNoteService(support, tx, sequences, registry, walletLedger, PdfRenderer(), profiles)
+    private val invoices = InvoiceService(support, tx, builder, sequences, registry, notify, payments, deliveries, creditNotes)
     private val classification = StockItemClassificationService(actors, tx, LocationAccessService(actors), events)
 
     // A fresh set of customers per test, so each test can filter to exactly its own invoices.

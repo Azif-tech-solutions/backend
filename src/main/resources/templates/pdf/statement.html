@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title th:text="'Statement ' + ${customer.code}">Statement</title>
+    <style>
+        @page { size: A4; margin: 16mm 14mm 20mm 14mm;
+                @bottom-center { content: "Page " counter(page) " of " counter(pages); font-family: 'Noto Sans'; font-size: 7.5pt; color: #666; } }
+        body { font-family: 'Noto Sans'; font-size: 8.8pt; color: #1a1a1a; }
+        .header { display: table; width: 100%; border-bottom: 2px solid #1a1a1a; padding-bottom: 7pt; }
+        .header .left, .header .right { display: table-cell; vertical-align: top; }
+        .header .right { text-align: right; width: 42%; }
+        .logo { max-height: 40pt; max-width: 140pt; margin-bottom: 3pt; }
+        .company { font-size: 13pt; font-weight: 700; }
+        .muted { color: #555; }
+        .doc-title { font-size: 13pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6pt; }
+        .label { font-size: 7.5pt; text-transform: uppercase; color: #555; letter-spacing: 0.3pt; margin: 10pt 0 2pt 0; }
+        table.lines { width: 100%; margin-top: 6pt; border-collapse: collapse; }
+        table.lines th { background: #f0f0f0; font-size: 7.5pt; text-transform: uppercase; color: #444; border-bottom: 1px solid #999; padding: 4pt; text-align: left; }
+        table.lines td { border-bottom: 1px solid #e2e2e2; padding: 4pt; }
+        table.lines .num { text-align: right; white-space: nowrap; }
+        .total { margin-top: 10pt; text-align: right; font-size: 12pt; font-weight: 700; }
+        .footer { margin-top: 18pt; font-size: 7.3pt; color: #555; border-top: 1px solid #ddd; padding-top: 5pt; }
+    </style>
+</head>
+<body>
+<div class="header">
+    <div class="left">
+        <img class="logo" th:if="${logo != null}" th:src="${logo}" alt="logo"/>
+        <div class="company" th:text="${company.tradingName}">Company</div>
+        <div class="muted" th:text="${company.streetAddress}">Address</div>
+        <div class="muted" th:text="${company.phone}">Phone</div>
+    </div>
+    <div class="right">
+        <div class="doc-title">Statement of Account</div>
+        <div class="muted" th:text="'As at ' + ${asOf}">As at</div>
+    </div>
+</div>
+
+<div class="label">Customer</div>
+<div><strong th:text="${customer.name}">Customer</strong> <span class="muted" th:text="${customer.code}">CU-1</span></div>
+<div class="muted" th:if="${customer.phone != null}" th:text="${customer.phone}">Phone</div>
+
+<div class="label">Open invoices</div>
+<table class="lines">
+    <thead>
+    <tr><th>Invoice</th><th>Issued</th><th>Due</th><th class="num">Total</th><th class="num">Paid / credited</th><th class="num">Balance</th><th class="num">Overdue</th></tr>
+    </thead>
+    <tbody>
+    <tr th:each="row : ${rows}">
+        <td th:text="${row.number}">INV-1</td>
+        <td th:text="${row.issued}">date</td>
+        <td th:text="${row.due}">date</td>
+        <td class="num" th:text="${row.total}">₦0.00</td>
+        <td class="num" th:text="${row.paid}">₦0.00</td>
+        <td class="num" th:text="${row.balance}">₦0.00</td>
+        <td class="num" th:text="${row.overdue}">—</td>
+    </tr>
+    <tr th:if="${rows.isEmpty()}"><td colspan="7">No open invoices.</td></tr>
+    </tbody>
+</table>
+
+<div class="label">Ageing</div>
+<table class="lines">
+    <tr><th th:each="bucket : ${ageing}" th:text="${bucket.label}">Bucket</th></tr>
+    <tr><td th:each="bucket : ${ageing}" th:text="${bucket.amount}">₦0.00</td></tr>
+</table>
+
+<div class="total" th:text="'Outstanding: ' + ${outstanding}">Outstanding</div>
+
+<div class="footer">
+    <div th:if="${company.documentFooter != null}" th:text="${company.documentFooter}">Footer</div>
+    <div th:text="'Printed ' + ${printedAt}">Printed</div>
+</div>
+</body>
+</html>

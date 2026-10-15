@@ -266,4 +266,12 @@ object ApiErrors {
     fun reissueBelowPaid() = ApiException(HttpStatus.CONFLICT, ErrorCode.REISSUE_BELOW_PAID, "The replacement's total is less than what has already been paid; issue a credit note instead")
     fun discountExceedsLine() = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.DISCOUNT_EXCEEDS_LINE, "A line discount can't exceed the line value")
     fun hsnSectionMismatch() = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.HSN_SECTION_MISMATCH, "The HS/ISIC code's section must match the item's classification section")
+    fun invoiceAlreadyPaid() = ApiException(HttpStatus.CONFLICT, ErrorCode.INVOICE_ALREADY_PAID, "This invoice is already paid in full")
+    fun overpayment(balance: java.math.BigDecimal) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.OVERPAYMENT, "The payment is more than the balance of ${balance.toPlainString()}", mapOf("balance" to balance.toPlainString()))
+    fun creditExceedsLine(lineNo: Int) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.CREDIT_EXCEEDS_LINE, "Line $lineNo can't be credited for more than was invoiced on it", mapOf("lineNo" to lineNo.toString()))
+    fun creditExceedsBalance(reason: String) = ApiException(HttpStatus.CONFLICT, ErrorCode.CREDIT_EXCEEDS_BALANCE, reason)
+    fun noEmailOnFile() = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.NO_EMAIL_ON_FILE, "There is no e-mail address for this buyer; give recipientEmail")
+    fun exportTooLarge(max: Int, found: Long) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.EXPORT_TOO_LARGE, "$found invoices match; narrow the range to at most $max", mapOf("max" to max.toString(), "found" to found.toString()))
+    fun creditNoteNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.CREDIT_NOTE_NOT_FOUND, "Credit note not found")
+    fun invoicePaymentNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.INVOICE_PAYMENT_NOT_FOUND, "Invoice payment not found")
 }

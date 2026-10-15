@@ -1,6 +1,7 @@
 package com.zifiq.invoicing.spi
 
 import java.math.BigDecimal
+import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
 
@@ -10,9 +11,8 @@ import java.util.UUID
  * lines and calls [InvoiceIssuer] to issue or draft an invoice; it never writes invoice tables
  * itself. Everything runs in the caller's tenant-scoped transaction (docs/03 §2.4).
  *
- * Slice 1 implements createDraft, issue, voidForSource, discardDraftForSource and reissueForSource
- * (with no payments to transfer yet); attachPayment and payment-transfer on reissue arrive with
- * slice 2 (payments).
+ * Payments are Account receipts: an invoice keeps a link to each one and mirrors its status
+ * (DECLINED / VOIDED) through the receipt reconciler.
  */
 
 enum class SourceType { POS_SALE, PRO_FORMA }
@@ -67,12 +67,42 @@ data class InvoiceLineView(
     val lineTotal: BigDecimal,
 )
 
+/**
+ * A payment Sales & POS has already receipted through Account's MoneyLedger (doc 09 checkout).
+ * [method] is the receipt's channel (CASH, POS, FUND_TRANSFER, CHEQUE, WALLET, DEPOSIT);
+ * [customerLedgerEntryId] is the wallet/deposit debit for WALLET / DEPOSIT.
+ */
+data class PaymentLink(
+    val receiptId: UUID,
+    val receiptRef: String,
+    val method: String,
+    val amount: BigDecimal,
+    val paidAt: Instant,
+    val customerLedgerEntryId: UUID? = null,
+)
+
+/** One credit-note line for output-VAT deductions (doc 10). */
+data class CreditNoteLineView(
+    val date: LocalDate,
+    val creditNoteNumber: String,
+    val invoiceNumber: String,
+    val locationId: UUID,
+    val buyerName: String,
+    val buyerTin: String?,
+    val lineNet: BigDecimal,
+    val vatRate: BigDecimal,
+    val vatAmount: BigDecimal,
+)
+
 interface InvoiceIssuer {
     /** Issues immediately (number assigned): POS checkout, walk-in on request. */
     fun issue(req: InvoiceRequest): InvoiceRef
 
     /** Saves a draft (pro-forma conversion); no number until it is issued. */
     fun createDraft(req: InvoiceRequest): InvoiceRef
+
+    /** Links a payment the caller already receipted (POS checkout) to an issued invoice; never more than its balance. */
+    fun attachPayment(invoiceId: UUID, payment: PaymentLink)
 
     /**
      * A sale void in doc 09: the caller has already voided every receipt, so this voids the invoice
@@ -99,6 +129,9 @@ interface InvoiceQueries {
     fun bySource(sourceType: String, sourceId: UUID): InvoiceRef?
 
     fun linesOf(invoiceId: UUID): List<InvoiceLineView>
+
+    /** Credit-note lines issued between [from] and [to] (inclusive), optionally at one location. */
+    fun creditNoteLines(locationId: UUID?, from: LocalDate, to: LocalDate): List<CreditNoteLineView>
 }
 
 interface InvoiceWaybillLinks {

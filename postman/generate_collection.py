@@ -2663,6 +2663,163 @@ ep(I, "E6 Global Search: Invoice", "GET", "/api/v1/search", query=[{"key": "q", 
         "route": "/invoicing/invoices/{{invoiceId}}"}], "more": False, "moreRoute": "/invoicing/invoices?q=INV-1"}]}},
    desc="Global search provider invoice (perm invoicing.invoice.read).")
 
+PAYMENT_VIEW = {"id": "{{cashPaymentId}}", "date": NOW, "method": "CASH", "methodLabel": "Cash", "amount": 20000.00, "receiptId": "6c1f2d40-8a8e-4f7a-9d0e-0b1c2d3e4f50",
+                "receipt": "RCT-4", "status": "Confirmed", "source": "RECORDED", "reversalReason": None}
+CREDIT_NOTE = {"id": "{{creditNoteId}}", "number": "CN-1", "invoiceTypeCode": "380", "invoice": {"id": "{{draftInvoiceId}}", "number": "INV-3"},
+               "invoiceIssueDate": "2026-10-15", "customerId": "{{specialId}}", "customer": "Grace Foods", "showroom": {"id": "{{showroomId}}", "name": "Showroom Ikeja"},
+               "reason": "PRICING_ERROR", "reasonNote": "Agreed price was 3,800 a carton",
+               "lines": [{"id": "0d7e3b8a-2c1f-4e5a-9b6c-7d8e9f0a1b2c", "invoiceLineId": "{{creditLineId}}", "lineNo": 1, "code": "ITM-2", "name": "Citrus Drink 50cl",
+                          "quantity": None, "amount": 4000.00, "unitPrice": 4000.00, "vatRate": 7.50, "lineNet": 4000.00, "vatAmount": 300.00, "lineTotal": 4300.00}],
+               "lineExtension": 4000.00, "vat": 300.00, "total": 4300.00, "appliedToInvoice": 4300.00, "excessRefunded": 0.00, "issuedBy": "Alice Admin", "issuedAt": NOW}
+DELIVERY_VIEW = {"id": "5b2c9d1e-3f4a-4b5c-8d6e-7f8091a2b3c4", "invoiceId": "{{draftInvoiceId}}", "number": "INV-3", "recipient": "accounts@gracefoods.ng",
+                 "template": "STANDARD", "trigger": "MANUAL", "status": "Queued", "requestedAt": NOW, "sentAt": None, "requestedBy": "Alice Admin"}
+
+ep(I, "F1 Record Cash Payment", "POST", "/api/v1/invoicing/invoices/{{reissuedInvoiceId}}/payments",
+   body={"method": "CASH", "amount": 20000, "cashAccountId": "{{tillAccountId}}"},
+   resp={"data": {"paymentId": "{{cashPaymentId}}", "receiptId": "6c1f2d40-8a8e-4f7a-9d0e-0b1c2d3e4f50", "receiptRef": "RCT-4", "confirmationStatus": "NOT_REQUIRED",
+                  "invoice": dict(INVOICE, id="{{reissuedInvoiceId}}", displayStatus="Partially Paid")}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('cashPaymentId', json.data.paymentId);",
+          "pm.test('partially paid', () => pm.expect(json.data.invoice.displayStatus).to.eql('Partially Paid'));"],
+   desc="Perm invoicing.payment.record. Every payment is an Account receipt (RCT-n, source INVOICE_PAYMENT): CASH needs the till or vault taking it "
+        "(cashAccountId) and posts at once; POS, FUND_TRANSFER and CHEQUE wait for Accounts to confirm (receivingBankAccountId for transfers and cheques); "
+        "WALLET and DEPOSIT debit the customer's balance first (never below zero). Never more than the balance (400 OVERPAYMENT); an invoice already "
+        "paid gives 409 INVOICE_ALREADY_PAID. Returns the receipt and the updated invoice.")
+
+ep(I, "F2 Record Transfer Payment (awaits confirmation)", "POST", "/api/v1/invoicing/invoices/{{reissuedInvoiceId}}/payments",
+   body={"method": "FUND_TRANSFER", "amount": 10000, "receivingBankAccountId": "{{bankAccountId}}", "payerReference": "GTB/77310"},
+   resp={"data": {"paymentId": "8e9f0a1b-2c3d-4e5f-8a9b-0c1d2e3f4a5b", "receiptId": "{{transferReceiptId}}", "receiptRef": "RCT-5", "confirmationStatus": "PENDING",
+                  "invoice": dict(INVOICE, id="{{reissuedInvoiceId}}", displayStatus="Partially Paid")}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('transferReceiptId', json.data.receiptId);",
+          "pm.test('awaits confirmation', () => pm.expect(json.data.confirmationStatus).to.eql('PENDING'));"],
+   desc="Counted as paid at once and flagged in totals.pendingConfirmation until Accounts confirms it in the receipt queue.")
+
+ep(I, "F3 Record Payment (error: more than the balance)", "POST", "/api/v1/invoicing/invoices/{{reissuedInvoiceId}}/payments",
+   body={"method": "CASH", "amount": 9999999, "cashAccountId": "{{tillAccountId}}"}, status=400, status_text="Bad Request",
+   resp={"error": {"code": "OVERPAYMENT", "message": "The payment is more than the balance of 22890.00", "details": {"balance": "22890.00"}}},
+   expect_error={"status": 400, "code": "OVERPAYMENT"})
+
+ep(I, "F4 Invoice Payments", "GET", "/api/v1/invoicing/invoices/{{reissuedInvoiceId}}/payments",
+   resp={"data": [PAYMENT_VIEW, dict(PAYMENT_VIEW, id="8e9f0a1b-2c3d-4e5f-8a9b-0c1d2e3f4a5b", method="FUND_TRANSFER", methodLabel="Fund transfer", amount=10000.00,
+                                     receiptId="{{transferReceiptId}}", receipt="RCT-5", status="Pending confirmation")]},
+   desc="Status per payment: Confirmed, Pending confirmation, Declined or Voided (mirrored from the Account receipt).")
+
+ep(I, "F5 Decline the Transfer (Account)", "POST", "/api/v1/account/receipts/{{transferReceiptId}}/decline", body={"note": "No credit on the bank statement"},
+   resp={"data": {"id": "{{transferReceiptId}}", "ref": "RCT-5", "confirmationStatus": "DECLINED"}},
+   desc="Perm accounting.receipts.confirm. Invoicing's receipt reconciler picks this up within one consumer cycle (about 15 s): the payment shows Declined, "
+        "the balance comes back, and holders of invoicing.receivables.read at the showroom are alerted.")
+
+ep(I, "F6 Reverse a Payment", "POST", "/api/v1/invoicing/invoices/{{reissuedInvoiceId}}/payments/{{cashPaymentId}}/reverse",
+   body={"reason": "Recorded against the wrong invoice"},
+   resp={"data": dict(INVOICE, id="{{reissuedInvoiceId}}")},
+   desc="Perm invoicing.invoice.void. For a payment recorded here by mistake: Account voids its receipt (the till entry is undone) and a wallet/deposit "
+        "debit is credited back. Payments taken at a POS checkout are reversed by voiding the sale (409 REVERSE_IN_SOURCE_MODULE).")
+
+ep(I, "G1 Get Invoice Lines (for a credit note)", "GET", "/api/v1/invoicing/invoices/{{draftInvoiceId}}", resp={"data": dict(INVOICE, id="{{draftInvoiceId}}")},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('creditLineId', json.data.lines[0].id);"])
+
+ep(I, "G2 Issue Credit Note (value)", "POST", "/api/v1/invoicing/invoices/{{draftInvoiceId}}/credit-notes",
+   body={"reason": "PRICING_ERROR", "reasonNote": "Agreed price was 3,800 a carton", "lines": [{"invoiceLineId": "{{creditLineId}}", "amount": 4000}]},
+   resp={"data": CREDIT_NOTE},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('creditNoteId', json.data.id);",
+          "pm.test('VAT follows the line', () => pm.expect(json.data.vat).to.eql(300));"],
+   desc="Perm invoicing.credit-note.issue; the invoice must be ISSUED. Per line give quantity (at the line's own price) or amount (a net value). VAT reverses "
+        "the original line's rate. Cumulative credits never exceed a line (400 CREDIT_EXCEEDS_LINE). The part within the balance reduces it; anything "
+        "beyond a balance already paid goes to the customer's wallet (CREDIT_NOTE entry), or 409 CREDIT_EXCEEDS_BALANCE for a walk-in buyer or when "
+        "invoicing.creditNoteExcessTo is BLOCK. Credit notes never move stock: physical returns go through Showroom Returns.")
+
+ep(I, "G3 Issue Credit Note (quantity)", "POST", "/api/v1/invoicing/invoices/{{draftInvoiceId}}/credit-notes",
+   body={"reason": "OVERCHARGE", "reasonNote": "Two cartons short on delivery", "lines": [{"invoiceLineId": "{{creditLineId}}", "quantity": 2}]},
+   resp={"data": dict(CREDIT_NOTE, id="3f4a5b6c-7d8e-4f9a-8b0c-1d2e3f4a5b6c", number="CN-2", reason="OVERCHARGE", reasonNote="Two cartons short on delivery",
+                      lineExtension=8000.00, vat=600.00, total=8600.00, appliedToInvoice=8600.00)})
+
+ep(I, "G4 Issue Credit Note (error: more than the line)", "POST", "/api/v1/invoicing/invoices/{{draftInvoiceId}}/credit-notes",
+   body={"reason": "OTHER", "reasonNote": "Too many", "lines": [{"invoiceLineId": "{{creditLineId}}", "quantity": 50}]}, status=400, status_text="Bad Request",
+   resp={"error": {"code": "CREDIT_EXCEEDS_LINE", "message": "Line 1 can't be credited for more than was invoiced on it", "details": {"lineNo": "1"}}},
+   expect_error={"status": 400, "code": "CREDIT_EXCEEDS_LINE"})
+
+ep(I, "G5 List Credit Notes", "GET", "/api/v1/invoicing/credit-notes", query=[{"key": "invoiceId", "value": "{{draftInvoiceId}}"}, {"key": "facets", "value": "reason"}],
+   resp=PAGED([{"id": "{{creditNoteId}}", "number": "CN-1", "invoiceId": "{{draftInvoiceId}}", "invoiceNumber": "INV-3", "customerId": "{{specialId}}",
+                "customer": "Grace Foods", "showroom": "Showroom Ikeja", "reason": "PRICING_ERROR", "reasonNote": "Agreed price was 3,800 a carton",
+                "total": 4300.00, "appliedToInvoice": 4300.00, "excessRefunded": 0.00, "issuedBy": "Alice Admin", "issuedAt": NOW}],
+              {"count": 2, "total": 12900.00, "excessToWallets": 0.00}),
+   desc="Perm invoicing.invoice.read. Filters invoiceId, customerId, reason, locationId, issuedBy, total, from/to, hasExcessRefunded; q matches the CN or "
+        "invoice number, customer and reason note.")
+
+ep(I, "G6 Get Credit Note", "GET", "/api/v1/invoicing/credit-notes/{{creditNoteId}}", resp={"data": CREDIT_NOTE})
+
+ep(I, "G7 Credit Note PDF", "GET", "/api/v1/invoicing/credit-notes/{{creditNoteId}}/credit-note.pdf", pdf=True)
+
+ep(I, "H1 E-mail an Invoice", "POST", "/api/v1/invoicing/invoices/{{draftInvoiceId}}/deliveries", body={"template": "STANDARD", "message": "Thank you for your order."},
+   resp={"data": DELIVERY_VIEW},
+   desc="Perm invoicing.delivery.manage. Queues the e-mail in the notification outbox; the PDF is rendered when it is sent, so a retry never "
+        "regenerates or renumbers the invoice. recipientEmail defaults to the buyer's (a different one is a REDIRECT; resending after a failure is a RETRY). "
+        "template STANDARD, REMINDER or STATEMENT (the customer's statement of open invoices and ageing). No address at all: 400 NO_EMAIL_ON_FILE. "
+        "invoicing.autoEmailOnIssue (on by default) sends one automatically at issue. The shipped e-mail adapter only logs until a provider is configured.")
+
+ep(I, "H2 E-mail the Customer's Statement", "POST", "/api/v1/invoicing/invoices/{{draftInvoiceId}}/deliveries", body={"template": "STATEMENT"},
+   resp={"data": dict(DELIVERY_VIEW, template="STATEMENT")})
+
+ep(I, "H3 E-mail (error: void invoice)", "POST", "/api/v1/invoicing/invoices/{{walkInInvoiceId}}/deliveries", body={},
+   status=409, status_text="Conflict", resp={"error": {"code": "INVOICE_NOT_ISSUED", "message": "This invoice is not issued", "details": {}}},
+   expect_error={"status": 409, "code": "INVOICE_NOT_ISSUED"},
+   desc="A void invoice can still be downloaded, but never e-mailed.")
+
+ep(I, "H4 Invoice E-mail History", "GET", "/api/v1/invoicing/invoices/{{draftInvoiceId}}/deliveries", resp={"data": [DELIVERY_VIEW]})
+
+ep(I, "H5 Deliveries", "GET", "/api/v1/invoicing/deliveries", query=[{"key": "facets", "value": "delivery"}],
+   resp=PAGED([{"invoiceId": "{{draftInvoiceId}}", "number": "INV-3", "issued": "2026-10-15", "customer": "Grace Foods", "email": "accounts@gracefoods.ng",
+                "showroom": "Showroom Ikeja", "total": 86000.00, "delivery": "Not sent", "deliveryCode": "NOT_SENT", "lastAttemptAt": NOW, "attempts": 2}],
+              {"issued": 3, "delivered": 0, "deliveredPct": 0.0, "failed": 0, "noEmailCount": 1, "noEmailValue": 52890.00}),
+   desc="Issued invoices with their e-mail state: delivery SENT, FAILED, NO_EMAIL or NOT_SENT (queued or never sent). The same delivery filter works on the history list.")
+
+ep(I, "H6 Bulk Export (ZIP of PDFs)", "GET", "/api/v1/invoicing/invoices/export.zip", query=[{"key": "status", "value": "ISSUED,PARTIALLY_PAID,PAID,OVERDUE"}],
+   binary="application/zip",
+   desc="Perm invoicing.delivery.manage. Same filters and the same location scope as the list (a single-location user only gets their showroom's invoices). "
+        "More than invoicing.bulkExportMaxInvoices (200) gives 400 EXPORT_TOO_LARGE: narrow the range.")
+
+ep(I, "I1 Outstanding Receivables", "GET", "/api/v1/invoicing/receivables", query=[{"key": "facets", "value": "ageingBucket"}],
+   resp=PAGED([{"id": "{{draftInvoiceId}}", "number": "INV-3", "issued": "2026-10-15", "due": "2026-10-29", "customerId": "{{specialId}}", "customer": "Grace Foods",
+                "customerType": "SPECIAL_CUSTOMER", "showroom": "Showroom Ikeja", "total": 86000.00, "paid": 0.00, "credited": 12900.00, "balance": 73100.00,
+                "status": "Partially Paid", "daysOverdue": 0, "ageingBucket": "NOT_DUE"}],
+              {"outstandingTotal": 73100.00, "outstandingCount": 1, "overdueTotal": 0.00, "overdueCount": 0, "partiallyPaidTotal": 73100.00, "partiallyPaidCount": 1,
+               "voidedCount": 2, "outstandingByCustomer": [{"customerId": "{{specialId}}", "customer": "Grace Foods", "invoiceCount": 1, "balance": 73100.00}]}),
+   desc="Perm invoicing.receivables.read. Issued invoices with more than invoicing.paidTolerance left to pay, most overdue first. ageingBucket NOT_DUE, "
+        "WITHIN_30, DAYS_31_60, OVER_60 (days past due); overdueOnly=true; plus every invoice filter. The header is computed from the same rows, so it "
+        "reconciles exactly.")
+
+ep(I, "I2 Overdue Receivables Only", "GET", "/api/v1/invoicing/receivables", query=[{"key": "overdueOnly", "value": "true"}],
+   resp=PAGED([], {"outstandingTotal": 0.00, "outstandingCount": 0, "overdueTotal": 0.00, "overdueCount": 0, "partiallyPaidTotal": 0.00,
+                   "partiallyPaidCount": 0, "voidedCount": 2, "outstandingByCustomer": []}))
+
+ep(I, "I3 Debtors List", "GET", "/api/v1/invoicing/debtors",
+   resp=PAGED([{"customerId": "{{specialId}}", "code": "CU-2", "name": "Grace Foods", "type": "SPECIAL_CUSTOMER", "phone": None, "locationId": "{{customerLocationId}}",
+                "showroom": "Lagos HQ", "correspondentId": None, "rep": None, "openInvoices": 1, "outstanding": 73100.00, "creditLimit": 0.00, "overLimit": True,
+                "oldestInvoiceDays": 0, "ageing": "WITHIN_30", "ageingLabel": "Within 30 days", "lastPaymentAt": None}],
+              {"debtors": 1, "outstandingTotal": 73100.00, "overLimitCount": 1}),
+   desc="Perm invoicing.receivables.read. One row per customer with an open balance; ageing on the oldest open invoice's issue date. Filters locationId "
+        "(the customer's home showroom), customerType, ageing, correspondentId, overLimitOnly, outstanding.gte/lte, q (code, name, phone); sort outstanding "
+        "(default), oldestInvoiceDays, name, lastPaymentAt.")
+
+ep(I, "I4 Debtor Account", "GET", "/api/v1/invoicing/debtors/{{specialId}}", query=[{"key": "openOnly", "value": "false"}],
+   resp={"data": {"customer": {"customerId": "{{specialId}}", "code": "CU-2", "name": "Grace Foods", "type": "SPECIAL_CUSTOMER", "phone": None,
+                               "locationId": "{{customerLocationId}}", "showroom": "Lagos HQ", "correspondentId": None, "rep": None, "openInvoices": 1,
+                               "outstanding": 73100.00, "creditLimit": 0.00, "overLimit": True, "oldestInvoiceDays": 0, "ageing": "WITHIN_30",
+                               "ageingLabel": "Within 30 days", "lastPaymentAt": None},
+                  "account": {"openInvoices": 1, "lastPaymentAt": None, "totalInvoiced": 86000.00, "totalPaid": 0.00, "totalCredited": 12900.00,
+                              "outstanding": 73100.00, "creditLimit": 0.00, "overLimit": True},
+                  "transactions": [{"invoiceId": "{{draftInvoiceId}}", "date": "2026-10-15", "invoice": "INV-3", "description": "Invoice from pro-forma SBX-3",
+                                    "value": 86000.00, "paid": 12900.00, "balance": 73100.00, "dueDate": "2026-10-29", "status": "Partially Paid"}],
+                  "warning": "Further credit sales should be withheld until the balance is brought within limit."}},
+   desc="The customer's account and invoice history (from, to, openOnly). warning is set when they are over their credit limit; Sales & POS enforces it at the till.")
+
+ep(I, "J1 NRS Preview", "GET", "/api/v1/invoicing/invoices/{{draftInvoiceId}}/nrs-preview",
+   resp={"data": {"ready": False, "missing": ["issuer.nrsBusinessId", "lines[1].hsn_code (fallback used)", "lines[1].price_unit"],
+                  "invoice": {"business_id": None, "irn": None, "issue_date": "2026-10-15", "invoice_type_code": "381", "invoice_kind": "B2C",
+                              "payment_status": "PENDING", "document_currency_code": "NGN"}}},
+   tests=["const json = pm.response.json();", "pm.test('has the NRS invoice body', () => pm.expect(json.data.invoice.invoice_type_code).to.eql('381'));"],
+   desc="Perm invoicing.invoice.read. The NRS Invoice Schema JSON this invoice would be validated as, built from the snapshot taken at issue, and what is "
+        "missing for a real submission (issuer identifiers, granular HS/ISIC codes where the section was used, NRS unit codes). Nothing is transmitted this phase.")
+
 def pm_url(path, query):
     full = "{{baseUrl}}" + path
     parts = [p for p in path.split("/") if p]
@@ -2759,11 +2916,13 @@ def pm_request_item(e, with_examples=True):
 
 FOLDER_DESCRIPTIONS = {
     "18 - Electronic Invoicing": (
-        "Electronic Invoicing (backend docs/08), slice 1: A NRS classification on a stock item, B raising invoices through the sandbox endpoint "
+        "Electronic Invoicing (backend docs/08): A NRS classification on a stock item, B raising invoices through the sandbox endpoint "
         "(which stands in for Sales & POS until docs/09 exists), C history, search, detail, PDF and pickers, D drafts (edit, issue, discard), "
-        "E void and void-and-reissue, voided list and global search. Payments, credit notes, e-mail delivery, receivables and the Debtors List follow in slice 2. "
-        "Run after folders 06 (factoryId, finishedProductId), 12 (dealerId, specialId) and 16 (showroomId). "
-        "Captured variables: invoiceId, invoiceNumber, invoiceSourceRef, walkInInvoiceId, draftInvoiceId, discardDraftId, reissuedInvoiceId."
+        "E void and void-and-reissue, voided list and global search, F payments (cash, transfer awaiting confirmation, decline, reversal), "
+        "G credit notes, H e-mail delivery and bulk export, I receivables and the Debtors List, J NRS preview. "
+        "Run after folders 06 (factoryId, finishedProductId), 12 (dealerId, specialId), 16 (showroomId) and 17 (tillAccountId, bankAccountId). "
+        "Captured variables: invoiceId, invoiceNumber, invoiceSourceRef, walkInInvoiceId, draftInvoiceId, discardDraftId, reissuedInvoiceId, "
+        "cashPaymentId, transferReceiptId, creditLineId, creditNoteId."
     ),
     "17 - Finance & Accounting": (
         "Finance & Accounting (backend docs/in-progress/07): A expense categories, B bank accounts, manual entries and the Bank Statement, "
@@ -2828,6 +2987,7 @@ def build_collection():
         "showroomId", "showroomName", "pendingShowroomId", "floorAreaId", "warehouseAreaId", "coldRoomId", "entryId", "directItemId",
         "outsourcedItemId", "showroomTransferId", "showroomTransferLineId", "returnId", "dealerReturnId",
         "invoiceId", "invoiceNumber", "invoiceSourceRef", "walkInInvoiceId", "draftInvoiceId", "discardDraftId", "reissuedInvoiceId",
+        "cashPaymentId", "transferReceiptId", "creditLineId", "creditNoteId",
     ]
 
     collection = {

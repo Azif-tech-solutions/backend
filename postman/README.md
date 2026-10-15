@@ -92,14 +92,17 @@ which sets the `today` variable.
 
 ## Testing Electronic Invoicing (folder 18)
 
-Folder **18 - Electronic Invoicing** (28 requests) covers slice 1: NRS
-classification on a stock item (A), raising invoices (B), history, search,
-detail, PDF and pickers (C), drafts (D), and void and void-and-reissue (E).
-Until Sales & POS exists, invoices are raised through the temporary sandbox
-endpoint `POST /api/v1/invoicing/sandbox/invoices`, which calls the same
-issuing code POS will. It uses the finished product from folder 06, the
-dealer and special customer from folder 12 and the showrooms from folder 16,
-so run it after those in the same run.
+Folder **18 - Electronic Invoicing** (52 requests) covers the whole module:
+NRS classification on a stock item (A), raising invoices (B), history,
+search, detail, PDF and pickers (C), drafts (D), void and void-and-reissue
+(E), payments with a declined transfer and a reversal (F), credit notes (G),
+e-mail delivery and bulk export (H), receivables and the Debtors List (I) and
+the NRS preview (J). Until Sales & POS exists, invoices are raised through the
+temporary sandbox endpoint `POST /api/v1/invoicing/sandbox/invoices`, which
+calls the same issuing code POS will. It uses the finished product from
+folder 06, the dealer and special customer from folder 12, the showroom from
+folder 16 and the till and bank account from folder 17, so run it after those
+in the same run.
 
 ## Testing the Customers module (folder 12)
 
@@ -212,7 +215,7 @@ npx newman run postman/ZifIQ-API.postman_collection.json -e postman/ZifIQ-Dev.po
   --folder "01 - Auth" --folder "12 - Customers"
 ```
 
-A clean full run reports `347/347` requests and `430/430` assertions
+A clean full run reports `371/371` requests and `460/460` assertions
 passing. Several requests are *deliberately* run against a state that makes
 them fail. These are not bugs: they demonstrate real error paths on purpose,
 so each gets its own status + error-code assertion instead of the generic

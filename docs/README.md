@@ -16,7 +16,7 @@ One design doc per module, numbered in build order (`implemented/03-cross-module
 | 05 | Showroom | Implemented | [implemented/05-showroom.md](implemented/05-showroom.md) |
 | 06 | Settings | Implemented | [implemented/06-settings.md](implemented/06-settings.md) |
 | 07 | Finance & accounting | Implemented | [implemented/07-finance-accounting.md](implemented/07-finance-accounting.md) |
-| 08 | Electronic invoicing | In progress (slice 1 of 2) | [in-progress/08-electronic-invoicing.md](in-progress/08-electronic-invoicing.md) |
+| 08 | Electronic invoicing | Implemented | [implemented/08-electronic-invoicing.md](implemented/08-electronic-invoicing.md) |
 | 09 | Sales & POS | Planned | [planned/09-sales-pos.md](planned/09-sales-pos.md) |
 | 10 | Audit & compliance | Planned | [planned/10-audit-compliance.md](planned/10-audit-compliance.md) |
 | 11 | Barcode & QR | Planned | [planned/11-barcode-qr.md](planned/11-barcode-qr.md) |

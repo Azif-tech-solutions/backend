@@ -5,9 +5,11 @@ import com.zifiq.invoicing.dto.DraftHeaderRequest
 import com.zifiq.invoicing.dto.ReissueRequest
 import com.zifiq.invoicing.dto.SandboxInvoiceRequest
 import com.zifiq.invoicing.dto.WalkInBuyerRequest
+import com.zifiq.invoicing.model.CreditNotesTable
 import com.zifiq.invoicing.model.InvoiceLinesTable
 import com.zifiq.invoicing.model.InvoiceWaybillLinksTable
 import com.zifiq.invoicing.model.InvoicesTable
+import com.zifiq.invoicing.spi.CreditNoteLineView
 import com.zifiq.invoicing.spi.InvoiceIssuer
 import com.zifiq.invoicing.spi.InvoiceLineRequest
 import com.zifiq.invoicing.spi.InvoiceLineView
@@ -16,6 +18,7 @@ import com.zifiq.invoicing.spi.InvoiceRef
 import com.zifiq.invoicing.spi.InvoiceRequest
 import com.zifiq.invoicing.spi.InvoiceWaybillLinks
 import com.zifiq.invoicing.spi.OpenInvoiceRef
+import com.zifiq.invoicing.spi.PaymentLink
 import com.zifiq.invoicing.spi.Receivables
 import com.zifiq.invoicing.spi.SourceType
 import com.zifiq.invoicing.spi.WalkInBuyer
@@ -46,7 +49,7 @@ import org.springframework.stereotype.Service
  * call — Sales & POS issues invoices through [InvoiceIssuer] in its own transaction.
  *
  * Issued invoices are immutable (rule 14): V12's triggers reject any change to an issued invoice's
- * content or lines, so corrections only happen by void-and-reissue (or, with slice 2, credit notes).
+ * content or lines, so corrections only happen by credit note or void-and-reissue.
  */
 @Service
 class InvoiceService(
@@ -56,6 +59,9 @@ class InvoiceService(
     private val sequences: DocumentSequenceService,
     private val documents: DocumentRegistry,
     private val notify: Notify,
+    private val payments: InvoicePaymentService,
+    private val deliveries: InvoiceDeliveryService,
+    private val creditNotes: CreditNoteService,
 ) : InvoiceIssuer, InvoiceQueries, InvoiceWaybillLinks, Receivables {
 
     // ---- InvoiceIssuer (spi, caller's transaction) ----
@@ -78,12 +84,17 @@ class InvoiceService(
         return ref(row)
     }
 
+    override fun attachPayment(invoiceId: UUID, payment: PaymentLink) = payments.attach(invoiceId, payment)
+
     override fun voidForSource(sourceType: String, sourceId: UUID, reason: String) {
         val live = liveForSource(sourceType, sourceId, forUpdate = true) ?: return
         when (live[InvoicesTable.status]) {
             "DRAFT" -> discard(live)
             // The sale was voided in doc 09, which already voided its receipts: no INVOICE_HAS_PAYMENTS guard.
-            else -> markVoid(live, reason.trim(), zeroPaid = true)
+            else -> {
+                markVoid(live, reason.trim(), zeroPaid = false)
+                payments.voidAll(live[InvoicesTable.id].value, reason.trim())
+            }
         }
     }
 
@@ -116,6 +127,8 @@ class InvoiceService(
                     lineNet = it[InvoiceLinesTable.lineNet], vatAmount = it[InvoiceLinesTable.vatAmount], lineTotal = it[InvoiceLinesTable.lineTotal],
                 )
             }
+
+    override fun creditNoteLines(locationId: UUID?, from: LocalDate, to: LocalDate): List<CreditNoteLineView> = creditNotes.creditNoteLines(locationId, from, to)
 
     override fun link(invoiceId: UUID, waybillId: UUID, waybillRef: String, waybillDate: LocalDate) {
         val invoice = row(invoiceId)
@@ -194,7 +207,7 @@ class InvoiceService(
         support.assertAccess(invoice[InvoicesTable.locationId].value)
         if (invoice[InvoicesTable.status] != "ISSUED") throw ApiErrors.invoiceNotIssued()
         if (reissue == null) {
-            if (invoice[InvoicesTable.amountPaid].signum() > 0 || invoice[InvoicesTable.amountCredited].signum() > 0) throw ApiErrors.invoiceHasPayments()
+            if (invoice[InvoicesTable.amountPaid].signum() > 0 || invoice[InvoicesTable.amountCredited].signum() > 0 || hasCreditNotes(id)) throw ApiErrors.invoiceHasPayments()
             markVoid(invoice, reason.trim(), zeroPaid = false)
             return@execute id
         }
@@ -341,6 +354,7 @@ class InvoiceService(
             mapOf("total" to total, "sourceType" to issued[InvoicesTable.sourceType], "sourceId" to issued[InvoicesTable.sourceId],
                 "sourceRef" to issued[InvoicesTable.sourceRef], "customerId" to issued[InvoicesTable.customerId]),
             issued[InvoicesTable.locationId].value)
+        deliveries.autoOnIssue(id)
         return ref(issued)
     }
 
@@ -383,6 +397,8 @@ class InvoiceService(
      */
     private fun reissue(old: ResultRow, corrected: InvoiceRequest, reason: String, emailOverride: String? = null): InvoiceRef {
         val oldId = old[InvoicesTable.id].value
+        // Credit notes stay with the invoice they reduced; moving them would lose what they credited.
+        if (hasCreditNotes(oldId)) throw ApiErrors.invoiceHasPayments()
         // Validate and price the replacement before voiding, so a bad correction leaves the invoice as it was.
         builder.requireIssuingShowroom(corrected.locationId)
         val issueDate = corrected.issueDate ?: support.today()
@@ -396,6 +412,8 @@ class InvoiceService(
             InvoicesTable.update({ InvoicesTable.id eq newId }) { it[buyerEmail] = previewBuyer.email }
         }
         InvoicesTable.update({ InvoicesTable.id eq newId }) { it[reissueOfInvoiceId] = oldId }
+        // The receipts don't change: the replacement links to the same ones (REISSUE_TRANSFER).
+        payments.transfer(oldId, newId)
         val replacement = issueStored(newId, issueDate, corrected.paymentTermsDays, null)
         InvoicesTable.update({ InvoicesTable.id eq oldId }) { it[replacedByInvoiceId] = newId }
         return replacement
@@ -419,6 +437,9 @@ class InvoiceService(
         if (issueDate.isAfter(support.today())) throw ApiErrors.validationFailed(mapOf("issueDate" to "can't be in the future"))
         if (issueDate.isBefore(sourceDate)) throw ApiErrors.validationFailed(mapOf("issueDate" to "can't be before the source document's date ($sourceDate)"))
     }
+
+    private fun hasCreditNotes(invoiceId: UUID): Boolean =
+        CreditNotesTable.select(CreditNotesTable.id).where { CreditNotesTable.invoiceId eq invoiceId }.any()
 
     private fun liveForSource(sourceType: String, sourceId: UUID, forUpdate: Boolean = false): ResultRow? =
         InvoicesTable.selectAll()

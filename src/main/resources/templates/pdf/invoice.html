@@ -130,6 +130,19 @@
     <tr class="balance" th:if="${totals.showBalance}"><td>Balance due</td><td class="num" th:text="${totals.balance}">₦0.00</td></tr>
 </table>
 
+<div class="note" th:if="${!payments.isEmpty()}">
+    <span class="label">Payments received</span>
+    <table class="lines">
+        <tr th:each="payment : ${payments}">
+            <td th:text="${payment.date}">date</td>
+            <td th:text="${payment.method}">Cash</td>
+            <td th:text="${payment.receipt}">RCT-1</td>
+            <td th:text="${payment.pending} ? 'Pending confirmation' : 'Received'">Received</td>
+            <td class="num" th:text="${payment.amount}">₦0.00</td>
+        </tr>
+    </table>
+</div>
+
 <div class="note" th:if="${paymentTermsNote != null}"><span class="label">Payment terms</span><div th:text="${paymentTermsNote}">Terms</div></div>
 
 <div class="footer">

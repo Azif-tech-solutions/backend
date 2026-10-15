@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title th:text="${note.number}">CN-1</title>
+    <style>
+        @page { size: A4; margin: 16mm 14mm 22mm 14mm;
+                @bottom-center { content: "Page " counter(page) " of " counter(pages); font-family: 'Noto Sans'; font-size: 7.5pt; color: #666; } }
+        body { font-family: 'Noto Sans'; font-size: 8.8pt; color: #1a1a1a; }
+        .header { display: table; width: 100%; border-bottom: 2px solid #1a1a1a; padding-bottom: 7pt; }
+        .header .left, .header .right { display: table-cell; vertical-align: top; }
+        .header .right { text-align: right; width: 42%; }
+        .logo { max-height: 40pt; max-width: 140pt; margin-bottom: 3pt; }
+        .company { font-size: 13pt; font-weight: 700; }
+        .muted { color: #555; }
+        .doc-title { font-size: 13pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6pt; }
+        .number { font-size: 13pt; font-weight: 700; }
+        .label { font-size: 7.5pt; text-transform: uppercase; color: #555; letter-spacing: 0.3pt; margin-bottom: 2pt; }
+        table.meta { width: 100%; margin-top: 10pt; border-collapse: collapse; }
+        table.meta td { border: 1px solid #ccc; padding: 3pt 5pt; vertical-align: top; width: 25%; }
+        table.lines { width: 100%; margin-top: 12pt; border-collapse: collapse; }
+        table.lines th { background: #f0f0f0; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.3pt; color: #444;
+                         border-bottom: 1px solid #999; padding: 4pt 4pt; text-align: left; }
+        table.lines td { border-bottom: 1px solid #e2e2e2; padding: 4pt 4pt; vertical-align: top; }
+        table.lines .num { text-align: right; white-space: nowrap; }
+        .code { color: #666; font-size: 7.5pt; }
+        table.totals { margin-top: 8pt; margin-left: auto; border-collapse: collapse; width: 50%; }
+        table.totals td { padding: 2.5pt 4pt; }
+        table.totals td.num { text-align: right; white-space: nowrap; }
+        table.totals tr.grand td { border-top: 2px solid #1a1a1a; font-weight: 700; font-size: 10.5pt; padding-top: 4pt; }
+        .note { margin-top: 10pt; }
+        .duplicate { position: fixed; top: 150mm; left: 0; width: 100%; text-align: center; font-size: 30pt; font-weight: 700;
+                     color: #d23c3c; opacity: 0.16; transform: rotate(-28deg); }
+        .footer { margin-top: 18pt; font-size: 7.3pt; color: #555; border-top: 1px solid #ddd; padding-top: 5pt; }
+        .nrs { margin-top: 3pt; font-style: italic; }
+    </style>
+</head>
+<body>
+<div class="duplicate" th:if="${duplicate}">DUPLICATE COPY</div>
+
+<div class="header">
+    <div class="left">
+        <img class="logo" th:if="${logo != null}" th:src="${logo}" alt="logo"/>
+        <div class="company" th:text="${company.tradingName}">Company</div>
+        <div class="muted" th:text="${company.streetAddress}">Address</div>
+        <div class="muted" th:text="${company.phone}">Phone</div>
+        <div class="muted" th:if="${company.tin != null}" th:text="'TIN ' + ${company.tin}">TIN</div>
+    </div>
+    <div class="right">
+        <div class="doc-title">Credit Note</div>
+        <div class="number" th:text="${note.number}">CN-1</div>
+        <div class="muted" th:text="${issuedAt}">date</div>
+    </div>
+</div>
+
+<table class="meta">
+    <tr>
+        <td><div class="label">Customer</div><div th:text="${note.customer}">Customer</div></td>
+        <td><div class="label">Against invoice</div><div th:text="${note.invoice.number}">INV-1</div></td>
+        <td><div class="label">Invoice date</div><div th:text="${invoiceIssueDate}">date</div></td>
+        <td><div class="label">Reason</div><div th:text="${reason}">Pricing error</div></td>
+    </tr>
+</table>
+
+<div class="note"><span class="label">Note</span><div th:text="${note.reasonNote}">Reason note</div></div>
+
+<table class="lines">
+    <thead>
+    <tr><th>#</th><th>Product</th><th>Credited</th><th class="num">Net</th><th class="num">VAT</th><th class="num">Total</th></tr>
+    </thead>
+    <tbody>
+    <tr th:each="line : ${lines}">
+        <td th:text="${line.no}">1</td>
+        <td><div th:text="${line.name}">Product</div><div class="code" th:text="${line.code}">ZF-101</div></td>
+        <td th:text="${line.basis}">2 × ₦4,100.00</td>
+        <td class="num" th:text="${line.net}">₦0.00</td>
+        <td class="num" th:text="${line.vat}">7.5% ₦0.00</td>
+        <td class="num" th:text="${line.total}">₦0.00</td>
+    </tr>
+    </tbody>
+</table>
+
+<table class="totals">
+    <tr><td>Net credited</td><td class="num" th:text="${lineExtension}">₦0.00</td></tr>
+    <tr><td>VAT reversed</td><td class="num" th:text="${vat}">₦0.00</td></tr>
+    <tr class="grand"><td>Total credit</td><td class="num" th:text="${total}">₦0.00</td></tr>
+    <tr><td>Applied to the invoice balance</td><td class="num" th:text="${applied}">₦0.00</td></tr>
+    <tr th:if="${hasExcess}"><td>Credited to the customer's wallet</td><td class="num" th:text="${excess}">₦0.00</td></tr>
+</table>
+
+<div class="footer">
+    <div th:if="${company.documentFooter != null}" th:text="${company.documentFooter}">Footer</div>
+    <div class="nrs" th:text="${nrsFooter}">NRS footer</div>
+    <div th:text="'Printed ' + ${printedAt}">Printed</div>
+</div>
+</body>
+</html>

@@ -116,3 +116,62 @@ object InvoiceWaybillLinksTable : UUIDTable("invoice_waybill_links") {
     val waybillDate = date("waybill_date")
     val createdAt = timestamp("created_at")
 }
+
+/** A payment against an invoice; each is an Account receipt, whose status is mirrored in [receiptStatus] (docs/08 §2.4). */
+object InvoicePaymentsTable : UUIDTable("invoice_payments") {
+    val tenantId = reference("tenant_id", TenantsTable)
+    val invoiceId = reference("invoice_id", InvoicesTable)
+    val method = varchar("method", 20)
+    val amount = decimal("amount", 14, 2)
+    val paymentReceiptId = uuid("payment_receipt_id")
+    val receiptRef = varchar("receipt_ref", 20)
+    val receiptStatus = varchar("receipt_status", 20)
+    val customerLedgerEntryId = uuid("customer_ledger_entry_id").nullable()
+    val nrsPaymentMeansCode = varchar("nrs_payment_means_code", 3).nullable()
+    val paidAt = timestamp("paid_at")
+    val recordedByUserId = reference("recorded_by_user_id", AppUsersTable)
+    val paymentSource = varchar("source", 20)
+    val reversalReason = varchar("reversal_reason", 300).nullable()
+    val createdAt = timestamp("created_at")
+}
+
+object CreditNotesTable : UUIDTable("credit_notes") {
+    val tenantId = reference("tenant_id", TenantsTable)
+    val number = varchar("number", 20)
+    val invoiceTypeCode = varchar("invoice_type_code", 3)
+    val invoiceId = reference("invoice_id", InvoicesTable)
+    val reason = varchar("reason", 40)
+    val reasonNote = varchar("reason_note", 300)
+    val lineExtensionAmount = decimal("line_extension_amount", 14, 2)
+    val vatTotal = decimal("vat_total", 14, 2)
+    val total = decimal("total", 14, 2)
+    val appliedToInvoice = decimal("applied_to_invoice", 14, 2)
+    val excessRefunded = decimal("excess_refunded", 14, 2)
+    val excessCustomerLedgerEntryId = uuid("excess_customer_ledger_entry_id").nullable()
+    val issuedByUserId = reference("issued_by_user_id", AppUsersTable)
+    val issuedAt = timestamp("issued_at")
+}
+
+object CreditNoteLinesTable : UUIDTable("credit_note_lines") {
+    val tenantId = reference("tenant_id", TenantsTable)
+    val creditNoteId = reference("credit_note_id", CreditNotesTable)
+    val invoiceLineId = reference("invoice_line_id", InvoiceLinesTable)
+    val quantity = decimal("quantity", 14, 3).nullable()
+    val amount = decimal("amount", 14, 2).nullable()
+    val lineNet = decimal("line_net", 14, 2)
+    val vatAmount = decimal("vat_amount", 14, 2)
+    val lineTotal = decimal("line_total", 14, 2)
+}
+
+/** One e-mail of an invoice; its status is its outbox row's (docs/08 §2.6). */
+object InvoiceDeliveriesTable : UUIDTable("invoice_deliveries") {
+    val tenantId = reference("tenant_id", TenantsTable)
+    val invoiceId = reference("invoice_id", InvoicesTable)
+    val recipientEmail = varchar("recipient_email", 320)
+    val template = varchar("template", 20)
+    val message = varchar("message", 1000).nullable()
+    val notificationOutboxId = uuid("notification_outbox_id")
+    val trigger = varchar("trigger", 20)
+    val requestedByUserId = optReference("requested_by_user_id", AppUsersTable)
+    val requestedAt = timestamp("requested_at")
+}
