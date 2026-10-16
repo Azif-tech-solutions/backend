@@ -154,6 +154,9 @@ class CustomersIntegrationTest : PostgresIntegrationTest() {
         tenantContext.clear()
     }
 
+    /** "Today" for the tenant (Africa/Lagos, the default business timezone): the JVM's UTC date is a day behind after 23:00 UTC. */
+    private fun tenantToday(): LocalDate = LocalDate.now(java.time.ZoneId.of("Africa/Lagos"))
+
     private fun failsWith(block: () -> Any?): AbstractObjectAssert<*, *> =
         assertThatThrownBy { block() }.isInstanceOf(ApiException::class.java).extracting { (it as ApiException).code }
 
@@ -260,26 +263,26 @@ class CustomersIntegrationTest : PostgresIntegrationTest() {
         val customer = ordinary("Reclass Candidate", "08036660000")
         tx.execute { wallet.credit(posting(customer.id, LedgerEntryType.RETURN_CREDIT, "4000", "RT-1")) }
 
-        val promoted = reclassifications.reclassify(customer.id, ReclassificationRequest(CustomerType.SPECIAL_CUSTOMER, ReclassificationReason.MET_PURCHASE_VOLUME, null, LocalDate.now()))
+        val promoted = reclassifications.reclassify(customer.id, ReclassificationRequest(CustomerType.SPECIAL_CUSTOMER, ReclassificationReason.MET_PURCHASE_VOLUME, null, tenantToday()))
         assertThat(promoted.status).isEqualTo("APPLIED")
         assertThat(promoted.direction).isEqualTo("PROMOTION")
         assertThat(customers.get(customer.id).type).isEqualTo(CustomerType.SPECIAL_CUSTOMER)
         assertThat(customers.get(customer.id).walletBalance).isEqualByComparingTo("4000")
 
-        failsWith { reclassifications.reclassify(customer.id, ReclassificationRequest(CustomerType.SPECIAL_CUSTOMER, ReclassificationReason.MANAGEMENT_DECISION, null, LocalDate.now())) }
+        failsWith { reclassifications.reclassify(customer.id, ReclassificationRequest(CustomerType.SPECIAL_CUSTOMER, ReclassificationReason.MANAGEMENT_DECISION, null, tenantToday())) }
             .isEqualTo(ErrorCode.RECLASSIFICATION_SAME_TYPE)
 
         tx.execute { wallet.credit(posting(customer.id, LedgerEntryType.FUNDING, "5000", "DP-1", BalanceType.DEPOSIT)) }
-        failsWith { reclassifications.reclassify(customer.id, ReclassificationRequest(CustomerType.ORDINARY_CUSTOMER, ReclassificationReason.PAYMENT_ARREARS, null, LocalDate.now())) }
+        failsWith { reclassifications.reclassify(customer.id, ReclassificationRequest(CustomerType.ORDINARY_CUSTOMER, ReclassificationReason.PAYMENT_ARREARS, null, tenantToday())) }
             .isEqualTo(ErrorCode.DEPOSIT_MUST_BE_SETTLED)
         tx.execute { wallet.debit(posting(customer.id, LedgerEntryType.WITHDRAWAL_DEBIT, "5000", "WW-1", BalanceType.DEPOSIT)) }
 
         val scheduled = reclassifications.reclassify(
             customer.id,
-            ReclassificationRequest(CustomerType.AUTHORISED_DEALER, ReclassificationReason.SUSTAINED_SALES_PERFORMANCE, null, LocalDate.now().plusDays(3), toDealerCategoryId = gold()),
+            ReclassificationRequest(CustomerType.AUTHORISED_DEALER, ReclassificationReason.SUSTAINED_SALES_PERFORMANCE, null, tenantToday().plusDays(3), toDealerCategoryId = gold()),
         )
         assertThat(scheduled.status).isEqualTo("SCHEDULED")
-        failsWith { reclassifications.reclassify(customer.id, ReclassificationRequest(CustomerType.ORDINARY_CUSTOMER, ReclassificationReason.MANAGEMENT_DECISION, null, LocalDate.now().plusDays(5))) }
+        failsWith { reclassifications.reclassify(customer.id, ReclassificationRequest(CustomerType.ORDINARY_CUSTOMER, ReclassificationReason.MANAGEMENT_DECISION, null, tenantToday().plusDays(5))) }
             .isEqualTo(ErrorCode.RECLASSIFICATION_PENDING)
         assertThat(reclassifications.cancel(customer.id, scheduled.id).status).isEqualTo("CANCELLED")
         assertThat(customers.get(customer.id).type).isEqualTo(CustomerType.SPECIAL_CUSTOMER)
@@ -289,7 +292,7 @@ class CustomersIntegrationTest : PostgresIntegrationTest() {
     fun `a due scheduled reclassification is applied by the job`() {
         signIn(admin)
         val customer = ordinary("Scheduled Promotion", "08037770000")
-        val scheduled = reclassifications.reclassify(customer.id, ReclassificationRequest(CustomerType.SPECIAL_CUSTOMER, ReclassificationReason.MET_PURCHASE_VOLUME, null, LocalDate.now().plusDays(1)))
+        val scheduled = reclassifications.reclassify(customer.id, ReclassificationRequest(CustomerType.SPECIAL_CUSTOMER, ReclassificationReason.MET_PURCHASE_VOLUME, null, tenantToday().plusDays(1)))
         // Make it due, then run the job as the scheduler would (no signed-in user).
         tx.execute { TransactionManager.current().exec("update customer_reclassifications set effective_from = current_date where id = '${scheduled.id}'") }
         signOut()
