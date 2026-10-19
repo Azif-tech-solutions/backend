@@ -2578,7 +2578,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"d936c2cc-57e1-4ebf-86f0-acdb68519759\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"c0e191e1-1e5c-4424-b07d-e2bfab059134\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -2669,7 +2669,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"4d04ed88-8d01-4afa-8097-4575ec8eabf5\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"45653e27-1d0d-439a-a466-692ecf58f536\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -11474,7 +11474,7 @@
                 }
               ]
             },
-            "description": "postal_address.lga, filtered by Nigeria state code. Only Abia state seeded so far (sample as supplied from the real NRS docs) -- Nigeria has 774 LGAs total; extend state-by-state as confirmed.",
+            "description": "postal_address.lga, filtered by Nigeria state code. All 774 LGAs, under NRS's own codes (V14_11); names corrected where NRS misspells them.",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -11522,7 +11522,7 @@
                     }
                   ]
                 },
-                "description": "postal_address.lga, filtered by Nigeria state code. Only Abia state seeded so far (sample as supplied from the real NRS docs) -- Nigeria has 774 LGAs total; extend state-by-state as confirmed.",
+                "description": "postal_address.lga, filtered by Nigeria state code. All 774 LGAs, under NRS's own codes (V14_11); names corrected where NRS misspells them.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
