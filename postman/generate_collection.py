@@ -901,7 +901,7 @@ ep("11 - NRS Reference Data", "List Nigeria LGAs", "GET", "/api/v1/invoicing/ref
        {"code": "NG-AB-ANO", "stateCode": "NG-AB", "name": "Aba North"},
        {"code": "NG-AB-UWE", "stateCode": "NG-AB", "name": "Ukwa West"},
    ]},
-   desc="postal_address.lga, filtered by Nigeria state code. Only Abia state seeded so far (sample as supplied from the real NRS docs) -- Nigeria has 774 LGAs total; extend state-by-state as confirmed.")
+   desc="postal_address.lga, filtered by Nigeria state code. All 774 LGAs, under NRS's own codes (V14_11); names corrected where NRS misspells them.")
 
 
 # ============================== CUSTOMERS (docs/04) ==============================

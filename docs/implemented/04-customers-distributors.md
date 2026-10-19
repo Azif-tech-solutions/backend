@@ -144,7 +144,7 @@ create table customers (
     street_address varchar(300),
     city varchar(120),
     state_code varchar(5) references nigeria_states(code),     -- 'NG-LA' (global table from V6)
-    lga_code varchar(10) references nigeria_lgas(code),        -- optional; V6 seeds only part of Nigeria's LGAs
+    lga_code varchar(10) references nigeria_lgas(code),        -- optional; all 774 LGAs seeded (V6 + V14_11)
     country_code varchar(2) not null default 'NG',
     location_id uuid references locations(id),           -- home showroom
     correspondent_id uuid references correspondents(id),
