@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title th:text="${sale.ref}">TXN-1</title>
+    <style>
+        @page { size: A5; margin: 12mm 10mm 14mm 10mm;
+                @bottom-center { content: "Page " counter(page) " of " counter(pages); font-family: 'Noto Sans'; font-size: 7.5pt; color: #666; } }
+        body { font-family: 'Noto Sans'; font-size: 8.5pt; color: #1a1a1a; }
+        .header { display: table; width: 100%; border-bottom: 2px solid #1a1a1a; padding-bottom: 6pt; }
+        .header .left, .header .right { display: table-cell; vertical-align: top; }
+        .header .right { text-align: right; }
+        .logo { max-height: 32pt; max-width: 110pt; margin-bottom: 3pt; }
+        .company { font-size: 12pt; font-weight: 700; }
+        .muted { color: #555; }
+        .doc-title { font-size: 10.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5pt; }
+        .ref { font-size: 12pt; font-weight: 700; }
+        table.meta { width: 100%; margin-top: 8pt; border-collapse: collapse; }
+        table.meta td { padding: 2pt 4pt; vertical-align: top; }
+        table.meta td.label { width: 28%; font-size: 7.5pt; text-transform: uppercase; color: #555; letter-spacing: 0.3pt; }
+        table.lines { width: 100%; margin-top: 8pt; border-collapse: collapse; }
+        table.lines th { text-align: left; font-size: 7.5pt; text-transform: uppercase; color: #555; border-bottom: 1px solid #1a1a1a; padding: 3pt 3pt; }
+        table.lines td { border-bottom: 1px solid #e2e2e2; padding: 3pt 3pt; vertical-align: top; }
+        .num { text-align: right; white-space: nowrap; }
+        table.totals { width: 60%; margin-left: 40%; margin-top: 6pt; border-collapse: collapse; }
+        table.totals td { padding: 2pt 3pt; }
+        table.totals tr.grand td { font-size: 11pt; font-weight: 700; border-top: 2px solid #1a1a1a; }
+        table.pay { width: 100%; margin-top: 8pt; border-collapse: collapse; }
+        table.pay th { text-align: left; font-size: 7.5pt; text-transform: uppercase; color: #555; border-bottom: 1px solid #1a1a1a; padding: 2pt 3pt; }
+        table.pay td { padding: 2pt 3pt; border-bottom: 1px solid #e2e2e2; }
+        .pending { color: #9a6400; font-size: 7.5pt; }
+        .stamp { display: inline-block; margin-top: 8pt; padding: 3pt 10pt; border: 2px solid #b02a2a; color: #b02a2a; font-weight: 700; text-transform: uppercase; }
+        .duplicate { position: fixed; top: 80mm; left: 0; width: 100%; text-align: center; font-size: 34pt; font-weight: 700;
+                     color: #d23c3c; opacity: 0.18; transform: rotate(-28deg); }
+        .footer { margin-top: 12pt; font-size: 7.5pt; color: #555; border-top: 1px solid #ddd; padding-top: 5pt; }
+    </style>
+</head>
+<body>
+<div class="duplicate" th:if="${duplicate}">DUPLICATE COPY</div>
+
+<div class="header">
+    <div class="left">
+        <img class="logo" th:if="${logo != null}" th:src="${logo}" alt="logo"/>
+        <div class="company" th:text="${company.tradingName}">Company</div>
+        <div class="muted" th:text="${showroom}">Showroom</div>
+        <div class="muted" th:text="${company.streetAddress}">Address</div>
+        <div class="muted"><span th:text="${company.phone}">Phone</span><span th:if="${company.email != null}" th:text="' · ' + ${company.email}"> · email</span></div>
+        <div class="muted" th:if="${company.tin != null}" th:text="'TIN ' + ${company.tin}">TIN</div>
+    </div>
+    <div class="right">
+        <div class="doc-title">Sales Receipt</div>
+        <div class="ref" th:text="${sale.ref}">TXN-1</div>
+        <div class="muted" th:text="${completedAt}">date</div>
+    </div>
+</div>
+
+<table class="meta">
+    <tr><td class="label">Customer</td><td th:text="${customer}">Walk-in customer</td></tr>
+    <tr th:if="${till != null}"><td class="label">Till</td><td th:text="${till}">TILL-1</td></tr>
+    <tr><td class="label">Cashier</td><td th:text="${cashier}">Cashier</td></tr>
+    <tr th:if="${sale.invoiceNumber != null}"><td class="label">Invoice</td><td th:text="${sale.invoiceNumber}">INV-1</td></tr>
+    <tr th:if="${correspondent != null}"><td class="label">Correspondent</td><td th:text="${correspondent}">Rep</td></tr>
+</table>
+
+<table class="lines">
+    <tr><th>Item</th><th class="num">Qty</th><th class="num">Price</th><th class="num">Amount</th></tr>
+    <tr th:each="line : ${lines}">
+        <td><span th:text="${line.name}">Item</span><br/><span class="muted" th:text="${line.code}">CODE</span></td>
+        <td class="num" th:text="${line.quantity + ' ' + line.unit}">1</td>
+        <td class="num" th:text="${line.price}">₦0.00</td>
+        <td class="num" th:text="${line.amount}">₦0.00</td>
+    </tr>
+</table>
+
+<table class="totals">
+    <tr><td>Subtotal</td><td class="num" th:text="${totals.gross}">₦0.00</td></tr>
+    <tr th:if="${totals.hasDiscount}"><td>Discount</td><td class="num" th:text="'− ' + ${totals.discount}">₦0.00</td></tr>
+    <tr><td th:text="${vatLabel}">VAT</td><td class="num" th:text="${totals.vat}">₦0.00</td></tr>
+    <tr class="grand"><td>Total</td><td class="num" th:text="${totals.total}">₦0.00</td></tr>
+</table>
+
+<table class="pay">
+    <tr><th>Paid by</th><th>Receipt</th><th class="num">Amount</th></tr>
+    <tr th:each="p : ${payments}">
+        <td><span th:text="${p.method}">Cash</span> <span class="pending" th:if="${p.pending}">(pending confirmation)</span></td>
+        <td th:text="${p.receipt}">RCT-1</td>
+        <td class="num" th:text="${p.amount}">₦0.00</td>
+    </tr>
+    <tr th:if="${onAccount != null}"><td>On account</td><td>—</td><td class="num" th:text="${onAccount}">₦0.00</td></tr>
+    <tr th:if="${change != null}"><td>Change</td><td>—</td><td class="num" th:text="${change}">₦0.00</td></tr>
+</table>
+
+<div th:if="${voided}"><span class="stamp">Void</span> <span class="muted" th:text="${voidReason}">reason</span></div>
+
+<div class="footer">
+    <div th:if="${company.documentFooter != null}" th:text="${company.documentFooter}">Footer</div>
+    <div th:text="'Printed ' + ${printedAt}">Printed</div>
+</div>
+</body>
+</html>

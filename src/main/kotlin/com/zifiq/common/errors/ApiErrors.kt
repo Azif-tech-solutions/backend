@@ -284,4 +284,33 @@ object ApiErrors {
     fun invoicePaymentNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.INVOICE_PAYMENT_NOT_FOUND, "Invoice payment not found")
     fun pageTooDeep(maxRows: Long) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.PAGE_TOO_DEEP,
         "Pages are available for the first $maxRows rows; narrow the filters or the date range to see older ones", mapOf("maxRows" to maxRows.toString()))
+
+    // ---- Sales & POS (docs/09 §7) ----
+    fun noOpenTillSession() = ApiException(HttpStatus.CONFLICT, ErrorCode.NO_OPEN_TILL_SESSION, "Open a till session first")
+    fun tillAlreadyOpen(openedBy: String, openedAt: java.time.Instant) = ApiException(HttpStatus.CONFLICT, ErrorCode.TILL_ALREADY_OPEN,
+        "This till is already open (by $openedBy)", mapOf("openedBy" to openedBy, "openedAt" to openedAt.toString()))
+    fun cashierSessionOpen(till: String) = ApiException(HttpStatus.CONFLICT, ErrorCode.CASHIER_SESSION_OPEN, "You already have till $till open; close it first", mapOf("till" to till))
+    fun invalidTill(reason: String) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_TILL, reason)
+    fun tillSessionNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.TILL_SESSION_NOT_FOUND, "Till session not found")
+    fun tillSessionClosed() = ApiException(HttpStatus.CONFLICT, ErrorCode.TILL_SESSION_CLOSED, "This till session is closed")
+    fun openSalesExist(refs: List<String>) = ApiException(HttpStatus.CONFLICT, ErrorCode.OPEN_SALES_EXIST,
+        "Complete or clear the ${refs.size} open sale(s) on this till first", mapOf("openSales" to refs.joinToString(",")))
+    fun saleNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.SALE_NOT_FOUND, "Sale not found")
+    fun saleNotOpen(status: String) = ApiException(HttpStatus.CONFLICT, ErrorCode.SALE_NOT_OPEN, "This sale is ${status.lowercase()}, not open", mapOf("status" to status))
+    fun saleChanged(version: Int) = ApiException(HttpStatus.CONFLICT, ErrorCode.SALE_CHANGED,
+        "The sale changed since you last loaded it; reload it and try again", mapOf("version" to version.toString()))
+    fun itemNotSellable(code: String, reason: String) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.ITEM_NOT_SELLABLE, "$code can't be sold: $reason", mapOf("item" to code))
+    fun noPriceSet(code: String) = ApiException(HttpStatus.CONFLICT, ErrorCode.NO_PRICE_SET, "$code has no selling price in force; publish one on the price list", mapOf("item" to code))
+    fun pricesChanged(version: Int) = ApiException(HttpStatus.CONFLICT, ErrorCode.PRICES_CHANGED,
+        "Prices changed since the cart was built; the cart has been re-priced — confirm the new total", mapOf("version" to version.toString()))
+    fun insufficientStockForSale(shortfalls: Map<String, String>) = ApiException(HttpStatus.CONFLICT, ErrorCode.INSUFFICIENT_STOCK,
+        "Not enough stock for ${shortfalls.keys.joinToString(", ")}", shortfalls)
+    fun paymentNotSettled(total: java.math.BigDecimal, allocated: java.math.BigDecimal) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.PAYMENT_NOT_SETTLED,
+        "Payments must add up to the total", mapOf("total" to total.toPlainString(), "allocated" to allocated.toPlainString(), "remaining" to (total - allocated).toPlainString()))
+    fun paymentMethodNotAllowed(method: String, reason: String) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.PAYMENT_METHOD_NOT_ALLOWED, reason, mapOf("method" to method))
+    fun creditLimitExceeded(limit: java.math.BigDecimal, outstanding: java.math.BigDecimal, requested: java.math.BigDecimal) = ApiException(HttpStatus.CONFLICT,
+        ErrorCode.CREDIT_LIMIT_EXCEEDED, "This would take the customer over their credit limit",
+        mapOf("creditLimit" to limit.toPlainString(), "outstanding" to outstanding.toPlainString(), "requested" to requested.toPlainString()))
+    fun voidWindowPassed(hours: Int) = ApiException(HttpStatus.CONFLICT, ErrorCode.VOID_WINDOW_PASSED,
+        "Sales can only be voided within $hours hours; take a customer return and issue a credit note instead", mapOf("hours" to hours.toString()))
 }

@@ -1,23 +1,82 @@
 package com.zifiq.cashier.api
 
-import com.zifiq.cashier.dto.*
+import com.zifiq.cashier.dto.CatalogueItem
+import com.zifiq.cashier.dto.SaleCompleteRequest
+import com.zifiq.cashier.dto.SaleCompletion
+import com.zifiq.cashier.dto.SaleCustomerRequest
+import com.zifiq.cashier.dto.SaleInvoiceRequest
+import com.zifiq.cashier.dto.SaleLinesRequest
+import com.zifiq.cashier.dto.SaleRow
+import com.zifiq.cashier.dto.SaleStartRequest
+import com.zifiq.cashier.dto.SaleVersionRequest
+import com.zifiq.cashier.dto.SaleView
+import com.zifiq.cashier.dto.SaleVoidRequest
+import com.zifiq.cashier.dto.TillCloseRequest
+import com.zifiq.cashier.dto.TillOpenRequest
+import com.zifiq.cashier.dto.TillSessionView
+import com.zifiq.common.paging.PageParams
+import com.zifiq.common.paging.PageResult
 import com.zifiq.platform.api.ApiEnvelope
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
+import java.time.LocalDate
+import java.util.UUID
+import org.springframework.http.ResponseEntity
 
-@Tag(name = "Cashier & POS", description = "Sales Reports, Pro-Forma Invoices, Waybills & POS Transactions")
+@Tag(name = "Sales & POS — Till sessions", description = "Open a till with a float, see what it has taken, close it with a cash count (docs/09 §4.1)")
 @SecurityRequirement(name = "bearerAuth")
-interface CashierApi {
-    @Operation(summary = "Get sales report by period, channel, and cashier")
-    fun getSalesReport(): ApiEnvelope<List<SalesReportItem>>
+interface TillSessionsApi {
+    @Operation(summary = "Open a till (a TILL cash account at a showroom) with an opening float")
+    fun open(request: TillOpenRequest): ApiEnvelope<TillSessionView>
 
-    @Operation(summary = "Issue a pro-forma invoice quotation before sale")
-    fun generateProForma(request: ProFormaInvoiceRequest): ApiEnvelope<ProFormaInvoiceSummary>
+    @Operation(summary = "The caller's open till session, with what it has taken so far (404 NO_OPEN_TILL_SESSION when none)")
+    fun current(): ApiEnvelope<TillSessionView>
 
-    @Operation(summary = "Generate a waybill for goods leaving factory or showroom")
-    fun generateWaybill(request: WaybillGenerationRequest): ApiEnvelope<WaybillSummary>
+    @Operation(summary = "Till sessions (own only, unless cashier.sales.read-all)")
+    fun list(locationId: UUID?, cashierUserId: UUID?, status: String?, from: LocalDate?, to: LocalDate?, withVarianceOnly: Boolean?, paging: PageParams): ApiEnvelope<PageResult<TillSessionView>>
 
-    @Operation(summary = "Process point-of-sale terminal transaction")
-    fun processPosCheckout(request: PosCheckoutRequest): ApiEnvelope<PosCheckoutSummary>
+    @Operation(summary = "A till session")
+    fun get(id: UUID): ApiEnvelope<TillSessionView>
+
+    @Operation(summary = "Close a till with the counted cash; the variance against expected cash is recorded (a supervisor may force-close another cashier's)")
+    fun close(id: UUID, request: TillCloseRequest): ApiEnvelope<TillSessionView>
+}
+
+@Tag(name = "Sales & POS — Sales", description = "The POS cart, checkout, void, receipt and invoice on request (docs/09 §4.2)")
+@SecurityRequirement(name = "bearerAuth")
+interface SalesApi {
+    @Operation(summary = "Sellable items at the showroom (defaults to the caller's open till's): price for the customer, available stock")
+    fun catalogue(locationId: UUID?, q: String?, categoryId: UUID?, customerId: UUID?, includeOutOfStock: Boolean?, paging: PageParams): ApiEnvelope<PageResult<CatalogueItem>>
+
+    @Operation(summary = "Start a sale on the caller's open till (an empty cart)")
+    fun start(request: SaleStartRequest): ApiEnvelope<SaleView>
+
+    @Operation(summary = "Set or clear the customer; every line is re-priced (dealer or retail)")
+    fun setCustomer(id: UUID, request: SaleCustomerRequest): ApiEnvelope<SaleView>
+
+    @Operation(summary = "Replace the cart's lines; prices come from the price list (quantities beyond stock are flagged, refused at completion)")
+    fun setLines(id: UUID, request: SaleLinesRequest): ApiEnvelope<SaleView>
+
+    @Operation(summary = "Clear the sale (no stock or money was touched)")
+    fun abandon(id: UUID, request: SaleVersionRequest): ApiEnvelope<SaleView>
+
+    @Operation(summary = "Complete the sale: payments must settle the total; stock out, receipts, wallet debits and the invoice in one transaction")
+    fun complete(id: UUID, request: SaleCompleteRequest): ApiEnvelope<SaleCompletion>
+
+    @Operation(summary = "A sale (open or completed)")
+    fun get(id: UUID): ApiEnvelope<SaleView>
+
+    @Operation(summary = "Sales (default COMPLETED, newest first; own only unless cashier.sales.read-all); ref = a TXN or INV number")
+    fun list(locationId: UUID?, cashierUserId: UUID?, customerId: UUID?, channel: String?, status: String?, from: LocalDate?, to: LocalDate?, ref: String?,
+             paging: PageParams): ApiEnvelope<PageResult<SaleRow>>
+
+    @Operation(summary = "Void a completed sale within the void window: stock back, receipts and wallet debits reversed, invoice voided")
+    fun void(id: UUID, request: SaleVoidRequest): ApiEnvelope<SaleView>
+
+    @Operation(summary = "Issue an invoice for a walk-in sale after the fact")
+    fun invoice(id: UUID, request: SaleInvoiceRequest): ApiEnvelope<SaleView>
+
+    @Operation(summary = "The itemised sales receipt as a PDF (DUPLICATE COPY once a reprint is recorded)")
+    fun receipt(id: UUID): ResponseEntity<ByteArray>
 }
