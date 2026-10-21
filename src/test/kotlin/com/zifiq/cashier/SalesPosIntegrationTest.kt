@@ -152,8 +152,10 @@ class SalesPosIntegrationTest : PostgresIntegrationTest() {
                         "values ('$tenantId', '$id', $retail, $dealerPrice, current_date - 30, 'PL-1', '$admin')")
                 price(citrus, "4500", "4100")
                 price(rice, "30000", "28000")
-                exec("insert into customers (id, tenant_id, code, type, name, credit_limit, created_by_user_id) values " +
-                    "('$dealer', '$tenantId', 'DLR-42', 'AUTHORISED_DEALER', 'Okafor & Sons', 100000, '$admin')")
+                val gold = UUID.randomUUID()
+                exec("insert into dealer_categories (id, tenant_id, name, created_by_user_id) values ('$gold', '$tenantId', 'Gold', '$admin')")
+                exec("insert into customers (id, tenant_id, code, type, name, credit_limit, dealer_category_id, created_by_user_id) values " +
+                    "('$dealer', '$tenantId', 'DLR-42', 'AUTHORISED_DEALER', 'Okafor & Sons', 100000, '$gold', '$admin')")
             }
         }
 
