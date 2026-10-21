@@ -225,14 +225,20 @@ class SalesPosIntegrationTest : PostgresIntegrationTest() {
 
     private val today: LocalDate get() = LocalDate.now(ZoneId.of("Africa/Lagos"))
 
+    init {
+        tx.executeForTenant(tenantId) { profiles.provision(tenantId, admin) }
+    }
+
     private fun signIn(user: UUID) {
         tenantContext.set(tenantId)
         val jwt = Jwt.withTokenValue("test").header("alg", "none").subject(user.toString()).claim("email", "$user@test.com").build()
         SecurityContextHolder.getContext().authentication = JwtAuthenticationToken(jwt)
     }
 
+    /** Every test leaves both cashiers' tills closed, even when it fails half-way. */
     @AfterEach
     fun signOut() {
+        listOf(cashierA, cashierB).forEach { cashier -> runCatching { signIn(cashier); closeTill() } }
         SecurityContextHolder.clearContext()
         tenantContext.clear()
     }
