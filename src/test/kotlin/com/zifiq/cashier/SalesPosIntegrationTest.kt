@@ -424,7 +424,11 @@ class SalesPosIntegrationTest : PostgresIntegrationTest() {
         openTill(cashierA)
         failsWith { sales.get(bSale.id) }.isEqualTo(ErrorCode.SALE_NOT_FOUND)
         failsWith { sales.setLines(bSale.id, SaleLinesRequest(bSale.version, emptyList())) }.isEqualTo(ErrorCode.SALE_NOT_FOUND)
-        failsWith { tills.open(TillOpenRequest(tills.current().till.id, BigDecimal.ZERO)) }.isEqualTo(ErrorCode.CASHIER_SESSION_OPEN)
+        failsWith { tills.open(TillOpenRequest(tills.current().till.id, BigDecimal.ZERO)) }.isEqualTo(ErrorCode.TILL_ALREADY_OPEN)
+        signIn(admin)
+        val freeTill = cash.register(CashAccountRequest("T-${UUID.randomUUID().toString().take(6)}", "Spare till", "TILL", ikeja, openingBalance = BigDecimal.ZERO)).id
+        signIn(cashierA)
+        failsWith { tills.open(TillOpenRequest(freeTill, BigDecimal.ZERO)) }.isEqualTo(ErrorCode.CASHIER_SESSION_OPEN)
         closeTill()
 
         // An administrator sees everyone's; an untouched cart is cleared by the sweep.
