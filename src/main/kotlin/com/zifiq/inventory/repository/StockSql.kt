@@ -18,6 +18,10 @@ object StockSql {
     fun unitName(unitColumn: Expression<*> = StockItemsTable.unitOfMeasureId): Expression<String> =
         RawExpression({ +"(select u.name from units_of_measure u where u.id = "; +unitColumn; +")" })
 
+    /** The category's name for a category id column (a stock item's category by default); null when uncategorised. */
+    fun categoryName(categoryColumn: Expression<*> = StockItemsTable.categoryId): Expression<String?> =
+        RawExpression({ +"(select c.name from categories c where c.id = "; +categoryColumn; +")" })
+
     /** Running Σ(in − out) over the selected ledger rows in posting order (window; add the opening balance). */
     fun runningBalance(): Expression<BigDecimal> = RunningBalance.window(
         RawExpression<BigDecimal>({ +StockLedgerEntriesTable.qtyIn; +" - "; +StockLedgerEntriesTable.qtyOut }),
@@ -34,9 +38,16 @@ object StockSql {
      * before it, one row of stock_item_prices_lookup_idx. Null when the item has never been priced.
      */
     fun retailPriceAt(date: LocalDate, itemColumn: Expression<*> = StockItemsTable.id, tenantColumn: Expression<*> = StockItemsTable.tenantId): Expression<BigDecimal?> =
+        priceAt("retail_price", date, itemColumn, tenantColumn)
+
+    /** The same for the dealer price (what an authorised dealer pays). */
+    fun dealerPriceAt(date: LocalDate, itemColumn: Expression<*> = StockItemsTable.id, tenantColumn: Expression<*> = StockItemsTable.tenantId): Expression<BigDecimal?> =
+        priceAt("dealer_price", date, itemColumn, tenantColumn)
+
+    private fun priceAt(column: String, date: LocalDate, itemColumn: Expression<*>, tenantColumn: Expression<*>): Expression<BigDecimal?> =
         RawExpression({
-            +"(select p.retail_price from stock_item_prices p where p.tenant_id = "; +tenantColumn; +" and p.stock_item_id = "; +itemColumn
-            +" and p.effective_from <= "; registerArgument(JavaLocalDateColumnType(), date); +" order by p.effective_from desc limit 1)"
+            +"(select p.$column from stock_item_prices p where p.tenant_id = "; +tenantColumn; +" and p.stock_item_id = "; +itemColumn
+            +" and p.effective_from <= "; registerArgument(JavaLocalDateColumnType(), date); +" order by p.effective_from desc, p.id desc limit 1)"
         })
 
     /** Σ(in − out), zero when no rows. */

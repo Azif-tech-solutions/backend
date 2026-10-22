@@ -1,10 +1,23 @@
 # 09 — Sales & POS Module
 
-Status: **design finalized, not yet implemented**
+Status: **in progress** — slice 1 (till sessions, the POS cart and checkout, void, receipt, invoice on request; V15) is implemented. Slice 2: deliver-later (stock reservations, customer waybills, Pending Supply). Slice 3: Instant Discount, pro-formas, the reports and search of §4.6/§9.
+
+**Implementation notes (slice 1), where the build differs from or adds to the design below:**
+- Migration is `V15__sales_pos_tills_and_sales.sql` (V13 was taken by the scale pass). It adds the four new stock-ledger source types for all slices, `till_sessions`, `sales`, `sale_lines`, `sale_payments`, tenant-scoped composite foreign keys (V14_9) and the slice-1 permissions (`cashier.sales.read-all`, `.void`, `cashier.credit.override`, `cashier.till.supervise`).
+- **Tills sell at showrooms only.** Invoices are issued by a showroom (doc 08), so a till must be a TILL cash account at a SHOWROOM (`400 INVALID_TILL` otherwise).
+- **No SSE.** The live-sale stream (§4.3) would need `SseEmitter`, which `NoSseFragmentsArchitectureTest` bans (the CVE-2026-47890 exception depends on it). The till polls `GET /sales/{id}` and compares `version` — the design's own fallback. Slice 3 builds Instant Discount on that.
+- **Goods leave from the showroom's default selling area** (`locations.default_selling_location_id`, set to the shop floor when a showroom is registered), or the showroom itself when none; `fromLocationId` on completion picks another area. Stock is checked twice under row locks: what the showroom has (all its areas) and what is on hand where the goods leave from.
+- Completion is collect-now in this slice: every line is supplied at the till (`supply_status NOT_APPLICABLE`); the `supply` field arrives with slice 2.
+- `PRICES_CHANGED`: the re-priced cart is saved in its own transaction before the 409, so the cashier reloads it and confirms.
+- The same line arithmetic serves the sale and its invoice: `common.tax.LineAmounts` (invoicing now uses it too), so the two agree to the kobo — checked at issue.
+- Responses carry references, never bare ids (`till`, `location`, `cashier`, `customer.customer`, `invoice`, payment `receipt`, …).
+- An hourly sweep abandons carts untouched for `cashier.sale.abandonAfterHours` (default 12); `cashier.sale.voidWindowHours` defaults to 24.
+- The invoicing sandbox endpoint (`POST /api/v1/invoicing/sandbox/invoices`) stays until pro-formas convert in slice 3.
+
 Owner package: `com.zifiq.cashier` (package name kept; module display name "Sales & POS")
 Depends on: `platform`, `common`, `inventory` (OPEN), `customers :: spi`, `settings :: spi`, `account :: spi`, `invoicing :: spi`
 Depended on by: `history`, `reports`, `dashboard`, `communication` (commission reads completed sales), `ai` — all through `cashier::spi` or domain events.
-Migration: `V13__sales_pos_module.sql`
+Migration: `V15__sales_pos_tills_and_sales.sql` (slice 1); later slices add V15_1, V15_2
 Replaces: the mock `CashierService` (`getSalesReport`, `generateProForma`, `generateWaybill`, `processPosCheckout`) and the POS part of `menu` (`MenuController`'s `cashier.sales.manage` endpoint).
 
 ---

@@ -42,7 +42,6 @@ class ResponseReferencesArchitectureTest {
         "OtpChallengeSummary.challengeId" to "a one-time challenge handle",
         "OtpIssueResponse.challengeId" to "a one-time challenge handle",
         "CompanyProfileView.nrsBusinessId" to "an id issued by NRS, not a record here",
-        "PosCheckoutSummary.transactionId" to "mock module, no records yet",
     )
 
     /** Response classes declared outside a dto package. */

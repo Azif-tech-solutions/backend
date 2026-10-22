@@ -2888,6 +2888,141 @@ ep(I, "J1 NRS Preview", "GET", "/api/v1/invoicing/invoices/{{draftInvoiceId}}/nr
    desc="Perm invoicing.invoice.read. The NRS Invoice Schema JSON this invoice would be validated as, built from the snapshot taken at issue, and what is "
         "missing for a real submission (issuer identifiers, granular HS/ISIC codes where the section was used, NRS unit codes). Nothing is transmitted this phase.")
 
+# =============================================================================================
+# 19 - Sales & POS (docs/09, slice 1): till sessions, the cart, checkout, void, receipt.
+# Runs on folder 17's till (TILL-IKJ-01 at the showroom) and folder 15's priced product, which
+# folder 16 moved onto the showroom's shop floor (its default selling area).
+# =============================================================================================
+P = "19 - Sales & POS"
+
+TILL_SESSION = {"id": "{{tillSessionId}}", "till": REF("cashAccount", "{{tillAccountId}}"), "location": REF("location", "{{showroomId}}"), "cashier": USER,
+                "status": "OPEN", "openedAt": NOW, "openingFloat": 20000.00, "closedAt": None, "closedBy": None, "countedCash": None,
+                "expectedCash": None, "variance": None, "closeNote": None, "forceClosed": False,
+                "running": {"salesCount": 0, "cashTaken": 0.00, "cardTaken": 0.00, "transferTaken": 0.00, "walletTaken": 0.00, "depositTaken": 0.00,
+                            "onAccount": 0.00, "expectedCashNow": 20000.00}}
+SALE_LINE = {"lineNo": 1, "stockItem": REF("stockItem", "{{finishedProductId}}"), "code": "ITM-2", "name": "Premium Blend", "unit": "Kilogram",
+             "category": "Beverages", "quantity": 1.000, "unitPrice": 5000.00, "priceBasis": "RETAIL", "lineDiscount": 0.00, "instantDiscountShare": 0.00,
+             "lineNet": 5000.00, "vatRate": 7.50, "vatAmount": 375.00, "lineTotal": 5375.00, "available": 2.000, "insufficient": False}
+SALE = {"id": "{{saleId}}", "ref": None, "status": "OPEN", "version": 1, "channel": "POS", "till": REF("cashAccount", "{{tillAccountId}}"),
+        "location": REF("location", "{{showroomId}}"), "cashier": USER, "customer": None, "customerName": "Walk-in customer", "priceBasis": "RETAIL",
+        "lines": [SALE_LINE],
+        "totals": {"gross": 5000.00, "lineDiscounts": 0.00, "instantDiscount": 0.00, "net": 5000.00, "vatEnabled": True, "vatRate": 7.50, "vat": 375.00, "total": 5375.00},
+        "payments": [], "paidNow": 0.00, "onAccount": 0.00, "cashTendered": None, "changeGiven": None, "allowedMethods": ["CASH", "POS", "FUND_TRANSFER"],
+        "invoice": None, "invoiceNumber": None, "correspondent": None, "saleDate": None, "startedAt": NOW, "completedAt": None,
+        "creditOverrideReason": None, "creditOverrideBy": None, "voidedAt": None, "voidedBy": None, "voidReason": None, "voidableUntil": None}
+SAVE_SALE = ["const json = pm.response.json();", "pm.collectionVariables.set('saleVersion', json.data.version);"]
+
+ep(P, "A1 Open Till", "POST", "/api/v1/cashier/till-sessions", body={"cashAccountId": "{{tillAccountId}}", "openingFloat": 20000},
+   resp={"data": TILL_SESSION},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('tillSessionId', json.data.id);",
+          "pm.test('open with the float', () => { pm.expect(json.data.status).to.eql('OPEN'); pm.expect(json.data.openingFloat).to.eql(20000); });"],
+   desc="Perm cashier.sales.manage. The till is a TILL cash account at a showroom the caller may work in. One open session per till and per cashier: "
+        "409 TILL_ALREADY_OPEN / CASHIER_SESSION_OPEN.")
+
+ep(P, "A2 Open Till (error: already open)", "POST", "/api/v1/cashier/till-sessions", body={"cashAccountId": "{{tillAccountId}}", "openingFloat": 0},
+   resp={"error": {"code": "TILL_ALREADY_OPEN", "message": "This till is already open (by Alice Admin)", "details": {"openedBy": "Alice Admin", "openedAt": NOW}}},
+   expect_error={"status": 409, "code": "TILL_ALREADY_OPEN"})
+
+ep(P, "A3 Current Till Session", "GET", "/api/v1/cashier/till-sessions/current", resp={"data": TILL_SESSION},
+   desc="The caller's open session with what it has taken so far by method; expectedCashNow = float + everything Account posted to the till since it opened. "
+        "404 NO_OPEN_TILL_SESSION when none.")
+
+ep(P, "B1 Till Catalogue", "GET", "/api/v1/cashier/catalogue", query=[{"key": "page", "value": "0"}, {"key": "size", "value": "20"}],
+   resp={"data": {"items": [{"stockItem": REF("stockItem", "{{finishedProductId}}"), "code": "ITM-2", "barcode": None, "name": "Premium Blend",
+                             "category": "Beverages", "unit": "Kilogram", "price": 5000.00, "retailPrice": 5000.00, "dealerPrice": 4500.00,
+                             "available": 2.000, "lowStock": False}],
+                  "page": 0, "size": 20, "totalItems": 1, "totalPages": 1}},
+   tests=["const json = pm.response.json();", "pm.test('the priced product is sellable', () => pm.expect(json.data.items.map(i => i.stockItem.id)).to.include(pm.collectionVariables.get('finishedProductId')));"],
+   desc="Perm cashier.sales.manage. Defaults to the caller's open till's showroom (or locationId). q: exact code/barcode first, then code prefix, then name "
+        "(typo-tolerant); categoryId; customerId prices for that customer (dealer price for an authorised dealer); includeOutOfStock=true to show items with none.")
+
+ep(P, "B2 Start a Sale", "POST", "/api/v1/cashier/sales", body={},
+   resp={"data": dict(SALE, version=0, lines=[], totals=dict(SALE["totals"], gross=0.00, net=0.00, vat=0.00, total=0.00))},
+   tests=SAVE_SALE + ["pm.collectionVariables.set('saleId', json.data.id);", "pm.test('an open, empty cart', () => pm.expect(json.data.status).to.eql('OPEN'));"],
+   desc="Perm cashier.sales.manage. On the caller's open till (409 NO_OPEN_TILL_SESSION otherwise). Optional customerId; walk-in when none.")
+
+ep(P, "B3 Set Lines", "PUT", "/api/v1/cashier/sales/{{saleId}}/lines",
+   body={"version": "{{saleVersion}}", "lines": [{"stockItemId": "{{finishedProductId}}", "quantity": 1}]},
+   resp={"data": SALE},
+   tests=SAVE_SALE + ["pm.collectionVariables.set('saleTotal', json.data.totals.total);",
+                      "pm.test('priced from the price list', () => pm.expect(json.data.lines[0].unitPrice).to.eql(5000));",
+                      "pm.test('total = net + VAT', () => pm.expect(json.data.totals.total).to.eql(json.data.totals.net + json.data.totals.vat));"],
+   desc="Full replace; lines for the same item merge. Prices come from the price list in force today (dealer price for an authorised dealer); the cashier "
+        "never types one. More than the showroom has: the line is kept with insufficient=true (refused at completion). 400 ITEM_NOT_SELLABLE, 409 NO_PRICE_SET.")
+
+ep(P, "B4 Set Lines (error: stale version)", "PUT", "/api/v1/cashier/sales/{{saleId}}/lines",
+   body={"version": 0, "lines": []},
+   resp={"error": {"code": "SALE_CHANGED", "message": "The sale changed since you last loaded it; reload it and try again", "details": {"version": "1"}}},
+   expect_error={"status": 409, "code": "SALE_CHANGED"},
+   desc="Every change carries the version the client saw; a mismatch returns the current version to reload.")
+
+ep(P, "B5 Complete (error: payments don't settle)", "POST", "/api/v1/cashier/sales/{{saleId}}/complete",
+   body={"version": "{{saleVersion}}", "payments": [{"method": "CASH", "amount": 100}]},
+   resp={"error": {"code": "PAYMENT_NOT_SETTLED", "message": "Payments must add up to the total", "details": {"total": "5375.00", "allocated": "100.00", "remaining": "5275.00"}}},
+   expect_error={"status": 400, "code": "PAYMENT_NOT_SETTLED"})
+
+ep(P, "B6 Complete the Sale (cash)", "POST", "/api/v1/cashier/sales/{{saleId}}/complete",
+   body={"version": "{{saleVersion}}", "payments": [{"method": "CASH", "amount": "{{saleTotal}}", "tendered": 10000}]},
+   resp={"data": {"sale": dict(SALE, ref="TXN-1", status="COMPLETED", version=2, saleDate="2026-10-21", completedAt=NOW, paidNow=5375.00,
+                               cashTendered=10000.00, changeGiven=4625.00, allowedMethods=[], voidableUntil="2026-10-22T10:15:30Z",
+                               lines=[dict(SALE_LINE, available=None)],
+                               payments=[{"method": "CASH", "methodLabel": "Cash", "amount": 5375.00, "receipt": REF("receipt", "2b3c4d5e-9999-4c4c-9a9a-000000000001"),
+                                          "receiptRef": "RCT-9", "confirmationStatus": "NOT_REQUIRED", "terminalRef": None, "payerReference": None}]),
+                  "invoice": None, "receiptUrl": "/api/v1/cashier/sales/{{saleId}}/receipt.pdf", "changeGiven": 4625.00}},
+   tests=["const json = pm.response.json();",
+          "pm.test('completed with a TXN number', () => { pm.expect(json.data.sale.status).to.eql('COMPLETED'); pm.expect(json.data.sale.ref).to.match(/^TXN-\\d+$/); });",
+          "pm.test('change given', () => pm.expect(json.data.changeGiven).to.eql(10000 - json.data.sale.totals.total));"],
+   desc="One transaction: prices re-checked (409 PRICES_CHANGED re-prices the cart for the cashier to confirm), stock checked under row locks (409 "
+        "INSUFFICIENT_STOCK) and taken off the selling area (POS_SALE), credit checked for onAccount (409 CREDIT_LIMIT_EXCEEDED unless "
+        "creditOverrideReason + cashier.credit.override), wallet/deposit debited, one Account receipt per payment (card/transfer pending confirmation), "
+        "and an invoice for a registered customer (walk-in: invoiceBuyer). Payments + onAccount must equal the total. Nothing is written if anything fails.")
+
+ep(P, "B7 Get Sale", "GET", "/api/v1/cashier/sales/{{saleId}}",
+   resp={"data": dict(SALE, ref="TXN-1", status="COMPLETED", version=2)},
+   tests=SAVE_SALE)
+
+ep(P, "B8 List Sales", "GET", "/api/v1/cashier/sales", query=[{"key": "from", "value": "{{today}}"}, {"key": "page", "value": "0"}, {"key": "size", "value": "20"}],
+   resp={"data": {"items": [{"id": "{{saleId}}", "ref": "TXN-1", "status": "COMPLETED", "channel": "POS", "date": "2026-10-21", "completedAt": NOW,
+                             "location": REF("location", "{{showroomId}}"), "till": REF("cashAccount", "{{tillAccountId}}"), "cashier": USER, "customer": None,
+                             "customerName": "Walk-in customer", "customerType": None, "items": 1, "units": 1.000, "net": 5000.00, "vat": 375.00, "total": 5375.00,
+                             "methods": ["Cash"], "onAccount": 0.00, "invoice": None, "invoiceNumber": None}],
+                  "page": 0, "size": 20, "totalItems": 1, "totalPages": 1}},
+   tests=["const json = pm.response.json();", "pm.test('lists the sale', () => pm.expect(json.data.items.map(s => s.id)).to.include(pm.collectionVariables.get('saleId')));"],
+   desc="Perm cashier.sales.read: own sales only; cashier.sales.read-all: every sale in location scope. status (default COMPLETED), channel, locationId, "
+        "cashierUserId, customerId, from/to (sale date), ref (a TXN or INV number). Newest first.")
+
+ep(P, "B9 Sales Receipt PDF", "GET", "/api/v1/cashier/sales/{{saleId}}/receipt.pdf", pdf=True,
+   desc="Itemised receipt: lines, VAT, total, each payment with its RCT number (card/transfer marked pending confirmation), change. DUPLICATE COPY once a "
+        "reprint is recorded (POST /api/v1/documents/{ref}/reprints).")
+
+ep(P, "B10 Invoice a Walk-in Sale on Request", "POST", "/api/v1/cashier/sales/{{saleId}}/invoice",
+   body={"buyer": {"name": "Mrs Adeyemi", "phone": "08031234567", "email": None, "tin": None, "address": "4 Allen Avenue, Ikeja", "stateCode": "NG-LA"}},
+   resp={"data": dict(SALE, ref="TXN-1", status="COMPLETED", version=3, invoice=REF("invoice", "2b3c4d5e-9999-4c4c-9a9a-000000000002"), invoiceNumber="INV-9")},
+   tests=SAVE_SALE + ["pm.test('invoiced', () => pm.expect(json.data.invoiceNumber).to.match(/^INV-\\d+$/));"],
+   desc="Perm cashier.sales.manage or invoicing.invoice.issue. Walk-in sales only (a registered customer is invoiced at completion); the invoice carries the "
+        "sale's own lines and receipts. 409 INVOICE_EXISTS_FOR_SOURCE when already invoiced.")
+
+ep(P, "C1 Void the Sale", "POST", "/api/v1/cashier/sales/{{saleId}}/void", body={"reason": "Customer returned at the door before leaving"},
+   resp={"data": dict(SALE, ref="TXN-1", status="VOIDED", version=4, voidedAt=NOW, voidedBy=USER, voidReason="Customer returned at the door before leaving")},
+   tests=["const json = pm.response.json();", "pm.test('voided', () => pm.expect(json.data.status).to.eql('VOIDED'));"],
+   desc="Perm cashier.sales.void, within cashier.sale.voidWindowHours (409 VOID_WINDOW_PASSED: take a return and issue a credit note instead). Stock goes "
+        "back, receipts are voided (the cash leaves the till's books), wallet debits reversed, the invoice voided.")
+
+ep(P, "C2 Void (error: already voided)", "POST", "/api/v1/cashier/sales/{{saleId}}/void", body={"reason": "Trying to void it a second time"},
+   resp={"error": {"code": "INVALID_STATUS_TRANSITION", "message": "Cannot change status from VOIDED to VOIDED", "details": {"from": "VOIDED", "to": "VOIDED"}}},
+   expect_error={"status": 409, "code": "INVALID_STATUS_TRANSITION"})
+
+ep(P, "D1 Close Till", "POST", "/api/v1/cashier/till-sessions/{{tillSessionId}}/close", body={"countedCash": 20000, "note": "End of shift"},
+   resp={"data": dict(TILL_SESSION, status="CLOSED", closedAt=NOW, closedBy=USER, countedCash=20000.00, expectedCash=20000.00, variance=0.00,
+                      closeNote="End of shift", running=None)},
+   tests=["const json = pm.response.json();", "pm.test('closed balanced', () => { pm.expect(json.data.status).to.eql('CLOSED'); pm.expect(json.data.variance).to.eql(0); });"],
+   desc="Perm cashier.sales.manage (own) or cashier.till.supervise (any, forceClosed). Open sales must be completed or cleared first (409 OPEN_SALES_EXIST). "
+        "Variance = counted - expected; a non-zero variance alerts Accounts, who resolve it in Account (nothing is posted automatically).")
+
+ep(P, "D2 Till Sessions", "GET", "/api/v1/cashier/till-sessions", query=[{"key": "page", "value": "0"}, {"key": "size", "value": "20"}],
+   resp={"data": {"items": [dict(TILL_SESSION, status="CLOSED", running=None)], "page": 0, "size": 20, "totalItems": 1, "totalPages": 1}},
+   desc="Own sessions unless cashier.sales.read-all. Filters: locationId, cashierUserId, status, from/to (opened), withVarianceOnly.")
+
 def pm_url(path, query):
     full = "{{baseUrl}}" + path
     parts = [p for p in path.split("/") if p]
@@ -3056,12 +3191,13 @@ def build_collection():
         "outsourcedItemId", "showroomTransferId", "showroomTransferLineId", "returnId", "dealerReturnId",
         "invoiceId", "invoiceNumber", "invoiceSourceRef", "walkInInvoiceId", "draftInvoiceId", "discardDraftId", "reissuedInvoiceId",
         "cashPaymentId", "transferReceiptId", "creditLineId", "creditNoteId",
+        "tillSessionId", "saleId", "saleVersion", "saleTotal",
     ]
 
     collection = {
         "info": {
             "name": "ZifIQ Backend API",
-            "description": "Test collection for the ZifIQ Kotlin/Spring Boot backend: every module with real persistence and business logic (Auth, Tenants & Members, OTP, VAT Control, Settings, Factory, Inventory, NRS Reference Data, Customers, Documents & Files, Showroom, Finance & Accounting, Electronic Invoicing). Modules still returning mock data (AI, Barcode, Cashier, History, Menu, Process Guide) are left out until they are built. Run the folders top to bottom, 01 through 18: each request's Tests script captures IDs and tokens into collection variables that later requests reuse, so the whole collection runs end to end in the Collection Runner or Newman with no manual edits. See docs/ in the backend repo for the design each module implements.",
+            "description": "Test collection for the ZifIQ Kotlin/Spring Boot backend: every module with real persistence and business logic (Auth, Tenants & Members, OTP, VAT Control, Settings, Factory, Inventory, NRS Reference Data, Customers, Documents & Files, Showroom, Finance & Accounting, Electronic Invoicing, Sales & POS). Modules still returning mock data (AI, Barcode, History, Process Guide) are left out until they are built. Run the folders top to bottom, 01 through 19: each request's Tests script captures IDs and tokens into collection variables that later requests reuse, so the whole collection runs end to end in the Collection Runner or Newman with no manual edits. See docs/ in the backend repo for the design each module implements.",
             "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
         },
         "auth": BEARER_AUTH,

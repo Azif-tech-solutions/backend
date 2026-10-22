@@ -4,12 +4,8 @@ import com.zifiq.ai.dto.AssistantQueryRequest
 import com.zifiq.ai.service.AiOperationsService
 import com.zifiq.barcode.dto.BarcodeScanRequest
 import com.zifiq.barcode.service.BarcodeQrService
-import com.zifiq.cashier.dto.ProFormaInvoiceRequest
-import com.zifiq.cashier.dto.SaleLineItem
-import com.zifiq.cashier.service.CashierService
 import com.zifiq.history.service.HistoryService
 import com.zifiq.platform.accesscontrol.RoleAssignmentService
-import com.zifiq.platform.identity.UserDirectory
 import com.zifiq.platform.notifications.EmailNotificationAdapter
 import com.zifiq.platform.notifications.NotificationMessage
 import com.zifiq.platform.notifications.PushNotificationAdapter
@@ -19,29 +15,9 @@ import com.zifiq.process.service.ProcessGuideService
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
-import java.math.BigDecimal
 import java.util.UUID
 
 class ModuleCoverageTest {
-
-    @Test
-    fun `cashier service processes pro forma invoices`() {
-        val userDirectory = mock(UserDirectory::class.java)
-        val service = CashierService(userDirectory)
-
-        val result = service.generateProForma(
-            ProFormaInvoiceRequest(
-                customerName = "Acme Corp",
-                customerEmail = "acme@corp.com",
-                items = listOf(
-                    SaleLineItem("P-1001", "Premium Blend", 10.0, BigDecimal("25.00"))
-                )
-            )
-        )
-
-        assertEquals("Acme Corp", result.customerName)
-        assertEquals(BigDecimal("250.00"), result.totalAmount)
-    }
 
     @Test
     fun `ai operations service provides assistant answers and forecasts`() {
