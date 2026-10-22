@@ -411,7 +411,7 @@ class SalesPosIntegrationTest : PostgresIntegrationTest() {
         val voided = voids.void(done.sale.id, SaleVoidRequest("Customer changed their mind at the door"))
         assertThat(voided.status).isEqualTo("VOIDED")
         assertThat(onHand(floor, item)).isEqualByComparingTo(floorBefore + BigDecimal(10))
-        assertThat(tx.execute { customerDirectory.get(dealer).walletBalance }).isEqualByComparingTo("20000")
+        assertThat(tx.execute { customerDirectory.get(d).walletBalance }).isEqualByComparingTo("20000")
         assertThat(sql("select status from invoices where id = '${done.invoice!!.id}'") { it.getString(1) }).isEqualTo("VOID")
         failsWith { voids.void(done.sale.id, SaleVoidRequest("Second attempt at voiding")) }.isEqualTo(ErrorCode.INVALID_STATUS_TRANSITION)
         signIn(cashierA)
