@@ -1,5 +1,7 @@
 package com.zifiq.inventory
 
+import com.zifiq.inventory.service.StockAvailability
+import com.zifiq.inventory.service.StockReservations
 import com.zifiq.platform.directory.Refs
 import com.zifiq.common.errors.ErrorCode
 import com.zifiq.common.filter.ListSearchRequest
@@ -136,9 +138,11 @@ class InventoryShowroomSupportIntegrationTest : PostgresIntegrationTest() {
     private val registry = DocumentRegistry(tenantContext, actors, events)
     private val drivers = DriverService(tx, tenantContext, actors, events)
     private val authorizer = PermissionAuthorizer(actors, tx)
+    private val stockReservations = StockReservations(ledger, hierarchy)
+    private val stockAvailability = StockAvailability(hierarchy, stockReservations)
     private val operations = InventoryOperationsService(
         actors, tx, sequences, ledger, OtpChallengeService(actors, tx, BCryptPasswordEncoder()), access, settings, registry,
-        StockLocations(), hierarchy, drivers, events, notify,
+        StockLocations(), hierarchy, drivers, stockAvailability, stockReservations, events, notify,
     )
     private val prices = PriceListService(tx, tenantContext, actors, authorizer, access, settings, sequences, events, notify)
     private val groupCards = GroupCardService(tx, actors, access)

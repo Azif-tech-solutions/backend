@@ -1,5 +1,6 @@
 package com.zifiq.factory.service
 
+import com.zifiq.inventory.service.StockAvailability
 import com.zifiq.platform.directory.ref
 import com.zifiq.platform.directory.Ref
 import org.jetbrains.exposed.sql.SortOrder
@@ -40,6 +41,7 @@ class FactoryTradeService(
     private val tenantScopedTransaction: TenantScopedTransaction,
     private val documentSequenceService: DocumentSequenceService,
     private val stockLedgerRepository: StockLedgerRepository,
+    private val stockAvailability: StockAvailability,
     private val locationAccessService: LocationAccessService,
     private val notify: Notify,
 ) {
@@ -95,7 +97,8 @@ class FactoryTradeService(
             val quantity = offer[FactoryTradeOffersTable.quantity]
             val ref = offer[FactoryTradeOffersTable.ref]
 
-            val available = stockLedgerRepository.currentBalance(fromLocationId, stockItemId)
+            // Available, not on-hand: stock reserved for pending customer deliveries can't be traded away.
+            val available = stockAvailability.available(fromLocationId, listOf(stockItemId))[stockItemId] ?: java.math.BigDecimal.ZERO
             if (available < quantity) {
                 throw ApiErrors.insufficientStockForTrade()
             }

@@ -126,6 +126,9 @@ class SaleDocuments(
 @Component
 class CashierDocumentLinks : DocumentLinkProvider {
     override val sourceModule = CashierSupport.SOURCE_MODULE
-    override fun pdfUrl(docType: DocumentType, sourceId: UUID): String? =
-        if (docType == DocumentType.SALE_RECEIPT) "/api/v1/cashier/sales/$sourceId/receipt.pdf" else null
+    override fun pdfUrl(docType: DocumentType, sourceId: UUID): String? = when (docType) {
+        DocumentType.SALE_RECEIPT -> "/api/v1/cashier/sales/$sourceId/receipt.pdf"
+        DocumentType.WAYBILL -> "/api/v1/cashier/waybills/$sourceId/waybill.pdf"
+        else -> null
+    }
 }

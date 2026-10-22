@@ -313,4 +313,15 @@ object ApiErrors {
         mapOf("creditLimit" to limit.toPlainString(), "outstanding" to outstanding.toPlainString(), "requested" to requested.toPlainString()))
     fun voidWindowPassed(hours: Int) = ApiException(HttpStatus.CONFLICT, ErrorCode.VOID_WINDOW_PASSED,
         "Sales can only be voided within $hours hours; take a customer return and issue a credit note instead", mapOf("hours" to hours.toString()))
+
+    // ---- Sales & POS slice 2: deliver-later (docs/09 §4.5) ----
+    fun stockReserved(reserved: java.math.BigDecimal) = ApiException(HttpStatus.CONFLICT, ErrorCode.STOCK_RESERVED,
+        "This would leave less on hand than the ${reserved.stripTrailingZeros().toPlainString()} reserved for pending deliveries", mapOf("reserved" to reserved.toPlainString()))
+    fun insufficientStockAtArea(name: String) = ApiException(HttpStatus.CONFLICT, ErrorCode.INSUFFICIENT_STOCK_AT_AREA, "Not enough stock at $name to release from", mapOf("area" to name))
+    fun walkInDeliveryNeedsContact() = ApiException(HttpStatus.CONFLICT, ErrorCode.WALKIN_DELIVERY_NEEDS_CONTACT,
+        "Goods left for later delivery to a walk-in need a contact: request an invoice or give a phone number")
+    fun releaseExceedsOutstanding(outstanding: java.math.BigDecimal) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.RELEASE_EXCEEDS_OUTSTANDING,
+        "Only ${outstanding.stripTrailingZeros().toPlainString()} remain outstanding on this line", mapOf("outstanding" to outstanding.toPlainString()))
+    fun waybillNotCancellable() = ApiException(HttpStatus.CONFLICT, ErrorCode.WAYBILL_NOT_CANCELLABLE, "This waybill can only be cancelled while ISSUED and on its release date, before the goods have left")
+    fun rangeTooLarge(maxDays: Int) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.RANGE_TOO_LARGE, "Narrow the date range to at most $maxDays days", mapOf("maxDays" to maxDays.toString()))
 }

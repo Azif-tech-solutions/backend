@@ -23,6 +23,7 @@ class ResponseReferencesArchitectureTest {
         "CreditNoteLineDetail.invoiceLineId" to "the credited line of the same invoice",
         "LedgerRow.reversedByEntryId" to "another row of the same ledger",
         "StockEntryLineRow.entryId" to "the entry the row belongs to; its ref is on the row",
+        "SupplyPositionLine.saleLineId" to "the sale line a waybill releases against; the client sends it back",
         "StockEntryLineRow.lineId" to "the line itself",
         "ReturnLineRow.returnId" to "the return the row belongs to; its ref is on the row",
         "ReturnLineRow.lineId" to "the line itself",
