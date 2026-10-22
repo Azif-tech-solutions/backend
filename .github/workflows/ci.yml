@@ -225,10 +225,16 @@ jobs:
   # ---------------------------------------------------------------------------
   # Flags newly-introduced vulnerable dependencies on pull requests, by
   # diffing the dependency graph against the base branch.
+  #
+  # Needs GitHub Advanced Security (Code Security), which the org's Free plan
+  # doesn't offer for private repositories, so on this repo it can only fail.
+  # It runs once enabled: turn on Code Security, then set the repository
+  # variable DEPENDENCY_REVIEW=true. Until then, the Trivy filesystem scan
+  # above fails the build on HIGH/CRITICAL dependency vulnerabilities.
   # ---------------------------------------------------------------------------
   dependency-review:
     name: Dependency review
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && vars.DEPENDENCY_REVIEW == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
