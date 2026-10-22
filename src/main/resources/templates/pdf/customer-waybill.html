@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title th:text="${waybill.ref}">WB-1</title>
+    <style>
+        @page { size: A4; margin: 18mm 15mm 20mm 15mm;
+                @bottom-center { content: "Page " counter(page) " of " counter(pages); font-family: 'Noto Sans'; font-size: 8pt; color: #666; } }
+        body { font-family: 'Noto Sans'; font-size: 9.5pt; color: #1a1a1a; }
+        .header { display: table; width: 100%; border-bottom: 2px solid #1a1a1a; padding-bottom: 6pt; }
+        .header .left, .header .right { display: table-cell; vertical-align: top; }
+        .header .right { text-align: right; }
+        .logo { max-height: 36pt; max-width: 130pt; margin-bottom: 3pt; }
+        .company { font-size: 14pt; font-weight: 700; }
+        .doc-title { font-size: 12pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5pt; }
+        .ref { font-size: 13pt; font-weight: 700; }
+        .muted { color: #555; }
+        .parties { display: table; width: 100%; margin-top: 10pt; }
+        .party { display: table-cell; width: 50%; vertical-align: top; padding-right: 10pt; }
+        .label { font-size: 7.5pt; text-transform: uppercase; color: #666; letter-spacing: 0.4pt; }
+        .party-name { font-weight: 700; font-size: 10.5pt; }
+        table.meta { width: 100%; margin-top: 10pt; border-collapse: collapse; }
+        table.meta td { border: 1px solid #ccc; padding: 4pt 6pt; width: 25%; }
+        table.lines { width: 100%; margin-top: 12pt; border-collapse: collapse; }
+        table.lines th { background: #efefef; border: 1px solid #bbb; padding: 4pt; text-align: left; font-size: 8.5pt; }
+        table.lines td { border: 1px solid #ccc; padding: 4pt; }
+        td.num, th.num { text-align: right; }
+        .totals { margin-top: 6pt; text-align: right; font-weight: 700; }
+        .stamp { display: inline-block; margin-top: 10pt; padding: 3pt 10pt; border: 2px solid #1a6b2a; color: #1a6b2a; font-weight: 700; text-transform: uppercase; }
+        .stamp.void { border-color: #b02a2a; color: #b02a2a; }
+        .sign { display: table; width: 100%; margin-top: 26pt; }
+        .sign .box { display: table-cell; width: 33%; padding-right: 12pt; vertical-align: bottom; }
+        .sign .line { border-top: 1px solid #1a1a1a; margin-top: 30pt; padding-top: 3pt; font-size: 8pt; color: #555; }
+        .duplicate { position: fixed; top: 105mm; left: 0; width: 100%; text-align: center; font-size: 44pt; font-weight: 700;
+                     color: #d23c3c; opacity: 0.18; transform: rotate(-28deg); }
+        .footer { margin-top: 16pt; font-size: 8pt; color: #555; border-top: 1px solid #ddd; padding-top: 5pt; }
+    </style>
+</head>
+<body>
+<div class="duplicate" th:if="${duplicate}">DUPLICATE COPY</div>
+
+<div class="header">
+    <div class="left">
+        <img class="logo" th:if="${logo != null}" th:src="${logo}" alt="logo"/>
+        <div class="company" th:text="${company.tradingName}">Company</div>
+        <div class="muted" th:text="${showroom}">Showroom</div>
+        <div class="muted" th:text="${company.streetAddress}">Address</div>
+    </div>
+    <div class="right">
+        <div class="doc-title">Customer Waybill</div>
+        <div class="ref" th:text="${waybill.ref}">WB-1</div>
+        <div class="muted" th:text="${waybill.releaseDate}">date</div>
+    </div>
+</div>
+
+<div class="parties">
+    <div class="party">
+        <div class="label">Deliver to</div>
+        <div class="party-name" th:text="${waybill.customerName}">Customer</div>
+        <div class="muted" th:if="${waybill.deliveryAddress != null}" th:text="${waybill.deliveryAddress}">Address</div>
+    </div>
+    <div class="party">
+        <div class="label">Against</div>
+        <div th:text="${waybill.invoiceNumber != null ? 'Invoice ' + waybill.invoiceNumber : 'Sale ' + waybill.saleRef}">Invoice</div>
+    </div>
+</div>
+
+<table class="meta">
+    <tr>
+        <td><span class="label">Release</span><br/><span th:text="${waybill.releaseMethod}">Delivery</span></td>
+        <td th:if="${waybill.driverName != null}"><span class="label">Driver</span><br/><span th:text="${waybill.driverName}">Driver</span></td>
+        <td th:if="${waybill.vehicleNumber != null}"><span class="label">Vehicle</span><br/><span th:text="${waybill.vehicleNumber}">Vehicle</span></td>
+        <td th:if="${waybill.collectedBy != null}"><span class="label">Collected by</span><br/><span th:text="${waybill.collectedBy}">Name</span></td>
+    </tr>
+</table>
+
+<table class="lines">
+    <thead>
+        <tr><th>#</th><th>Product</th><th class="num">Qty released</th><th>Unit</th><th class="num">Still outstanding</th></tr>
+    </thead>
+    <tbody>
+        <tr th:each="line, it : ${lines}">
+            <td th:text="${it.count}">1</td>
+            <td th:text="${line.product}">Product</td>
+            <td class="num" th:text="${line.quantity}">0</td>
+            <td th:text="${line.unit}">Unit</td>
+            <td class="num" th:text="${line.outstanding}">0</td>
+        </tr>
+    </tbody>
+</table>
+<div class="totals"><span th:text="'Total released: ' + ${totalReleased}">0</span></div>
+
+<div><span class="stamp" th:classappend="${status == 'CANCELLED'} ? 'void' : ''" th:text="${status == 'CANCELLED'} ? 'Cancelled' : 'For release'">For release</span></div>
+
+<div class="sign">
+    <div class="box"><div class="line">Released by (name, signature, date)</div></div>
+    <div class="box"><div class="line" th:text="${waybill.releaseMethod == 'DELIVERY'} ? 'Driver (name, signature, date)' : 'Collector (name, signature, date)'">Driver</div></div>
+    <div class="box"><div class="line">Received by (name, signature, date)</div></div>
+</div>
+
+<div class="footer">
+    <div th:if="${company.documentFooter != null}" th:text="${company.documentFooter}">Footer</div>
+    <div>This waybill authorises release of the goods listed against the document shown. The receiving party must verify quantities on collection or delivery and sign before the goods leave the premises.</div>
+    <div th:text="'Printed ' + ${printedAt}">Printed</div>
+</div>
+</body>
+</html>

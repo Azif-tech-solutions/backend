@@ -80,3 +80,31 @@ interface SalesApi {
     @Operation(summary = "The itemised sales receipt as a PDF (DUPLICATE COPY once a reprint is recorded)")
     fun receipt(id: UUID): ResponseEntity<ByteArray>
 }
+
+@Tag(name = "Sales & POS — Deliver-later", description = "Supply position, customer waybills and the Pending Supply report (docs/09 §4.5–4.6)")
+@SecurityRequirement(name = "bearerAuth")
+interface WaybillsApi {
+    @Operation(summary = "The outstanding position of a sale or invoice (what is still owed), by its TXN or INV reference")
+    fun supplyLookup(ref: String): ApiEnvelope<com.zifiq.cashier.dto.SupplyPosition>
+
+    @Operation(summary = "Release outstanding goods against a sale: a delivery (driver) or a collection (collector)")
+    fun createWaybill(request: com.zifiq.cashier.dto.WaybillRequest): ApiEnvelope<com.zifiq.cashier.dto.WaybillView>
+
+    @Operation(summary = "A customer waybill")
+    fun getWaybill(id: UUID): ApiEnvelope<com.zifiq.cashier.dto.WaybillView>
+
+    @Operation(summary = "The customer waybill as a PDF (DUPLICATE COPY once a reprint is recorded)")
+    fun waybillPdf(id: UUID): ResponseEntity<ByteArray>
+
+    @Operation(summary = "Acknowledge a waybill: the signed copy came back")
+    fun acknowledgeWaybill(id: UUID, request: com.zifiq.cashier.dto.WaybillAcknowledgeRequest): ApiEnvelope<com.zifiq.cashier.dto.WaybillView>
+
+    @Operation(summary = "Cancel a waybill the same day, before the goods left: stock and the reservation go back")
+    fun cancelWaybill(id: UUID, request: com.zifiq.cashier.dto.WaybillCancelRequest): ApiEnvelope<com.zifiq.cashier.dto.WaybillView>
+
+    @Operation(summary = "Customer waybills (newest first)")
+    fun listWaybills(locationId: UUID?, saleId: UUID?, driverId: UUID?, status: String?, ref: String?, paging: PageParams): ApiEnvelope<PageResult<com.zifiq.cashier.dto.WaybillRow>>
+
+    @Operation(summary = "Pending Supply: completed sales with goods still owed, oldest first")
+    fun pendingSupply(invoice: String?, customerId: UUID?, status: String?, locationId: UUID?, from: LocalDate?, to: LocalDate?, paging: PageParams): ApiEnvelope<PageResult<com.zifiq.cashier.dto.PendingSupplyRow>>
+}

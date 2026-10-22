@@ -77,6 +77,8 @@ class InventoryOperationsService(
     private val stockLocations: StockLocations,
     private val hierarchy: LocationHierarchy,
     private val driverService: DriverService,
+    private val stockAvailability: StockAvailability,
+    private val stockReservations: StockReservations,
     private val domainEvents: DomainEvents,
     private val notify: Notify,
 ) {
@@ -115,6 +117,13 @@ class InventoryOperationsService(
                     throw ApiErrors.insufficientStockForTransfer(itemId)
                 }
             }
+        // Reserved stock (sold, awaiting a customer waybill) can't be transferred away even when it is
+        // physically in an area: the move out of the root must leave its open reservations covered.
+        val perItemOut = request.lines.groupBy({ it.stockItemId }, { it.quantity }).mapValues { (_, qs) -> qs.fold(BigDecimal.ZERO, BigDecimal::add) }
+        val available = stockAvailability.available(source.rootId, perItemOut.keys, lock = true)
+        perItemOut.forEach { (itemId, out) ->
+            if (out > (available[itemId] ?: BigDecimal.ZERO)) throw ApiErrors.stockReserved(stockReservations.openReservedAt(source.rootId, listOf(itemId))[itemId] ?: BigDecimal.ZERO)
+        }
 
         val ref = documentSequenceService.next("WB")
         val transferId = StockTransfersTable.insertAndGetId {
@@ -459,6 +468,16 @@ class InventoryOperationsService(
             if (!otpChallengeService.isVerified(challengeId, "QUANTITY_ADJUSTMENT")) throw ApiErrors.otpNotVerified()
         }
         if (direction == "NEGATIVE" && onHand < quantity) throw ApiErrors.adjustmentExceedsBalance()
+        if (direction == "NEGATIVE") {
+            // A stocktake still counts reserved goods (they are physically here), but removing them must
+            // not leave the location's root with less on hand than it has promised to pending deliveries.
+            val root = hierarchy.rootOf(request.locationId)
+            val reserved = stockReservations.openReservedAt(root, listOf(request.stockItemId), lock = true)[request.stockItemId] ?: BigDecimal.ZERO
+            if (reserved.signum() > 0) {
+                val rootOnHand = stockAvailability.onHand(root, listOf(request.stockItemId), lock = true)[request.stockItemId] ?: BigDecimal.ZERO
+                if (rootOnHand - quantity < reserved) throw ApiErrors.stockReserved(reserved)
+            }
+        }
 
         val ref = documentSequenceService.next("QA")
         val newQuantity = if (direction == "POSITIVE") onHand + quantity else onHand - quantity

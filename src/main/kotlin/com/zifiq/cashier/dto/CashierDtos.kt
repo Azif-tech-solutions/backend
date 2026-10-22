@@ -113,14 +113,23 @@ data class SaleBuyerInput(
     @field:Size(max = 5) val stateCode: String? = null,
 )
 
+/** How much of a line is collected now, and from which area; the rest is reserved for later waybills. */
+data class SaleSupplyLine(
+    @field:NotNull val lineNo: Int?,
+    @field:NotNull @field:DecimalMin("0.000") val supplyNow: BigDecimal?,
+    val fromLocationId: UUID? = null,
+)
+
 data class SaleCompleteRequest(
     @field:NotNull val version: Int?,
     @field:Valid @field:Size(max = 10) val payments: List<SalePaymentInput> = emptyList(),
     @field:DecimalMin("0.00") val onAccount: BigDecimal? = null,
+    /** Per line, how much goes now; anything less than the line quantity is reserved for a later waybill. Default: everything now. */
+    @field:Valid val supply: List<SaleSupplyLine>? = null,
     /** Walk-in only: issue an invoice to these buyer details (a registered customer always gets one). */
     @field:Valid val invoiceBuyer: SaleBuyerInput? = null,
     @field:Size(max = 300) val creditOverrideReason: String? = null,
-    /** The storage area the goods leave from; default the showroom's selling area (else the showroom itself). */
+    /** Default area the goods leave from when a line doesn't name one; else the showroom's selling area. */
     val fromLocationId: UUID? = null,
 )
 
@@ -160,6 +169,9 @@ data class SaleLineView(
     /** Open sales: what the location has to sell now, and whether this line needs more. */
     val available: BigDecimal?,
     val insufficient: Boolean,
+    /** How much of the line has been supplied (collected at the till + released by waybills), and what is still owed. */
+    val supplied: BigDecimal,
+    val outstanding: BigDecimal,
 )
 
 data class SaleTotalsView(
@@ -210,6 +222,8 @@ data class SaleView(
     val invoice: Ref?,
     val invoiceNumber: String?,
     val correspondent: Ref?,
+    /** NOT_APPLICABLE (all collected at the till), NOT_SUPPLIED, PARTIALLY_SUPPLIED or FULLY_SUPPLIED. */
+    val supplyStatus: String,
     val saleDate: LocalDate?,
     val startedAt: Instant,
     val completedAt: Instant?,
@@ -253,3 +267,143 @@ data class SaleRow(
     val invoice: Ref?,
     val invoiceNumber: String?,
 )
+
+// ---- Deliver-later: supply, customer waybills (docs/09 §4.5) ----
+
+/** The outstanding position of a sale or invoice, for releasing goods against it. */
+data class SupplyPosition(
+    val sale: Ref,
+    val saleRef: String,
+    val invoiceNumber: String?,
+    val customer: Ref?,
+    val customerName: String,
+    val customerType: String?,
+    val address: String?,
+    val contact: String?,
+    val lines: List<SupplyPositionLine>,
+    val totals: SupplyTotals,
+    val history: List<SupplyHistoryRow>,
+    val waybillCount: Int,
+    val fullySupplied: Boolean,
+)
+
+data class SupplyPositionLine(
+    val saleLineId: UUID,
+    val stockItem: Ref,
+    val product: String,
+    val unit: String,
+    val purchased: BigDecimal,
+    val supplied: BigDecimal,
+    val outstanding: BigDecimal,
+)
+
+data class SupplyTotals(val purchased: BigDecimal, val supplied: BigDecimal, val outstanding: BigDecimal, val progressPct: Int)
+
+data class SupplyHistoryRow(
+    val waybill: Ref,
+    val waybillRef: String,
+    val date: LocalDate,
+    val product: String,
+    val quantity: BigDecimal,
+    val driver: String?,
+    val collectedBy: String?,
+    val receivedBy: String?,
+    val status: String,
+)
+
+data class WaybillLineInput(
+    @field:NotNull val saleLineId: UUID?,
+    @field:NotNull @field:DecimalMin("0.001") val quantity: BigDecimal?,
+    /** The area the goods leave from; default the sale line's own, else the selling area. */
+    val fromLocationId: UUID? = null,
+)
+
+data class WaybillRequest(
+    @field:NotNull val saleId: UUID?,
+    /** DELIVERY (needs driverId) or COLLECTION (needs collectedBy). */
+    @field:NotNull val releaseMethod: String?,
+    val releaseDate: LocalDate? = null,
+    val driverId: UUID? = null,
+    @field:Size(max = 30) val vehicleNumber: String? = null,
+    @field:Size(max = 160) val collectedBy: String? = null,
+    @field:Size(max = 300) val deliveryAddress: String? = null,
+    @field:Valid @field:NotEmpty val lines: List<WaybillLineInput> = emptyList(),
+)
+
+data class WaybillAcknowledgeRequest(
+    @field:NotNull @field:Size(min = 2, max = 160) val receivedBy: String?,
+    val receivedAt: java.time.Instant? = null,
+    @field:Size(max = 300) val note: String? = null,
+)
+
+data class WaybillCancelRequest(@field:NotNull @field:Size(min = 5, max = 300) val reason: String?)
+
+data class WaybillLineView(
+    val stockItem: Ref,
+    val product: String,
+    val unit: String,
+    val quantity: BigDecimal,
+    val from: Ref,
+    val stillOutstanding: BigDecimal,
+)
+
+data class WaybillView(
+    val id: UUID,
+    val ref: String,
+    val sale: Ref,
+    val saleRef: String?,
+    val invoiceNumber: String?,
+    val location: Ref,
+    val customerName: String,
+    val releaseMethod: String,
+    val releaseDate: LocalDate,
+    val driver: Ref?,
+    val driverName: String?,
+    val vehicleNumber: String?,
+    val collectedBy: String?,
+    val deliveryAddress: String?,
+    val status: String,
+    val receivedBy: String?,
+    val receivedAt: java.time.Instant?,
+    val acknowledgementNote: String?,
+    val cancelledReason: String?,
+    val issuedBy: UserRef,
+    val lines: List<WaybillLineView>,
+)
+
+data class WaybillRow(
+    val id: UUID,
+    val ref: String,
+    val sale: Ref,
+    val saleRef: String?,
+    val invoiceNumber: String?,
+    val location: Ref,
+    val customerName: String,
+    val releaseMethod: String,
+    val releaseDate: LocalDate,
+    val driverName: String?,
+    val collectedBy: String?,
+    val units: BigDecimal,
+    val status: String,
+)
+
+// ---- Pending Supply report (docs/09 §4.6) ----
+
+data class PendingSupplyRow(
+    val sale: Ref,
+    val saleRef: String,
+    val invoice: Ref?,
+    val invoiceNumber: String?,
+    val customer: Ref?,
+    val customerName: String,
+    val date: LocalDate?,
+    val lines: Int,
+    val ordered: BigDecimal,
+    val supplied: BigDecimal,
+    val outstanding: BigDecimal,
+    val progressPct: Int,
+    val deliveries: Int,
+    val lastSupply: LocalDate?,
+    val status: String,
+)
+

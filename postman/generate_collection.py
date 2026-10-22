@@ -57,6 +57,8 @@ REF_EXAMPLES = {
     "receipt": {"ref": "RCT-1", "kind": "RECEIPT"},
     "stockTransfer": {"ref": "WB-1"},
     "role": {"name": "Stock Keeper"},
+    "sale": {"ref": "TXN-2", "status": "COMPLETED", "customer": "Okafor & Sons Distribution 482"},
+    "customerWaybill": {"ref": "WB-2", "status": "ISSUED"},
 }
 
 
@@ -3012,6 +3014,87 @@ ep(P, "C2 Void (error: already voided)", "POST", "/api/v1/cashier/sales/{{saleId
    resp={"error": {"code": "INVALID_STATUS_TRANSITION", "message": "Cannot change status from VOIDED to VOIDED", "details": {"from": "VOIDED", "to": "VOIDED"}}},
    expect_error={"status": 409, "code": "INVALID_STATUS_TRANSITION"})
 
+# ---- E. Deliver-later: a dealer on-account sale, partly reserved, released by waybill ----
+ep(P, "E1 Start Sale (deliver-later)", "POST", "/api/v1/cashier/sales", body={"customerId": "{{dealerId}}"},
+   resp={"data": dict(SALE, version=0, customer=None, customerName="Okafor & Sons Distribution 482", priceBasis="DEALER",
+                      lines=[], totals=dict(SALE["totals"], gross=0.00, net=0.00, vat=0.00, total=0.00),
+                      allowedMethods=["CASH", "POS", "FUND_TRANSFER", "ON_ACCOUNT"])},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('saleId2', json.data.id);", "pm.collectionVariables.set('saleVersion2', json.data.version);"],
+   desc="A sale to a registered dealer: dealer prices, and ON_ACCOUNT available within the credit limit.")
+
+ep(P, "E2 Set Lines", "PUT", "/api/v1/cashier/sales/{{saleId2}}/lines",
+   body={"version": "{{saleVersion2}}", "lines": [{"stockItemId": "{{finishedProductId}}", "quantity": 1}]},
+   resp={"data": dict(SALE, version=1, customerName="Okafor & Sons Distribution 482", priceBasis="DEALER",
+                      lines=[dict(SALE_LINE, priceBasis="DEALER", unitPrice=4500.00, supplied=0.000, outstanding=1.000)])},
+   tests=SAVE_SALE + ["pm.collectionVariables.set('saleVersion2', json.data.version);", "pm.collectionVariables.set('saleTotal2', json.data.totals.total);"],
+   desc="Full replace; priced at the dealer price.")
+
+ep(P, "E3 Complete on Account, Deliver Later", "POST", "/api/v1/cashier/sales/{{saleId2}}/complete",
+   body={"version": "{{saleVersion2}}", "payments": [], "onAccount": "{{saleTotal2}}", "supply": [{"lineNo": 1, "supplyNow": 0}]},
+   resp={"data": {"sale": dict(SALE, ref="TXN-2", status="COMPLETED", version=2, customerName="Okafor & Sons Distribution 482", priceBasis="DEALER",
+                               supplyStatus="NOT_SUPPLIED", onAccount=4837.50, paidNow=0.00, allowedMethods=[],
+                               lines=[dict(SALE_LINE, priceBasis="DEALER", unitPrice=4500.00, available=None, supplied=0.000, outstanding=1.000)]),
+                  "invoice": REF("invoice", "2b3c4d5e-9999-4c4c-9a9a-000000000003"), "receiptUrl": "/api/v1/cashier/sales/{{saleId2}}/receipt.pdf", "changeGiven": None}},
+   tests=["const json = pm.response.json();",
+          "pm.test('nothing supplied yet, all reserved', () => { pm.expect(json.data.sale.supplyStatus).to.eql('NOT_SUPPLIED'); pm.expect(json.data.sale.lines[0].outstanding).to.eql(1); });",
+          "pm.collectionVariables.set('saleTxn2', json.data.sale.ref);",
+          "pm.test('invoiced on account', () => pm.expect(json.data.invoice).to.not.be.null);"],
+   desc="supply[].supplyNow = 0 reserves the whole line for later delivery. The reserved stock is held (it still counts in a stocktake) but is not "
+        "available to sell again. The dealer is invoiced on account.")
+
+ep(P, "E4 Supply Lookup", "GET", "/api/v1/cashier/supply/lookup", query=[{"key": "ref", "value": "{{saleTxn2}}"}],
+   resp={"data": {"sale": REF("sale", "{{saleId2}}"), "saleRef": "TXN-2", "invoiceNumber": "INV-2", "customer": REF("customer", "{{dealerId}}"),
+                  "customerName": "Okafor & Sons Distribution 482", "customerType": "AUTHORISED_DEALER", "address": None, "contact": None,
+                  "lines": [{"saleLineId": "{{saleLineId2}}", "stockItem": REF("stockItem", "{{finishedProductId}}"), "product": "Premium Blend", "unit": "Kilogram",
+                             "purchased": 1.000, "supplied": 0.000, "outstanding": 1.000}],
+                  "totals": {"purchased": 1.000, "supplied": 0.000, "outstanding": 1.000, "progressPct": 0},
+                  "history": [], "waybillCount": 0, "fullySupplied": False}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('saleLineId2', json.data.lines[0].saleLineId);",
+          "pm.test('one line outstanding', () => pm.expect(json.data.totals.outstanding).to.eql(1));"],
+   desc="The outstanding position of a sale by its TXN or INV reference, with the saleLineId to release against. Perm cashier.waybill.manage or cashier.supply.read.")
+
+ep(P, "E5 Release by Waybill (collection)", "POST", "/api/v1/cashier/waybills",
+   body={"saleId": "{{saleId2}}", "releaseMethod": "COLLECTION", "releaseDate": "{{today}}", "collectedBy": "Tunde Okafor",
+         "lines": [{"saleLineId": "{{saleLineId2}}", "quantity": 1}]},
+   resp={"data": {"id": "{{waybillId}}", "ref": "WB-2", "sale": REF("sale", "{{saleId2}}"), "saleRef": "TXN-2", "invoiceNumber": "INV-2",
+                  "location": REF("location", "{{showroomId}}"), "customerName": "Okafor & Sons Distribution 482", "releaseMethod": "COLLECTION",
+                  "releaseDate": "2026-10-22", "driver": None, "driverName": None, "vehicleNumber": None, "collectedBy": "Tunde Okafor", "deliveryAddress": None,
+                  "status": "ISSUED", "receivedBy": None, "receivedAt": None, "acknowledgementNote": None, "cancelledReason": None, "issuedBy": USER,
+                  "lines": [{"stockItem": REF("stockItem", "{{finishedProductId}}"), "product": "Premium Blend", "unit": "Kilogram", "quantity": 1.000,
+                             "from": REF("location", "{{floorAreaId}}"), "stillOutstanding": 0.000}]}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('waybillId', json.data.id);",
+          "pm.test('issued with a WB number', () => { pm.expect(json.data.ref).to.match(/^WB-\\d+$/); pm.expect(json.data.status).to.eql('ISSUED'); });"],
+   desc="Perm cashier.waybill.manage. Releases outstanding goods, posting the reserved stock out. A release can't exceed the line's outstanding "
+        "(400 RELEASE_EXCEEDS_OUTSTANDING); a delivery needs an active driver, a collection needs who collected. Shares the WB-n numbering with stock transfers.")
+
+ep(P, "E6 Pending Supply Report", "GET", "/api/v1/cashier/reports/pending-supply", query=[{"key": "page", "value": "0"}, {"key": "size", "value": "20"}],
+   resp={"data": {"items": [{"sale": REF("sale", "{{saleId2}}"), "saleRef": "TXN-2", "invoice": REF("invoice", "2b3c4d5e-9999-4c4c-9a9a-000000000003"), "invoiceNumber": "INV-2",
+                             "customer": REF("customer", "{{dealerId}}"), "customerName": "Okafor & Sons Distribution 482", "date": "2026-10-22", "lines": 1,
+                             "ordered": 1.000, "supplied": 1.000, "outstanding": 0.000, "progressPct": 100, "deliveries": 1, "lastSupply": "2026-10-22", "status": "FULLY_SUPPLIED"}],
+                  "page": 0, "size": 20, "totalItems": 0, "totalPages": 0,
+                  "summary": {"invoicesPending": 0, "unitsOrdered": 0.000, "unitsSupplied": 0.000, "unitsOutstanding": 0.000, "fulfilledPct": 100}}},
+   desc="Perm cashier.supply.read. Completed sales with goods still owed, oldest first; the summary totals cover the whole filtered set. "
+        "Now that the sale is fully supplied it has dropped out of the default (NOT_SUPPLIED/PARTIALLY_SUPPLIED) list. Filters: invoice, customerId, status, locationId, from/to.")
+
+ep(P, "E7 Acknowledge Waybill", "POST", "/api/v1/cashier/waybills/{{waybillId}}/acknowledge",
+   body={"receivedBy": "Tunde Okafor", "note": "Collected in full"},
+   resp={"data": {"id": "{{waybillId}}", "ref": "WB-2", "status": "DELIVERED", "receivedBy": "Tunde Okafor", "sale": REF("sale", "{{saleId2}}"),
+                  "location": REF("location", "{{showroomId}}"), "customerName": "Okafor & Sons Distribution 482", "releaseMethod": "COLLECTION",
+                  "releaseDate": "2026-10-22", "issuedBy": USER, "lines": []}},
+   tests=["const json = pm.response.json();", "pm.test('delivered', () => pm.expect(json.data.status).to.eql('DELIVERED'));"],
+   desc="Records the signed copy. Only ISSUED. Cancel (POST .../cancel, same day before the goods left) puts the stock and the reservation back.")
+
+ep(P, "E8 Customer Waybill PDF", "GET", "/api/v1/cashier/waybills/{{waybillId}}/waybill.pdf", pdf=True,
+   desc="The customer waybill as a PDF: products, quantity released and still outstanding, release method, and a signature block.")
+
+ep(P, "E9 List Waybills", "GET", "/api/v1/cashier/waybills", query=[{"key": "page", "value": "0"}, {"key": "size", "value": "20"}],
+   resp={"data": {"items": [{"id": "{{waybillId}}", "ref": "WB-2", "sale": REF("sale", "{{saleId2}}"), "saleRef": "TXN-2", "invoiceNumber": "INV-2",
+                             "location": REF("location", "{{showroomId}}"), "customerName": "Okafor & Sons Distribution 482", "releaseMethod": "COLLECTION",
+                             "releaseDate": "2026-10-22", "driverName": None, "collectedBy": "Tunde Okafor", "units": 1.000, "status": "DELIVERED"}],
+                  "page": 0, "size": 20, "totalItems": 1, "totalPages": 1}},
+   desc="Perm cashier.supply.read. Filters: locationId, saleId, driverId, status, ref (a WB or INV number). Newest first.")
+
+
 ep(P, "D1 Close Till", "POST", "/api/v1/cashier/till-sessions/{{tillSessionId}}/close", body={"countedCash": 20000, "note": "End of shift"},
    resp={"data": dict(TILL_SESSION, status="CLOSED", closedAt=NOW, closedBy=USER, countedCash=20000.00, expectedCash=20000.00, variance=0.00,
                       closeNote="End of shift", running=None)},
@@ -3192,6 +3275,7 @@ def build_collection():
         "invoiceId", "invoiceNumber", "invoiceSourceRef", "walkInInvoiceId", "draftInvoiceId", "discardDraftId", "reissuedInvoiceId",
         "cashPaymentId", "transferReceiptId", "creditLineId", "creditNoteId",
         "tillSessionId", "saleId", "saleVersion", "saleTotal",
+        "saleId2", "saleVersion2", "saleTotal2", "saleTxn2", "saleLineId2", "waybillId",
     ]
 
     collection = {

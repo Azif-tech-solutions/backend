@@ -1,5 +1,20 @@
 package com.zifiq.cashier
 
+import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.and
+import com.zifiq.inventory.dto.DriverRequest
+import com.zifiq.cashier.dto.SaleSupplyLine
+import com.zifiq.cashier.dto.WaybillAcknowledgeRequest
+import com.zifiq.cashier.dto.WaybillCancelRequest
+import com.zifiq.cashier.dto.WaybillLineInput
+import com.zifiq.cashier.dto.WaybillRequest
+import com.zifiq.cashier.service.PendingSupplyFilter
+import com.zifiq.cashier.service.WaybillFilter
+import com.zifiq.cashier.service.PendingSupplyService
+import com.zifiq.cashier.service.CustomerWaybillService
+import com.zifiq.inventory.service.DriverService
+import com.zifiq.inventory.service.StockReservations
 import com.zifiq.account.dto.BankAccountRequest
 import com.zifiq.account.dto.CashAccountRequest
 import com.zifiq.account.repository.MoneyLedgerRepository
@@ -210,17 +225,22 @@ class SalesPosIntegrationTest : PostgresIntegrationTest() {
         CreditNoteService(invoiceSupport, tx, sequences, registry, walletLedger, PdfRenderer(), profiles))
 
     private val stockLedger = StockLedgerRepository(notify)
-    private val availability = StockAvailability(LocationHierarchy())
+    private val hierarchy = LocationHierarchy()
+    private val reservations = StockReservations(stockLedger, hierarchy)
+    private val availability = StockAvailability(hierarchy, reservations)
+    private val drivers = DriverService(tx, tenantContext, actors, events)
     private val support = CashierSupport(tenantContext, actors, permissions, locationAccess, moduleSettings, events)
     private val cashAccounts = CashAccountsSpi(accountSupport)
     private val tills = TillSessionService(support, tx, cashAccounts, StockLocations(), notify)
     private val views = SaleViews(support, customerDirectory, invoices, receipts, cashAccounts, availability)
     private val sales = SaleService(support, tx, tills, SalePricing(PriceListRepository(), vat), views, customerDirectory)
     private val checkout = SaleCheckout(support, tx, sales, tills, views, customerDirectory, walletLedger, noCorrespondents, customerDirectory, invoices, receipts,
-        cashAccounts, invoices, availability, stockLedger, StockLocations(), sequences, registry)
-    private val voids = SaleVoids(support, tx, views, stockLedger, receipts, walletLedger, invoices, customerDirectory, registry, notify)
+        cashAccounts, invoices, availability, stockLedger, reservations, StockLocations(), sequences, registry)
+    private val voids = SaleVoids(support, tx, views, stockLedger, reservations, receipts, walletLedger, invoices, customerDirectory, registry, notify)
     private val documents = SaleDocuments(support, tx, views, checkout, invoices, registry, profiles, PdfRenderer())
-    private val catalogue = CatalogueService(support, tx, LocationHierarchy(), availability, customerDirectory)
+    private val catalogue = CatalogueService(support, tx, hierarchy, availability, customerDirectory)
+    private val waybills = CustomerWaybillService(support, tx, views, reservations, stockLedger, drivers, StockLocations(), invoices, registry, sequences, PdfRenderer(), profiles)
+    private val pendingSupply = PendingSupplyService(support, tx)
     private val sweep = StaleSaleSweep(database, tx, support)
 
     private val today: LocalDate get() = LocalDate.now(ZoneId.of("Africa/Lagos"))
@@ -439,4 +459,92 @@ class SalesPosIntegrationTest : PostgresIntegrationTest() {
         signIn(cashierB)
         closeTill()
     }
+
+    @Test
+    fun `a sale can defer part of its goods - the rest is reserved, drops availability, and a waybill releases it`() {
+        openTill()
+        val sale = cart(dealer, citrus to "10")
+        val total = sale.totals.total
+        // Supply 4 now on account; reserve 6 for later delivery.
+        val done = checkout.complete(sale.id, SaleCompleteRequest(sale.version, emptyList(), onAccount = total,
+            supply = listOf(SaleSupplyLine(1, BigDecimal("4"))), invoiceBuyer = null, creditOverrideReason = null))
+        assertThat(done.sale.supplyStatus).isEqualTo("PARTIALLY_SUPPLIED")
+        assertThat(done.sale.lines.single().outstanding).isEqualByComparingTo("6")
+        assertThat(onHand(floor, citrus)).isEqualByComparingTo("96")
+        signIn(admin)
+        // Reserved goods are still on hand (a stocktake counts them) but not available to sell.
+        assertThat(tx.execute { availability.onHand(ikeja, listOf(citrus)) }[citrus]).isEqualByComparingTo("96")
+        assertThat(tx.execute { availability.available(ikeja, listOf(citrus)) }[citrus]).isEqualByComparingTo("90")
+        signIn(cashierA)
+
+        val position = waybills.lookup(done.sale.ref!!)
+        assertThat(position.totals.outstanding).isEqualByComparingTo("6")
+        assertThat(position.fullySupplied).isFalse()
+
+        // Release 2 by collection, then the last 4 by delivery.
+        val wb1 = waybills.create(WaybillRequest(sale.id, "COLLECTION", null, null, null, "K. Okafor", null, listOf(WaybillLineInput(saleLineId(sale.id, 1), BigDecimal("2")))))
+        assertThat(wb1.ref).startsWith("WB-")
+        assertThat(onHand(floor, citrus)).isEqualByComparingTo("94")
+        assertThat(sales.get(sale.id).supplyStatus).isEqualTo("PARTIALLY_SUPPLIED")
+
+        signIn(admin)
+        val driver = DriverService(tx, tenantContext, actors, events).create(DriverRequest("Musa Bello", "08030000000", "LSR-442-XA"))
+        signIn(cashierA)
+        val wb2 = waybills.create(WaybillRequest(sale.id, "DELIVERY", null, driver.id, null, null, "14 Ikorodu Rd", listOf(WaybillLineInput(saleLineId(sale.id, 1), BigDecimal("4")))))
+        assertThat(sales.get(sale.id).supplyStatus).isEqualTo("FULLY_SUPPLIED")
+        assertThat(onHand(floor, citrus)).isEqualByComparingTo("90")
+        failsWith { waybills.create(WaybillRequest(sale.id, "COLLECTION", null, null, null, "Someone", null, listOf(WaybillLineInput(saleLineId(sale.id, 1), BigDecimal.ONE)))) }
+            .isEqualTo(ErrorCode.RELEASE_EXCEEDS_OUTSTANDING)
+
+        assertThat(String(waybills.pdf(wb2.id).pdf.copyOfRange(0, 4))).isEqualTo("%PDF")
+        val ack = waybills.acknowledge(wb2.id, WaybillAcknowledgeRequest("K. Okafor", null, null))
+        assertThat(ack.status).isEqualTo("DELIVERED")
+        // Fully-supplied sales drop out of the default pending list.
+        assertThat(pendingSupply.report(PendingSupplyFilter(), PageRequest.of(0, 50)).items.map { it.saleRef }).doesNotContain(sale.ref)
+        closeTill()
+    }
+
+    @Test
+    fun `voiding cancels reservations, a released sale cannot be voided, and a cancelled waybill restores stock`() {
+        openTill()
+        val a = cart(dealer, citrus to "10")
+        val doneA = checkout.complete(a.id, SaleCompleteRequest(a.version, emptyList(), onAccount = a.totals.total, supply = listOf(SaleSupplyLine(1, BigDecimal("0")))))
+        assertThat(doneA.sale.supplyStatus).isEqualTo("NOT_SUPPLIED")
+        signIn(admin); assertThat(tx.execute { availability.available(ikeja, listOf(citrus)) }[citrus]).isEqualByComparingTo("90"); signIn(cashierA)
+        // Void releases the reservation: availability returns to full, nothing was collected to reverse.
+        voids.void(a.id, SaleVoidRequest("Order cancelled before any delivery"))
+        signIn(admin); assertThat(tx.execute { availability.available(ikeja, listOf(citrus)) }[citrus]).isEqualByComparingTo("100"); signIn(cashierA)
+
+        // A second deferred sale, partly released, can't be voided.
+        val b = cart(dealer, citrus to "4")
+        val doneB = checkout.complete(b.id, SaleCompleteRequest(b.version, emptyList(), onAccount = b.totals.total, supply = listOf(SaleSupplyLine(1, BigDecimal("0")))))
+        val wb = waybills.create(WaybillRequest(b.id, "COLLECTION", null, null, null, "Picker", null, listOf(WaybillLineInput(saleLineId(b.id, 1), BigDecimal("4")))))
+        assertThat(onHand(floor, citrus)).isEqualByComparingTo("96")
+        failsWith { voids.void(b.id, SaleVoidRequest("Trying to void after releasing goods")) }.isEqualTo(ErrorCode.INVALID_STATUS_TRANSITION)
+        // Cancelling the waybill (same day) puts the stock and the reservation back.
+        waybills.cancel(wb.id, WaybillCancelRequest("Driver returned, customer not in"))
+        assertThat(onHand(floor, citrus)).isEqualByComparingTo("100")
+        assertThat(sales.get(b.id).supplyStatus).isEqualTo("NOT_SUPPLIED")
+        closeTill()
+    }
+
+    @Test
+    fun `a walk-in leaving goods for later must give a contact`() {
+        openTill()
+        val sale = cart(null, citrus to "5")
+        failsWith { checkout.complete(sale.id, SaleCompleteRequest(sale.version, listOf(SalePaymentInput("CASH", sale.totals.total)), supply = listOf(SaleSupplyLine(1, BigDecimal("2"))))) }
+            .isEqualTo(ErrorCode.WALKIN_DELIVERY_NEEDS_CONTACT)
+        // With invoice details (name + phone) it goes through.
+        val done = checkout.complete(sale.id, SaleCompleteRequest(sale.version, listOf(SalePaymentInput("CASH", sale.totals.total, sale.totals.total)),
+            supply = listOf(SaleSupplyLine(1, BigDecimal("2"))), invoiceBuyer = SaleBuyerInput("Mrs Bello", phone = "08031234567")))
+        assertThat(done.sale.supplyStatus).isEqualTo("PARTIALLY_SUPPLIED")
+        assertThat(done.invoice).isNotNull
+        closeTill()
+    }
+
+    /** The id of a sale's line by its 1-based number. */
+    private fun saleLineId(saleId: UUID, lineNo: Int): UUID =
+        tx.execute { com.zifiq.cashier.model.SaleLinesTable.select(com.zifiq.cashier.model.SaleLinesTable.id)
+            .where { (com.zifiq.cashier.model.SaleLinesTable.saleId eq saleId) and (com.zifiq.cashier.model.SaleLinesTable.lineNo eq lineNo) }
+            .single()[com.zifiq.cashier.model.SaleLinesTable.id].value }
 }

@@ -10,17 +10,30 @@ import org.springframework.stereotype.Component
 
 /**
  * What a factory or showroom has to sell (docs/09 §2.1): stock on hand across it and its storage
- * areas, which is how a showroom's stock is counted. Deliver-later reservations (Sales & POS slice 2)
- * will be subtracted here, so every seller checks the same figure. Runs in the caller's transaction.
+ * areas (how a showroom's stock is counted) minus its open reservations — goods sold but not yet
+ * collected, held by a later waybill. Every seller (POS, stock transfer, factory trade) checks this
+ * one figure, so reserved goods can't be promised twice. Runs in the caller's transaction.
  */
 @Component
-class StockAvailability(private val hierarchy: LocationHierarchy) {
+class StockAvailability(
+    private val hierarchy: LocationHierarchy,
+    private val reservations: StockReservations,
+) {
     /**
-     * Per item, Σ on hand over [rootId] and its areas (0 for an item never stocked there). With [lock]
-     * the balance rows are held FOR UPDATE until the transaction ends — taken in a fixed order, so two
-     * tills selling the same last units queue instead of both succeeding, and never deadlock.
+     * Per item, available = Σ on hand over [rootId] and its areas − open reservations at the root
+     * (0 for an item never stocked or reserved). With [lock] the balance rows and the open
+     * reservation rows are held FOR UPDATE until the transaction ends, both taken in a fixed order,
+     * so two tills selling the same last units queue instead of both succeeding, and never deadlock.
      */
     fun available(rootId: UUID, stockItemIds: Collection<UUID>, lock: Boolean = false): Map<UUID, BigDecimal> {
+        if (stockItemIds.isEmpty()) return emptyMap()
+        val onHand = onHand(rootId, stockItemIds, lock)
+        val reserved = reservations.openReservedAt(rootId, stockItemIds, lock)
+        return stockItemIds.associateWith { (onHand[it] ?: BigDecimal.ZERO) - (reserved[it] ?: BigDecimal.ZERO) }
+    }
+
+    /** On-hand only (ignores reservations): what a stocktake would count across the root and its areas. */
+    fun onHand(rootId: UUID, stockItemIds: Collection<UUID>, lock: Boolean = false): Map<UUID, BigDecimal> {
         if (stockItemIds.isEmpty()) return emptyMap()
         val rows = StockBalancesTable.select(StockBalancesTable.stockItemId, StockBalancesTable.quantityOnHand)
             .where { (StockBalancesTable.locationId inList hierarchy.withAreas(rootId)) and (StockBalancesTable.stockItemId inList stockItemIds.toSet()) }

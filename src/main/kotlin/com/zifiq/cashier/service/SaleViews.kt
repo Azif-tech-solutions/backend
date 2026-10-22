@@ -84,6 +84,7 @@ class SaleViews(
                     lineDiscount = line[SaleLinesTable.lineDiscount], instantDiscountShare = line[SaleLinesTable.instantDiscountShare],
                     lineNet = line[SaleLinesTable.lineNet], vatRate = line[SaleLinesTable.vatRate], vatAmount = line[SaleLinesTable.vatAmount],
                     lineTotal = line[SaleLinesTable.lineTotal], available = have, insufficient = have != null && have < line[SaleLinesTable.quantity],
+                    supplied = line[SaleLinesTable.suppliedQty], outstanding = line[SaleLinesTable.quantity] - line[SaleLinesTable.suppliedQty],
                 )
             },
             totals = SaleTotalsView(
@@ -103,7 +104,7 @@ class SaleViews(
             changeGiven = sale[SalesTable.changeGiven],
             allowedMethods = if (open) allowedMethods(customer, tillAccountId) else emptyList(),
             invoice = ref(sale[SalesTable.invoiceId], Ref::invoice), invoiceNumber = sale[SalesTable.invoiceNumber],
-            correspondent = ref(sale[SalesTable.correspondentId], Ref::correspondent), saleDate = sale[SalesTable.saleDate],
+            correspondent = ref(sale[SalesTable.correspondentId], Ref::correspondent), supplyStatus = sale[SalesTable.supplyStatus], saleDate = sale[SalesTable.saleDate],
             startedAt = sale[SalesTable.startedAt], completedAt = completedAt,
             creditOverrideReason = sale[SalesTable.creditOverrideReason], creditOverrideBy = UserRef.of(sale[SalesTable.creditOverrideByUserId]),
             voidedAt = sale[SalesTable.voidedAt], voidedBy = UserRef.of(sale[SalesTable.voidedByUserId]), voidReason = sale[SalesTable.voidReason],

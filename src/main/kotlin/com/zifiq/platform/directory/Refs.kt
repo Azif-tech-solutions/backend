@@ -45,6 +45,7 @@ enum class RefKind {
     BANK_ACCOUNT, CASH_ACCOUNT, EXPENSE_CATEGORY, RECEIPT,
     INVOICE,
     RECIPE, SPECIAL_PRODUCTION_CLIENT,
+    SALE, CUSTOMER_WAYBILL,
 }
 
 /**
@@ -107,6 +108,8 @@ open class Ref(val kind: RefKind, val id: UUID) {
         fun invoice(id: UUID) = Ref(RefKind.INVOICE, id)
         fun recipe(id: UUID) = Ref(RefKind.RECIPE, id)
         fun specialProductionClient(id: UUID) = Ref(RefKind.SPECIAL_PRODUCTION_CLIENT, id)
+        fun sale(id: UUID) = Ref(RefKind.SALE, id)
+        fun customerWaybill(id: UUID) = Ref(RefKind.CUSTOMER_WAYBILL, id)
     }
 }
 

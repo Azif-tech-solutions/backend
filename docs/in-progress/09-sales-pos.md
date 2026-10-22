@@ -1,6 +1,6 @@
 # 09 — Sales & POS Module
 
-Status: **in progress** — slice 1 (till sessions, the POS cart and checkout, void, receipt, invoice on request; V15) is implemented. Slice 2: deliver-later (stock reservations, customer waybills, Pending Supply). Slice 3: Instant Discount, pro-formas, the reports and search of §4.6/§9.
+Status: **in progress** — slices 1 and 2 are implemented. Slice 1 (V15): till sessions, the POS cart and checkout, void, receipt, invoice on request. Slice 2 (V15_1): deliver-later — stock reservations, customer waybills, and the Pending Supply report. Slice 3 (next): Instant Discount, pro-formas, and the Sales/Customer-activity reports and advanced search of §4.3/§4.4/§4.6/§9.
 
 **Implementation notes (slice 1), where the build differs from or adds to the design below:**
 - Migration is `V15__sales_pos_tills_and_sales.sql` (V13 was taken by the scale pass). It adds the four new stock-ledger source types for all slices, `till_sessions`, `sales`, `sale_lines`, `sale_payments`, tenant-scoped composite foreign keys (V14_9) and the slice-1 permissions (`cashier.sales.read-all`, `.void`, `cashier.credit.override`, `cashier.till.supervise`).
@@ -21,6 +21,16 @@ Migration: `V15__sales_pos_tills_and_sales.sql` (slice 1); later slices add V15_
 Replaces: the mock `CashierService` (`getSalesReport`, `generateProForma`, `generateWaybill`, `processPosCheckout`) and the POS part of `menu` (`MenuController`'s `cashier.sales.manage` endpoint).
 
 ---
+
+
+**Implementation notes (slice 2), where the build differs from or adds to the design below:**
+- Migration `V15_1__sales_pos_reservations_and_waybills.sql`: `stock_reservations` (owned by inventory), `customer_waybills` / `customer_waybill_lines` (Sales & POS), and the `cashier.waybill.manage` / `cashier.supply.read` permissions.
+- **Availability now subtracts reservations.** `inventory.StockAvailability.available` = on hand across a location's areas − its open reservations, and every seller checks it: POS checkout, stock transfer dispatch (§2.1) and factory trade dispatch. A negative quantity adjustment that would leave on hand below the open reservations is refused (`409 STOCK_RESERVED`); a stocktake still counts reserved goods, because they are physically present.
+- **Checkout `supply`** (§4.2): each line's `supplyNow` goes out of the ledger now (`POS_SALE`), the remainder is reserved at the selling location; `supply_status` is `NOT_APPLICABLE` (nothing deferred), `NOT_SUPPLIED`, `PARTIALLY_SUPPLIED` or `FULLY_SUPPLIED`. A walk-in that defers goods must give invoice details with a phone (`409 WALKIN_DELIVERY_NEEDS_CONTACT`).
+- **Customer waybills** (§4.5) release the reserved stock (`CUSTOMER_WAYBILL` out), can't exceed a line's outstanding, link to the sale's invoice, and move `supply_status` toward `FULLY_SUPPLIED`. Acknowledge records the signed copy; cancel (same day, before the goods left) posts `CUSTOMER_WAYBILL_CANCEL` back in and re-opens the reservation.
+- **Void** now cancels the sale's open reservations and is refused once any `ISSUED`/`DELIVERED` waybill exists for the sale (cancel them first).
+- Two new reference kinds, `SALE` and `CUSTOMER_WAYBILL`, so a response points at a sale or a waybill as a resolved object, never a bare id (the sale-line id on the supply-lookup line is the one documented exception — the client sends it back to release against).
+- The §5 `cashier::spi` (supply history for docs 10/12/13) is not built yet; it arrives when its consumers do.
 
 ## 1. Scope
 

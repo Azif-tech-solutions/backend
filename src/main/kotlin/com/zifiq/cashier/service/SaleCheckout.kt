@@ -27,6 +27,7 @@ import com.zifiq.customers.spi.WalletLedger
 import com.zifiq.inventory.model.StockItemsTable
 import com.zifiq.inventory.repository.StockLedgerRepository
 import com.zifiq.inventory.service.StockAvailability
+import com.zifiq.inventory.service.StockReservations
 import com.zifiq.inventory.service.StockLocations
 import com.zifiq.invoicing.spi.InvoiceIssuer
 import com.zifiq.invoicing.spi.InvoiceLineRequest
@@ -43,6 +44,7 @@ import com.zifiq.platform.numbering.DocumentSequenceService
 import com.zifiq.platform.tenancy.TenantScopedTransaction
 import com.zifiq.platform.tenancy.model.LocationsTable
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.Instant
 import java.util.UUID
 import org.jetbrains.exposed.sql.ResultRow
@@ -79,6 +81,7 @@ class SaleCheckout(
     private val invoices: InvoiceIssuer,
     private val availability: StockAvailability,
     private val stockLedger: StockLedgerRepository,
+    private val reservations: StockReservations,
     private val stockLocations: StockLocations,
     private val sequences: DocumentSequenceService,
     private val documents: DocumentRegistry,
@@ -131,16 +134,37 @@ class SaleCheckout(
         val allocated = payments.fold(onAccount) { s, p -> s + p.amount }
         if ((allocated - total).abs() >= TOLERANCE) throw ApiErrors.paymentNotSettled(total, allocated)
 
-        // ---- Stock: available across the showroom, and on hand where the goods leave from (rule S2) ----
-        val fromLocation = request.fromLocationId?.let { stockLocations.requireWithin(locationId, it, "fromLocationId").id } ?: sellingArea(locationId)
+        // ---- Deliver-later plan: how much of each line goes now, and from where (docs/09 §4.2) ----
+        val supplyByLine = request.supply.orEmpty().associateBy { it.lineNo }
+        val plans = lines.map { line ->
+            val qty = line[SaleLinesTable.quantity]
+            val ask = supplyByLine[line[SaleLinesTable.lineNo]]
+            val supplyNow = (ask?.supplyNow ?: qty).setScale(3, RoundingMode.HALF_UP)
+            if (supplyNow.signum() < 0 || supplyNow > qty) throw ApiErrors.validationFailed(mapOf("supply" to "supplyNow for line ${line[SaleLinesTable.lineNo]} must be between 0 and ${qty.stripTrailingZeros().toPlainString()}"))
+            val from = (ask?.fromLocationId ?: request.fromLocationId)?.let { stockLocations.requireWithin(locationId, it, "fromLocationId").id } ?: sellingArea(locationId)
+            LinePlan(line, supplyNow, from)
+        }
+        val deferred = plans.any { it.supplyNow < it.line[SaleLinesTable.quantity] }
+        // A walk-in leaving goods for later must be reachable (invoice details, with a phone).
+        if (deferred && customer == null) {
+            val buyer = request.invoiceBuyer
+            if (buyer?.name.isNullOrBlank() || buyer?.phone.isNullOrBlank()) throw ApiErrors.walkInDeliveryNeedsContact()
+        }
+        // Availability (on hand across the showroom minus existing reservations) must cover the whole sale.
         val wanted = lines.groupBy({ it[SaleLinesTable.stockItemId] }, { it[SaleLinesTable.quantity] }).mapValues { (_, q) -> q.fold(BigDecimal.ZERO, BigDecimal::add) }
         val have = availability.available(locationId, wanted.keys, lock = true)
-        val shortfalls = wanted.mapNotNull { (itemId, qty) ->
-            // On hand where the goods leave from, never more than the showroom has to sell.
-            val atArea = stockLedger.lockedBalance(support.tenantId(), fromLocation, itemId).min(have.getValue(itemId))
-            if (atArea < qty) codeOf(lines, itemId) to "requested ${qty.stripTrailingZeros().toPlainString()}, available ${atArea.stripTrailingZeros().toPlainString()}" else null
+        val availShort = wanted.mapNotNull { (itemId, qty) ->
+            if (have.getValue(itemId) < qty) codeOf(lines, itemId) to "requested ${qty.stripTrailingZeros().toPlainString()}, available ${have.getValue(itemId).stripTrailingZeros().toPlainString()}" else null
         }.toMap()
-        if (shortfalls.isNotEmpty()) throw ApiErrors.insufficientStockForSale(shortfalls)
+        if (availShort.isNotEmpty()) throw ApiErrors.insufficientStockForSale(availShort)
+        // What physically leaves now must be on hand where it leaves from.
+        plans.filter { it.supplyNow.signum() > 0 }.groupBy({ it.from to it.line[SaleLinesTable.stockItemId] }, { it.supplyNow })
+            .forEach { (key, qs) ->
+                val (from, itemId) = key
+                if (stockLedger.lockedBalance(support.tenantId(), from, itemId) < qs.fold(BigDecimal.ZERO, BigDecimal::add)) {
+                    throw ApiErrors.insufficientStockAtArea(stockLocations.get(from).label)
+                }
+            }
 
         // ---- Credit (rule S16) ----
         var overrideReason: String? = null
@@ -159,18 +183,30 @@ class SaleCheckout(
         val correspondent = customer?.let { correspondents.creditableFor(it.id) }
         val unitCosts = StockItemsTable.select(StockItemsTable.id, StockItemsTable.landingCost).where { StockItemsTable.id inList wanted.keys }
             .associate { it[StockItemsTable.id].value to it[StockItemsTable.landingCost] }
-        lines.forEach { line ->
+        plans.forEach { plan ->
+            val line = plan.line
             val itemId = line[SaleLinesTable.stockItemId]
-            stockLedger.postEntry(
-                tenantId = support.tenantId(), locationId = fromLocation, stockItemId = itemId, sourceType = "POS_SALE", sourceReference = ref,
-                qtyOut = line[SaleLinesTable.quantity], unitCost = unitCosts[itemId], remark = "Sold to ${sale[SalesTable.customerName]}",
-                performedByUserId = support.userId(), entryDate = today,
-            )
-            SaleLinesTable.update({ SaleLinesTable.id eq line[SaleLinesTable.id].value }) {
-                it[supplyNowQty] = line[SaleLinesTable.quantity]
-                it[suppliedQty] = line[SaleLinesTable.quantity]
-                it[SaleLinesTable.fromLocationId] = fromLocation
+            if (plan.supplyNow.signum() > 0) {
+                stockLedger.postEntry(
+                    tenantId = support.tenantId(), locationId = plan.from, stockItemId = itemId, sourceType = "POS_SALE", sourceReference = ref,
+                    qtyOut = plan.supplyNow, unitCost = unitCosts[itemId], remark = "Sold to ${sale[SalesTable.customerName]}",
+                    performedByUserId = support.userId(), entryDate = today,
+                )
             }
+            val deferredQty = line[SaleLinesTable.quantity] - plan.supplyNow
+            if (deferredQty.signum() > 0) {
+                reservations.reserve(support.tenantId(), locationId, itemId, CashierSupport.SOURCE_MODULE, "SALE_LINE", line[SaleLinesTable.id].value, ref, deferredQty)
+            }
+            SaleLinesTable.update({ SaleLinesTable.id eq line[SaleLinesTable.id].value }) {
+                it[supplyNowQty] = plan.supplyNow
+                it[suppliedQty] = plan.supplyNow
+                it[SaleLinesTable.fromLocationId] = if (plan.supplyNow.signum() > 0) plan.from else null
+            }
+        }
+        val supplyStatus = when {
+            !deferred -> "NOT_APPLICABLE"
+            plans.all { it.supplyNow.signum() == 0 } -> "NOT_SUPPLIED"
+            else -> "PARTIALLY_SUPPLIED"
         }
 
         val links = payments.map { payment -> pay(payment, sale, customer, ref, locationId, till.id, till.posTerminalRef) }
@@ -197,7 +233,8 @@ class SaleCheckout(
             it[creditOverrideByUserId] = if (overrideReason != null) support.userId() else null
             it[invoiceId] = invoice?.id
             it[invoiceNumber] = invoice?.number
-            it[supplyStatus] = "NOT_APPLICABLE"
+            it[walkInPhone] = if (customer == null) request.invoiceBuyer?.phone?.trim()?.ifEmpty { null } else null
+            it[SalesTable.supplyStatus] = supplyStatus
         }
         support.record("cashier.sale.completed", "sale", id, ref,
             "$ref: ${Money.naira(total)} to ${sale[SalesTable.customerName]}" + (invoice?.number?.let { " ($it)" } ?: ""),
@@ -297,6 +334,8 @@ class SaleCheckout(
         LocationsTable.select(LocationsTable.defaultSellingLocationId).where { LocationsTable.id eq locationId }.single()[LocationsTable.defaultSellingLocationId] ?: locationId
 
     private fun codeOf(lines: List<ResultRow>, itemId: UUID) = lines.first { it[SaleLinesTable.stockItemId] == itemId }[SaleLinesTable.itemCode]
+
+    private data class LinePlan(val line: ResultRow, val supplyNow: BigDecimal, val from: UUID)
 
     companion object {
         const val CREDIT_OVERRIDE = "cashier.credit.override"
