@@ -175,15 +175,15 @@ class SalesPosIntegrationTest : PostgresIntegrationTest() {
         }
 
         private fun inTenant(block: org.jetbrains.exposed.sql.Transaction.() -> Unit) = transaction(database) {
-            exec("select set_config('app.tenant_id', '$tenantId', true)")
+            TransactionManager.current().exec("select set_config('app.tenant_id', '$tenantId', true)")
             block()
         }
 
         private fun org.jetbrains.exposed.sql.Transaction.grant(user: UUID, roleName: String, permissionIds: String) {
             val role = UUID.randomUUID()
-            exec("insert into tenant_roles (id, tenant_id, name, created_by_user_id) values ('$role', '$tenantId', '$roleName', '$admin')")
-            exec("insert into role_permissions (role_id, permission_id) " + permissionIds.replace("select id", "select '$role', id"))
-            exec("insert into user_role_assignments (tenant_id, user_id, role_id, granted_by_user_id) values ('$tenantId', '$user', '$role', '$admin')")
+            TransactionManager.current().exec("insert into tenant_roles (id, tenant_id, name, created_by_user_id) values ('$role', '$tenantId', '$roleName', '$admin')")
+            TransactionManager.current().exec("insert into role_permissions (role_id, permission_id) " + permissionIds.replace("select id", "select '$role', id"))
+            TransactionManager.current().exec("insert into user_role_assignments (tenant_id, user_id, role_id, granted_by_user_id) values ('$tenantId', '$user', '$role', '$admin')")
         }
     }
 
@@ -287,6 +287,34 @@ class SalesPosIntegrationTest : PostgresIntegrationTest() {
         stockLedger.postEntry(tenantId, at, item, "REFILL", "SEED", qtyIn = BigDecimal(qty), performedByUserId = admin, entryDate = today)
     }
 
+    /** A brand-new priced finished product, so a test's stock assertions don't depend on what other tests left behind. */
+    private fun freshItem(retail: String, dealerPrice: String, floorQty: String = "0"): UUID {
+        val id = UUID.randomUUID()
+        val code = "IT-" + id.toString().take(8)
+        tx.executeForTenant(tenantId) {
+            TransactionManager.current().exec("insert into stock_items (id, tenant_id, location_id, item_type, code, name, unit_of_measure_id, reorder_level, landing_cost, vat_category_id, " +
+                "hsn_section_id, isic_section_id, status, created_by_user_id, created_at) values ('$id', '$tenantId', '$factory', 'FINISHED_PRODUCT', '$code', 'Item $code', " +
+                "'$cartons', 0, 1000, (select id from vat_categories where code = 'STANDARD_RATE'), (select id from hsn_sections where code = 'IV'), " +
+                "(select id from isic_sections where code = 'A'), 'ACTIVE', '$admin', now())")
+            TransactionManager.current().exec("insert into stock_item_prices (tenant_id, stock_item_id, retail_price, dealer_price, effective_from, batch_ref, set_by_user_id) " +
+                "values ('$tenantId', '$id', $retail, $dealerPrice, current_date - 30, 'PL-$code', '$admin')")
+        }
+        if (BigDecimal(floorQty).signum() > 0) stock(id, floorQty)
+        return id
+    }
+
+    /** A brand-new authorised dealer with its own clean credit, so credit maths don't depend on other tests' debt. */
+    private fun newDealer(limit: String): UUID {
+        val id = UUID.randomUUID()
+        val cat = UUID.randomUUID()
+        tx.executeForTenant(tenantId) {
+            TransactionManager.current().exec("insert into dealer_categories (id, tenant_id, name, created_by_user_id) values ('$cat', '$tenantId', 'Cat ${cat.toString().take(6)}', '$admin')")
+            TransactionManager.current().exec("insert into customers (id, tenant_id, code, type, name, credit_limit, dealer_category_id, created_by_user_id) values " +
+                "('$id', '$tenantId', 'DLR-${id.toString().take(6)}', 'AUTHORISED_DEALER', 'Dealer ${id.toString().take(4)}', $limit, '$cat', '$admin')")
+        }
+        return id
+    }
+
     private fun closeTill() {
         val current = runCatching { tills.current() }.getOrNull() ?: return
         sales.list(SaleFilter(status = "OPEN"), PageRequest.of(0, 50)).items.forEach { sales.abandon(it.id, SaleVersionRequest(sales.get(it.id).version)) }
@@ -343,12 +371,14 @@ class SalesPosIntegrationTest : PostgresIntegrationTest() {
     @Test
     fun `a dealer pays dealer prices from the wallet and on account, is invoiced to the kobo, and the credit limit holds`() {
         openTill()
+        val d = newDealer("100000")
+        val item = freshItem("4500", "4100", floorQty = "100")
         signIn(admin)
         tx.execute {
-            walletLedger.credit(LedgerPosting(dealer, BalanceType.WALLET, LedgerEntryType.FUNDING, BigDecimal("20000"), "WF-T", "Test funding", "CASH", "account", "WALLET_FUNDING", null, ikeja))
+            walletLedger.credit(LedgerPosting(d, BalanceType.WALLET, LedgerEntryType.FUNDING, BigDecimal("20000"), "WF-T", "Test funding", "CASH", "account", "WALLET_FUNDING", null, ikeja))
         }
         signIn(cashierA)
-        val sale = cart(dealer, citrus to "10")
+        val sale = cart(d, item to "10")
         assertThat(sale.priceBasis).isEqualTo("DEALER")
         assertThat(sale.lines.single().unitPrice).isEqualByComparingTo("4100")
         assertThat(sale.allowedMethods).contains("WALLET", "ON_ACCOUNT")
@@ -356,15 +386,15 @@ class SalesPosIntegrationTest : PostgresIntegrationTest() {
         val wallet = BigDecimal("20000")
 
         // Over the ₦100,000 credit limit: refused, nothing written (the sale stays open, stock untouched).
-        val big = sales.setLines(sale.id, SaleLinesRequest(sale.version, listOf(SaleLineInput(citrus, BigDecimal("40")))))
-        val stockBefore = onHand(floor, citrus)
+        val big = sales.setLines(sale.id, SaleLinesRequest(sale.version, listOf(SaleLineInput(item, BigDecimal("40")))))
+        val stockBefore = onHand(floor, item)
         failsWith {
             checkout.complete(big.id, SaleCompleteRequest(big.version, listOf(SalePaymentInput("WALLET", wallet)), onAccount = big.totals.total - wallet))
         }.isEqualTo(ErrorCode.CREDIT_LIMIT_EXCEEDED)
         assertThat(sales.get(sale.id).status).isEqualTo("OPEN")
-        assertThat(onHand(floor, citrus)).isEqualByComparingTo(stockBefore)
+        assertThat(onHand(floor, item)).isEqualByComparingTo(stockBefore)
 
-        val back = sales.setLines(sale.id, SaleLinesRequest(big.version, listOf(SaleLineInput(citrus, BigDecimal("10")))))
+        val back = sales.setLines(sale.id, SaleLinesRequest(big.version, listOf(SaleLineInput(item, BigDecimal("10")))))
         failsWith { checkout.complete(back.id, SaleCompleteRequest(back.version, listOf(SalePaymentInput("WALLET", wallet)), onAccount = BigDecimal.ONE)) }
             .isEqualTo(ErrorCode.PAYMENT_NOT_SETTLED)
         val done = checkout.complete(back.id, SaleCompleteRequest(back.version, listOf(SalePaymentInput("WALLET", wallet)), onAccount = total - wallet))
@@ -372,15 +402,15 @@ class SalesPosIntegrationTest : PostgresIntegrationTest() {
         assertThat(done.sale.invoiceNumber).startsWith("INV-")
         assertThat(done.sale.onAccount).isEqualByComparingTo(total - wallet)
         signIn(admin)
-        assertThat(customerDirectory.let { tx.execute { it.get(dealer).walletBalance } }).isEqualByComparingTo("0")
+        assertThat(customerDirectory.let { tx.execute { it.get(d).walletBalance } }).isEqualByComparingTo("0")
         assertThat(sql("select tax_inclusive_amount from invoices where id = '${done.invoice!!.id}'") { it.getBigDecimal(1) }).isEqualByComparingTo(total)
-        assertThat(tx.execute { invoices.outstandingFor(dealer) }).isEqualByComparingTo(total - wallet)
+        assertThat(tx.execute { invoices.outstandingFor(d) }).isEqualByComparingTo(total - wallet)
 
         // Void within the window: stock back on the floor, wallet refunded, invoice void.
-        val floorBefore = onHand(floor, citrus)
+        val floorBefore = onHand(floor, item)
         val voided = voids.void(done.sale.id, SaleVoidRequest("Customer changed their mind at the door"))
         assertThat(voided.status).isEqualTo("VOIDED")
-        assertThat(onHand(floor, citrus)).isEqualByComparingTo(floorBefore + BigDecimal(10))
+        assertThat(onHand(floor, item)).isEqualByComparingTo(floorBefore + BigDecimal(10))
         assertThat(tx.execute { customerDirectory.get(dealer).walletBalance }).isEqualByComparingTo("20000")
         assertThat(sql("select status from invoices where id = '${done.invoice!!.id}'") { it.getString(1) }).isEqualTo("VOID")
         failsWith { voids.void(done.sale.id, SaleVoidRequest("Second attempt at voiding")) }.isEqualTo(ErrorCode.INVALID_STATUS_TRANSITION)
@@ -391,13 +421,14 @@ class SalesPosIntegrationTest : PostgresIntegrationTest() {
     @Test
     fun `stock, prices, versions and payments are all checked at completion, and a refusal leaves nothing behind`() {
         openTill()
-        val sale = cart(null, rice to "50")
+        val item = freshItem("30000", "28000", floorQty = "0")
+        val sale = cart(null, item to "50")
         assertThat(sale.lines.single().insufficient).isTrue()
         failsWith { checkout.complete(sale.id, cashFor(sale)) }.isEqualTo(ErrorCode.INSUFFICIENT_STOCK)
-        // Stock in the warehouse isn't on the shop floor: it can't be sold from the till.
-        stock(rice, "100", at = warehouse)
+        // Stock in the warehouse isn't on the shop floor: selling from the floor is short there.
+        stock(item, "100", at = warehouse)
         signIn(cashierA)
-        failsWith { checkout.complete(sale.id, cashFor(sale)) }.isEqualTo(ErrorCode.INSUFFICIENT_STOCK)
+        failsWith { checkout.complete(sale.id, cashFor(sale)) }.isEqualTo(ErrorCode.INSUFFICIENT_STOCK_AT_AREA)
         // …unless the cashier says the goods leave from the warehouse.
         val fromWarehouse = cashFor(sale).copy(fromLocationId = warehouse)
         failsWith { checkout.complete(sale.id, fromWarehouse.copy(version = sale.version + 7)) }.isEqualTo(ErrorCode.SALE_CHANGED)
@@ -406,19 +437,19 @@ class SalesPosIntegrationTest : PostgresIntegrationTest() {
         // A new price published for today: the cart is re-priced and the cashier must confirm.
         signIn(admin)
         tx.execute { TransactionManager.current().exec("insert into stock_item_prices (tenant_id, stock_item_id, retail_price, dealer_price, effective_from, batch_ref, set_by_user_id) " +
-            "values ('$tenantId', '$rice', 31000, 29000, current_date, 'PL-2', '$admin')") }
+            "values ('$tenantId', '$item', 31000, 29000, current_date, 'PL-2', '$admin')") }
         signIn(cashierA)
         try {
             failsWith { checkout.complete(sale.id, fromWarehouse) }.isEqualTo(ErrorCode.PRICES_CHANGED)
             val repriced = sales.get(sale.id)
             assertThat(repriced.lines.single().unitPrice).isEqualByComparingTo("31000")
-            val warehouseBefore = onHand(warehouse, rice)
+            val warehouseBefore = onHand(warehouse, item)
             val done = checkout.complete(sale.id, cashFor(repriced).copy(fromLocationId = warehouse))
             assertThat(done.sale.status).isEqualTo("COMPLETED")
-            assertThat(onHand(warehouse, rice)).isEqualByComparingTo(warehouseBefore - BigDecimal(50))
+            assertThat(onHand(warehouse, item)).isEqualByComparingTo(warehouseBefore - BigDecimal(50))
         } finally {
             signIn(admin)
-            tx.execute { TransactionManager.current().exec("delete from stock_item_prices where batch_ref = 'PL-2' and stock_item_id = '$rice'") }
+            tx.execute { TransactionManager.current().exec("delete from stock_item_prices where batch_ref = 'PL-2' and stock_item_id = '$item'") }
             signIn(cashierA)
         }
 
@@ -463,18 +494,20 @@ class SalesPosIntegrationTest : PostgresIntegrationTest() {
     @Test
     fun `a sale can defer part of its goods - the rest is reserved, drops availability, and a waybill releases it`() {
         openTill()
-        val sale = cart(dealer, citrus to "10")
+        val d = newDealer("1000000")
+        val item = freshItem("4500", "4100", floorQty = "100")
+        val sale = cart(d, item to "10")
         val total = sale.totals.total
         // Supply 4 now on account; reserve 6 for later delivery.
         val done = checkout.complete(sale.id, SaleCompleteRequest(sale.version, emptyList(), onAccount = total,
             supply = listOf(SaleSupplyLine(1, BigDecimal("4"))), invoiceBuyer = null, creditOverrideReason = null))
         assertThat(done.sale.supplyStatus).isEqualTo("PARTIALLY_SUPPLIED")
         assertThat(done.sale.lines.single().outstanding).isEqualByComparingTo("6")
-        assertThat(onHand(floor, citrus)).isEqualByComparingTo("96")
+        assertThat(onHand(floor, item)).isEqualByComparingTo("96")
         signIn(admin)
         // Reserved goods are still on hand (a stocktake counts them) but not available to sell.
-        assertThat(tx.execute { availability.onHand(ikeja, listOf(citrus)) }[citrus]).isEqualByComparingTo("96")
-        assertThat(tx.execute { availability.available(ikeja, listOf(citrus)) }[citrus]).isEqualByComparingTo("90")
+        assertThat(tx.execute { availability.onHand(ikeja, listOf(item)) }[item]).isEqualByComparingTo("96")
+        assertThat(tx.execute { availability.available(ikeja, listOf(item)) }[item]).isEqualByComparingTo("90")
         signIn(cashierA)
 
         val position = waybills.lookup(done.sale.ref!!)
@@ -484,7 +517,7 @@ class SalesPosIntegrationTest : PostgresIntegrationTest() {
         // Release 2 by collection, then the last 4 by delivery.
         val wb1 = waybills.create(WaybillRequest(sale.id, "COLLECTION", null, null, null, "K. Okafor", null, listOf(WaybillLineInput(saleLineId(sale.id, 1), BigDecimal("2")))))
         assertThat(wb1.ref).startsWith("WB-")
-        assertThat(onHand(floor, citrus)).isEqualByComparingTo("94")
+        assertThat(onHand(floor, item)).isEqualByComparingTo("94")
         assertThat(sales.get(sale.id).supplyStatus).isEqualTo("PARTIALLY_SUPPLIED")
 
         signIn(admin)
@@ -492,7 +525,7 @@ class SalesPosIntegrationTest : PostgresIntegrationTest() {
         signIn(cashierA)
         val wb2 = waybills.create(WaybillRequest(sale.id, "DELIVERY", null, driver.id, null, null, "14 Ikorodu Rd", listOf(WaybillLineInput(saleLineId(sale.id, 1), BigDecimal("4")))))
         assertThat(sales.get(sale.id).supplyStatus).isEqualTo("FULLY_SUPPLIED")
-        assertThat(onHand(floor, citrus)).isEqualByComparingTo("90")
+        assertThat(onHand(floor, item)).isEqualByComparingTo("90")
         failsWith { waybills.create(WaybillRequest(sale.id, "COLLECTION", null, null, null, "Someone", null, listOf(WaybillLineInput(saleLineId(sale.id, 1), BigDecimal.ONE)))) }
             .isEqualTo(ErrorCode.RELEASE_EXCEEDS_OUTSTANDING)
 
@@ -507,23 +540,25 @@ class SalesPosIntegrationTest : PostgresIntegrationTest() {
     @Test
     fun `voiding cancels reservations, a released sale cannot be voided, and a cancelled waybill restores stock`() {
         openTill()
-        val a = cart(dealer, citrus to "10")
+        val d = newDealer("1000000")
+        val item = freshItem("4500", "4100", floorQty = "100")
+        val a = cart(d, item to "10")
         val doneA = checkout.complete(a.id, SaleCompleteRequest(a.version, emptyList(), onAccount = a.totals.total, supply = listOf(SaleSupplyLine(1, BigDecimal("0")))))
         assertThat(doneA.sale.supplyStatus).isEqualTo("NOT_SUPPLIED")
-        signIn(admin); assertThat(tx.execute { availability.available(ikeja, listOf(citrus)) }[citrus]).isEqualByComparingTo("90"); signIn(cashierA)
+        signIn(admin); assertThat(tx.execute { availability.available(ikeja, listOf(item)) }[item]).isEqualByComparingTo("90"); signIn(cashierA)
         // Void releases the reservation: availability returns to full, nothing was collected to reverse.
         voids.void(a.id, SaleVoidRequest("Order cancelled before any delivery"))
-        signIn(admin); assertThat(tx.execute { availability.available(ikeja, listOf(citrus)) }[citrus]).isEqualByComparingTo("100"); signIn(cashierA)
+        signIn(admin); assertThat(tx.execute { availability.available(ikeja, listOf(item)) }[item]).isEqualByComparingTo("100"); signIn(cashierA)
 
         // A second deferred sale, partly released, can't be voided.
-        val b = cart(dealer, citrus to "4")
-        val doneB = checkout.complete(b.id, SaleCompleteRequest(b.version, emptyList(), onAccount = b.totals.total, supply = listOf(SaleSupplyLine(1, BigDecimal("0")))))
+        val b = cart(d, item to "4")
+        checkout.complete(b.id, SaleCompleteRequest(b.version, emptyList(), onAccount = b.totals.total, supply = listOf(SaleSupplyLine(1, BigDecimal("0")))))
         val wb = waybills.create(WaybillRequest(b.id, "COLLECTION", null, null, null, "Picker", null, listOf(WaybillLineInput(saleLineId(b.id, 1), BigDecimal("4")))))
-        assertThat(onHand(floor, citrus)).isEqualByComparingTo("96")
+        assertThat(onHand(floor, item)).isEqualByComparingTo("96")
         failsWith { voids.void(b.id, SaleVoidRequest("Trying to void after releasing goods")) }.isEqualTo(ErrorCode.INVALID_STATUS_TRANSITION)
         // Cancelling the waybill (same day) puts the stock and the reservation back.
         waybills.cancel(wb.id, WaybillCancelRequest("Driver returned, customer not in"))
-        assertThat(onHand(floor, citrus)).isEqualByComparingTo("100")
+        assertThat(onHand(floor, item)).isEqualByComparingTo("100")
         assertThat(sales.get(b.id).supplyStatus).isEqualTo("NOT_SUPPLIED")
         closeTill()
     }
@@ -531,7 +566,8 @@ class SalesPosIntegrationTest : PostgresIntegrationTest() {
     @Test
     fun `a walk-in leaving goods for later must give a contact`() {
         openTill()
-        val sale = cart(null, citrus to "5")
+        val item = freshItem("4500", "4100", floorQty = "100")
+        val sale = cart(null, item to "5")
         failsWith { checkout.complete(sale.id, SaleCompleteRequest(sale.version, listOf(SalePaymentInput("CASH", sale.totals.total)), supply = listOf(SaleSupplyLine(1, BigDecimal("2"))))) }
             .isEqualTo(ErrorCode.WALKIN_DELIVERY_NEEDS_CONTACT)
         // With invoice details (name + phone) it goes through.
