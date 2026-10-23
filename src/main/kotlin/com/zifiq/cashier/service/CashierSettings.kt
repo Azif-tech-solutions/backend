@@ -27,10 +27,30 @@ class CashierSettings : ModuleSettingProvider {
             min = java.math.BigDecimal.ONE,
             max = java.math.BigDecimal(168),
         ),
+        SettingDefinition(
+            key = INSTANT_DISCOUNT_CEILING_PCT,
+            module = "cashier",
+            label = "Discount percentage a cashier/Admin can apply without a second authorisation; above it needs Management approval",
+            type = SettingType.DECIMAL,
+            default = java.math.BigDecimal("10"),
+            min = java.math.BigDecimal.ZERO,
+            max = java.math.BigDecimal(100),
+        ),
+        SettingDefinition(
+            key = PRO_FORMA_VALIDITY_DAYS,
+            module = "cashier",
+            label = "Default number of days a pro-forma invoice stays valid",
+            type = SettingType.INT,
+            default = 7,
+            min = java.math.BigDecimal.ONE,
+            max = java.math.BigDecimal(365),
+        ),
     )
 
     companion object {
         const val VOID_WINDOW_HOURS = "cashier.sale.voidWindowHours"
         const val ABANDON_AFTER_HOURS = "cashier.sale.abandonAfterHours"
+        const val INSTANT_DISCOUNT_CEILING_PCT = "cashier.instantDiscount.ceilingPct"
+        const val PRO_FORMA_VALIDITY_DAYS = "cashier.proForma.defaultValidityDays"
     }
 }

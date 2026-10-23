@@ -44,6 +44,7 @@ class SaleVoids(
     private val views: SaleViews,
     private val stockLedger: StockLedgerRepository,
     private val reservations: StockReservations,
+    private val discounts: SaleDiscounts,
     private val moneyLedger: MoneyLedger,
     private val walletLedger: WalletLedger,
     private val invoices: InvoiceIssuer,
@@ -65,6 +66,7 @@ class SaleVoids(
 
         val lineIds = SaleLinesTable.select(SaleLinesTable.id).where { SaleLinesTable.saleId eq id }.map { it[SaleLinesTable.id].value }
         reservations.cancelForSource(support.tenantId(), "SALE_LINE", lineIds)
+        discounts.lapseLive(id)
         SaleLinesTable.selectAll().where { SaleLinesTable.saleId eq id }.forEach { line ->
             val collected = line[SaleLinesTable.supplyNowQty]
             if (collected.signum() > 0) {

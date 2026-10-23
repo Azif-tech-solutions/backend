@@ -48,6 +48,7 @@ object RoleDefaults {
             "cashier.credit.override",
             "cashier.till.supervise",
             "cashier.supply.read",
+            "cashier.discount.approve",
         ),
         ACCOUNTS_PERSONNEL to setOf(
             "accounting.read",
@@ -83,6 +84,7 @@ object RoleDefaults {
             "cashier.sales.void",
             "cashier.till.supervise",
             "cashier.supply.read",
+            "cashier.pro-forma.manage",
             "customers.read",
             "customers.manage",
             "customers.dealers.manage",
@@ -122,6 +124,7 @@ object RoleDefaults {
             "cashier.sales.manage",
             "cashier.waybill.manage",
             "cashier.supply.read",
+            "cashier.pro-forma.manage",
             "invoicing.invoice.read",
             "invoicing.invoice.issue",
             "invoicing.payment.record",

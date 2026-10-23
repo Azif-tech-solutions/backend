@@ -82,6 +82,7 @@ class SaleCheckout(
     private val availability: StockAvailability,
     private val stockLedger: StockLedgerRepository,
     private val reservations: StockReservations,
+    private val discounts: SaleDiscounts,
     private val stockLocations: StockLocations,
     private val sequences: DocumentSequenceService,
     private val documents: DocumentRegistry,
@@ -96,12 +97,15 @@ class SaleCheckout(
     /** The new version when today's prices differ from the cart's, else null (nothing changed). */
     private fun repricedVersion(id: UUID, version: Int): Int? {
         val sale = sales.editable(id, version)
+        // Pro-forma-loaded lines keep their quoted prices while the pro-forma is valid — never re-priced.
+        if (SaleLinesTable.select(SaleLinesTable.id).where { (SaleLinesTable.saleId eq id) and (SaleLinesTable.priceBasis eq "PRO_FORMA") }.any()) return null
         val dealer = sale[SalesTable.priceBasis] == "DEALER"
         val (fresh, vat) = sales.priceToday(sale, sales.currentInputs(id), dealer)
-        val stored = SaleLinesTable.select(SaleLinesTable.stockItemId, SaleLinesTable.unitPrice, SaleLinesTable.lineTotal)
+        // Compare the list price only; an applied Instant Discount changes line totals, not the price.
+        val stored = SaleLinesTable.select(SaleLinesTable.stockItemId, SaleLinesTable.unitPrice)
             .where { SaleLinesTable.saleId eq id }.orderBy(SaleLinesTable.lineNo)
-            .map { Triple(it[SaleLinesTable.stockItemId], it[SaleLinesTable.unitPrice], it[SaleLinesTable.lineTotal]) }
-        if (fresh.map { Triple(it.stockItemId, it.amounts.unitPrice, it.amounts.total) } == stored) return null
+            .map { it[SaleLinesTable.stockItemId] to it[SaleLinesTable.unitPrice] }
+        if (fresh.map { it.stockItemId to it.amounts.unitPrice } == stored) return null
         sales.writeCart(sale, fresh, vat, dealer)
         return version + 1
     }
@@ -109,6 +113,7 @@ class SaleCheckout(
     private fun completeLocked(id: UUID, request: SaleCompleteRequest): SaleCompletion {
         val sale = sales.editable(id, request.version!!)
         val session = tills.lockOpen(sale[SalesTable.tillSessionId]!!)
+        discounts.requireNoPending(id)
         val lines = SaleLinesTable.selectAll().where { SaleLinesTable.saleId eq id }.orderBy(SaleLinesTable.lineNo).toList()
         if (lines.isEmpty()) throw ApiErrors.validationFailed(mapOf("lines" to "add at least one item"))
         val locationId = sale[SalesTable.locationId].value
@@ -216,6 +221,13 @@ class SaleCheckout(
         invoice?.let { inv -> links.forEach { invoices.attachPayment(inv.id, it.copy(paidAt = now)) } }
         customer?.let { activity.recordSale(it.id, total, now) }
         documents.register(ref, DocumentType.SALE_RECEIPT, CashierSupport.SOURCE_MODULE, id, locationId, sale[SalesTable.customerName], customer?.id, total)
+        sale[SalesTable.proFormaId]?.let { pfId ->
+            com.zifiq.cashier.model.ProFormasTable.update({ (com.zifiq.cashier.model.ProFormasTable.id eq pfId) and (com.zifiq.cashier.model.ProFormasTable.status eq "SENT") }) {
+                it[com.zifiq.cashier.model.ProFormasTable.status] = "CONVERTED"
+                it[com.zifiq.cashier.model.ProFormasTable.convertedSaleId] = id
+                it[com.zifiq.cashier.model.ProFormasTable.updatedAt] = now
+            }
+        }
 
         SalesTable.update({ SalesTable.id eq id }) {
             it[SalesTable.ref] = ref

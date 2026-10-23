@@ -1,5 +1,14 @@
 package com.zifiq.cashier
 
+import com.zifiq.cashier.service.ProFormaFilter
+import com.zifiq.cashier.dto.LoadProFormaRequest
+import com.zifiq.cashier.dto.ProFormaConvertRequest
+import com.zifiq.cashier.dto.ProFormaLineInput
+import com.zifiq.cashier.dto.ProFormaRequest
+import com.zifiq.cashier.dto.InstantDiscountRequest
+import com.zifiq.cashier.service.SalesReportService
+import com.zifiq.cashier.service.ProFormaService
+import com.zifiq.cashier.service.SaleDiscounts
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
@@ -233,14 +242,17 @@ class SalesPosIntegrationTest : PostgresIntegrationTest() {
     private val cashAccounts = CashAccountsSpi(accountSupport)
     private val tills = TillSessionService(support, tx, cashAccounts, StockLocations(), notify)
     private val views = SaleViews(support, customerDirectory, invoices, receipts, cashAccounts, availability)
-    private val sales = SaleService(support, tx, tills, SalePricing(PriceListRepository(), vat), views, customerDirectory)
+    private val discounts = SaleDiscounts(support, tx, views, sequences, notify)
+    private val sales = SaleService(support, tx, tills, SalePricing(PriceListRepository(), vat), views, customerDirectory, discounts)
     private val checkout = SaleCheckout(support, tx, sales, tills, views, customerDirectory, walletLedger, noCorrespondents, customerDirectory, invoices, receipts,
-        cashAccounts, invoices, availability, stockLedger, reservations, StockLocations(), sequences, registry)
-    private val voids = SaleVoids(support, tx, views, stockLedger, reservations, receipts, walletLedger, invoices, customerDirectory, registry, notify)
+        cashAccounts, invoices, availability, stockLedger, reservations, discounts, StockLocations(), sequences, registry)
+    private val voids = SaleVoids(support, tx, views, stockLedger, reservations, discounts, receipts, walletLedger, invoices, customerDirectory, registry, notify)
     private val documents = SaleDocuments(support, tx, views, checkout, invoices, registry, profiles, PdfRenderer())
     private val catalogue = CatalogueService(support, tx, hierarchy, availability, customerDirectory)
     private val waybills = CustomerWaybillService(support, tx, views, reservations, stockLedger, drivers, StockLocations(), invoices, registry, sequences, PdfRenderer(), profiles)
     private val pendingSupply = PendingSupplyService(support, tx)
+    private val proFormas = ProFormaService(support, tx, PriceListRepository(), vat, customerDirectory, availability, reservations, StockLocations(), invoices, invoices, sequences, registry, PdfRenderer(), profiles)
+    private val reports = SalesReportService(support, tx)
     private val sweep = StaleSaleSweep(database, tx, support)
 
     private val today: LocalDate get() = LocalDate.now(ZoneId.of("Africa/Lagos"))
@@ -575,6 +587,93 @@ class SalesPosIntegrationTest : PostgresIntegrationTest() {
             supply = listOf(SaleSupplyLine(1, BigDecimal("2"))), invoiceBuyer = SaleBuyerInput("Mrs Bello", phone = "08031234567")))
         assertThat(done.sale.supplyStatus).isEqualTo("PARTIALLY_SUPPLIED")
         assertThat(done.invoice).isNotNull
+        closeTill()
+    }
+
+    @Test
+    fun `Instant Discount applies below the ceiling, needs approval above it, blocks completion while pending, and withdraws`() {
+        openTill()
+        val item = freshItem("1000", "1000", floorQty = "100")
+        val sale = cart(null, item to "10")
+        assertThat(sale.totals.total).isEqualByComparingTo("10750")  // 10000 + 7.5% VAT
+
+        // 5% is within the 10% ceiling: applied at once by the Administrator.
+        signIn(admin)
+        val d1 = discounts.apply(sale.id, InstantDiscountRequest("PERCENT", BigDecimal("5"), "LOYALTY", null, sale.version))
+        assertThat(d1.status).isEqualTo("APPLIED")
+        val afterDiscount = sales.get(sale.id)
+        assertThat(afterDiscount.totals.instantDiscount).isEqualByComparingTo("500")
+        assertThat(afterDiscount.totals.net).isEqualByComparingTo("9500")
+        assertThat(afterDiscount.totals.vat).isEqualByComparingTo("712.50")
+        assertThat(afterDiscount.totals.total).isEqualByComparingTo("10212.50")
+        assertThat(afterDiscount.instantDiscount?.ref).startsWith("IDS-")
+        failsWith { discounts.apply(sale.id, InstantDiscountRequest("AMOUNT", BigDecimal("100"), "BULK", null, afterDiscount.version)) }.isEqualTo(ErrorCode.DISCOUNT_ALREADY_ACTIVE)
+
+        // Withdraw restores the full price.
+        discounts.withdraw(d1.id)
+        val restored = sales.get(sale.id)
+        assertThat(restored.totals.instantDiscount).isEqualByComparingTo("0")
+        assertThat(restored.totals.total).isEqualByComparingTo("10750")
+
+        // 20% is over the ceiling: a cashier's request waits for Management; completion is blocked meanwhile.
+        signIn(cashierA)
+        val d2 = discounts.apply(sale.id, InstantDiscountRequest("PERCENT", BigDecimal("20"), "CLEARANCE", "MD approved", restored.version))
+        assertThat(d2.status).isEqualTo("PENDING_APPROVAL")
+        failsWith { checkout.complete(sale.id, cashFor(sales.get(sale.id))) }.isEqualTo(ErrorCode.DISCOUNT_PENDING_APPROVAL)
+        signIn(admin)
+        discounts.approve(d2.id)
+        signIn(cashierA)
+        val approved = sales.get(sale.id)
+        assertThat(approved.totals.instantDiscount).isEqualByComparingTo("2000")
+        assertThat(approved.totals.total).isEqualByComparingTo("8600")  // 8000 + 7.5%
+        val done = checkout.complete(sale.id, cashFor(approved, tendered = "10000"))
+        assertThat(done.sale.status).isEqualTo("COMPLETED")
+        closeTill()
+    }
+
+    @Test
+    fun `a pro-forma quotes dealer prices, converts to a reserved on-account order, loads into a till sale, and shows on the reports`() {
+        openTill()
+        val item = freshItem("1000", "900", floorQty = "100")
+        val d = newDealer("1000000")
+
+        // Create and send a quotation with a line discount.
+        val pf = proFormas.create(ProFormaRequest(ikeja, d, null, null, null, "50% deposit", "Delivered", null,
+            listOf(ProFormaLineInput(item, BigDecimal("10"), BigDecimal("500")))), send = true)
+        assertThat(pf.status).isEqualTo("SENT")
+        assertThat(pf.lines.single().unitPrice).isEqualByComparingTo("900")   // dealer price
+        assertThat(pf.totals.discount).isEqualByComparingTo("500")
+        assertThat(String(proFormas.pdf(pf.id).pdf.copyOfRange(0, 4))).isEqualTo("%PDF")
+
+        // Convert to an order: a reserved PRO_FORMA_ORDER sale invoiced on account.
+        val converted = proFormas.convert(pf.id, ProFormaConvertRequest("ISSUED", 30, null, null))
+        assertThat(converted.status).isEqualTo("CONVERTED")
+        assertThat(converted.convertedSale).isNotNull
+        signIn(admin)
+        assertThat(tx.execute { availability.available(ikeja, listOf(item)) }[item]).isEqualByComparingTo("90")  // 10 reserved, none moved
+        signIn(cashierA)
+
+        // Load a second quotation into a till sale and complete it.
+        val pf2 = proFormas.create(ProFormaRequest(ikeja, d, null, null, null, null, null, null,
+            listOf(ProFormaLineInput(item, BigDecimal("2"), null))), send = true)
+        val open = sales.start(SaleStartRequest())
+        val loaded = sales.loadProForma(open.id, LoadProFormaRequest(pf2.id, open.version))
+        assertThat(loaded.customerName).contains("Dealer")
+        assertThat(loaded.lines.single().unitPrice).isEqualByComparingTo("900")
+        val saleDone = checkout.complete(open.id, SaleCompleteRequest(loaded.version, emptyList(), onAccount = loaded.totals.total, supply = listOf(SaleSupplyLine(1, BigDecimal("2")))))
+        assertThat(saleDone.sale.status).isEqualTo("COMPLETED")
+        assertThat(proFormas.get(pf2.id).status).isEqualTo("CONVERTED")
+        assertThat(proFormas.list(ProFormaFilter(customerId = d), PageRequest.of(0, 50)).items.map { it.ref }).contains(pf.ref, pf2.ref)
+
+        // Both completed dealer sales show on the reports.
+        signIn(admin)
+        val report = reports.salesDaily(ikeja, null, null, today, today)
+        assertThat(report.stats.transactions).isGreaterThanOrEqualTo(2)
+        assertThat(report.rows.map { it.date }).contains(today)
+        val activity = reports.customerActivity("DISTRIBUTORS", d, ikeja, today, today)
+        assertThat(activity.rows).hasSize(2)
+        assertThat(activity.rows.map { it.onAccount }.all { it.signum() > 0 }).isTrue()
+        signIn(cashierA)
         closeTill()
     }
 

@@ -4,11 +4,13 @@ import com.zifiq.account.spi.CashAccounts
 import com.zifiq.account.spi.Channel
 import com.zifiq.account.spi.Receipts
 import com.zifiq.cashier.dto.SaleCustomerView
+import com.zifiq.cashier.dto.SaleInstantDiscount
 import com.zifiq.cashier.dto.SaleLineView
 import com.zifiq.cashier.dto.SalePaymentView
 import com.zifiq.cashier.dto.SaleRow
 import com.zifiq.cashier.dto.SaleTotalsView
 import com.zifiq.cashier.dto.SaleView
+import com.zifiq.cashier.model.InstantDiscountsTable
 import com.zifiq.cashier.model.SaleLinesTable
 import com.zifiq.cashier.model.SalePaymentsTable
 import com.zifiq.cashier.model.SalesTable
@@ -68,6 +70,7 @@ class SaleViews(
             TillSessionsTable.select(TillSessionsTable.cashAccountId).where { TillSessionsTable.id eq session }.single()[TillSessionsTable.cashAccountId]
         }
         val completedAt = sale[SalesTable.completedAt]
+        val liveDiscount = InstantDiscountsTable.selectAll().where { (InstantDiscountsTable.saleId eq id) and (InstantDiscountsTable.status inList listOf("PENDING_APPROVAL", "APPLIED")) }.firstOrNull()
         return SaleView(
             id = id, ref = sale[SalesTable.ref], status = status, version = sale[SalesTable.version], channel = sale[SalesTable.channel],
             till = ref(tillAccountId, Ref::cashAccount), location = Ref.location(sale[SalesTable.locationId].value),
@@ -103,6 +106,7 @@ class SaleViews(
             paidNow = sale[SalesTable.paidNow], onAccount = sale[SalesTable.onAccount], cashTendered = sale[SalesTable.cashTendered],
             changeGiven = sale[SalesTable.changeGiven],
             allowedMethods = if (open) allowedMethods(customer, tillAccountId) else emptyList(),
+            instantDiscount = liveDiscount?.let { SaleInstantDiscount(it[InstantDiscountsTable.id].value, it[InstantDiscountsTable.ref], it[InstantDiscountsTable.discountAmount], it[InstantDiscountsTable.pctOfBase], it[InstantDiscountsTable.reason], it[InstantDiscountsTable.status]) },
             invoice = ref(sale[SalesTable.invoiceId], Ref::invoice), invoiceNumber = sale[SalesTable.invoiceNumber],
             correspondent = ref(sale[SalesTable.correspondentId], Ref::correspondent), supplyStatus = sale[SalesTable.supplyStatus], saleDate = sale[SalesTable.saleDate],
             startedAt = sale[SalesTable.startedAt], completedAt = completedAt,

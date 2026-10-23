@@ -3095,6 +3095,120 @@ ep(P, "E9 List Waybills", "GET", "/api/v1/cashier/waybills", query=[{"key": "pag
    desc="Perm cashier.supply.read. Filters: locationId, saleId, driverId, status, ref (a WB or INV number). Newest first.")
 
 
+# ---- F. Instant Discount (slice 3): an Admin's discount on a live sale ----
+ep(P, "F1 Start Sale for Discount", "POST", "/api/v1/cashier/sales", body={"customerId": "{{dealerId}}"},
+   resp={"data": dict(SALE, version=0, customer=None, customerName="Okafor & Sons Distribution 482", priceBasis="DEALER", lines=[],
+                      totals=dict(SALE["totals"], gross=0.00, net=0.00, vat=0.00, total=0.00), allowedMethods=["CASH", "POS", "FUND_TRANSFER", "ON_ACCOUNT"])},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('saleId3', json.data.id);", "pm.collectionVariables.set('saleVersion3', json.data.version);"],
+   desc="A fresh sale to demonstrate Instant Discount.")
+
+ep(P, "F2 Set Lines", "PUT", "/api/v1/cashier/sales/{{saleId3}}/lines",
+   body={"version": "{{saleVersion3}}", "lines": [{"stockItemId": "{{finishedProductId}}", "quantity": 1}]},
+   resp={"data": dict(SALE, version=1, customerName="Okafor & Sons Distribution 482", priceBasis="DEALER",
+                      lines=[dict(SALE_LINE, priceBasis="DEALER", unitPrice=4500.00, supplied=0.000, outstanding=1.000)])},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('saleVersion3', json.data.version);"],
+   desc="One line at the dealer price.")
+
+ep(P, "F3 Apply Instant Discount (5%)", "POST", "/api/v1/cashier/sales/{{saleId3}}/instant-discount",
+   body={"mode": "PERCENT", "value": 5, "reason": "LOYALTY", "note": "Long-standing dealer", "version": "{{saleVersion3}}"},
+   resp={"data": {"id": "{{discountId}}", "ref": "IDS-1", "sale": REF("sale", "{{saleId3}}"), "mode": "PERCENT", "value": 5.0000, "discountAmount": 225.00,
+                  "baseAmount": 4500.00, "pctOfBase": 5.0000, "reason": "LOYALTY", "note": "Long-standing dealer", "status": "APPLIED", "appliedBy": USER,
+                  "approvedBy": USER, "rejectionReason": None}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('discountId', json.data.id);",
+          "pm.test('applied within the ceiling', () => { pm.expect(json.data.status).to.eql('APPLIED'); pm.expect(json.data.ref).to.match(/^IDS-\\d+$/); });"],
+   desc="Perm cashier.discount.apply (Administrator). base = gross − line discounts; a reduction within the ceiling (default 10%) applies at once, above it "
+        "goes to Management (status PENDING_APPROVAL, and completion is blocked with 409 DISCOUNT_PENDING_APPROVAL until approved). The discount is "
+        "allocated across the lines, so VAT and the invoice are right. 409 DISCOUNT_ALREADY_ACTIVE if one is already live; 400 DISCOUNT_EXCEEDS_TRANSACTION.")
+
+ep(P, "F4 Get Sale (discounted total)", "GET", "/api/v1/cashier/sales/{{saleId3}}",
+   resp={"data": dict(SALE, version=2, customerName="Okafor & Sons Distribution 482", priceBasis="DEALER",
+                      totals=dict(SALE["totals"], gross=4500.00, instantDiscount=225.00, net=4275.00, vat=320.63, total=4595.63),
+                      instantDiscount={"id": "{{discountId}}", "ref": "IDS-1", "amount": 225.00, "pctOfBase": 5.0000, "reason": "LOYALTY", "status": "APPLIED"})},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('saleVersion3', json.data.version);",
+          "pm.test('the discount shows on the sale', () => pm.expect(json.data.totals.instantDiscount).to.be.above(0));"],
+   desc="The sale now carries the discount (totals.instantDiscount) and the live discount summary (instantDiscount).")
+
+ep(P, "F5 Recent Instant Discounts", "GET", "/api/v1/cashier/instant-discounts", query=[{"key": "page", "value": "0"}, {"key": "size", "value": "20"}],
+   resp={"data": {"items": [{"id": "{{discountId}}", "ref": "IDS-1", "sale": REF("sale", "{{saleId3}}"), "discountAmount": 225.00, "pctOfBase": 5.0000,
+                             "reason": "LOYALTY", "status": "APPLIED", "appliedBy": USER, "approvedBy": USER, "createdAt": NOW}],
+                  "page": 0, "size": 20, "totalItems": 1, "totalPages": 1}},
+   desc="Perm cashier.discount.apply or cashier.sales.read-all. Filters: status, reason, saleId. Approve/reject a pending one at POST /instant-discounts/{id}/approve|reject.")
+
+ep(P, "F6 Withdraw the Discount", "POST", "/api/v1/cashier/instant-discounts/{{discountId}}/withdraw",
+   resp={"data": {"id": "{{discountId}}", "ref": "IDS-1", "sale": REF("sale", "{{saleId3}}"), "mode": "PERCENT", "value": 5.0000, "discountAmount": 225.00,
+                  "baseAmount": 4500.00, "pctOfBase": 5.0000, "reason": "LOYALTY", "note": "Long-standing dealer", "status": "WITHDRAWN", "appliedBy": USER,
+                  "approvedBy": USER, "rejectionReason": None}},
+   tests=["const json = pm.response.json();", "pm.test('withdrawn', () => pm.expect(json.data.status).to.eql('WITHDRAWN'));"],
+   desc="The Administrator removes a live discount; the sale returns to full price.")
+
+ep(P, "F6b Get Sale (full price restored)", "GET", "/api/v1/cashier/sales/{{saleId3}}",
+   resp={"data": dict(SALE, version=4, customerName="Okafor & Sons Distribution 482", priceBasis="DEALER",
+                      totals=dict(SALE["totals"], gross=4500.00, instantDiscount=0.00, net=4500.00, vat=337.50, total=4837.50))},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('saleVersion3', json.data.version);",
+          "pm.test('the discount is gone', () => pm.expect(json.data.totals.instantDiscount).to.eql(0));"],
+   desc="After the withdraw the till re-fetches the sale (no SSE): the discount is gone, totals are back to full price, and the version has moved on.")
+
+ep(P, "F7 Abandon the Sale", "POST", "/api/v1/cashier/sales/{{saleId3}}/abandon", body={"version": "{{saleVersion3}}"},
+   resp={"data": dict(SALE, status="ABANDONED", customerName="Okafor & Sons Distribution 482")},
+   desc="Clears the demo sale (no stock or money was touched), so the till can close.")
+
+# ---- G. Pro-forma invoices (slice 3): a quotation (commits no stock) ----
+ep(P, "G1 Create & Send Pro-forma", "POST", "/api/v1/cashier/pro-formas?send=true",
+   body={"locationId": "{{showroomId}}", "customerId": "{{dealerId}}", "issueDate": "{{today}}", "paymentTerms": "50% deposit, balance on delivery",
+         "deliveryTerms": "Delivered to customer warehouse", "lines": [{"stockItemId": "{{finishedProductId}}", "quantity": 20, "lineDiscount": 1600}]},
+   resp={"data": {"id": "{{proFormaId3}}", "ref": "PF-1", "status": "SENT", "location": REF("location", "{{showroomId}}"), "customer": REF("customer", "{{dealerId}}"),
+                  "customerName": "Okafor & Sons Distribution 482", "customerType": "AUTHORISED_DEALER", "prospect": None, "priceBasis": "DEALER",
+                  "issueDate": "2026-10-23", "validUntil": "2026-10-30", "paymentTerms": "50% deposit, balance on delivery", "deliveryTerms": "Delivered to customer warehouse",
+                  "note": None, "lines": [{"lineNo": 1, "stockItem": REF("stockItem", "{{finishedProductId}}"), "name": "Premium Blend", "unit": "Kilogram",
+                                           "quantity": 20.000, "unitPrice": 4500.00, "lineDiscount": 1600.00, "lineNet": 88400.00, "vatRate": 7.50, "vatAmount": 6630.00,
+                                           "lineTotal": 95030.00, "availabilityWarning": True}],
+                  "totals": {"gross": 90000.00, "discount": 1600.00, "net": 88400.00, "vatEnabled": True, "vatRate": 7.50, "vat": 6630.00, "total": 95030.00},
+                  "preparedBy": USER, "declineReason": None, "convertedSale": None}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('proFormaId3', json.data.id);",
+          "pm.test('sent quotation', () => { pm.expect(json.data.status).to.eql('SENT'); pm.expect(json.data.ref).to.match(/^PF-\\d+$/); });"],
+   desc="Perm cashier.pro-forma.manage. Prices from the price list on the issue date (dealer price for a dealer); line discounts allowed. A pro-forma commits "
+        "NO stock (lines show availabilityWarning only). validUntil defaults to the issue date + the module setting. Total line discounts above the ceiling need "
+        "Management approval (status PENDING_APPROVAL). Omit ?send to save a DRAFT. A prospect (name/contact) can stand in for a registered customer.")
+
+ep(P, "G2 Get Pro-forma", "GET", "/api/v1/cashier/pro-formas/{{proFormaId3}}",
+   resp={"data": {"id": "{{proFormaId3}}", "ref": "PF-1", "status": "SENT", "location": REF("location", "{{showroomId}}"), "customer": REF("customer", "{{dealerId}}"),
+                  "customerName": "Okafor & Sons Distribution 482", "customerType": "AUTHORISED_DEALER", "prospect": None, "priceBasis": "DEALER",
+                  "issueDate": "2026-10-23", "validUntil": "2026-10-30", "paymentTerms": "50% deposit, balance on delivery", "deliveryTerms": None, "note": None,
+                  "lines": [], "totals": {"gross": 90000.00, "discount": 1600.00, "net": 88400.00, "vatEnabled": True, "vatRate": 7.50, "vat": 6630.00, "total": 95030.00},
+                  "preparedBy": USER, "declineReason": None, "convertedSale": None}},
+   desc="Edit a DRAFT with PUT; send with POST .../send; decline/cancel/reissue; approve/reject its discounts. Convert a SENT one with POST .../convert "
+        "(needs cashier.pro-forma.manage + invoicing.invoice.issue): it becomes a reserved PRO_FORMA_ORDER sale, invoiced on account.")
+
+ep(P, "G3 Pro-forma PDF", "GET", "/api/v1/cashier/pro-formas/{{proFormaId3}}/pro-forma.pdf", pdf=True,
+   desc="The pro-forma as a 'QUOTATION'-stamped PDF, with the 'not a demand for payment' footer.")
+
+ep(P, "G4 List Pro-formas", "GET", "/api/v1/cashier/pro-formas", query=[{"key": "page", "value": "0"}, {"key": "size", "value": "20"}],
+   resp={"data": {"items": [{"id": "{{proFormaId3}}", "ref": "PF-1", "status": "SENT", "location": REF("location", "{{showroomId}}"), "customer": REF("customer", "{{dealerId}}"),
+                             "customerName": "Okafor & Sons Distribution 482", "date": "2026-10-23", "validUntil": "2026-10-30", "items": 1, "value": 95030.00,
+                             "preparedBy": USER, "convertedSale": None}],
+                  "page": 0, "size": 20, "totalItems": 1, "totalPages": 1}},
+   desc="Perm cashier.pro-forma.manage or cashier.sales.read-all. Filters: status, locationId, customerId, ref, from/to.")
+
+# ---- H. Reports (slice 3) ----
+ep(P, "H1 Sales Report (daily)", "GET", "/api/v1/cashier/reports/sales-daily",
+   query=[{"key": "from", "value": "{{today}}"}, {"key": "to", "value": "{{today}}"}],
+   resp={"data": {"rows": [{"date": "2026-10-23", "showroom": REF("location", "{{showroomId}}"), "transactions": 1, "units": 1.000, "gross": 5000.00,
+                            "discount": 0.00, "net": 5000.00, "vat": 375.00, "avgSale": 5000.00}],
+                  "totals": {"date": "2026-10-23", "showroom": REF("location", "{{showroomId}}"), "transactions": 1, "units": 1.000, "gross": 5000.00,
+                             "discount": 0.00, "net": 5000.00, "vat": 375.00, "avgSale": 5000.00},
+                  "stats": {"netSales": 5000.00, "transactions": 1, "units": 1.000, "averageTransaction": 5000.00, "bestDay": "2026-10-23"}}},
+   tests=["const json = pm.response.json();", "pm.test('has a stats block', () => pm.expect(json.data.stats).to.have.property('netSales'));"],
+   desc="Perm cashier.sales.read-all. One row per day and showroom over completed sales; from/to required (max 366 days). Optional locationId, cashierUserId, channel.")
+
+ep(P, "H2 Customers/Distributors Comprehensive", "GET", "/api/v1/cashier/reports/customer-activity",
+   query=[{"key": "kind", "value": "DISTRIBUTORS"}, {"key": "from", "value": "{{today}}"}, {"key": "to", "value": "{{today}}"}],
+   resp={"data": {"rows": [{"date": "2026-10-23", "sale": REF("sale", "{{saleId2}}"), "saleRef": "TXN-2", "invoiceNumber": "INV-2", "customer": REF("customer", "{{dealerId}}"),
+                            "customerName": "Okafor & Sons Distribution 482", "items": 1, "units": 1.000, "value": 4837.50, "cash": 0.00, "pos": 0.00, "transfer": 0.00,
+                            "wallet": 0.00, "deposit": 0.00, "onAccount": 4837.50, "waybills": ["WB-2"]}],
+                  "transactions": 1, "units": 1.000, "value": 4837.50, "averageTransaction": 4837.50}},
+   desc="Perm cashier.sales.read-all. kind = DISTRIBUTORS | NO_CREDIT | SPECIAL. Per-sale rows with the payment breakdown by method and the waybill refs.")
+
+
 ep(P, "D1 Close Till", "POST", "/api/v1/cashier/till-sessions/{{tillSessionId}}/close", body={"countedCash": 20000, "note": "End of shift"},
    resp={"data": dict(TILL_SESSION, status="CLOSED", closedAt=NOW, closedBy=USER, countedCash=20000.00, expectedCash=20000.00, variance=0.00,
                       closeNote="End of shift", running=None)},
@@ -3276,6 +3390,7 @@ def build_collection():
         "cashPaymentId", "transferReceiptId", "creditLineId", "creditNoteId",
         "tillSessionId", "saleId", "saleVersion", "saleTotal",
         "saleId2", "saleVersion2", "saleTotal2", "saleTxn2", "saleLineId2", "waybillId",
+        "saleId3", "saleVersion3", "discountId", "proFormaId3",
     ]
 
     collection = {
