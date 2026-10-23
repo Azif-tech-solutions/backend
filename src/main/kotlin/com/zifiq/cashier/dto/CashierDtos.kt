@@ -415,7 +415,6 @@ data class PendingSupplyRow(
 // ---- Instant Discount (docs/09 §4.3) ----
 
 data class InstantDiscountRequest(
-    @field:NotNull val saleId: UUID?,
     /** PERCENT or AMOUNT. */
     @field:NotNull val mode: String?,
     @field:NotNull @field:DecimalMin("0.0001") val value: BigDecimal?,

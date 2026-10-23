@@ -3141,6 +3141,13 @@ ep(P, "F6 Withdraw the Discount", "POST", "/api/v1/cashier/instant-discounts/{{d
    tests=["const json = pm.response.json();", "pm.test('withdrawn', () => pm.expect(json.data.status).to.eql('WITHDRAWN'));"],
    desc="The Administrator removes a live discount; the sale returns to full price.")
 
+ep(P, "F6b Get Sale (full price restored)", "GET", "/api/v1/cashier/sales/{{saleId3}}",
+   resp={"data": dict(SALE, version=4, customerName="Okafor & Sons Distribution 482", priceBasis="DEALER",
+                      totals=dict(SALE["totals"], gross=4500.00, instantDiscount=0.00, net=4500.00, vat=337.50, total=4837.50))},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('saleVersion3', json.data.version);",
+          "pm.test('the discount is gone', () => pm.expect(json.data.totals.instantDiscount).to.eql(0));"],
+   desc="After the withdraw the till re-fetches the sale (no SSE): the discount is gone, totals are back to full price, and the version has moved on.")
+
 ep(P, "F7 Abandon the Sale", "POST", "/api/v1/cashier/sales/{{saleId3}}/abandon", body={"version": "{{saleVersion3}}"},
    resp={"data": dict(SALE, status="ABANDONED", customerName="Okafor & Sons Distribution 482")},
    desc="Clears the demo sale (no stock or money was touched), so the till can close.")

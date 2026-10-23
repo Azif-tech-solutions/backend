@@ -53,8 +53,8 @@ class SaleDiscounts(
     private val sequences: DocumentSequenceService,
     private val notify: Notify,
 ) {
-    fun apply(request: InstantDiscountRequest): InstantDiscountView = tx.execute {
-        val sale = views.visibleRow(request.saleId!!, forUpdate = true)
+    fun apply(saleId: UUID, request: InstantDiscountRequest): InstantDiscountView = tx.execute {
+        val sale = views.visibleRow(saleId, forUpdate = true)
         if (sale[SalesTable.status] != "OPEN") throw ApiErrors.saleNotOpen(sale[SalesTable.status])
         if (SaleLinesTable.select(SaleLinesTable.id).where { SaleLinesTable.saleId eq sale[SalesTable.id].value }.empty()) {
             throw ApiErrors.validationFailed(mapOf("lines" to "add items before discounting"))
@@ -72,7 +72,7 @@ class SaleDiscounts(
         val id = InstantDiscountsTable.insertAndGetId {
             it[tenantId] = support.tenantId()
             it[InstantDiscountsTable.ref] = ref
-            it[saleId] = sale[SalesTable.id].value
+            it[InstantDiscountsTable.saleId] = sale[SalesTable.id].value
             it[InstantDiscountsTable.mode] = mode
             it[value] = request.value.setScale(4, RoundingMode.HALF_UP)
             it[discountAmount] = amount

@@ -116,7 +116,7 @@ interface WaybillsApi {
 @SecurityRequirement(name = "bearerAuth")
 interface InstantDiscountApi {
     @Operation(summary = "Apply an Instant Discount to an open sale (applied at once, or sent for approval above the ceiling)")
-    fun applyDiscount(request: com.zifiq.cashier.dto.InstantDiscountRequest): ApiEnvelope<com.zifiq.cashier.dto.InstantDiscountView>
+    fun applyDiscount(id: UUID, request: com.zifiq.cashier.dto.InstantDiscountRequest): ApiEnvelope<com.zifiq.cashier.dto.InstantDiscountView>
 
     @Operation(summary = "Approve a pending discount")
     fun approveDiscount(id: UUID): ApiEnvelope<com.zifiq.cashier.dto.InstantDiscountView>

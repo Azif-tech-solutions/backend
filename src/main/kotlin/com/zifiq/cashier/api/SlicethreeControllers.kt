@@ -46,7 +46,7 @@ private const val REPORTS = "@permissionAuthorizer.hasPermission(authentication,
 class InstantDiscountController(private val discounts: SaleDiscounts) : InstantDiscountApi {
     @PostMapping("/sales/{id}/instant-discount")
     @PreAuthorize(DISCOUNT_APPLY)
-    override fun applyDiscount(@Valid @RequestBody request: InstantDiscountRequest) = ApiEnvelope(discounts.apply(request))
+    override fun applyDiscount(@PathVariable id: UUID, @Valid @RequestBody request: InstantDiscountRequest) = ApiEnvelope(discounts.apply(id, request))
 
     @PostMapping("/instant-discounts/{id}/approve")
     @PreAuthorize(DISCOUNT_APPROVE)

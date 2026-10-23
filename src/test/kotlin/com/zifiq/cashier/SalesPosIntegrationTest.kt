@@ -599,7 +599,7 @@ class SalesPosIntegrationTest : PostgresIntegrationTest() {
 
         // 5% is within the 10% ceiling: applied at once by the Administrator.
         signIn(admin)
-        val d1 = discounts.apply(InstantDiscountRequest(sale.id, "PERCENT", BigDecimal("5"), "LOYALTY", null, sale.version))
+        val d1 = discounts.apply(sale.id, InstantDiscountRequest("PERCENT", BigDecimal("5"), "LOYALTY", null, sale.version))
         assertThat(d1.status).isEqualTo("APPLIED")
         val afterDiscount = sales.get(sale.id)
         assertThat(afterDiscount.totals.instantDiscount).isEqualByComparingTo("500")
@@ -607,7 +607,7 @@ class SalesPosIntegrationTest : PostgresIntegrationTest() {
         assertThat(afterDiscount.totals.vat).isEqualByComparingTo("712.50")
         assertThat(afterDiscount.totals.total).isEqualByComparingTo("10212.50")
         assertThat(afterDiscount.instantDiscount?.ref).startsWith("IDS-")
-        failsWith { discounts.apply(InstantDiscountRequest(sale.id, "AMOUNT", BigDecimal("100"), "BULK", null, afterDiscount.version)) }.isEqualTo(ErrorCode.DISCOUNT_ALREADY_ACTIVE)
+        failsWith { discounts.apply(sale.id, InstantDiscountRequest("AMOUNT", BigDecimal("100"), "BULK", null, afterDiscount.version)) }.isEqualTo(ErrorCode.DISCOUNT_ALREADY_ACTIVE)
 
         // Withdraw restores the full price.
         discounts.withdraw(d1.id)
@@ -617,7 +617,7 @@ class SalesPosIntegrationTest : PostgresIntegrationTest() {
 
         // 20% is over the ceiling: a cashier's request waits for Management; completion is blocked meanwhile.
         signIn(cashierA)
-        val d2 = discounts.apply(InstantDiscountRequest(sale.id, "PERCENT", BigDecimal("20"), "CLEARANCE", "MD approved", restored.version))
+        val d2 = discounts.apply(sale.id, InstantDiscountRequest("PERCENT", BigDecimal("20"), "CLEARANCE", "MD approved", restored.version))
         assertThat(d2.status).isEqualTo("PENDING_APPROVAL")
         failsWith { checkout.complete(sale.id, cashFor(sales.get(sale.id))) }.isEqualTo(ErrorCode.DISCOUNT_PENDING_APPROVAL)
         signIn(admin)
