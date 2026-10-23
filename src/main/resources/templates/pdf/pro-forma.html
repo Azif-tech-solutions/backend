@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title th:text="${pf.ref}">PF-1</title>
+    <style>
+        @page { size: A4; margin: 16mm 15mm 18mm; }
+        body { font-family: 'Noto Sans'; font-size: 9.5pt; color: #1a1a1a; }
+        .header { display: table; width: 100%; border-bottom: 2px solid #1a1a1a; padding-bottom: 6pt; }
+        .header .left, .header .right { display: table-cell; vertical-align: top; }
+        .header .right { text-align: right; }
+        .logo { max-height: 36pt; max-width: 130pt; margin-bottom: 3pt; }
+        .company { font-size: 14pt; font-weight: 700; }
+        .muted { color: #555; }
+        .doc-title { font-size: 12pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5pt; }
+        .ref { font-size: 13pt; font-weight: 700; }
+        .stamp { display: inline-block; margin-top: 4pt; padding: 2pt 8pt; border: 2px solid #9a6400; color: #9a6400; font-weight: 700; text-transform: uppercase; font-size: 9pt; }
+        table.meta { width: 100%; margin-top: 10pt; border-collapse: collapse; }
+        table.meta td { padding: 2pt 4pt; }
+        table.meta td.label { font-size: 7.5pt; text-transform: uppercase; color: #666; width: 18%; }
+        table.lines { width: 100%; margin-top: 12pt; border-collapse: collapse; }
+        table.lines th { background: #efefef; border: 1px solid #bbb; padding: 4pt; text-align: left; font-size: 8.5pt; }
+        table.lines td { border: 1px solid #ccc; padding: 4pt; }
+        td.num, th.num { text-align: right; white-space: nowrap; }
+        table.totals { width: 48%; margin-left: 52%; margin-top: 8pt; border-collapse: collapse; }
+        table.totals td { padding: 2pt 4pt; }
+        table.totals tr.grand td { font-size: 12pt; font-weight: 700; border-top: 2px solid #1a1a1a; }
+        .footer { margin-top: 16pt; font-size: 8pt; color: #555; border-top: 1px solid #ddd; padding-top: 5pt; }
+    </style>
+</head>
+<body>
+<div class="header">
+    <div class="left">
+        <img class="logo" th:if="${logo != null}" th:src="${logo}" alt="logo"/>
+        <div class="company" th:text="${company.tradingName}">Company</div>
+        <div class="muted" th:text="${showroom}">Showroom</div>
+        <div class="muted" th:text="${company.streetAddress}">Address</div>
+        <div class="muted" th:if="${company.tin != null}" th:text="'TIN ' + ${company.tin}">TIN</div>
+    </div>
+    <div class="right">
+        <div class="doc-title">Pro-Forma Invoice</div>
+        <div class="ref" th:text="${pf.ref}">PF-1</div>
+        <div><span class="stamp">Quotation</span></div>
+    </div>
+</div>
+
+<table class="meta">
+    <tr><td class="label">To</td><td th:text="${pf.customerName}">Customer</td>
+        <td class="label">Issue date</td><td th:text="${pf.issueDate}">date</td></tr>
+    <tr><td class="label">Prepared by</td><td th:text="${preparedBy}">Staff</td>
+        <td class="label">Valid until</td><td th:text="${pf.validUntil}">date</td></tr>
+    <tr th:if="${pf.paymentTerms != null}"><td class="label">Payment</td><td colspan="3" th:text="${pf.paymentTerms}">Terms</td></tr>
+    <tr th:if="${pf.deliveryTerms != null}"><td class="label">Delivery</td><td colspan="3" th:text="${pf.deliveryTerms}">Terms</td></tr>
+</table>
+
+<table class="lines">
+    <thead>
+        <tr><th>#</th><th>Description</th><th class="num">Qty</th><th>Unit</th><th class="num">Unit price</th><th class="num">Discount</th><th class="num">Amount</th></tr>
+    </thead>
+    <tbody>
+        <tr th:each="line : ${lines}">
+            <td th:text="${line.no}">1</td>
+            <td th:text="${line.name}">Item</td>
+            <td class="num" th:text="${line.quantity}">1</td>
+            <td th:text="${line.unit}">Unit</td>
+            <td class="num" th:text="${line.price}">₦0.00</td>
+            <td class="num" th:text="${line.discount}">—</td>
+            <td class="num" th:text="${line.amount}">₦0.00</td>
+        </tr>
+    </tbody>
+</table>
+
+<table class="totals">
+    <tr><td>Subtotal</td><td class="num" th:text="${totals.gross}">₦0.00</td></tr>
+    <tr th:if="${totals.hasDiscount}"><td>Discount</td><td class="num" th:text="'− ' + ${totals.discount}">₦0.00</td></tr>
+    <tr><td th:text="${vatLabel}">VAT</td><td class="num" th:text="${totals.vat}">₦0.00</td></tr>
+    <tr class="grand"><td>Total payable</td><td class="num" th:text="${totals.total}">₦0.00</td></tr>
+</table>
+
+<div class="footer">
+    <div th:if="${company.documentFooter != null}" th:text="${company.documentFooter}">Footer</div>
+    <div>This pro-forma invoice is an estimate of the proposed transaction and is not a demand for payment. Prices hold until the validity date shown above, subject to stock availability at the time of confirmation.</div>
+    <div th:text="'Printed ' + ${printedAt}">Printed</div>
+</div>
+</body>
+</html>

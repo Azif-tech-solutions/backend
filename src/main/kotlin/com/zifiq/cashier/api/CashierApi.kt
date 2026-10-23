@@ -77,6 +77,9 @@ interface SalesApi {
     @Operation(summary = "Issue an invoice for a walk-in sale after the fact")
     fun invoice(id: UUID, request: SaleInvoiceRequest): ApiEnvelope<SaleView>
 
+    @Operation(summary = "Load a sent, valid pro-forma into this open sale (its customer, lines and quoted prices)")
+    fun loadProForma(id: UUID, request: com.zifiq.cashier.dto.LoadProFormaRequest): ApiEnvelope<SaleView>
+
     @Operation(summary = "The itemised sales receipt as a PDF (DUPLICATE COPY once a reprint is recorded)")
     fun receipt(id: UUID): ResponseEntity<ByteArray>
 }
@@ -107,4 +110,73 @@ interface WaybillsApi {
 
     @Operation(summary = "Pending Supply: completed sales with goods still owed, oldest first")
     fun pendingSupply(invoice: String?, customerId: UUID?, status: String?, locationId: UUID?, from: LocalDate?, to: LocalDate?, paging: PageParams): ApiEnvelope<PageResult<com.zifiq.cashier.dto.PendingSupplyRow>>
+}
+
+@Tag(name = "Sales & POS — Instant Discount", description = "An Administrator's discount on a live sale, approved above a ceiling (docs/09 §4.3)")
+@SecurityRequirement(name = "bearerAuth")
+interface InstantDiscountApi {
+    @Operation(summary = "Apply an Instant Discount to an open sale (applied at once, or sent for approval above the ceiling)")
+    fun applyDiscount(request: com.zifiq.cashier.dto.InstantDiscountRequest): ApiEnvelope<com.zifiq.cashier.dto.InstantDiscountView>
+
+    @Operation(summary = "Approve a pending discount")
+    fun approveDiscount(id: UUID): ApiEnvelope<com.zifiq.cashier.dto.InstantDiscountView>
+
+    @Operation(summary = "Reject a pending discount")
+    fun rejectDiscount(id: UUID, request: com.zifiq.cashier.dto.RejectRequest): ApiEnvelope<com.zifiq.cashier.dto.InstantDiscountView>
+
+    @Operation(summary = "Withdraw a live discount (the Administrator who applied it)")
+    fun withdrawDiscount(id: UUID): ApiEnvelope<com.zifiq.cashier.dto.InstantDiscountView>
+
+    @Operation(summary = "Recent instant discounts")
+    fun listDiscounts(status: String?, reason: String?, saleId: UUID?, paging: PageParams): ApiEnvelope<PageResult<com.zifiq.cashier.dto.InstantDiscountRow>>
+}
+
+@Tag(name = "Sales & POS — Pro-formas", description = "Pro-forma invoices (quotations) and conversion (docs/09 §4.4)")
+@SecurityRequirement(name = "bearerAuth")
+interface ProFormaApi {
+    @Operation(summary = "Create a pro-forma (quotation); ?send=true also sends it")
+    fun createProForma(send: Boolean?, request: com.zifiq.cashier.dto.ProFormaRequest): ApiEnvelope<com.zifiq.cashier.dto.ProFormaView>
+
+    @Operation(summary = "Edit a draft pro-forma")
+    fun updateProForma(id: UUID, request: com.zifiq.cashier.dto.ProFormaRequest): ApiEnvelope<com.zifiq.cashier.dto.ProFormaView>
+
+    @Operation(summary = "Send a draft pro-forma to the customer")
+    fun sendProForma(id: UUID): ApiEnvelope<com.zifiq.cashier.dto.ProFormaView>
+
+    @Operation(summary = "The customer declined the quotation")
+    fun declineProForma(id: UUID, request: com.zifiq.cashier.dto.RejectRequest): ApiEnvelope<com.zifiq.cashier.dto.ProFormaView>
+
+    @Operation(summary = "Withdraw (cancel) a pro-forma")
+    fun cancelProForma(id: UUID, request: com.zifiq.cashier.dto.RejectRequest): ApiEnvelope<com.zifiq.cashier.dto.ProFormaView>
+
+    @Operation(summary = "Re-issue an expired or declined pro-forma as a new draft at today's prices")
+    fun reissueProForma(id: UUID): ApiEnvelope<com.zifiq.cashier.dto.ProFormaView>
+
+    @Operation(summary = "Approve the line discounts on a pro-forma awaiting approval")
+    fun approveProFormaDiscount(id: UUID): ApiEnvelope<com.zifiq.cashier.dto.ProFormaView>
+
+    @Operation(summary = "Reject the line discounts (back to draft to reduce them)")
+    fun rejectProFormaDiscount(id: UUID, request: com.zifiq.cashier.dto.RejectRequest): ApiEnvelope<com.zifiq.cashier.dto.ProFormaView>
+
+    @Operation(summary = "Convert a confirmed pro-forma to an order: a reserved sale, invoiced on account")
+    fun convertProForma(id: UUID, request: com.zifiq.cashier.dto.ProFormaConvertRequest): ApiEnvelope<com.zifiq.cashier.dto.ProFormaView>
+
+    @Operation(summary = "A pro-forma")
+    fun getProForma(id: UUID): ApiEnvelope<com.zifiq.cashier.dto.ProFormaView>
+
+    @Operation(summary = "Pro-formas (newest first)")
+    fun listProFormas(status: String?, locationId: UUID?, customerId: UUID?, ref: String?, from: LocalDate?, to: LocalDate?, paging: PageParams): ApiEnvelope<PageResult<com.zifiq.cashier.dto.ProFormaRow>>
+
+    @Operation(summary = "The pro-forma as a PDF")
+    fun proFormaPdf(id: UUID): ResponseEntity<ByteArray>
+}
+
+@Tag(name = "Sales & POS — Reports", description = "Sales Report and Customers/Distributors Comprehensive (docs/09 §4.6)")
+@SecurityRequirement(name = "bearerAuth")
+interface SalesReportApi {
+    @Operation(summary = "Daily Sales Report (one row per day and showroom)")
+    fun salesDaily(locationId: UUID?, cashierUserId: UUID?, channel: String?, from: LocalDate, to: LocalDate): ApiEnvelope<com.zifiq.cashier.dto.SalesReport>
+
+    @Operation(summary = "Customers/Distributors Comprehensive (kind: DISTRIBUTORS | NO_CREDIT | SPECIAL)")
+    fun customerActivity(kind: String?, customerId: UUID?, locationId: UUID?, from: LocalDate, to: LocalDate): ApiEnvelope<com.zifiq.cashier.dto.CustomerActivityReport>
 }

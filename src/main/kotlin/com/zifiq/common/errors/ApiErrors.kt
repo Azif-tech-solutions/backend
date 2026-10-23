@@ -324,4 +324,13 @@ object ApiErrors {
         "Only ${outstanding.stripTrailingZeros().toPlainString()} remain outstanding on this line", mapOf("outstanding" to outstanding.toPlainString()))
     fun waybillNotCancellable() = ApiException(HttpStatus.CONFLICT, ErrorCode.WAYBILL_NOT_CANCELLABLE, "This waybill can only be cancelled while ISSUED and on its release date, before the goods have left")
     fun rangeTooLarge(maxDays: Int) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.RANGE_TOO_LARGE, "Narrow the date range to at most $maxDays days", mapOf("maxDays" to maxDays.toString()))
+
+    // ---- Sales & POS slice 3: Instant Discount & pro-formas (docs/09 §4.3-4.4) ----
+    fun discountAlreadyActive() = ApiException(HttpStatus.CONFLICT, ErrorCode.DISCOUNT_ALREADY_ACTIVE, "A discount is already live on this sale; withdraw it first")
+    fun discountExceedsTransaction() = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.DISCOUNT_EXCEEDS_TRANSACTION, "A discount can't be more than the sale's value")
+    fun discountPendingApproval() = ApiException(HttpStatus.CONFLICT, ErrorCode.DISCOUNT_PENDING_APPROVAL, "The discount on this sale is awaiting approval; wait for it, or ask the administrator to withdraw it")
+    fun proFormaNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.PRO_FORMA_NOT_FOUND, "Pro-forma not found")
+    fun proFormaExpired() = ApiException(HttpStatus.CONFLICT, ErrorCode.PRO_FORMA_EXPIRED, "This pro-forma has expired; re-issue it at today's prices")
+    fun proFormaNotEditable(status: String) = ApiException(HttpStatus.CONFLICT, ErrorCode.PRO_FORMA_NOT_EDITABLE, "A $status pro-forma can't be changed", mapOf("status" to status))
+    fun prospectMustRegister() = ApiException(HttpStatus.CONFLICT, ErrorCode.PROSPECT_MUST_REGISTER, "Register the prospect as a customer before converting this pro-forma")
 }

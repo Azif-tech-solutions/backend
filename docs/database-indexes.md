@@ -18,12 +18,14 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `bank_accounts_name_trgm` | gin | f_unaccent(lower((((((bank_name)::text \|\| ' '::text) \|\| (account_name)::text) \|\| ' '::text) \|\| (COALESCE(branch, ''::character varying))::text))) gin_trgm_ops |  |
 | `bank_accounts_number_uq` | unique | tenant_id, account_number, lower((bank_name)::text) |  |
 | `bank_accounts_tenant_id_code_key` | unique | tenant_id, code |  |
+| `bank_accounts_tenant_id_key` | unique | tenant_id, id |  |
 
 ### `bank_transactions`
 
 | Index | Kind | Columns / expression | Only rows where |
 |---|---|---|---|
 | `bank_transactions_pkey` | primary key | id |  |
+| `bank_transactions_tenant_id_key` | unique | tenant_id, id |  |
 | `bank_tx_account_idx` | btree | tenant_id, bank_account_id, entry_date, created_at, id |  |
 | `bank_tx_category_idx` | btree | tenant_id, expense_category_id, entry_date | (expense_category_id IS NOT NULL) |
 | `bank_tx_reference_idx` | btree | tenant_id, lower((reference)::text) |  |
@@ -38,6 +40,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `cash_accounts_location_idx` | btree | tenant_id, location_id, kind |  |
 | `cash_accounts_name_trgm` | gin | f_unaccent(lower((name)::text)) gin_trgm_ops |  |
 | `cash_accounts_tenant_id_code_key` | unique | tenant_id, code |  |
+| `cash_accounts_tenant_id_key` | unique | tenant_id, id |  |
 
 ### `cash_lodgements`
 
@@ -52,6 +55,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | Index | Kind | Columns / expression | Only rows where |
 |---|---|---|---|
 | `cash_transactions_pkey` | primary key | id |  |
+| `cash_transactions_tenant_id_key` | unique | tenant_id, id |  |
 | `cash_tx_account_idx` | btree | tenant_id, cash_account_id, entry_date, created_at, id |  |
 | `cash_tx_category_idx` | btree | tenant_id, expense_category_id, entry_date | (expense_category_id IS NOT NULL) |
 | `cash_tx_reference_idx` | btree | tenant_id, lower((reference)::text) |  |
@@ -64,6 +68,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 |---|---|---|---|
 | `categories_pkey` | primary key | id |  |
 | `categories_name_trgm` | gin | f_unaccent(lower((name)::text)) gin_trgm_ops |  |
+| `categories_tenant_id_key` | unique | tenant_id, id |  |
 | `categories_tenant_id_name_key` | unique | tenant_id, name |  |
 
 ### `company_profiles`
@@ -89,6 +94,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `correspondents_search_idx` | gin | search_vector |  |
 | `correspondents_status_region_idx` | btree | tenant_id, status, region |  |
 | `correspondents_tenant_id_code_key` | unique | tenant_id, code |  |
+| `correspondents_tenant_id_key` | unique | tenant_id, id |  |
 | `correspondents_user_uq` | unique | tenant_id, user_id | (user_id IS NOT NULL) |
 
 ### `credit_note_lines`
@@ -106,6 +112,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `credit_notes_by_invoice_idx` | btree | invoice_id |  |
 | `credit_notes_issued_idx` | btree | tenant_id, issued_at DESC |  |
 | `credit_notes_search_idx` | gin | search_vector |  |
+| `credit_notes_tenant_id_key` | unique | tenant_id, id |  |
 | `credit_notes_tenant_id_number_key` | unique | tenant_id, number |  |
 
 ### `custom_field_definitions`
@@ -126,6 +133,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `cle_single_reversal` | unique | reverses_entry_id | (reverses_entry_id IS NOT NULL) |
 | `cle_source_idx` | btree | tenant_id, source_module, source_id |  |
 | `cle_type_date_idx` | btree | tenant_id, entry_type, entry_date DESC, created_at DESC, id DESC |  |
+| `customer_ledger_entries_tenant_id_key` | unique | tenant_id, id |  |
 
 ### `customer_reclassifications`
 
@@ -155,7 +163,27 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `cr_location_date_idx` | btree | tenant_id, location_id, return_date DESC |  |
 | `cr_original_doc_idx` | btree | tenant_id, original_document_ref |  |
 | `cr_search_idx` | gin | search_vector |  |
+| `customer_returns_tenant_id_key` | unique | tenant_id, id |  |
 | `customer_returns_tenant_id_ref_key` | unique | tenant_id, ref |  |
+
+### `customer_waybill_lines`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `customer_waybill_lines_pkey` | primary key | id |  |
+| `customer_waybill_lines_sale_line_idx` | btree | tenant_id, sale_line_id |  |
+| `customer_waybill_lines_waybill_idx` | btree | tenant_id, waybill_id |  |
+
+### `customer_waybills`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `customer_waybills_pkey` | primary key | id |  |
+| `customer_waybills_date_idx` | btree | tenant_id, location_id, release_date DESC |  |
+| `customer_waybills_ref_uq` | unique | tenant_id, ref |  |
+| `customer_waybills_sale_idx` | btree | tenant_id, sale_id |  |
+| `customer_waybills_status_idx` | btree | tenant_id, status, release_date DESC |  |
+| `customer_waybills_tenant_id_key` | unique | tenant_id, id |  |
 
 ### `customers`
 
@@ -176,6 +204,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `customers_search_idx` | gin | search_vector |  |
 | `customers_temp_phone_uq` | unique | tenant_id, phone_e164 | (is_temporary AND ((status)::text = 'ACTIVE'::text)) |
 | `customers_tenant_id_code_key` | unique | tenant_id, code |  |
+| `customers_tenant_id_key` | unique | tenant_id, id |  |
 | `customers_type_status_idx` | btree | tenant_id, type, status, name |  |
 | `customers_user_uq` | unique | tenant_id, user_id | (user_id IS NOT NULL) |
 
@@ -185,6 +214,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 |---|---|---|---|
 | `dealer_categories_pkey` | primary key | id |  |
 | `dealer_categories_name_uq` | unique | tenant_id, lower((name)::text) |  |
+| `dealer_categories_tenant_id_key` | unique | tenant_id, id |  |
 
 ### `debtor_balances`
 
@@ -218,6 +248,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `domain_events_consume_idx` | btree | tenant_id, txid, seq |  |
 | `domain_events_ref_idx` | btree | tenant_id, aggregate_ref |  |
 | `domain_events_search_idx` | gin | search_vector |  |
+| `domain_events_tenant_id_key` | unique | tenant_id, id |  |
 | `domain_events_tenant_time_idx` | btree | tenant_id, occurred_at DESC |  |
 | `domain_events_type_idx` | btree | tenant_id, event_type, occurred_at DESC |  |
 
@@ -228,6 +259,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `drivers_pkey` | primary key | id |  |
 | `drivers_name_trgm` | gin | f_unaccent(lower((name)::text)) gin_trgm_ops |  |
 | `drivers_name_vehicle_uq` | unique | tenant_id, lower((name)::text), COALESCE(lower((vehicle_number)::text), ''::text) |  |
+| `drivers_tenant_id_key` | unique | tenant_id, id |  |
 
 ### `event_consumer_checkpoints`
 
@@ -240,6 +272,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | Index | Kind | Columns / expression | Only rows where |
 |---|---|---|---|
 | `exchange_rate_publications_pkey` | primary key | id |  |
+| `exchange_rate_publications_tenant_id_key` | unique | tenant_id, id |  |
 | `exchange_rate_publications_tenant_id_ref_key` | unique | tenant_id, ref |  |
 
 ### `exchange_rates`
@@ -258,6 +291,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `expense_categories_name_trgm` | gin | f_unaccent(lower((name)::text)) gin_trgm_ops |  |
 | `expense_categories_name_uq` | unique | tenant_id, lower((name)::text) |  |
 | `expense_categories_tenant_id_code_key` | unique | tenant_id, code |  |
+| `expense_categories_tenant_id_key` | unique | tenant_id, id |  |
 
 ### `factory_trade_offers`
 
@@ -290,6 +324,16 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `hsn_sections_pkey` | primary key | id |  |
 | `hsn_sections_code_key` | unique | code |  |
 
+### `instant_discounts`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `instant_discounts_pkey` | primary key | id |  |
+| `instant_discounts_list_idx` | btree | tenant_id, status, created_at DESC |  |
+| `instant_discounts_one_live_uq` | unique | sale_id | ((status)::text = ANY ((ARRAY['PENDING_APPROVAL'::character varying, 'APPLIED'::character varying])::text[])) |
+| `instant_discounts_ref_uq` | unique | tenant_id, ref |  |
+| `instant_discounts_tenant_id_key` | unique | tenant_id, id |  |
+
 ### `invoice_deliveries`
 
 | Index | Kind | Columns / expression | Only rows where |
@@ -305,6 +349,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `invoice_lines_pkey` | primary key | id |  |
 | `invoice_lines_invoice_id_line_no_key` | unique | invoice_id, line_no |  |
 | `invoice_lines_item_idx` | btree | tenant_id, stock_item_id |  |
+| `invoice_lines_tenant_id_key` | unique | tenant_id, id |  |
 
 ### `invoice_payments`
 
@@ -340,6 +385,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `invoices_replaced_by_idx` | btree | replaced_by_invoice_id | (replaced_by_invoice_id IS NOT NULL) |
 | `invoices_search_idx` | gin | search_vector |  |
 | `invoices_source_uq` | unique | tenant_id, source_type, source_id | ((status)::text <> 'VOID'::text) |
+| `invoices_tenant_id_key` | unique | tenant_id, id |  |
 
 ### `isic_classes`
 
@@ -364,6 +410,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `issued_documents_party_trgm` | gin | f_unaccent(lower((party_name)::text)) gin_trgm_ops |  |
 | `issued_documents_search_idx` | gin | search_vector |  |
 | `issued_documents_source_idx` | btree | tenant_id, source_module, source_id |  |
+| `issued_documents_tenant_id_key` | unique | tenant_id, id |  |
 | `issued_documents_tenant_id_ref_key` | unique | tenant_id, ref |  |
 | `issued_documents_type_time_idx` | btree | tenant_id, doc_type, issued_at DESC |  |
 
@@ -384,6 +431,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `locations_parent_idx` | btree | tenant_id, parent_location_id | (parent_location_id IS NOT NULL) |
 | `locations_showroom_name_uq` | unique | tenant_id, lower((name)::text) | ((type)::text = 'SHOWROOM'::text) |
 | `locations_tenant_id_code_key` | unique | tenant_id, code |  |
+| `locations_tenant_id_key` | unique | tenant_id, id |  |
 
 ### `manufacturers`
 
@@ -392,6 +440,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `manufacturers_pkey` | primary key | id |  |
 | `manufacturers_name_trgm` | gin | f_unaccent(lower((name)::text)) gin_trgm_ops |  |
 | `manufacturers_tenant_id_code_key` | unique | tenant_id, code |  |
+| `manufacturers_tenant_id_key` | unique | tenant_id, id |  |
 
 ### `module_settings`
 
@@ -418,6 +467,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 |---|---|---|---|
 | `notification_outbox_pkey` | primary key | id |  |
 | `notification_outbox_pending_idx` | btree | tenant_id, created_at | ((status)::text = 'PENDING'::text) |
+| `notification_outbox_tenant_id_key` | unique | tenant_id, id |  |
 
 ### `nrs_invoice_type_codes`
 
@@ -459,6 +509,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | Index | Kind | Columns / expression | Only rows where |
 |---|---|---|---|
 | `otp_challenges_pkey` | primary key | id |  |
+| `otp_challenges_tenant_id_key` | unique | tenant_id, id |  |
 
 ### `password_reset_tokens`
 
@@ -473,6 +524,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | Index | Kind | Columns / expression | Only rows where |
 |---|---|---|---|
 | `payment_receipts_pkey` | primary key | id |  |
+| `payment_receipts_tenant_id_key` | unique | tenant_id, id |  |
 | `payment_receipts_tenant_id_ref_key` | unique | tenant_id, ref |  |
 | `pr_cashier_idx` | btree | tenant_id, cashier_user_id, received_at |  |
 | `pr_customer_name_trgm` | gin | f_unaccent(lower((customer_name)::text)) gin_trgm_ops |  |
@@ -516,18 +568,41 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `pcp_paid_to_trgm` | gin | f_unaccent(lower((paid_to)::text)) gin_trgm_ops |  |
 | `petty_cash_payments_tenant_id_ref_key` | unique | tenant_id, ref |  |
 
+### `pro_forma_lines`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `pro_forma_lines_pkey` | primary key | id |  |
+| `pfl_line_uq` | unique | pro_forma_id, line_no |  |
+| `pro_forma_lines_pf_idx` | btree | tenant_id, pro_forma_id |  |
+
+### `pro_formas`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `pro_formas_pkey` | primary key | id |  |
+| `pro_formas_customer_idx` | btree | tenant_id, customer_id |  |
+| `pro_formas_name_trgm` | gin | f_unaccent(lower((customer_name)::text)) gin_trgm_ops |  |
+| `pro_formas_ref_uq` | unique | tenant_id, ref |  |
+| `pro_formas_search_idx` | gin | search_vector |  |
+| `pro_formas_status_idx` | btree | tenant_id, location_id, status, issue_date DESC |  |
+| `pro_formas_tenant_id_key` | unique | tenant_id, id |  |
+
 ### `production_costings`
 
 | Index | Kind | Columns / expression | Only rows where |
 |---|---|---|---|
 | `production_costings_pkey` | primary key | id |  |
 | `production_costings_location_status_idx` | btree | tenant_id, location_id, status |  |
+| `production_costings_recipe_idx` | btree | tenant_id, recipe_id | (recipe_id IS NOT NULL) |
+| `production_costings_tenant_id_key` | unique | tenant_id, id |  |
 
 ### `production_runs`
 
 | Index | Kind | Columns / expression | Only rows where |
 |---|---|---|---|
 | `production_runs_pkey` | primary key | id |  |
+| `production_runs_costing_idx` | btree | production_costing_id |  |
 | `production_runs_location_idx` | btree | tenant_id, location_id, run_at DESC, id DESC |  |
 | `production_runs_run_at_idx` | btree | tenant_id, run_at DESC, id DESC |  |
 | `production_runs_tenant_id_batch_ref_key` | unique | tenant_id, batch_ref |  |
@@ -558,6 +633,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `recipes_name_trgm` | gin | f_unaccent(lower((name)::text)) gin_trgm_ops |  |
 | `recipes_search_vector_idx` | gin | search_vector |  |
 | `recipes_tenant_id_code_key` | unique | tenant_id, code |  |
+| `recipes_tenant_id_key` | unique | tenant_id, id |  |
 
 ### `refresh_tokens`
 
@@ -573,6 +649,43 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 |---|---|---|---|
 | `role_permissions_pkey` | primary key | role_id, permission_id |  |
 
+### `sale_lines`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `sale_lines_pkey` | primary key | id |  |
+| `sale_lines_item_idx` | btree | tenant_id, stock_item_id |  |
+| `sale_lines_line_uq` | unique | sale_id, line_no |  |
+| `sale_lines_tenant_id_key` | unique | tenant_id, id |  |
+
+### `sale_payments`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `sale_payments_pkey` | primary key | id |  |
+| `sale_payments_method_idx` | btree | tenant_id, method, sale_id |  |
+| `sale_payments_receipt_idx` | btree | tenant_id, payment_receipt_id |  |
+| `sale_payments_sale_idx` | btree | tenant_id, sale_id |  |
+
+### `sales`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `sales_pkey` | primary key | id |  |
+| `sales_cashier_idx` | btree | tenant_id, cashier_user_id, sale_date |  |
+| `sales_completed_idx` | btree | tenant_id, completed_at DESC, id | (ref IS NOT NULL) |
+| `sales_correspondent_idx` | btree | tenant_id, correspondent_id, sale_date |  |
+| `sales_customer_idx` | btree | tenant_id, customer_id, sale_date |  |
+| `sales_date_idx` | btree | tenant_id, location_id, sale_date | ((status)::text = 'COMPLETED'::text) |
+| `sales_invoice_idx` | btree | tenant_id, invoice_id | (invoice_id IS NOT NULL) |
+| `sales_invoice_number_idx` | btree | tenant_id, invoice_number | (invoice_number IS NOT NULL) |
+| `sales_name_trgm` | gin | f_unaccent(lower((customer_name)::text)) gin_trgm_ops |  |
+| `sales_open_idx` | btree | tenant_id, location_id, started_at | ((status)::text = 'OPEN'::text) |
+| `sales_ref_uq` | unique | tenant_id, ref | (ref IS NOT NULL) |
+| `sales_search_idx` | gin | search_vector |  |
+| `sales_tenant_id_key` | unique | tenant_id, id |  |
+| `sales_till_session_idx` | btree | tenant_id, till_session_id | (till_session_id IS NOT NULL) |
+
 ### `saved_views`
 
 | Index | Kind | Columns / expression | Only rows where |
@@ -587,6 +700,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | Index | Kind | Columns / expression | Only rows where |
 |---|---|---|---|
 | `showroom_stock_entries_pkey` | primary key | id |  |
+| `showroom_stock_entries_tenant_id_key` | unique | tenant_id, id |  |
 | `showroom_stock_entries_tenant_id_ref_key` | unique | tenant_id, ref |  |
 | `sse_kind_idx` | btree | tenant_id, kind, received_date DESC |  |
 | `sse_location_date_idx` | btree | tenant_id, location_id, received_date DESC |  |
@@ -607,6 +721,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | Index | Kind | Columns / expression | Only rows where |
 |---|---|---|---|
 | `special_production_clients_pkey` | primary key | id |  |
+| `special_production_clients_tenant_id_key` | unique | tenant_id, id |  |
 
 ### `special_production_runs`
 
@@ -644,6 +759,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `stock_items_name_idx` | btree | tenant_id, name, id |  |
 | `stock_items_name_trgm` | gin | f_unaccent(lower((name)::text)) gin_trgm_ops |  |
 | `stock_items_tenant_id_code_key` | unique | tenant_id, code |  |
+| `stock_items_tenant_id_key` | unique | tenant_id, id |  |
 
 ### `stock_ledger_entries`
 
@@ -663,6 +779,15 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `stock_receipts_location_idx` | btree | tenant_id, location_id, created_at DESC, id DESC |  |
 | `stock_receipts_tenant_id_ref_key` | unique | tenant_id, ref |  |
 
+### `stock_reservations`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `stock_reservations_pkey` | primary key | id |  |
+| `stock_reservations_open_idx` | btree | tenant_id, location_id, stock_item_id | ((status)::text = 'OPEN'::text) |
+| `stock_reservations_source_uq` | unique | source_type, source_id |  |
+| `stock_reservations_tenant_id_key` | unique | tenant_id, id |  |
+
 ### `stock_transfer_lines`
 
 | Index | Kind | Columns / expression | Only rows where |
@@ -676,6 +801,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 |---|---|---|---|
 | `stock_transfers_pkey` | primary key | id |  |
 | `stock_transfers_from_idx` | btree | tenant_id, source_location_id, transfer_date DESC |  |
+| `stock_transfers_tenant_id_key` | unique | tenant_id, id |  |
 | `stock_transfers_tenant_id_waybill_ref_key` | unique | tenant_id, waybill_ref |  |
 | `stock_transfers_to_idx` | btree | tenant_id, destination_location_id, status, transfer_date DESC |  |
 | `stock_transfers_waybill_trgm` | gin | lower((waybill_ref)::text) gin_trgm_ops |  |
@@ -693,6 +819,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 |---|---|---|---|
 | `storage_area_moves_pkey` | primary key | id |  |
 | `sam_root_date_idx` | btree | tenant_id, root_location_id, moved_date DESC |  |
+| `storage_area_moves_tenant_id_key` | unique | tenant_id, id |  |
 | `storage_area_moves_tenant_id_ref_key` | unique | tenant_id, ref |  |
 
 ### `stored_files`
@@ -703,6 +830,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `stored_files_linked_idx` | btree | tenant_id, linked_type, linked_id | (linked_id IS NOT NULL) |
 | `stored_files_purpose_idx` | btree | tenant_id, purpose, uploaded_at DESC |  |
 | `stored_files_storage_key_key` | unique | storage_key |  |
+| `stored_files_tenant_id_key` | unique | tenant_id, id |  |
 
 ### `suppliers`
 
@@ -711,6 +839,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `suppliers_pkey` | primary key | id |  |
 | `suppliers_company_name_trgm` | gin | f_unaccent(lower((company_name)::text)) gin_trgm_ops |  |
 | `suppliers_tenant_id_code_key` | unique | tenant_id, code |  |
+| `suppliers_tenant_id_key` | unique | tenant_id, id |  |
 
 ### `tenant_memberships`
 
@@ -739,6 +868,17 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 |---|---|---|---|
 | `tenants_pkey` | primary key | id |  |
 
+### `till_sessions`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `till_sessions_pkey` | primary key | id |  |
+| `till_sessions_cashier_idx` | btree | tenant_id, cashier_user_id, opened_at DESC |  |
+| `till_sessions_location_idx` | btree | tenant_id, location_id, opened_at DESC |  |
+| `till_sessions_open_cashier_uq` | unique | tenant_id, cashier_user_id | ((status)::text = 'OPEN'::text) |
+| `till_sessions_open_till_uq` | unique | tenant_id, cash_account_id | ((status)::text = 'OPEN'::text) |
+| `till_sessions_tenant_id_key` | unique | tenant_id, id |  |
+
 ### `units_of_measure`
 
 | Index | Kind | Columns / expression | Only rows where |
@@ -746,6 +886,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `units_of_measure_pkey` | primary key | id |  |
 | `units_of_measure_name_trgm` | gin | f_unaccent(lower((name)::text)) gin_trgm_ops |  |
 | `units_of_measure_tenant_id_code_key` | unique | tenant_id, code |  |
+| `units_of_measure_tenant_id_key` | unique | tenant_id, id |  |
 
 ### `user_location_assignments`
 

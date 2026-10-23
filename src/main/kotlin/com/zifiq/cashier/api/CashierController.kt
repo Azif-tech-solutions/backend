@@ -144,6 +144,10 @@ class SalesController(
     @PreAuthorize(INVOICE)
     override fun invoice(@PathVariable id: UUID, @Valid @RequestBody request: SaleInvoiceRequest) = ApiEnvelope(documents.invoice(id, request))
 
+    @PostMapping("/sales/{id}/load-pro-forma")
+    @PreAuthorize(MANAGE)
+    override fun loadProForma(@PathVariable id: UUID, @Valid @RequestBody request: com.zifiq.cashier.dto.LoadProFormaRequest) = ApiEnvelope(sales.loadProForma(id, request))
+
     @GetMapping("/sales/{id}/receipt.pdf", produces = [MediaType.APPLICATION_PDF_VALUE])
     @PreAuthorize(READ)
     override fun receipt(@PathVariable id: UUID): ResponseEntity<ByteArray> {

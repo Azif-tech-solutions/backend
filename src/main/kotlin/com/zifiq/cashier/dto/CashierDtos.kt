@@ -197,6 +197,8 @@ data class SalePaymentView(
     val payerReference: String?,
 )
 
+data class SaleInstantDiscount(val id: UUID, val ref: String, val amount: BigDecimal, val pctOfBase: BigDecimal, val reason: String, val status: String)
+
 data class SaleView(
     val id: UUID,
     val ref: String?,
@@ -219,6 +221,8 @@ data class SaleView(
     val changeGiven: BigDecimal?,
     /** Open sales: the payment methods this customer can use. */
     val allowedMethods: List<String>,
+    /** The live Instant Discount on this sale (applied or awaiting approval), or null. */
+    val instantDiscount: SaleInstantDiscount?,
     val invoice: Ref?,
     val invoiceNumber: String?,
     val correspondent: Ref?,
@@ -407,3 +411,203 @@ data class PendingSupplyRow(
     val status: String,
 )
 
+
+// ---- Instant Discount (docs/09 §4.3) ----
+
+data class InstantDiscountRequest(
+    @field:NotNull val saleId: UUID?,
+    /** PERCENT or AMOUNT. */
+    @field:NotNull val mode: String?,
+    @field:NotNull @field:DecimalMin("0.0001") val value: BigDecimal?,
+    /** VOLUME, BULK, LOYALTY, GOODWILL or CLEARANCE. */
+    @field:NotNull val reason: String?,
+    @field:Size(max = 300) val note: String? = null,
+    @field:NotNull val version: Int?,
+)
+
+data class RejectRequest(@field:NotNull @field:Size(min = 3, max = 300) val reason: String?)
+
+data class InstantDiscountView(
+    val id: UUID,
+    val ref: String,
+    val sale: Ref,
+    val mode: String,
+    val value: BigDecimal,
+    val discountAmount: BigDecimal,
+    val baseAmount: BigDecimal,
+    val pctOfBase: BigDecimal,
+    val reason: String,
+    val note: String?,
+    val status: String,
+    val appliedBy: UserRef,
+    val approvedBy: UserRef?,
+    val rejectionReason: String?,
+)
+
+data class InstantDiscountRow(
+    val id: UUID,
+    val ref: String,
+    val sale: Ref,
+    val discountAmount: BigDecimal,
+    val pctOfBase: BigDecimal,
+    val reason: String,
+    val status: String,
+    val appliedBy: UserRef,
+    val approvedBy: UserRef?,
+    val createdAt: java.time.Instant,
+)
+
+// ---- Pro-forma invoices (docs/09 §4.4) ----
+
+data class ProspectInput(
+    @field:NotNull @field:Size(min = 2, max = 200) val name: String?,
+    @field:Size(max = 300) val address: String? = null,
+    @field:Size(max = 200) val contact: String? = null,
+    @field:Size(max = 320) val email: String? = null,
+)
+
+data class ProFormaLineInput(
+    @field:NotNull val stockItemId: UUID?,
+    @field:NotNull @field:DecimalMin("0.001") val quantity: BigDecimal?,
+    @field:DecimalMin("0.00") val lineDiscount: BigDecimal? = null,
+)
+
+data class ProFormaRequest(
+    @field:NotNull val locationId: UUID?,
+    val customerId: UUID? = null,
+    @field:Valid val prospect: ProspectInput? = null,
+    val issueDate: LocalDate? = null,
+    val validUntil: LocalDate? = null,
+    @field:Size(max = 300) val paymentTerms: String? = null,
+    @field:Size(max = 300) val deliveryTerms: String? = null,
+    @field:Size(max = 500) val note: String? = null,
+    @field:Valid @field:NotEmpty val lines: List<ProFormaLineInput> = emptyList(),
+)
+
+data class ProFormaConvertRequest(
+    /** ISSUED (issue the invoice now) or DRAFT (Accounts issues it later). */
+    @field:NotNull val issueAs: String?,
+    val paymentTermsDays: Int? = null,
+    @field:Size(max = 300) val paymentTermsNote: String? = null,
+    @field:Size(max = 300) val creditOverrideReason: String? = null,
+)
+
+data class ProFormaLineView(
+    val lineNo: Int,
+    val stockItem: Ref,
+    val name: String,
+    val unit: String,
+    val quantity: BigDecimal,
+    val unitPrice: BigDecimal,
+    val lineDiscount: BigDecimal,
+    val lineNet: BigDecimal,
+    val vatRate: BigDecimal,
+    val vatAmount: BigDecimal,
+    val lineTotal: BigDecimal,
+    /** When composing: whether the location has enough stock now (a pro-forma commits none). */
+    val availabilityWarning: Boolean,
+)
+
+data class ProFormaTotals(
+    val gross: BigDecimal,
+    val discount: BigDecimal,
+    val net: BigDecimal,
+    val vatEnabled: Boolean,
+    val vatRate: BigDecimal,
+    val vat: BigDecimal,
+    val total: BigDecimal,
+)
+
+data class ProFormaView(
+    val id: UUID,
+    val ref: String,
+    val status: String,
+    val location: Ref,
+    val customer: Ref?,
+    val customerName: String,
+    val customerType: String?,
+    val prospect: ProspectInput?,
+    val priceBasis: String,
+    val issueDate: LocalDate,
+    val validUntil: LocalDate,
+    val paymentTerms: String?,
+    val deliveryTerms: String?,
+    val note: String?,
+    val lines: List<ProFormaLineView>,
+    val totals: ProFormaTotals,
+    val preparedBy: UserRef,
+    val declineReason: String?,
+    val convertedSale: Ref?,
+)
+
+data class ProFormaRow(
+    val id: UUID,
+    val ref: String,
+    val status: String,
+    val location: Ref,
+    val customer: Ref?,
+    val customerName: String,
+    val date: LocalDate,
+    val validUntil: LocalDate,
+    val items: Int,
+    val value: BigDecimal,
+    val preparedBy: UserRef,
+    val convertedSale: Ref?,
+)
+
+data class LoadProFormaRequest(@field:NotNull val proFormaId: UUID?, @field:NotNull val version: Int?)
+
+// ---- Reports (docs/09 §4.6) ----
+
+data class SalesDailyRow(
+    val date: LocalDate,
+    val showroom: Ref,
+    val transactions: Long,
+    val units: BigDecimal,
+    val gross: BigDecimal,
+    val discount: BigDecimal,
+    val net: BigDecimal,
+    val vat: BigDecimal,
+    val avgSale: BigDecimal,
+)
+
+data class SalesReportStats(
+    val netSales: BigDecimal,
+    val transactions: Long,
+    val units: BigDecimal,
+    val averageTransaction: BigDecimal,
+    val bestDay: LocalDate?,
+)
+
+data class SalesReport(
+    val rows: List<SalesDailyRow>,
+    val totals: SalesDailyRow?,
+    val stats: SalesReportStats,
+)
+
+data class CustomerActivityRow(
+    val date: LocalDate?,
+    val sale: Ref,
+    val saleRef: String,
+    val invoiceNumber: String?,
+    val customer: Ref?,
+    val customerName: String,
+    val items: Int,
+    val units: BigDecimal,
+    val value: BigDecimal,
+    val cash: BigDecimal,
+    val pos: BigDecimal,
+    val transfer: BigDecimal,
+    val wallet: BigDecimal,
+    val deposit: BigDecimal,
+    val onAccount: BigDecimal,
+    val waybills: List<String>,
+)
+
+data class CustomerActivityReport(
+    val rows: List<CustomerActivityRow>,
+    val transactions: Long,
+    val units: BigDecimal,
+    val value: BigDecimal,
+    val averageTransaction: BigDecimal,
+)

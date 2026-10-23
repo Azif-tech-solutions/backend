@@ -35,6 +35,8 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.plus
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.count
+import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.sum
@@ -69,6 +71,7 @@ class SaleService(
     private val pricing: SalePricing,
     private val views: SaleViews,
     private val customers: CustomerDirectory,
+    private val discounts: SaleDiscounts,
 ) {
     fun start(request: SaleStartRequest): SaleView = tx.execute {
         val session = tills.requireOwnOpen()
@@ -134,6 +137,69 @@ class SaleService(
 
     fun get(id: UUID): SaleView = tx.execute { views.view(views.visibleRow(id)) }
 
+    /** Loads a SENT, still-valid pro-forma into an open sale: its customer, lines, quoted prices and line discounts (docs/09 §4.2). */
+    fun loadProForma(id: UUID, request: com.zifiq.cashier.dto.LoadProFormaRequest): SaleView = tx.execute {
+        val sale = editable(id, request.version!!)
+        val pf = com.zifiq.cashier.model.ProFormasTable.selectAll()
+            .where { (com.zifiq.cashier.model.ProFormasTable.id eq request.proFormaId!!) and (com.zifiq.cashier.model.ProFormasTable.tenantId eq support.tenantId()) }
+            .firstOrNull() ?: throw ApiErrors.proFormaNotFound()
+        if (pf[com.zifiq.cashier.model.ProFormasTable.status] != "SENT") throw ApiErrors.proFormaNotEditable(pf[com.zifiq.cashier.model.ProFormasTable.status])
+        if (pf[com.zifiq.cashier.model.ProFormasTable.validUntil].isBefore(support.today())) throw ApiErrors.proFormaExpired()
+        val customerId = pf[com.zifiq.cashier.model.ProFormasTable.customerId] ?: throw ApiErrors.prospectMustRegister()
+        val customer = sellableCustomer(customerId)
+        val pfLines = com.zifiq.cashier.model.ProFormaLinesTable.selectAll()
+            .where { com.zifiq.cashier.model.ProFormaLinesTable.proFormaId eq request.proFormaId }
+            .orderBy(com.zifiq.cashier.model.ProFormaLinesTable.lineNo).toList()
+        com.zifiq.cashier.model.SaleLinesTable.deleteWhere { com.zifiq.cashier.model.SaleLinesTable.saleId eq id }
+        var gross = java.math.BigDecimal.ZERO; var disc = java.math.BigDecimal.ZERO; var net = java.math.BigDecimal.ZERO; var vat = java.math.BigDecimal.ZERO
+        pfLines.forEach { l ->
+            com.zifiq.cashier.model.SaleLinesTable.insert {
+                it[com.zifiq.cashier.model.SaleLinesTable.tenantId] = support.tenantId()
+                it[com.zifiq.cashier.model.SaleLinesTable.saleId] = id
+                it[com.zifiq.cashier.model.SaleLinesTable.lineNo] = l[com.zifiq.cashier.model.ProFormaLinesTable.lineNo]
+                it[com.zifiq.cashier.model.SaleLinesTable.stockItemId] = l[com.zifiq.cashier.model.ProFormaLinesTable.stockItemId]
+                it[com.zifiq.cashier.model.SaleLinesTable.itemCode] = ""
+                it[com.zifiq.cashier.model.SaleLinesTable.itemName] = l[com.zifiq.cashier.model.ProFormaLinesTable.itemName]
+                it[com.zifiq.cashier.model.SaleLinesTable.unitName] = l[com.zifiq.cashier.model.ProFormaLinesTable.unitName]
+                it[com.zifiq.cashier.model.SaleLinesTable.quantity] = l[com.zifiq.cashier.model.ProFormaLinesTable.quantity]
+                it[com.zifiq.cashier.model.SaleLinesTable.unitPrice] = l[com.zifiq.cashier.model.ProFormaLinesTable.unitPrice]
+                it[com.zifiq.cashier.model.SaleLinesTable.priceBasis] = "PRO_FORMA"
+                it[com.zifiq.cashier.model.SaleLinesTable.lineDiscount] = l[com.zifiq.cashier.model.ProFormaLinesTable.lineDiscount]
+                it[com.zifiq.cashier.model.SaleLinesTable.instantDiscountShare] = java.math.BigDecimal.ZERO
+                it[com.zifiq.cashier.model.SaleLinesTable.lineNet] = l[com.zifiq.cashier.model.ProFormaLinesTable.lineNet]
+                it[com.zifiq.cashier.model.SaleLinesTable.vatCategoryCode] = "STANDARD_RATE"
+                it[com.zifiq.cashier.model.SaleLinesTable.vatRate] = l[com.zifiq.cashier.model.ProFormaLinesTable.vatRate]
+                it[com.zifiq.cashier.model.SaleLinesTable.vatAmount] = l[com.zifiq.cashier.model.ProFormaLinesTable.vatAmount]
+                it[com.zifiq.cashier.model.SaleLinesTable.lineTotal] = l[com.zifiq.cashier.model.ProFormaLinesTable.lineTotal]
+                it[com.zifiq.cashier.model.SaleLinesTable.supplyNowQty] = java.math.BigDecimal.ZERO
+                it[com.zifiq.cashier.model.SaleLinesTable.suppliedQty] = java.math.BigDecimal.ZERO
+            }
+            gross += l[com.zifiq.cashier.model.ProFormaLinesTable.quantity] * l[com.zifiq.cashier.model.ProFormaLinesTable.unitPrice]
+            disc += l[com.zifiq.cashier.model.ProFormaLinesTable.lineDiscount]
+            net += l[com.zifiq.cashier.model.ProFormaLinesTable.lineNet]
+            vat += l[com.zifiq.cashier.model.ProFormaLinesTable.vatAmount]
+        }
+        SalesTable.update({ SalesTable.id eq id }) {
+            it[SalesTable.customerId] = customer.id
+            it[SalesTable.customerCode] = customer.code
+            it[SalesTable.customerName] = customer.name.take(200)
+            it[SalesTable.customerType] = customer.type.name
+            it[SalesTable.priceBasis] = pf[com.zifiq.cashier.model.ProFormasTable.priceBasis]
+            it[SalesTable.proFormaId] = request.proFormaId
+            it[SalesTable.grossAmount] = com.zifiq.common.money.Money.round(gross)
+            it[SalesTable.lineDiscountTotal] = com.zifiq.common.money.Money.round(disc)
+            it[SalesTable.instantDiscountTotal] = java.math.BigDecimal.ZERO
+            it[SalesTable.netAmount] = com.zifiq.common.money.Money.round(net)
+            it[SalesTable.vatEnabled] = pf[com.zifiq.cashier.model.ProFormasTable.vatEnabled]
+            it[SalesTable.vatRate] = pf[com.zifiq.cashier.model.ProFormasTable.vatRate]
+            it[SalesTable.vatAmount] = com.zifiq.common.money.Money.round(vat)
+            it[SalesTable.total] = com.zifiq.common.money.Money.round(net + vat)
+            it[version] = sale[SalesTable.version] + 1
+            it[updatedAt] = Instant.now()
+        }
+        views.view(id)
+    }
+
     fun list(filter: SaleFilter, paging: PageRequest): PageResult<SaleRow> = tx.execute {
         val status = filter.status?.uppercase() ?: "COMPLETED"
         val ref = filter.ref?.trim()?.uppercase()?.ifEmpty { null }
@@ -198,8 +264,11 @@ class SaleService(
         return pricing.price(locationId, dealer, inputs, support.today(), vat) to vat
     }
 
-    internal fun writeCart(sale: ResultRow, lines: List<PricedSaleLine>, vat: VatSetting, dealer: Boolean) =
+    internal fun writeCart(sale: ResultRow, lines: List<PricedSaleLine>, vat: VatSetting, dealer: Boolean) {
         pricing.write(sale[SalesTable.id].value, support.tenantId(), lines, vat, dealer)
+        // A live Instant Discount is re-allocated over the new cart (or lapses if it no longer fits).
+        discounts.reapply(sale[SalesTable.id].value)
+    }
 
     internal fun currentInputs(id: UUID): List<Pair<UUID, BigDecimal>> =
         SaleLinesTable.select(SaleLinesTable.stockItemId, SaleLinesTable.quantity).where { SaleLinesTable.saleId eq id }.orderBy(SaleLinesTable.lineNo)

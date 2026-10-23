@@ -1,6 +1,6 @@
 # 09 — Sales & POS Module
 
-Status: **in progress** — slices 1 and 2 are implemented. Slice 1 (V15): till sessions, the POS cart and checkout, void, receipt, invoice on request. Slice 2 (V15_1): deliver-later — stock reservations, customer waybills, and the Pending Supply report. Slice 3 (next): Instant Discount, pro-formas, and the Sales/Customer-activity reports and advanced search of §4.3/§4.4/§4.6/§9.
+Status: **implemented** (three slices). Slice 1 (V15): till sessions, the POS cart and checkout, void, receipt, invoice on request. Slice 2 (V15_1): deliver-later — stock reservations, customer waybills, and the Pending Supply report. Slice 3 (V15_2): Instant Discount, pro-forma invoices (with conversion and load-into-sale), and the Sales Report and Customers/Distributors Comprehensive report. Not built: the full §9 advanced-search framework (POST …/search, facets, saved views, exports) — the list endpoints ship with `q` + filters but not that whole framework; and the `cashier::spi` supply/line history (§5), which lands with its consumers (docs 10/12/13).
 
 **Implementation notes (slice 1), where the build differs from or adds to the design below:**
 - Migration is `V15__sales_pos_tills_and_sales.sql` (V13 was taken by the scale pass). It adds the four new stock-ledger source types for all slices, `till_sessions`, `sales`, `sale_lines`, `sale_payments`, tenant-scoped composite foreign keys (V14_9) and the slice-1 permissions (`cashier.sales.read-all`, `.void`, `cashier.credit.override`, `cashier.till.supervise`).
@@ -31,6 +31,15 @@ Replaces: the mock `CashierService` (`getSalesReport`, `generateProForma`, `gene
 - **Void** now cancels the sale's open reservations and is refused once any `ISSUED`/`DELIVERED` waybill exists for the sale (cancel them first).
 - Two new reference kinds, `SALE` and `CUSTOMER_WAYBILL`, so a response points at a sale or a waybill as a resolved object, never a bare id (the sale-line id on the supply-lookup line is the one documented exception — the client sends it back to release against).
 - The §5 `cashier::spi` (supply history for docs 10/12/13) is not built yet; it arrives when its consumers do.
+
+
+**Implementation notes (slice 3), where the build differs from or adds to the design below:**
+- Migration `V15_2__sales_pos_discounts_and_proformas.sql`: `instant_discounts`, `pro_formas` / `pro_forma_lines`, the module settings (`cashier.instantDiscount.ceilingPct` 10, `cashier.proForma.defaultValidityDays` 7) and the permissions `cashier.discount.apply` (Administrator), `cashier.discount.approve` (Management), `cashier.pro-forma.manage` (Cashier, Accounts).
+- **Instant Discount** (§4.3): an open sale's discount, allocated pro-rata across the lines (VAT recomputed per line), applied at once within the ceiling or sent to Management above it. Completion is blocked while one is `PENDING_APPROVAL`. It is re-allocated on every cart change and **lapses** if the new base can't bear it; an applied discount lapses on void. **No live stream** — SSE is banned by the CVE-2026-47890 exception, so the till polls the sale's `version`, which every discount decision bumps (`GET /sales/{id}`).
+- **Pro-formas** (§4.4): quotations that commit no stock. Create/edit (DRAFT)/send/decline/cancel/reissue, with a line-discount approval step above the ceiling; a daily job expires sent pro-formas past their validity. **Convert** (needs `cashier.pro-forma.manage` + `invoicing.invoice.issue`) makes a `PRO_FORMA_ORDER` sale, reserves every line, and issues (or drafts) the invoice on account; **load-pro-forma** copies a sent, valid pro-forma into an open till sale at its quoted prices (completion marks it `CONVERTED`). Pro-forma-priced lines are never re-priced at checkout.
+- **Reports** (§4.6): the daily **Sales Report** (one row per day and showroom, totals and stats) and **Customers/Distributors Comprehensive** (per-sale rows with the payment breakdown by method and waybill refs); both exclude voided/abandoned sales and are capped at a 366-day range.
+- Shared: `common.tax.LineAmounts` prices pro-forma lines too; two reference kinds `SALE` and `CUSTOMER_WAYBILL` (added in slice 2) keep responses reference-only.
+- **Deferred:** the §9 advanced-search framework (POST `…/search`, `/filters` metadata, facets, saved views, identical-filter exports) is not built — the new lists expose `q` and filter params but not that framework; the `cashier::spi` (§5) arrives with docs 10/12/13.
 
 ## 1. Scope
 
