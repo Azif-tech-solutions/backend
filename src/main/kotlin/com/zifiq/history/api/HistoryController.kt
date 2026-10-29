@@ -4,6 +4,7 @@ import com.zifiq.common.filter.ListSearchRequest
 import com.zifiq.history.service.ExpensesHistoryService
 import com.zifiq.history.service.StockMovementHistoryService
 import com.zifiq.history.service.WalletWithdrawalHistoryService
+import com.zifiq.history.service.WaybillHistoryService
 import com.zifiq.platform.api.ApiEnvelope
 import java.time.LocalDate
 import java.util.UUID
@@ -22,6 +23,7 @@ class HistoryController(
     private val stockMovements: StockMovementHistoryService,
     private val walletWithdrawals: WalletWithdrawalHistoryService,
     private val expenses: ExpensesHistoryService,
+    private val waybillHistory: WaybillHistoryService,
 ) : HistoryApi {
     @GetMapping("/stock-movements")
     @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'history.stock-movements.read')")
@@ -54,4 +56,18 @@ class HistoryController(
         @RequestParam(required = false) page: Int?,
         @RequestParam(required = false) size: Int?,
     ) = ApiEnvelope(expenses.list(from, to, categoryId, method, locationId, status, q, page, size))
+
+    @GetMapping("/waybills")
+    @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'history.waybills.read')")
+    override fun waybills(
+        @RequestParam(required = false) invoice: String?,
+        @RequestParam(required = false) customerId: UUID?,
+        @RequestParam(required = false) driverId: UUID?,
+        @RequestParam(required = false) locationId: UUID?,
+        @RequestParam(required = false) status: String?,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate?,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate?,
+        @RequestParam(required = false) page: Int?,
+        @RequestParam(required = false) size: Int?,
+    ) = ApiEnvelope(waybillHistory.history(invoice, customerId, driverId, locationId, status, from, to, page, size))
 }

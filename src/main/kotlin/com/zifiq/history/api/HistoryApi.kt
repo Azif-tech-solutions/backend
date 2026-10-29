@@ -5,6 +5,7 @@ import com.zifiq.common.paging.PageResult
 import com.zifiq.history.dto.ExpenseHistoryRow
 import com.zifiq.history.dto.StockMovementHistoryRow
 import com.zifiq.history.dto.WalletWithdrawalHistoryRow
+import com.zifiq.history.dto.WaybillHistoryResult
 import com.zifiq.platform.api.ApiEnvelope
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
@@ -45,4 +46,17 @@ interface HistoryApi {
         page: Int?,
         size: Int?,
     ): ApiEnvelope<PageResult<ExpenseHistoryRow>>
+
+    @Operation(summary = "Waybill History: the supply history of one invoice, or a page of invoices in a date range")
+    fun waybills(
+        invoice: String?,
+        customerId: UUID?,
+        driverId: UUID?,
+        locationId: UUID?,
+        status: String?,
+        from: LocalDate?,
+        to: LocalDate?,
+        page: Int?,
+        size: Int?,
+    ): ApiEnvelope<WaybillHistoryResult>
 }
