@@ -10,6 +10,8 @@ import com.zifiq.platform.tenancy.TenantContext
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.UUID
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.selectAll
 import org.springframework.stereotype.Component
 
 /**
@@ -42,6 +44,19 @@ class HistorySupport(
 
     /** Landing/unit-cost and value columns are shown only to holders of `factory.costing.read` (doc 03 §14). */
     fun costVisible(): Boolean = can(COSTING_READ)
+
+    /** Holds the tenant's Administrator role (the two-person conclude rule in §4.4 exempts an Administrator). */
+    fun isAdministrator(): Boolean =
+        com.zifiq.platform.accesscontrol.model.UserRoleAssignmentsTable
+            .join(com.zifiq.platform.accesscontrol.model.TenantRolesTable, org.jetbrains.exposed.sql.JoinType.INNER,
+                com.zifiq.platform.accesscontrol.model.UserRoleAssignmentsTable.roleId, com.zifiq.platform.accesscontrol.model.TenantRolesTable.id)
+            .selectAll()
+            .where {
+                (com.zifiq.platform.accesscontrol.model.UserRoleAssignmentsTable.tenantId eq tenantId()) and
+                    (com.zifiq.platform.accesscontrol.model.UserRoleAssignmentsTable.userId eq userId()) and
+                    (com.zifiq.platform.accesscontrol.model.TenantRolesTable.name eq com.zifiq.platform.accesscontrol.RoleDefaults.ADMINISTRATOR)
+            }
+            .any()
 
     fun filterContext(): FilterContext = FilterContext(costVisible = costVisible(), zone = zone())
 

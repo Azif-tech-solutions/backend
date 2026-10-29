@@ -14,5 +14,6 @@ object Json {
 
     fun write(value: Any?): String = mapper.writeValueAsString(value)
     fun readMap(json: String): Map<String, Any?> = mapper.readValue(json)
+    fun readList(json: String): List<Map<String, Any?>> = mapper.readValue(json)
     fun readTree(json: String): JsonNode = mapper.readTree(json)
 }

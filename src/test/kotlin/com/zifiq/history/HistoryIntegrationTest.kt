@@ -4,10 +4,18 @@ import com.zifiq.common.errors.ErrorCode
 import com.zifiq.platform.api.ApiException
 import com.zifiq.common.filter.ListSearchRequest
 import com.zifiq.history.dto.AuditReviewUpsertRequest
+import com.zifiq.history.dto.ViolationConcludeRequest
+import com.zifiq.history.dto.ViolationRaiseRequest
 import com.zifiq.history.service.ActivityLogService
+import com.zifiq.history.service.AuditAlertService
+import com.zifiq.history.service.AuditDetectors
 import com.zifiq.history.service.AuditReviewService
+import com.zifiq.history.service.HistorySettings
 import com.zifiq.history.service.HistorySupport
 import com.zifiq.history.service.StockMovementHistoryService
+import com.zifiq.history.service.ViolationService
+import com.zifiq.platform.events.DomainEventRecord
+import com.zifiq.platform.numbering.DocumentSequenceService
 import com.zifiq.inventory.repository.StockLedgerRepository
 import com.zifiq.platform.PostgresIntegrationTest
 import com.zifiq.platform.events.DomainEvents
@@ -82,7 +90,7 @@ class HistoryIntegrationTest : PostgresIntegrationTest() {
     private val tx = TenantScopedTransaction(database, tenantContext)
     private val actors = CurrentActorProvider(tenantContext)
     private val permissions = PermissionAuthorizer(actors, tx)
-    private val moduleSettings = ModuleSettings(listOf(PlatformSettings()), tenantContext)
+    private val moduleSettings = ModuleSettings(listOf(PlatformSettings(), HistorySettings()), tenantContext)
     private val events = DomainEvents(tenantContext, actors)
     private val locationAccess = LocationAccessService(actors)
     private val notify = Notify(tenantContext, Recipients(tenantContext))
@@ -90,6 +98,10 @@ class HistoryIntegrationTest : PostgresIntegrationTest() {
     private val reviews = AuditReviewService(support, tx)
     private val activity = ActivityLogService(support, tx)
     private val movements = StockMovementHistoryService(support, tx, CostVisibility())
+    private val sequences = DocumentSequenceService(actors, tx)
+    private val violations = ViolationService(support, tx, sequences, notify)
+    private val alerts = AuditAlertService(support, tx, violations, notify)
+    private val detectors = AuditDetectors(support, alerts)
     private val stockLedger = StockLedgerRepository(notify)
     private val today: LocalDate = LocalDate.now()
 
@@ -150,5 +162,53 @@ class HistoryIntegrationTest : PostgresIntegrationTest() {
         assertThat(keeperRow.quantity).isEqualByComparingTo("100")
         assertThat(keeperRow.unitCost).isEqualByComparingTo("0")
         assertThat(keeperRow.value).isEqualByComparingTo("0")
+    }
+
+    @Test
+    fun `violation record respects self-exclusion and the raise-against-self rule`() {
+        signIn(admin)
+        val detail = violations.raise(ViolationRaiseRequest(
+            subjectUserId = keeper, locationId = factory, category = "CASH_SHORTAGE",
+            description = "Till came up short at the end of the shift and could not be explained",
+            amountInvolved = BigDecimal("8000"), severity = "MEDIUM",
+        ))
+        assertThat(detail.status).isEqualTo("UNDER_INVESTIGATION")
+        assertThat(detail.events.map { it.kind }).contains("RAISED")
+
+        // Can't raise against yourself.
+        assertThatThrownBy {
+            violations.raise(ViolationRaiseRequest(subjectUserId = admin, category = "OTHER", description = "x".repeat(25), severity = "LOW"))
+        }.isInstanceOf(ApiException::class.java).extracting { (it as ApiException).code }.isEqualTo(ErrorCode.CANNOT_RAISE_AGAINST_SELF)
+
+        // The admin sees the record; the subject (keeper) never does.
+        assertThat(violations.list(ListSearchRequest()).items.map { it.id }).contains(detail.id)
+        signIn(keeper)
+        assertThat(violations.list(ListSearchRequest()).items.map { it.id }).doesNotContain(detail.id)
+
+        // Conclude (admin is the raiser but is exempt from the two-person rule).
+        signIn(admin)
+        val concluded = violations.conclude(detail.id, ViolationConcludeRequest("RESOLVED", "Miscount; cash found in the vault bag and lodged"))
+        assertThat(concluded.status).isEqualTo("RESOLVED")
+        assertThat(concluded.events.map { it.kind }).contains("CONCLUDED")
+    }
+
+    @Test
+    fun `a till-variance event over the threshold raises an audit alert`() {
+        signIn(admin)
+        val event = DomainEventRecord(
+            id = UUID.randomUUID(), tenantId = tenantId, eventType = "cashier.till.variance", aggregateType = "till-session",
+            aggregateId = UUID.randomUUID(), aggregateRef = "T-99", locationId = factory, actorUserId = keeper, actorLabel = null,
+            occurredAt = java.time.Instant.now(), payload = mapOf("variance" to BigDecimal("-8000")), summary = "T-99 closed with a variance", txid = 1, seq = 1,
+        )
+        tx.executeForTenant(tenantId) { detectors.handle(event) }
+        signIn(admin)
+        val open = alerts.list(ListSearchRequest())
+        val alert = open.items.first { it.ruleCode == "TILL_VARIANCE" }
+        assertThat(alert.status).isEqualTo("OPEN")
+        assertThat(alert.amount).isEqualByComparingTo("8000")
+
+        // Dedupe: the same trigger does not alert twice.
+        tx.executeForTenant(tenantId) { detectors.handle(event) }
+        assertThat(alerts.list(ListSearchRequest()).items.count { it.ruleCode == "TILL_VARIANCE" }).isEqualTo(1)
     }
 }
