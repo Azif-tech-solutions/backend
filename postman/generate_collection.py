@@ -3220,6 +3220,74 @@ ep(P, "D2 Till Sessions", "GET", "/api/v1/cashier/till-sessions", query=[{"key":
    resp={"data": {"items": [dict(TILL_SESSION, status="CLOSED", running=None)], "page": 0, "size": 20, "totalItems": 1, "totalPages": 1}},
    desc="Own sessions unless cashier.sales.read-all. Filters: locationId, cashierUserId, status, from/to (opened), withVarianceOnly.")
 
+# 20 - Audit & Compliance (docs/10, slice 1): the read layer over every module's records.
+AU = "20 - Audit & Compliance"
+
+ep(AU, "A1 Stock Movement History", "GET", "/api/v1/history/stock-movements",
+   query=[{"key": "page", "value": "0"}, {"key": "size", "value": "20"}],
+   resp={"data": {"items": [{"date": "2026-10-01", "ref": "RF-1", "product": REF("stockItem", "{{finishedProductId}}"),
+                             "location": REF("location", "{{factoryId}}"), "source": "Stock Refill", "sourceType": "REFILL",
+                             "direction": "IN", "quantity": 100.0, "recordedBy": USER, "unitCost": 1000.00, "value": 100000.00, "remark": None}],
+                  "page": 0, "size": 20, "totalItems": 1, "totalPages": 1, "summary": {"movements": 1, "quantityIn": 100.0, "quantityOut": 0.0, "adjustments": 0}}},
+   desc="Perm history.stock-movements.read. The long-range, all-locations stock ledger. Filters: stockItemId, categoryId, itemType, locationId, sourceType, direction, recordedBy, from/to, q. unitCost/value are zeroed without factory.costing.read. Stats come from SQL aggregates. GET /history/stock-movements/filters lists the filter grammar.")
+
+ep(AU, "A2 Wallet Withdrawal History", "GET", "/api/v1/history/wallet-withdrawals",
+   query=[{"key": "page", "value": "0"}, {"key": "size", "value": "20"}],
+   resp={"data": {"items": [{"ref": "WW-1", "date": "2026-10-12", "dealer": REF("customer", "{{dealerId}}"), "dealerCode": "DLR-1",
+                             "initiatedBy": "DEALER", "reason": "DEALER_REQUEST", "balanceBefore": 50000.00, "amount": 20000.00, "balanceAfter": 30000.00,
+                             "payoutKind": "BANK", "paidVia": "Transfer to Access 0123456789", "otp": "Verified", "processedBy": USER, "authorisedBy": None,
+                             "status": "COMPLETED", "auditReview": None, "breach": False}],
+                  "page": 0, "size": 20, "totalItems": 1, "totalPages": 1,
+                  "summary": {"totalWithdrawn": 20000.00, "dealerInitiated": 20000.00, "companyInitiated": 0.00, "count": 1, "underReview": 0}}},
+   desc="Perm history.wallet-withdrawals.read. The account module's withdrawals (through its SPI), with the audit-review badge and the breach flag (balanceAfter<0 or a dealer request with no verified OTP). Filters delegate to GET /history/wallet-withdrawals/filters.")
+
+ep(AU, "A3 Expenses / Payment Report", "GET", "/api/v1/history/expenses",
+   query=[{"key": "from", "value": "2026-01-01"}, {"key": "to", "value": "2026-12-31"}],
+   resp={"data": {"items": [{"date": "2026-10-05", "ref": "OC-1", "purpose": "Generator diesel", "category": REF("expenseCategory", "{{expenseCategoryId}}"),
+                             "payee": "Total Filling Station", "method": "BANK_TRANSFER", "approvedBy": "Ada Admin", "status": "APPROVED",
+                             "amount": 45000.00, "inputVat": 0.00, "source": "RUNNING_COST"}],
+                  "page": 0, "size": 20, "totalItems": 1, "totalPages": 1,
+                  "summary": {"totalExpenditure": 45000.00, "approvedEntries": 1, "categoriesUsed": 1,
+                              "largestCategory": {"name": "Utilities", "total": 45000.00}, "pendingApproval": {"count": 0, "amount": 0.00},
+                              "byCategory": [{"category": "Utilities", "count": 1, "total": 45000.00}], "byMethod": [{"method": "BANK_TRANSFER", "count": 1, "total": 45000.00}]}}},
+   desc="Perm history.expenses.read. Running costs + petty-cash payments in a date range (required, <=366 days: RANGE_TOO_LARGE otherwise). Only APPROVED entries count toward the totals and groups. Filters: categoryId, method, locationId, status, q.")
+
+ep(AU, "A4 Waybill History", "GET", "/api/v1/history/waybills",
+   query=[{"key": "from", "value": "2026-01-01"}, {"key": "to", "value": "2026-12-31"}],
+   resp={"data": {"invoices": [{"invoice": {"number": "INV-1", "saleRef": "TXN-1", "date": "2026-10-10", "sale": REF("sale", "{{saleId}}"), "customer": REF("customer", "{{dealerId}}")},
+                               "stats": {"quantityInvoiced": 200.0, "quantitySupplied": 170.0, "fulfilledPct": 85, "stillOutstanding": 30.0, "waybillsRaised": 2, "deliveryPattern": "Multi-delivery"},
+                               "rows": [{"waybill": "WB-1", "supplyDate": "2026-10-11", "product": REF("stockItem", "{{finishedProductId}}"), "ordered": 200.0,
+                                         "qtySupplied": 120.0, "outstanding": 80.0, "driver": None, "receivedBy": "K. Okafor", "status": "Delivered"}]}],
+                  "page": 0, "size": 20, "totalItems": 1, "totalPages": 1}},
+   desc="Perm history.waybills.read. The supply history of a sales invoice: pass invoice=<INV or TXN ref> for one invoice, or from/to for a page of invoices. The running outstanding is stored on each waybill line.")
+
+ep(AU, "A5 Activity Log", "GET", "/api/v1/audit/activity",
+   query=[{"key": "page", "value": "0"}, {"key": "size", "value": "20"}],
+   resp={"data": {"items": [{"occurredAt": NOW, "eventType": "cashier.sale.completed", "summary": "TXN-1 completed", "ref": "TXN-1",
+                             "aggregateType": "sale", "location": REF("location", "{{showroomId}}"), "actor": USER, "actorLabel": None, "payload": {}}],
+                  "page": 0, "size": 20, "totalItems": 1, "totalPages": 1}},
+   desc="Perm platform.activity.read. The business-event trail from domain_events. Filters: module (event-type prefix), eventType, actorUserId, aggregateType, ref, locationId, costAccessOnly, from/to, q. GET /audit/activity/entity?aggregateType=&aggregateId= gives one record's full timeline. history.violation.* events are hidden without history.violations.read.")
+
+ep(AU, "A6 Set Audit Review", "PUT", "/api/v1/audit/reviews",
+   body={"recordType": "WALLET_WITHDRAWAL", "recordId": "{{withdrawalId}}", "recordRef": "WW-1", "status": "UNDER_REVIEW", "note": "Confirming the dealer authorised this"},
+   resp={"data": {"id": "{{auditReviewId}}", "recordType": "WALLET_WITHDRAWAL", "recordId": "{{withdrawalId}}", "recordRef": "WW-1",
+                  "status": "UNDER_REVIEW", "note": "Confirming the dealer authorised this", "reviewer": USER, "updatedAt": NOW, "createdAt": NOW}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('auditReviewId', json.data.id);",
+          "pm.test('under review', () => pm.expect(json.data.status).to.eql('UNDER_REVIEW'));"],
+   desc="Perm history.reviews.manage. One review state per record (recordType + recordId); FLAGGED requires a note. The change is written to the activity log as history.review.updated.")
+
+ep(AU, "A7 Audit Reviews", "GET", "/api/v1/audit/reviews",
+   query=[{"key": "page", "value": "0"}, {"key": "size", "value": "20"}],
+   resp={"data": {"items": [{"id": "{{auditReviewId}}", "recordType": "WALLET_WITHDRAWAL", "recordId": "{{withdrawalId}}", "recordRef": "WW-1",
+                             "status": "UNDER_REVIEW", "note": "Confirming the dealer authorised this", "reviewer": USER, "updatedAt": NOW, "createdAt": NOW}],
+                  "page": 0, "size": 20, "totalItems": 1, "totalPages": 1}},
+   desc="Perm history.reviews.manage. Filters: recordType, status, reviewerUserId, from/to. GET /audit/reviews/filters lists them.")
+
+ep(AU, "A8 Review Badge Lookup", "GET", "/api/v1/audit/reviews/lookup",
+   query=[{"key": "recordType", "value": "WALLET_WITHDRAWAL"}, {"key": "recordIds", "value": "{{withdrawalId}}"}],
+   resp={"data": [{"recordId": "{{withdrawalId}}", "status": "UNDER_REVIEW", "note": "Confirming the dealer authorised this", "reviewer": USER, "updatedAt": NOW}]},
+   desc="Perm history.reviews.manage. The review badge for records a screen already holds (batch); used by report rows and detail screens.")
+
 def pm_url(path, query):
     full = "{{baseUrl}}" + path
     parts = [p for p in path.split("/") if p]
@@ -3396,7 +3464,7 @@ def build_collection():
     collection = {
         "info": {
             "name": "ZifIQ Backend API",
-            "description": "Test collection for the ZifIQ Kotlin/Spring Boot backend: every module with real persistence and business logic (Auth, Tenants & Members, OTP, VAT Control, Settings, Factory, Inventory, NRS Reference Data, Customers, Documents & Files, Showroom, Finance & Accounting, Electronic Invoicing, Sales & POS). Modules still returning mock data (AI, Barcode, History, Process Guide) are left out until they are built. Run the folders top to bottom, 01 through 19: each request's Tests script captures IDs and tokens into collection variables that later requests reuse, so the whole collection runs end to end in the Collection Runner or Newman with no manual edits. See docs/ in the backend repo for the design each module implements.",
+            "description": "Test collection for the ZifIQ Kotlin/Spring Boot backend: every module with real persistence and business logic (Auth, Tenants & Members, OTP, VAT Control, Settings, Factory, Inventory, NRS Reference Data, Customers, Documents & Files, Showroom, Finance & Accounting, Electronic Invoicing, Sales & POS, Audit & Compliance). Modules still returning mock data (AI, Barcode, Process Guide) are left out until they are built. Run the folders top to bottom, 01 through 20: each request's Tests script captures IDs and tokens into collection variables that later requests reuse, so the whole collection runs end to end in the Collection Runner or Newman with no manual edits. See docs/ in the backend repo for the design each module implements.",
             "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
         },
         "auth": BEARER_AUTH,

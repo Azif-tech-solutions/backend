@@ -10,6 +10,14 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `app_users_display_name_trgm` | gin | f_unaccent(lower((display_name)::text)) gin_trgm_ops |  |
 | `app_users_email_key` | unique | email |  |
 
+### `audit_reviews`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `audit_reviews_pkey` | primary key | id |  |
+| `audit_reviews_list_idx` | btree | tenant_id, record_type, status, updated_at DESC |  |
+| `audit_reviews_record_uq` | unique | tenant_id, record_type, record_id |  |
+
 ### `bank_accounts`
 
 | Index | Kind | Columns / expression | Only rows where |
