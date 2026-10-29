@@ -49,6 +49,11 @@ object RoleDefaults {
             "cashier.till.supervise",
             "cashier.supply.read",
             "cashier.discount.approve",
+            "history.waybills.read",
+            "history.expenses.read",
+            "history.stock-movements.read",
+            "history.wallet-withdrawals.read",
+            "history.reviews.manage",
         ),
         ACCOUNTS_PERSONNEL to setOf(
             "accounting.read",
@@ -93,6 +98,10 @@ object RoleDefaults {
             "inventory.pricing.read",
             "showroom.stock.read",
             "showroom.returns.read",
+            "history.waybills.read",
+            "history.expenses.read",
+            "history.stock-movements.read",
+            "history.wallet-withdrawals.read",
         ),
         STOCK_KEEPER to setOf(
             "inventory.stock.read",
@@ -110,6 +119,8 @@ object RoleDefaults {
             "showroom.intake.manage",
             "showroom.returns.manage",
             "showroom.returns.read",
+            "history.waybills.read",
+            "history.stock-movements.read",
         ),
         QUALITY_CONTROL to setOf(
             "inventory.stock.read",
