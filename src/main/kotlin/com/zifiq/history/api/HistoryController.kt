@@ -2,6 +2,7 @@ package com.zifiq.history.api
 
 import com.zifiq.common.filter.ListSearchRequest
 import com.zifiq.history.service.StockMovementHistoryService
+import com.zifiq.history.service.WalletWithdrawalHistoryService
 import com.zifiq.platform.api.ApiEnvelope
 import org.springdoc.core.annotations.ParameterObject
 import org.springframework.security.access.prepost.PreAuthorize
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/api/v1/history")
 class HistoryController(
     private val stockMovements: StockMovementHistoryService,
+    private val walletWithdrawals: WalletWithdrawalHistoryService,
 ) : HistoryApi {
     @GetMapping("/stock-movements")
     @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'history.stock-movements.read')")
@@ -24,4 +26,13 @@ class HistoryController(
     @GetMapping("/stock-movements/filters")
     @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'history.stock-movements.read')")
     override fun stockMovementFilters() = ApiEnvelope(stockMovements.filterMetadata())
+
+    @GetMapping("/wallet-withdrawals")
+    @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'history.wallet-withdrawals.read')")
+    override fun walletWithdrawals(@ParameterObject @RequestParam query: MultiValueMap<String, String>) =
+        ApiEnvelope(walletWithdrawals.list(ListSearchRequest.fromQuery(query)))
+
+    @GetMapping("/wallet-withdrawals/filters")
+    @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'history.wallet-withdrawals.read')")
+    override fun walletWithdrawalFilters() = ApiEnvelope(walletWithdrawals.filterMetadata())
 }
