@@ -2,12 +2,15 @@ package com.zifiq.history.api
 
 import com.zifiq.common.filter.FilterMetadata
 import com.zifiq.common.paging.PageResult
+import com.zifiq.history.dto.ExpenseHistoryRow
 import com.zifiq.history.dto.StockMovementHistoryRow
 import com.zifiq.history.dto.WalletWithdrawalHistoryRow
 import com.zifiq.platform.api.ApiEnvelope
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
+import java.time.LocalDate
+import java.util.UUID
 import org.springframework.util.MultiValueMap
 
 /**
@@ -29,4 +32,17 @@ interface HistoryApi {
 
     @Operation(summary = "Filters the wallet-withdrawal history accepts")
     fun walletWithdrawalFilters(): ApiEnvelope<FilterMetadata>
+
+    @Operation(summary = "Expenses / Payment Reports: running costs and petty-cash payments in a date range (≤ 366 days)")
+    fun expenses(
+        from: LocalDate,
+        to: LocalDate,
+        categoryId: UUID?,
+        method: String?,
+        locationId: UUID?,
+        status: String?,
+        q: String?,
+        page: Int?,
+        size: Int?,
+    ): ApiEnvelope<PageResult<ExpenseHistoryRow>>
 }
