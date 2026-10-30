@@ -3,6 +3,9 @@
 -- records raised against a member of staff, an append-only investigation trail, and the system
 -- alerts that detectors raise from other modules' events (a person decides whether an alert becomes
 -- a record — PRD rule 13).
+--
+-- References between tenant records are tenant-scoped composite keys (V14_9); references to
+-- app_users (which has no tenant_id) stay single-column.
 -- =============================================================================================
 
 create table violation_records (
@@ -10,7 +13,7 @@ create table violation_records (
     tenant_id uuid not null references tenants(id),
     ref varchar(20) not null,                              -- VN-n
     subject_user_id uuid not null references app_users(id),
-    location_id uuid references locations(id),
+    location_id uuid,
     category varchar(30) not null check (category in (
         'DEALER_FUNDS_TAMPERING', 'UNAUTHORISED_WITHDRAWAL', 'CASH_SHORTAGE', 'STOCK_DISCREPANCY',
         'UNAUTHORISED_DISCOUNT', 'RECEIPT_MANIPULATION', 'DATA_MANIPULATION', 'POLICY_BREACH', 'OTHER')),
@@ -30,8 +33,10 @@ create table violation_records (
     concluded_at timestamptz,
     search_vector tsvector generated always as (to_tsvector('simple', ref || ' ' || description)) stored,
     constraint violation_records_ref_uq unique (tenant_id, ref),
+    constraint violation_records_location_fkey foreign key (tenant_id, location_id) references locations (tenant_id, id),
     constraint vr_concluded check ((status = 'UNDER_INVESTIGATION') = (conclusion is null))
 );
+create unique index violation_records_tenant_id_key on violation_records (tenant_id, id);
 create index vr_subject_idx on violation_records (tenant_id, subject_user_id, raised_at desc);
 create index vr_location_idx on violation_records (tenant_id, location_id, status);
 create index vr_search_idx on violation_records using gin (search_vector);
@@ -40,13 +45,14 @@ create index vr_linked_refs_idx on violation_records using gin (linked_refs json
 create table violation_record_events (                    -- append-only investigation trail
     id uuid primary key default gen_random_uuid(),
     tenant_id uuid not null references tenants(id),
-    violation_record_id uuid not null references violation_records(id),
+    violation_record_id uuid not null,
     kind varchar(20) not null check (kind in ('RAISED', 'NOTE', 'SEVERITY_CHANGED', 'AMOUNT_CHANGED', 'CONCLUDED', 'REOPENED')),
     from_value varchar(60),
     to_value varchar(60),
     note varchar(2000),
     by_user_id uuid not null references app_users(id),
-    at timestamptz not null default now()
+    at timestamptz not null default now(),
+    constraint vre_record_fkey foreign key (tenant_id, violation_record_id) references violation_records (tenant_id, id) on delete cascade
 );
 create index vre_record_idx on violation_record_events (tenant_id, violation_record_id, at);
 
@@ -55,7 +61,7 @@ create table audit_alerts (
     tenant_id uuid not null references tenants(id),
     rule_code varchar(40) not null,
     subject_user_id uuid references app_users(id),
-    location_id uuid references locations(id),
+    location_id uuid,
     summary varchar(300) not null,
     amount numeric(14,2),
     evidence jsonb not null default '{}'::jsonb,
@@ -63,10 +69,12 @@ create table audit_alerts (
     decided_by_user_id uuid references app_users(id),
     decided_at timestamptz,
     dismiss_reason varchar(300),
-    opened_record_id uuid references violation_records(id),
+    opened_record_id uuid,
     dedupe_key varchar(120) not null,                      -- rule_code + source ref; the same trigger never alerts twice
     created_at timestamptz not null default now(),
-    constraint audit_alerts_dedupe_uq unique (tenant_id, dedupe_key)
+    constraint audit_alerts_dedupe_uq unique (tenant_id, dedupe_key),
+    constraint audit_alerts_location_fkey foreign key (tenant_id, location_id) references locations (tenant_id, id),
+    constraint audit_alerts_opened_record_fkey foreign key (tenant_id, opened_record_id) references violation_records (tenant_id, id)
 );
 create index audit_alerts_open_idx on audit_alerts (tenant_id, status, created_at desc);
 create index audit_alerts_rule_idx on audit_alerts (tenant_id, rule_code, created_at desc);
