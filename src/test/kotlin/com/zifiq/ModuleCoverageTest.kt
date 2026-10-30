@@ -4,7 +4,6 @@ import com.zifiq.ai.dto.AssistantQueryRequest
 import com.zifiq.ai.service.AiOperationsService
 import com.zifiq.barcode.dto.BarcodeScanRequest
 import com.zifiq.barcode.service.BarcodeQrService
-import com.zifiq.history.service.HistoryService
 import com.zifiq.platform.accesscontrol.RoleAssignmentService
 import com.zifiq.platform.notifications.EmailNotificationAdapter
 import com.zifiq.platform.notifications.NotificationMessage
@@ -44,13 +43,6 @@ class ModuleCoverageTest {
     fun `process guide service lists commission rules`() {
         val service = ProcessGuideService()
         assertFalse(service.getCommissionRules().isEmpty())
-    }
-
-    @Test
-    fun `history service provides audit trails`() {
-        val service = HistoryService()
-        assertFalse(service.getWaybillHistory().isEmpty())
-        assertFalse(service.getFraudViolations().isEmpty())
     }
 
     @Test

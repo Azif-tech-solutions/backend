@@ -79,7 +79,7 @@ class WalletMoneyService(
     private val walletLedger: WalletLedger,
     private val otp: OtpChallengeService,
     private val permissions: PermissionAuthorizer,
-) : ReceiptSourceHandler {
+) : ReceiptSourceHandler, com.zifiq.account.spi.WalletWithdrawalQueries {
     // ---- Funding (§4.12) ----
 
     fun fund(request: WalletFundingRequest): WalletFundingRow = tx.execute {
@@ -305,6 +305,41 @@ class WalletMoneyService(
     }
 
     fun withdrawalFilterMetadata(): FilterMetadata = tx.execute { withdrawalFilters.metadata(support.filterContext()) }
+
+    // ---- SPI for Audit's Wallet Withdrawal History (docs/10 §4.5) ----
+
+    override fun withdrawalAuditFilters(): FilterMetadata = withdrawalFilterMetadata()
+
+    override fun withdrawalsForAudit(request: com.zifiq.common.filter.ListSearchRequest): PageResult<com.zifiq.account.spi.WithdrawalAuditRow> = tx.execute {
+        val context = support.filterContext()
+        val parsed = withdrawalSearch.parse(request.q)
+        val condition = listOfNotNull(
+            WalletWithdrawalsTable.tenantId eq support.tenantId(),
+            support.visibleLocations()?.let { WalletWithdrawalsTable.locationId inList it },
+            withdrawalSearch.condition(parsed),
+            withdrawalFilters.fromParams(request.params, context),
+            withdrawalFilters.fromJson(request.filter, context),
+        ).allOf()!!
+        val sort = if (request.sort.isEmpty() && !parsed.isEmpty) withdrawalSearch.rank(parsed) + withdrawalFilters.sort(emptyList(), context) else withdrawalFilters.sort(request.sortParams, context)
+        val page = Paging.fetch(WalletWithdrawalsTable.selectAll().where(condition).orderBy(*sort.toTypedArray()), PageRequest.of(request.page, request.size)) { it }
+        val summary = if (request.summary) {
+            val all = WalletWithdrawalsTable.select(WalletWithdrawalsTable.initiatedBy, WalletWithdrawalsTable.amount, WalletWithdrawalsTable.auditStatus).where(condition).toList()
+                .filter { it[WalletWithdrawalsTable.auditStatus] != "REVERSED" }
+            fun sum(by: String?) = Money.round(all.filter { by == null || it[WalletWithdrawalsTable.initiatedBy] == by }.fold(BigDecimal.ZERO) { s, it -> s + it[WalletWithdrawalsTable.amount] })
+            mapOf("totalWithdrawn" to sum(null), "dealerInitiated" to sum("DEALER"), "companyInitiated" to sum("COMPANY"), "count" to page.totalItems)
+        } else null
+        page.withItems(page.items.map(::toAuditRow)).copy(summary = summary, meta = PageMeta(ignoredQualifiers = parsed.ignoredQualifiers))
+    }
+
+    private fun toAuditRow(r: ResultRow) = com.zifiq.account.spi.WithdrawalAuditRow(
+        id = r[WalletWithdrawalsTable.id].value, ref = r[WalletWithdrawalsTable.ref], date = r[WalletWithdrawalsTable.withdrawalDate],
+        customerId = r[WalletWithdrawalsTable.customerId], customerCode = r[WalletWithdrawalsTable.customerCode], customerName = r[WalletWithdrawalsTable.customerName],
+        initiatedBy = r[WalletWithdrawalsTable.initiatedBy], reason = r[WalletWithdrawalsTable.reason],
+        balanceBefore = r[WalletWithdrawalsTable.balanceBefore], amount = r[WalletWithdrawalsTable.amount], balanceAfter = r[WalletWithdrawalsTable.balanceAfter],
+        payoutKind = r[WalletWithdrawalsTable.payoutKind], paidVia = r[WalletWithdrawalsTable.paidVia],
+        otpVerified = r[WalletWithdrawalsTable.otpChallengeId] != null, processedByUserId = r[WalletWithdrawalsTable.createdByUserId],
+        authorisedByUserId = r[WalletWithdrawalsTable.authorisedByUserId], status = r[WalletWithdrawalsTable.auditStatus], locationId = r[WalletWithdrawalsTable.locationId],
+    )
 
     fun getWithdrawal(id: UUID): WalletWithdrawalRow = tx.execute { withdrawalRow(id) }
 

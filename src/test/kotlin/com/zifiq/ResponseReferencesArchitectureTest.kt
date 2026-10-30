@@ -31,6 +31,8 @@ class ResponseReferencesArchitectureTest {
         "DeliveryRow.invoiceId" to "each delivery row is the invoice itself (number, buyer and totals on the row)",
         // Polymorphic pointers that already carry their type and ref.
         "IssuedDocumentRow.sourceId" to "sourceModule/sourceType + ref describe it",
+        "AuditReviewRow.recordId" to "the reviewed record across modules; recordType + recordRef describe it",
+        "AuditReviewLookupRow.recordId" to "the reviewed record the caller already holds; recordType is the query",
         "StoredFileView.linkedId" to "linkedType describes it",
         "RunningCostView.payingAccountId" to "a cash or a bank account (method says which); payingAccount carries its code",
         // Session identity, external ids and one-time handles.

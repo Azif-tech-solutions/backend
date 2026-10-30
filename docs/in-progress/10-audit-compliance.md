@@ -1,10 +1,17 @@
 # 10 — Audit & Compliance Module
 
-Status: **design finalized, not yet implemented**
+Status: **in progress** — slice 1 (the read layer) is implemented; slices 2 and 3 are next.
 Owner package: `com.zifiq.history` (package name kept; module display name "Audit & Compliance")
 Depends on: `platform`, `common`, `inventory` (OPEN), `customers :: spi`, `account :: spi`, `invoicing :: spi`, `cashier :: spi`, `showroom :: spi`
 Depended on by: nobody (leaf). Reports (doc 13) and Dashboard (doc 14) read compliance figures through their own queries over the same sources, not through this module.
-Migration: `V14__audit_compliance_module.sql`
+Migration: `V16__audit_compliance_reviews.sql` (slice 1). The design named this `V14`, but V14/V14_x (debtor balances, indexes) and V15_x (Sales & POS) were taken, so the module's migrations land at V16, V16_1, V16_2. An unapplied migration is free to renumber.
+
+**Slice plan:**
+- **Slice 1 (V16) — implemented.** The read layer: Waybill History (§4.1), Expenses / Payment Reports (§4.2), Stock Movement History (§4.3), Wallet Withdrawal History (§4.5), the Activity log (§4.7) and Audit reviews (§4.11). Owns one table, `audit_reviews`; everything else is read through the owning modules' SPI (new `cashier::spi` for supply history; `account::spi` for withdrawals and expenses) or the OPEN inventory ledger / `domain_events` directly. Replaces the mock `HistoryService`.
+  - Where the build differs from the design below: the Activity log needs no new schema (`platform.activity.read` and the `domain_events` indexes already exist, V7_1). Each list uses the shipped GET-list + GET `/filters` convention (`ListSearchRequest`/`FilterSpec`/`SearchSpec`), not a separate `POST …/search`. Expenses and Waybill history are date-ranged reports (required `from`/`to`, ≤366 days) merged/grouped in bounded memory, not keyset-paged ledgers. Stock Movement stats are SQL aggregates. Petty-cash payments (no location column) are omitted from the Expenses report when it is location-scoped. The synthetic "Outstanding remainder" waybill row of §4.1 is not emitted (the stats still report `stillOutstanding`); `unit` is carried by the product reference rather than a separate column.
+- **Slice 2 (V16_1) — next.** Violations / Fraud History (§4.4): `violation_records` / `violation_record_events`, `audit_alerts`, and the event-consumer detectors.
+- **Slice 3 (V16_2) — after.** VAT compliance (§4.6), the Error Handler / data-quality scanner (§4.8), the Recycle Bin and product lifecycle (§4.9), and the integrity checks (§4.10).
+
 Replaces: the mock `HistoryService` (single hard-coded rows for waybill/expense/stock-movement/fraud/wallet history) and the `process` module's mock Error Handler and Recycle Bin.
 
 ---

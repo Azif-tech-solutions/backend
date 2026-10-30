@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "ZifIQ Backend API",
-    "description": "Test collection for the ZifIQ Kotlin/Spring Boot backend: every module with real persistence and business logic (Auth, Tenants & Members, OTP, VAT Control, Settings, Factory, Inventory, NRS Reference Data, Customers, Documents & Files, Showroom, Finance & Accounting, Electronic Invoicing, Sales & POS). Modules still returning mock data (AI, Barcode, History, Process Guide) are left out until they are built. Run the folders top to bottom, 01 through 19: each request's Tests script captures IDs and tokens into collection variables that later requests reuse, so the whole collection runs end to end in the Collection Runner or Newman with no manual edits. See docs/ in the backend repo for the design each module implements.",
+    "description": "Test collection for the ZifIQ Kotlin/Spring Boot backend: every module with real persistence and business logic (Auth, Tenants & Members, OTP, VAT Control, Settings, Factory, Inventory, NRS Reference Data, Customers, Documents & Files, Showroom, Finance & Accounting, Electronic Invoicing, Sales & POS, Audit & Compliance). Modules still returning mock data (AI, Barcode, Process Guide) are left out until they are built. Run the folders top to bottom, 01 through 20: each request's Tests script captures IDs and tokens into collection variables that later requests reuse, so the whole collection runs end to end in the Collection Runner or Newman with no manual edits. See docs/ in the backend repo for the design each module implements.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -2648,7 +2648,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"31e0ea55-67f0-4cd8-a037-019920a8b968\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"6ddfc123-7a26-4d82-9bde-1148a190c21e\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -2739,7 +2739,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"70cb5339-4673-49cc-aea9-181014ed01f6\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"1519b282-fe4d-4db6-8a51-b8a6db7f06fb\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -44641,6 +44641,858 @@
               ],
               "cookie": [],
               "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": \"{{tillSessionId}}\",\n        \"till\": {\n          \"id\": \"{{tillAccountId}}\",\n          \"code\": \"TILL-1\",\n          \"name\": \"Ikeja Till\",\n          \"kind\": \"TILL\"\n        },\n        \"location\": {\n          \"id\": \"{{showroomId}}\",\n          \"code\": \"SHR-1\",\n          \"name\": \"Showroom Ikeja\",\n          \"type\": \"SHOWROOM\"\n        },\n        \"cashier\": {\n          \"id\": \"{{userId}}\",\n          \"name\": \"Alice Admin\",\n          \"email\": \"admin@apex.com\"\n        },\n        \"status\": \"CLOSED\",\n        \"openedAt\": \"2026-10-01T10:15:30Z\",\n        \"openingFloat\": 20000.0,\n        \"closedAt\": null,\n        \"closedBy\": null,\n        \"countedCash\": null,\n        \"expectedCash\": null,\n        \"variance\": null,\n        \"closeNote\": null,\n        \"forceClosed\": false,\n        \"running\": null\n      }\n    ],\n    \"page\": 0,\n    \"size\": 20,\n    \"totalItems\": 1,\n    \"totalPages\": 1\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "20 - Audit & Compliance",
+      "item": [
+        {
+          "name": "A1 Stock Movement History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/history/stock-movements?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "history",
+                "stock-movements"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Perm history.stock-movements.read. The long-range, all-locations stock ledger. Filters: stockItemId, categoryId, itemType, locationId, sourceType, direction, recordedBy, from/to, q. unitCost/value are zeroed without factory.costing.read. Stats come from SQL aggregates. GET /history/stock-movements/filters lists the filter grammar.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "A1 Stock Movement History - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/history/stock-movements?page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "history",
+                    "stock-movements"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    }
+                  ]
+                },
+                "description": "Perm history.stock-movements.read. The long-range, all-locations stock ledger. Filters: stockItemId, categoryId, itemType, locationId, sourceType, direction, recordedBy, from/to, q. unitCost/value are zeroed without factory.costing.read. Stats come from SQL aggregates. GET /history/stock-movements/filters lists the filter grammar.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"date\": \"2026-10-01\",\n        \"ref\": \"RF-1\",\n        \"product\": {\n          \"id\": \"{{finishedProductId}}\",\n          \"code\": \"RM-0001\",\n          \"name\": \"Malted Barley\",\n          \"itemType\": \"RAW_MATERIAL\"\n        },\n        \"location\": {\n          \"id\": \"{{factoryId}}\",\n          \"code\": \"SHR-1\",\n          \"name\": \"Showroom Ikeja\",\n          \"type\": \"SHOWROOM\"\n        },\n        \"source\": \"Stock Refill\",\n        \"sourceType\": \"REFILL\",\n        \"direction\": \"IN\",\n        \"quantity\": 100.0,\n        \"recordedBy\": {\n          \"id\": \"{{userId}}\",\n          \"name\": \"Alice Admin\",\n          \"email\": \"admin@apex.com\"\n        },\n        \"unitCost\": 1000.0,\n        \"value\": 100000.0,\n        \"remark\": null\n      }\n    ],\n    \"page\": 0,\n    \"size\": 20,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"summary\": {\n      \"movements\": 1,\n      \"quantityIn\": 100.0,\n      \"quantityOut\": 0.0,\n      \"adjustments\": 0\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "A2 Wallet Withdrawal History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/history/wallet-withdrawals?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "history",
+                "wallet-withdrawals"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Perm history.wallet-withdrawals.read. The account module's withdrawals (through its SPI), with the audit-review badge and the breach flag (balanceAfter<0 or a dealer request with no verified OTP). Filters delegate to GET /history/wallet-withdrawals/filters.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "A2 Wallet Withdrawal History - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/history/wallet-withdrawals?page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "history",
+                    "wallet-withdrawals"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    }
+                  ]
+                },
+                "description": "Perm history.wallet-withdrawals.read. The account module's withdrawals (through its SPI), with the audit-review badge and the breach flag (balanceAfter<0 or a dealer request with no verified OTP). Filters delegate to GET /history/wallet-withdrawals/filters.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"ref\": \"WW-1\",\n        \"date\": \"2026-10-12\",\n        \"dealer\": {\n          \"id\": \"{{dealerId}}\",\n          \"code\": \"CU-1\",\n          \"name\": \"Okafor Stores\",\n          \"type\": \"ORDINARY_CUSTOMER\"\n        },\n        \"dealerCode\": \"DLR-1\",\n        \"initiatedBy\": \"DEALER\",\n        \"reason\": \"DEALER_REQUEST\",\n        \"balanceBefore\": 50000.0,\n        \"amount\": 20000.0,\n        \"balanceAfter\": 30000.0,\n        \"payoutKind\": \"BANK\",\n        \"paidVia\": \"Transfer to Access 0123456789\",\n        \"otp\": \"Verified\",\n        \"processedBy\": {\n          \"id\": \"{{userId}}\",\n          \"name\": \"Alice Admin\",\n          \"email\": \"admin@apex.com\"\n        },\n        \"authorisedBy\": null,\n        \"status\": \"COMPLETED\",\n        \"auditReview\": null,\n        \"breach\": false\n      }\n    ],\n    \"page\": 0,\n    \"size\": 20,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"summary\": {\n      \"totalWithdrawn\": 20000.0,\n      \"dealerInitiated\": 20000.0,\n      \"companyInitiated\": 0.0,\n      \"count\": 1,\n      \"underReview\": 0\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "A3 Expenses / Payment Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/history/expenses?from=2026-01-01&to=2026-12-31",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "history",
+                "expenses"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-01-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-12-31"
+                }
+              ]
+            },
+            "description": "Perm history.expenses.read. Running costs + petty-cash payments in a date range (required, <=366 days: RANGE_TOO_LARGE otherwise). Only APPROVED entries count toward the totals and groups. Filters: categoryId, method, locationId, status, q.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "A3 Expenses / Payment Report - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/history/expenses?from=2026-01-01&to=2026-12-31",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "history",
+                    "expenses"
+                  ],
+                  "query": [
+                    {
+                      "key": "from",
+                      "value": "2026-01-01"
+                    },
+                    {
+                      "key": "to",
+                      "value": "2026-12-31"
+                    }
+                  ]
+                },
+                "description": "Perm history.expenses.read. Running costs + petty-cash payments in a date range (required, <=366 days: RANGE_TOO_LARGE otherwise). Only APPROVED entries count toward the totals and groups. Filters: categoryId, method, locationId, status, q.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"date\": \"2026-10-05\",\n        \"ref\": \"OC-1\",\n        \"purpose\": \"Generator diesel\",\n        \"category\": {\n          \"id\": \"{{expenseCategoryId}}\",\n          \"code\": \"EX-10\",\n          \"name\": \"Fuel Expenses\"\n        },\n        \"payee\": \"Total Filling Station\",\n        \"method\": \"BANK_TRANSFER\",\n        \"approvedBy\": \"Ada Admin\",\n        \"status\": \"APPROVED\",\n        \"amount\": 45000.0,\n        \"inputVat\": 0.0,\n        \"source\": \"RUNNING_COST\"\n      }\n    ],\n    \"page\": 0,\n    \"size\": 20,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"summary\": {\n      \"totalExpenditure\": 45000.0,\n      \"approvedEntries\": 1,\n      \"categoriesUsed\": 1,\n      \"largestCategory\": {\n        \"name\": \"Utilities\",\n        \"total\": 45000.0\n      },\n      \"pendingApproval\": {\n        \"count\": 0,\n        \"amount\": 0.0\n      },\n      \"byCategory\": [\n        {\n          \"category\": \"Utilities\",\n          \"count\": 1,\n          \"total\": 45000.0\n        }\n      ],\n      \"byMethod\": [\n        {\n          \"method\": \"BANK_TRANSFER\",\n          \"count\": 1,\n          \"total\": 45000.0\n        }\n      ]\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "A4 Waybill History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/history/waybills?from=2026-01-01&to=2026-12-31",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "history",
+                "waybills"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-01-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-12-31"
+                }
+              ]
+            },
+            "description": "Perm history.waybills.read. The supply history of a sales invoice: pass invoice=<INV or TXN ref> for one invoice, or from/to for a page of invoices. The running outstanding is stored on each waybill line.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "A4 Waybill History - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/history/waybills?from=2026-01-01&to=2026-12-31",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "history",
+                    "waybills"
+                  ],
+                  "query": [
+                    {
+                      "key": "from",
+                      "value": "2026-01-01"
+                    },
+                    {
+                      "key": "to",
+                      "value": "2026-12-31"
+                    }
+                  ]
+                },
+                "description": "Perm history.waybills.read. The supply history of a sales invoice: pass invoice=<INV or TXN ref> for one invoice, or from/to for a page of invoices. The running outstanding is stored on each waybill line.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"invoices\": [\n      {\n        \"invoice\": {\n          \"number\": \"INV-1\",\n          \"saleRef\": \"TXN-1\",\n          \"date\": \"2026-10-10\",\n          \"sale\": {\n            \"id\": \"{{saleId}}\",\n            \"ref\": \"TXN-2\",\n            \"status\": \"COMPLETED\",\n            \"customer\": \"Okafor & Sons Distribution 482\"\n          },\n          \"customer\": {\n            \"id\": \"{{dealerId}}\",\n            \"code\": \"CU-1\",\n            \"name\": \"Okafor Stores\",\n            \"type\": \"ORDINARY_CUSTOMER\"\n          }\n        },\n        \"stats\": {\n          \"quantityInvoiced\": 200.0,\n          \"quantitySupplied\": 170.0,\n          \"fulfilledPct\": 85,\n          \"stillOutstanding\": 30.0,\n          \"waybillsRaised\": 2,\n          \"deliveryPattern\": \"Multi-delivery\"\n        },\n        \"rows\": [\n          {\n            \"waybill\": \"WB-1\",\n            \"supplyDate\": \"2026-10-11\",\n            \"product\": {\n              \"id\": \"{{finishedProductId}}\",\n              \"code\": \"RM-0001\",\n              \"name\": \"Malted Barley\",\n              \"itemType\": \"RAW_MATERIAL\"\n            },\n            \"ordered\": 200.0,\n            \"qtySupplied\": 120.0,\n            \"outstanding\": 80.0,\n            \"driver\": null,\n            \"receivedBy\": \"K. Okafor\",\n            \"status\": \"Delivered\"\n          }\n        ]\n      }\n    ],\n    \"page\": 0,\n    \"size\": 20,\n    \"totalItems\": 1,\n    \"totalPages\": 1\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "A5 Activity Log",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/audit/activity?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit",
+                "activity"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Perm platform.activity.read. The business-event trail from domain_events. Filters: module (event-type prefix), eventType, actorUserId, aggregateType, ref, locationId, costAccessOnly, from/to, q. GET /audit/activity/entity?aggregateType=&aggregateId= gives one record's full timeline. history.violation.* events are hidden without history.violations.read.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "A5 Activity Log - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/audit/activity?page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "audit",
+                    "activity"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    }
+                  ]
+                },
+                "description": "Perm platform.activity.read. The business-event trail from domain_events. Filters: module (event-type prefix), eventType, actorUserId, aggregateType, ref, locationId, costAccessOnly, from/to, q. GET /audit/activity/entity?aggregateType=&aggregateId= gives one record's full timeline. history.violation.* events are hidden without history.violations.read.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"occurredAt\": \"2026-10-01T10:15:30Z\",\n        \"eventType\": \"cashier.sale.completed\",\n        \"summary\": \"TXN-1 completed\",\n        \"ref\": \"TXN-1\",\n        \"aggregateType\": \"sale\",\n        \"location\": {\n          \"id\": \"{{showroomId}}\",\n          \"code\": \"SHR-1\",\n          \"name\": \"Showroom Ikeja\",\n          \"type\": \"SHOWROOM\"\n        },\n        \"actor\": {\n          \"id\": \"{{userId}}\",\n          \"name\": \"Alice Admin\",\n          \"email\": \"admin@apex.com\"\n        },\n        \"actorLabel\": null,\n        \"payload\": {}\n      }\n    ],\n    \"page\": 0,\n    \"size\": 20,\n    \"totalItems\": 1,\n    \"totalPages\": 1\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "A6 Set Audit Review",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/audit/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit",
+                "reviews"
+              ]
+            },
+            "description": "Perm history.reviews.manage. One review state per record (recordType + recordId); FLAGGED requires a note. The change is written to the activity log as history.review.updated.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recordType\": \"WALLET_WITHDRAWAL\",\n  \"recordId\": \"{{withdrawalId}}\",\n  \"recordRef\": \"WW-1\",\n  \"status\": \"UNDER_REVIEW\",\n  \"note\": \"Confirming the dealer authorised this\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('auditReviewId', json.data.id);",
+                  "    pm.test('under review', () => pm.expect(json.data.status).to.eql('UNDER_REVIEW'));",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "A6 Set Audit Review - 200 OK",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/audit/reviews",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "audit",
+                    "reviews"
+                  ]
+                },
+                "description": "Perm history.reviews.manage. One review state per record (recordType + recordId); FLAGGED requires a note. The change is written to the activity log as history.review.updated.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"recordType\": \"WALLET_WITHDRAWAL\",\n  \"recordId\": \"{{withdrawalId}}\",\n  \"recordRef\": \"WW-1\",\n  \"status\": \"UNDER_REVIEW\",\n  \"note\": \"Confirming the dealer authorised this\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{auditReviewId}}\",\n    \"recordType\": \"WALLET_WITHDRAWAL\",\n    \"recordId\": \"{{withdrawalId}}\",\n    \"recordRef\": \"WW-1\",\n    \"status\": \"UNDER_REVIEW\",\n    \"note\": \"Confirming the dealer authorised this\",\n    \"reviewer\": {\n      \"id\": \"{{userId}}\",\n      \"name\": \"Alice Admin\",\n      \"email\": \"admin@apex.com\"\n    },\n    \"updatedAt\": \"2026-10-01T10:15:30Z\",\n    \"createdAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "A7 Audit Reviews",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/audit/reviews?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit",
+                "reviews"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Perm history.reviews.manage. Filters: recordType, status, reviewerUserId, from/to. GET /audit/reviews/filters lists them.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "A7 Audit Reviews - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/audit/reviews?page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "audit",
+                    "reviews"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    }
+                  ]
+                },
+                "description": "Perm history.reviews.manage. Filters: recordType, status, reviewerUserId, from/to. GET /audit/reviews/filters lists them.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": \"{{auditReviewId}}\",\n        \"recordType\": \"WALLET_WITHDRAWAL\",\n        \"recordId\": \"{{withdrawalId}}\",\n        \"recordRef\": \"WW-1\",\n        \"status\": \"UNDER_REVIEW\",\n        \"note\": \"Confirming the dealer authorised this\",\n        \"reviewer\": {\n          \"id\": \"{{userId}}\",\n          \"name\": \"Alice Admin\",\n          \"email\": \"admin@apex.com\"\n        },\n        \"updatedAt\": \"2026-10-01T10:15:30Z\",\n        \"createdAt\": \"2026-10-01T10:15:30Z\"\n      }\n    ],\n    \"page\": 0,\n    \"size\": 20,\n    \"totalItems\": 1,\n    \"totalPages\": 1\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "A8 Review Badge Lookup",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/audit/reviews/lookup?recordType=WALLET_WITHDRAWAL&recordIds={{withdrawalId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit",
+                "reviews",
+                "lookup"
+              ],
+              "query": [
+                {
+                  "key": "recordType",
+                  "value": "WALLET_WITHDRAWAL"
+                },
+                {
+                  "key": "recordIds",
+                  "value": "{{withdrawalId}}"
+                }
+              ]
+            },
+            "description": "Perm history.reviews.manage. The review badge for records a screen already holds (batch); used by report rows and detail screens.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "A8 Review Badge Lookup - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/audit/reviews/lookup?recordType=WALLET_WITHDRAWAL&recordIds={{withdrawalId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "audit",
+                    "reviews",
+                    "lookup"
+                  ],
+                  "query": [
+                    {
+                      "key": "recordType",
+                      "value": "WALLET_WITHDRAWAL"
+                    },
+                    {
+                      "key": "recordIds",
+                      "value": "{{withdrawalId}}"
+                    }
+                  ]
+                },
+                "description": "Perm history.reviews.manage. The review badge for records a screen already holds (batch); used by report rows and detail screens.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"recordId\": \"{{withdrawalId}}\",\n      \"status\": \"UNDER_REVIEW\",\n      \"note\": \"Confirming the dealer authorised this\",\n      \"reviewer\": {\n        \"id\": \"{{userId}}\",\n        \"name\": \"Alice Admin\",\n        \"email\": \"admin@apex.com\"\n      },\n      \"updatedAt\": \"2026-10-01T10:15:30Z\"\n    }\n  ]\n}"
             }
           ]
         }

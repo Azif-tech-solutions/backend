@@ -1,26 +1,62 @@
 package com.zifiq.history.api
 
-import com.zifiq.history.dto.*
+import com.zifiq.common.filter.FilterMetadata
+import com.zifiq.common.paging.PageResult
+import com.zifiq.history.dto.ExpenseHistoryRow
+import com.zifiq.history.dto.StockMovementHistoryRow
+import com.zifiq.history.dto.WalletWithdrawalHistoryRow
+import com.zifiq.history.dto.WaybillHistoryResult
 import com.zifiq.platform.api.ApiEnvelope
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
+import java.time.LocalDate
+import java.util.UUID
+import org.springframework.util.MultiValueMap
 
-@Tag(name = "Audit & History Reports", description = "Waybills, Expenses, Stock Movements, Violations & Wallet Withdrawals")
+/**
+ * Audit & Compliance reports (docs/10). Waybill History, Expenses and Wallet Withdrawal History
+ * (read through the owning modules' SPI) are added as their SPI lands; Stock Movement History reads
+ * the single stock ledger directly.
+ */
+@Tag(name = "Audit & Compliance — reports", description = "Stock movements, waybills, expenses and wallet withdrawals (docs/10 §4)")
 @SecurityRequirement(name = "bearerAuth")
 interface HistoryApi {
-    @Operation(summary = "Searchable waybill history report")
-    fun getWaybillHistory(): ApiEnvelope<List<WaybillHistoryItem>>
+    @Operation(summary = "Stock Movement History: the long-range, all-locations stock ledger, filtered and paged")
+    fun stockMovements(query: MultiValueMap<String, String>): ApiEnvelope<PageResult<StockMovementHistoryRow>>
 
-    @Operation(summary = "Historical expense and payment records")
-    fun getExpenseHistory(): ApiEnvelope<List<ExpenseHistoryItem>>
+    @Operation(summary = "Filters the stock-movement history accepts")
+    fun stockMovementFilters(): ApiEnvelope<FilterMetadata>
 
-    @Operation(summary = "Long-range stock movement audit trail")
-    fun getStockMovementHistory(): ApiEnvelope<List<StockMovementHistoryItem>>
+    @Operation(summary = "Wallet Withdrawal History: withdrawals with the audit-review badge and breach flags")
+    fun walletWithdrawals(query: MultiValueMap<String, String>): ApiEnvelope<PageResult<WalletWithdrawalHistoryRow>>
 
-    @Operation(summary = "Flagged violations and fraud audit history")
-    fun getFraudViolations(): ApiEnvelope<List<FraudViolationItem>>
+    @Operation(summary = "Filters the wallet-withdrawal history accepts")
+    fun walletWithdrawalFilters(): ApiEnvelope<FilterMetadata>
 
-    @Operation(summary = "Dealer and customer wallet withdrawal history")
-    fun getWalletWithdrawals(): ApiEnvelope<List<WalletWithdrawalHistoryItem>>
+    @Operation(summary = "Expenses / Payment Reports: running costs and petty-cash payments in a date range (≤ 366 days)")
+    fun expenses(
+        from: LocalDate,
+        to: LocalDate,
+        categoryId: UUID?,
+        method: String?,
+        locationId: UUID?,
+        status: String?,
+        q: String?,
+        page: Int?,
+        size: Int?,
+    ): ApiEnvelope<PageResult<ExpenseHistoryRow>>
+
+    @Operation(summary = "Waybill History: the supply history of one invoice, or a page of invoices in a date range")
+    fun waybills(
+        invoice: String?,
+        customerId: UUID?,
+        driverId: UUID?,
+        locationId: UUID?,
+        status: String?,
+        from: LocalDate?,
+        to: LocalDate?,
+        page: Int?,
+        size: Int?,
+    ): ApiEnvelope<WaybillHistoryResult>
 }
