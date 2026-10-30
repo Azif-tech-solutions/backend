@@ -4,6 +4,7 @@ import com.zifiq.platform.identity.model.AppUsersTable
 import com.zifiq.platform.tenancy.model.TenantsTable
 import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.Table
+import org.jetbrains.exposed.sql.javatime.date
 import org.jetbrains.exposed.sql.javatime.timestamp
 
 /**
@@ -41,6 +42,12 @@ object StockItemsTable : UUIDTable("stock_items") {
     val nrsUnitCode = varchar("nrs_unit_code", 10).nullable()
     val isService = bool("is_service").default(false)
     val status = varchar("status", 20).default("ACTIVE")
+    // Recycle Bin product lifecycle (V16_2, docs/10 §4.9).
+    val statusReason = varchar("status_reason", 300).nullable()
+    val statusChangedAt = timestamp("status_changed_at").nullable()
+    val statusChangedByUserId = uuid("status_changed_by_user_id").nullable()
+    val suspensionReviewOn = date("suspension_review_on").nullable()
+    val deletedRetentionUntil = date("deleted_retention_until").nullable()
     val createdByUserId = reference("created_by_user_id", AppUsersTable)
     val createdAt = timestamp("created_at")
 }

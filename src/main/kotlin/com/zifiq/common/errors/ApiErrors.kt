@@ -333,6 +333,16 @@ object ApiErrors {
     fun alertNotOpen() = ApiException(HttpStatus.CONFLICT, ErrorCode.ALERT_NOT_OPEN, "This alert has already been decided")
     fun alertNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND, "Audit alert not found")
 
+    // ---- Audit & Compliance: Recycle Bin and integrity checks (docs/10 §4.9, §4.10) ----
+    fun itemNotRecyclable(status: String) = ApiException(HttpStatus.CONFLICT, ErrorCode.ITEM_NOT_RECYCLABLE, "This product is $status and can't be changed here", mapOf("status" to status))
+    fun itemInTransit() = ApiException(HttpStatus.CONFLICT, ErrorCode.ITEM_IN_TRANSIT, "This product is on a transfer in transit; receive or reject it first")
+    fun itemInOpenDocuments() = ApiException(HttpStatus.CONFLICT, ErrorCode.ITEM_IN_OPEN_DOCUMENTS, "This product is on an open sale or pro-forma; clear those first")
+    fun itemNotDeleted() = ApiException(HttpStatus.CONFLICT, ErrorCode.ITEM_NOT_DELETED, "This product is not in the Recycle Bin")
+    fun itemNotSuspended() = ApiException(HttpStatus.CONFLICT, ErrorCode.ITEM_NOT_SUSPENDED, "This product is not suspended")
+    fun purgeRequiresWriteOff() = ApiException(HttpStatus.CONFLICT, ErrorCode.PURGE_REQUIRES_WRITE_OFF, "This product still holds stock; confirm the write-off to purge it")
+    fun purgeConfirmationMismatch() = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.PURGE_CONFIRMATION_MISMATCH, "Type the product code exactly to confirm the purge")
+    fun runInProgress() = ApiException(HttpStatus.CONFLICT, ErrorCode.RUN_IN_PROGRESS, "An integrity check is already running for this tenant")
+
     // ---- Sales & POS slice 3: Instant Discount & pro-formas (docs/09 §4.3-4.4) ----
     fun discountAlreadyActive() = ApiException(HttpStatus.CONFLICT, ErrorCode.DISCOUNT_ALREADY_ACTIVE, "A discount is already live on this sale; withdraw it first")
     fun discountExceedsTransaction() = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.DISCOUNT_EXCEEDS_TRANSACTION, "A discount can't be more than the sale's value")
