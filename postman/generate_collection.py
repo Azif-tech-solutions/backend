@@ -3288,6 +3288,58 @@ ep(AU, "A8 Review Badge Lookup", "GET", "/api/v1/audit/reviews/lookup",
    resp={"data": [{"recordId": "{{withdrawalId}}", "status": "UNDER_REVIEW", "note": "Confirming the dealer authorised this", "reviewer": USER, "updatedAt": NOW}]},
    desc="Perm history.reviews.manage. The review badge for records a screen already holds (batch); used by report rows and detail screens.")
 
+# ---- B. Violations / Fraud History + audit alerts (slice 2, §4.4) ----
+VIOLATION = {"id": "{{violationId}}", "ref": "VN-1", "subject": {"id": "{{memberUserId}}", "name": "Kelvin Keeper", "email": "keeper@apex.com"},
+             "location": REF("location", "{{factoryId}}"), "category": "CASH_SHORTAGE", "description": "Till came up short at the end of the shift and could not be explained",
+             "amountInvolved": 8000.00, "severity": "MEDIUM", "status": "UNDER_INVESTIGATION", "source": "MANUAL", "occurredOn": "{{today}}",
+             "linkedRefs": [], "raisedBy": USER, "raisedAt": NOW, "conclusion": None, "concludedBy": None, "concludedAt": None,
+             "events": [{"kind": "RAISED", "fromValue": None, "toValue": "MEDIUM", "note": None, "by": USER, "at": NOW}]}
+
+ep(AU, "B1 Raise Violation Record", "POST", "/api/v1/history/violations",
+   body={"subjectUserId": "{{memberUserId}}", "locationId": "{{factoryId}}", "category": "CASH_SHORTAGE",
+         "description": "Till came up short at the end of the shift and could not be explained", "amountInvolved": 8000, "severity": "MEDIUM", "occurredOn": "{{today}}"},
+   resp={"data": VIOLATION},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('violationId', json.data.id);",
+          "pm.test('under investigation', () => pm.expect(json.data.status).to.eql('UNDER_INVESTIGATION'));"],
+   desc="Perm history.violations.manage. The subject must be a tenant member and not the caller (400 CANNOT_RAISE_AGAINST_SELF). Description >= 20 chars. The event carries no description text, only ref/category/severity.")
+
+ep(AU, "B2 Add Investigation Note", "POST", "/api/v1/history/violations/{{violationId}}/notes",
+   body={"note": "Reviewed the till session and the CCTV log for the shift"},
+   resp={"data": dict(VIOLATION, events=VIOLATION["events"] + [{"kind": "NOTE", "fromValue": None, "toValue": None, "note": "Reviewed the till session and the CCTV log for the shift", "by": USER, "at": NOW}])},
+   desc="Appends a NOTE to the append-only investigation trail.")
+
+ep(AU, "B3 Violations List", "GET", "/api/v1/history/violations", query=[{"key": "page", "value": "0"}, {"key": "size", "value": "20"}],
+   resp={"data": {"items": [{"id": "{{violationId}}", "ref": "VN-1", "dateRaised": NOW, "subject": VIOLATION["subject"], "location": REF("location", "{{factoryId}}"),
+                             "category": "CASH_SHORTAGE", "description": VIOLATION["description"], "amountInvolved": 8000.00, "severity": "MEDIUM", "raisedBy": USER, "outcome": "UNDER_INVESTIGATION"}],
+                  "page": 0, "size": 20, "totalItems": 1, "totalPages": 1}},
+   desc="Perm history.violations.read. A caller never sees records where they are the subject. Filters: subjectUserId, locationId, status, category, severity, source, raisedBy, amountInvolved, from/to, q.")
+
+ep(AU, "B4 Violation Detail", "GET", "/api/v1/history/violations/{{violationId}}",
+   resp={"data": VIOLATION},
+   desc="Perm history.violations.read. The record with its full investigation trail.")
+
+ep(AU, "B5 Staff Panel", "GET", "/api/v1/history/violations/staff/{{memberUserId}}",
+   resp={"data": {"staff": {"user": VIOLATION["subject"], "location": REF("location", "{{factoryId}}")},
+                  "stats": {"recordsOnFile": 1, "underInvestigation": 1, "substantiated": 0, "amountInvolved": 8000.00, "clearedWithoutCase": 0},
+                  "records": [VIOLATION]}},
+   desc="Perm history.violations.read. One staff member's record, most recent first; a clean record returns an empty list.")
+
+ep(AU, "B6 Conclude Violation", "POST", "/api/v1/history/violations/{{violationId}}/conclude",
+   body={"outcome": "RESOLVED", "conclusion": "Miscount; cash found in the vault bag and lodged as a correction"},
+   resp={"data": dict(VIOLATION, status="RESOLVED", conclusion="Miscount; cash found in the vault bag and lodged as a correction", concludedBy=USER, concludedAt=NOW)},
+   tests=["const json = pm.response.json();", "pm.test('resolved', () => pm.expect(json.data.status).to.eql('RESOLVED'));"],
+   desc="Perm history.violations.manage. Outcome SUBSTANTIATED|RESOLVED|DISMISSED, conclusion >= 20 chars. The concluder must differ from the raiser (403 CONCLUDER_MUST_DIFFER), unless they are an Administrator. Reopen with POST /{id}/reopen.")
+
+ep(AU, "B7 Audit Alerts (OPEN)", "GET", "/api/v1/history/audit-alerts", query=[{"key": "page", "value": "0"}, {"key": "size", "value": "20"}],
+   resp={"data": {"items": [{"id": "{{alertId}}", "ruleCode": "TILL_VARIANCE", "subject": USER, "location": REF("location", "{{showroomId}}"),
+                             "summary": "Till variance of 8000 on T-1", "amount": 8000.00, "status": "OPEN", "evidence": {}, "createdAt": NOW}],
+                  "page": 0, "size": 20, "totalItems": 1, "totalPages": 1}},
+   desc="Perm history.violations.read. Detectors raise these from other modules' events (the background consumer runs every ~15s, so a fresh run may show an empty list). Open one as a record with POST /{id}/open-record, or dismiss with POST /{id}/dismiss. Filters: status (default OPEN), ruleCode, subjectUserId, locationId, amount, from/to.")
+
+ep(AU, "B8 Audit Alert Filters", "GET", "/api/v1/history/audit-alerts/filters",
+   resp={"data": {"filters": [], "sorts": [], "qualifiers": []}},
+   desc="Perm history.violations.read. The filter grammar the alerts list accepts.")
+
 def pm_url(path, query):
     full = "{{baseUrl}}" + path
     parts = [p for p in path.split("/") if p]

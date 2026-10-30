@@ -54,6 +54,8 @@ object RoleDefaults {
             "history.stock-movements.read",
             "history.wallet-withdrawals.read",
             "history.reviews.manage",
+            "history.violations.read",
+            "history.violations.manage",
         ),
         ACCOUNTS_PERSONNEL to setOf(
             "accounting.read",

@@ -325,6 +325,14 @@ object ApiErrors {
     fun waybillNotCancellable() = ApiException(HttpStatus.CONFLICT, ErrorCode.WAYBILL_NOT_CANCELLABLE, "This waybill can only be cancelled while ISSUED and on its release date, before the goods have left")
     fun rangeTooLarge(maxDays: Int) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.RANGE_TOO_LARGE, "Narrow the date range to at most $maxDays days", mapOf("maxDays" to maxDays.toString()))
 
+    // ---- Audit & Compliance: Violations / Fraud History (docs/10 §4.4) ----
+    fun cannotRaiseAgainstSelf() = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.CANNOT_RAISE_AGAINST_SELF, "You can't raise a violation record against yourself")
+    fun violationNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.VIOLATION_NOT_FOUND, "Violation record not found")
+    fun violationAlreadyConcluded() = ApiException(HttpStatus.CONFLICT, ErrorCode.VIOLATION_ALREADY_CONCLUDED, "This record has already been concluded; reopen it to change it")
+    fun concluderMustDiffer() = ApiException(HttpStatus.FORBIDDEN, ErrorCode.CONCLUDER_MUST_DIFFER, "An outcome against a member of staff needs a second person: the concluder must differ from the person who raised it")
+    fun alertNotOpen() = ApiException(HttpStatus.CONFLICT, ErrorCode.ALERT_NOT_OPEN, "This alert has already been decided")
+    fun alertNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND, "Audit alert not found")
+
     // ---- Sales & POS slice 3: Instant Discount & pro-formas (docs/09 §4.3-4.4) ----
     fun discountAlreadyActive() = ApiException(HttpStatus.CONFLICT, ErrorCode.DISCOUNT_ALREADY_ACTIVE, "A discount is already live on this sale; withdraw it first")
     fun discountExceedsTransaction() = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.DISCOUNT_EXCEEDS_TRANSACTION, "A discount can't be more than the sale's value")
