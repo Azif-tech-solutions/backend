@@ -104,7 +104,7 @@ class HistoryIntegrationTest : PostgresIntegrationTest() {
     private val alerts = AuditAlertService(support, tx, violations, notify)
     private val detectors = AuditDetectors(support, alerts)
     private val dataQuality = com.zifiq.history.service.DataQualityService(support, tx, sequences)
-    private val integrity = com.zifiq.history.service.IntegrityCheckService(support, tx, notify)
+    private val integrity = com.zifiq.history.service.IntegrityCheckService(support, tx, notify, emptyList())
     private val stockLedger = StockLedgerRepository(notify)
     private val today: LocalDate = LocalDate.now()
 
@@ -273,5 +273,25 @@ class HistoryIntegrationTest : PostgresIntegrationTest() {
 
         // Only one run at a time per tenant isn't violated by sequential runs; a second run completes.
         assertThat(integrity.listRuns(PageRequest.of(0, 10)).items).isNotEmpty
+    }
+
+    @Test
+    fun `module integrity checks run without a SQL error and aggregate into a run`() {
+        signIn(admin)
+        val acct = com.zifiq.account.service.AccountIntegrityChecks(
+            com.zifiq.account.service.AccountSupport(tenantContext, actors, permissions, locationAccess, moduleSettings, events), tx)
+        val inv = com.zifiq.invoicing.service.InvoiceIntegrityChecks(
+            com.zifiq.invoicing.service.InvoiceSupport(tenantContext, actors, permissions, locationAccess, moduleSettings, events), tx)
+        val sale = com.zifiq.cashier.service.SaleIntegrityChecks(
+            com.zifiq.cashier.service.CashierSupport(tenantContext, actors, permissions, locationAccess, moduleSettings, events), tx)
+        val cust = com.zifiq.customers.service.CustomerIntegrityChecks(
+            com.zifiq.customers.service.CustomerSupport(actors, permissions, tenantContext), tx)
+        val modules = listOf(acct, inv, sale, cust)
+        // Each module's checks execute their SQL against the real schema without throwing.
+        modules.forEach { assertThat(it.runIntegrityChecks()).isNotNull }
+        // The aggregate run (inventory checks + all module checks) completes.
+        val detail = com.zifiq.history.service.IntegrityCheckService(support, tx, notify, modules).run("MANUAL")
+        assertThat(detail.run.status).isIn("PASSED", "FINDINGS")
+        assertThat(detail.run.checksRun).isGreaterThanOrEqualTo(3 + modules.size)
     }
 }
