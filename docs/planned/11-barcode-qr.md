@@ -1,11 +1,13 @@
 # 11 — Barcode & QR Module
 
-Status: **design finalized, not yet implemented**
+Status: **slice 1 implemented (codes); slices 2 (scan) and 3 (labels) pending**
 Owner package: `com.zifiq.barcode`
 Depends on: `platform`, `common`, `inventory` (OPEN), `customers :: spi` (dealer pricing on POS scans)
 Depended on by: nobody (leaf). Scan-enabled screens in other modules call this module's HTTP API from the frontend, then submit the resolved `stockItemId` to their own endpoints.
-Migration: `V15__barcode_module.sql`
-Replaces: the mock `BarcodeQrService` (`scanCode` returning a fixed item regardless of input; `generateLabels` returning a fixed list).
+Migrations: `V17__barcode_module.sql` (slice 1 — the code table, mirror column, backfill, permissions; the planned `V15` number was taken by the time this was built). `scan_events` (slice 2) and the label-print tables (slice 3) arrive in their own later migrations.
+Replaces: the mock `BarcodeQrService` (`scanCode` returning a fixed item regardless of input; `generateLabels` returning a fixed list) — the mock `/scan` and `/labels` stay in place until slices 2 and 3 replace them.
+
+**Slice 1 (V17) — implemented.** `stock_item_codes` (+ `code_normalized` generated column and the tenant-wide uniqueness index incl. retired codes) and the `stock_items.barcode_symbology` mirror live in OPEN `inventory` (`com.zifiq.inventory.codes`: `StockItemCodesTable`, `CheckDigits`, `BarcodeGenerator`, `BarcodeSettings`, `StockItemCodeService`). Registration (`POST /inventory/stock-items`) gains optional `barcode` / `barcodeSymbology` / `generateBarcode` and assigns the primary code there. The barcode module adds the Codes API (§4.1): list / generate / assign / replace-primary / retire, with the `barcode.*` permissions and settings. Full business rules enforced: GS1 mod-10 check digits, one active primary per item, carton codes never primary, duplicates (incl. retired) rejected, the primary mirrored to `stock_items.barcode`.
 
 ---
 

@@ -804,6 +804,15 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `stock_item_prices_lookup_idx` | btree | tenant_id, stock_item_id, effective_from DESC |  |
 | `stock_item_prices_tenant_id_stock_item_id_effective_from_key` | unique | tenant_id, stock_item_id, effective_from |  |
 
+### `stock_item_codes`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `stock_item_codes_pkey` | primary key | id |  |
+| `stock_item_codes_code_uq` | unique | tenant_id, code_normalized |  |
+| `stock_item_codes_primary_uq` | unique | stock_item_id | (is_primary AND (status = 'ACTIVE')) |
+| `stock_item_codes_item_idx` | btree | tenant_id, stock_item_id |  |
+
 ### `stock_items`
 
 | Index | Kind | Columns / expression | Only rows where |

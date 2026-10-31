@@ -27,6 +27,8 @@ object StockItemsTable : UUIDTable("stock_items") {
     val unitOfMeasureId = uuid("unit_of_measure_id")
     val reorderLevel = decimal("reorder_level", 14, 3)
     val barcode = varchar("barcode", 64).nullable()
+    // Mirror of the primary stock_item_codes row's symbology (V17, docs/11 §2.1).
+    val barcodeSymbology = varchar("barcode_symbology", 12).nullable()
     val landingCost = decimal("landing_cost", 14, 2).nullable()
     val markupCost = decimal("markup_cost", 14, 2).nullable()
     // Plain uuid columns for the same reason as categoryId/unitOfMeasureId above: these reference

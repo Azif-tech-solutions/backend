@@ -92,6 +92,8 @@ class InventoryStockService(
     private val locationHierarchy: com.zifiq.platform.tenancy.LocationHierarchy,
     private val domainEvents: com.zifiq.platform.events.DomainEvents,
     private val stockItemCodes: StockItemCodes,
+    private val stockItemCodeService: com.zifiq.inventory.codes.StockItemCodeService,
+    private val moduleSettings: com.zifiq.platform.settings.ModuleSettings,
 ) {
     /**
      * The stock register, paged (docs/03 §5.1). `q` matches the code (prefix) or the name (accent- and
@@ -144,7 +146,8 @@ class InventoryStockService(
             it[StockItemsTable.brand] = request.brand?.trim()?.takeIf(String::isNotEmpty)
             it[StockItemsTable.unitOfMeasureId] = request.unitOfMeasureId
             it[StockItemsTable.reorderLevel] = request.reorderLevel ?: BigDecimal.ZERO
-            it[StockItemsTable.barcode] = request.barcode?.trim()?.takeIf(String::isNotEmpty)
+            // The primary barcode (and its mirror) is assigned by stockItemCodeService below, so the
+            // one code table stays the source of truth — do not set it[barcode] directly here.
             it[StockItemsTable.landingCost] = request.landingCost
             it[StockItemsTable.markupCost] = request.markupCost
             it[StockItemsTable.vatCategoryId] = request.vatCategoryId
@@ -159,6 +162,10 @@ class InventoryStockService(
             type = "inventory.stock-item.registered", aggregateType = "stock-item", aggregateId = id, aggregateRef = code,
             summary = "Stock item $code registered — ${request.name.trim()}", payload = mapOf("itemType" to request.itemType), locationId = request.locationId,
         )
+        // Assign the primary barcode/QR code (docs/11 §4.1): a supplied code is validated and assigned,
+        // otherwise one is generated when the tenant's auto-generate setting (or the request) asks for it.
+        val generate = request.generateBarcode ?: moduleSettings.boolean(com.zifiq.inventory.codes.BarcodeSettings.AUTO_GENERATE_ON_REGISTER)
+        stockItemCodeService.assignAtRegistration(id, request.barcode, request.barcodeSymbology, generate)
         singleSummary(id)
     }
 
