@@ -24,6 +24,10 @@ data class StockItemRequest(
     @field:NotNull val unitOfMeasureId: UUID,
     @field:DecimalMin("0.0") val reorderLevel: BigDecimal?,
     val barcode: String?,
+    // Barcode & QR (docs/11 §4.1): symbology for a supplied/generated primary code; generateBarcode
+    // null falls back to the tenant's barcode.autoGenerateOnRegister setting.
+    @field:Pattern(regexp = "EAN_13|EAN_8|UPC_A|CODE_128|QR") val barcodeSymbology: String? = null,
+    val generateBarcode: Boolean? = null,
     val landingCost: BigDecimal?,
     val markupCost: BigDecimal?,
     // Every product carries a tax/trade classification -- see com.zifiq.account's VAT Control
