@@ -342,6 +342,8 @@ object ApiErrors {
     fun purgeRequiresWriteOff() = ApiException(HttpStatus.CONFLICT, ErrorCode.PURGE_REQUIRES_WRITE_OFF, "This product still holds stock; confirm the write-off to purge it")
     fun purgeConfirmationMismatch() = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.PURGE_CONFIRMATION_MISMATCH, "Type the product code exactly to confirm the purge")
     fun runInProgress() = ApiException(HttpStatus.CONFLICT, ErrorCode.RUN_IN_PROGRESS, "An integrity check is already running for this tenant")
+    fun flagStale() = ApiException(HttpStatus.CONFLICT, ErrorCode.FLAG_STALE, "The value changed since this flag was raised; review it again")
+    fun flagNotOpen() = ApiException(HttpStatus.CONFLICT, ErrorCode.FLAG_NOT_OPEN, "This flag has already been resolved")
 
     // ---- Sales & POS slice 3: Instant Discount & pro-formas (docs/09 §4.3-4.4) ----
     fun discountAlreadyActive() = ApiException(HttpStatus.CONFLICT, ErrorCode.DISCOUNT_ALREADY_ACTIVE, "A discount is already live on this sale; withdraw it first")
