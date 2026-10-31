@@ -132,6 +132,12 @@ interface InvoiceQueries {
 
     /** Credit-note lines issued between [from] and [to] (inclusive), optionally at one location. */
     fun creditNoteLines(locationId: UUID?, from: LocalDate, to: LocalDate): List<CreditNoteLineView>
+
+    /**
+     * Issued documents that snapshot [stockItemId]'s name and would keep the original after a
+     * data-quality rename: lines of non-draft invoices plus credit-note lines (docs/10 §4.8).
+     */
+    fun issuedLineCount(stockItemId: UUID): Int
 }
 
 interface InvoiceWaybillLinks {

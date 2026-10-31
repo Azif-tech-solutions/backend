@@ -188,6 +188,7 @@ object ApiErrors {
     // ---- Generic, reused by later modules ----
     fun duplicateName(name: String) = ApiException(HttpStatus.CONFLICT, ErrorCode.DUPLICATE_NAME, "'$name' is already in use", mapOf("name" to name))
     fun duplicateCode(code: String) = ApiException(HttpStatus.CONFLICT, ErrorCode.DUPLICATE_CODE, "The code '$code' is already in use", mapOf("code" to code))
+    fun duplicateBarcode(barcode: String) = ApiException(HttpStatus.CONFLICT, ErrorCode.DUPLICATE_BARCODE, "The barcode '$barcode' is already in use", mapOf("barcode" to barcode))
     fun duplicateRecord() = ApiException(HttpStatus.CONFLICT, ErrorCode.DUPLICATE_RECORD, "A record with these details already exists")
     fun valueNotAllowed() = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION_FAILED, "Request validation failed", mapOf("body" to "A value is too long or not allowed"))
     fun referencedRecordMissing() = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION_FAILED, "Request validation failed", mapOf("body" to "A referenced record does not exist"))

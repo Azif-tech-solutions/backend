@@ -2648,7 +2648,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"cca83137-fc02-47dc-bb66-ac81d5db174f\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"3ea5369d-cfbc-40ef-a886-dca02de96eca\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -2739,7 +2739,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"e963db48-e253-4381-b1cb-6d6702c520e8\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"3f7a10ea-59a1-4e9e-a247-938f467eb6c7\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -7608,10 +7608,10 @@
                 "raw-material"
               ]
             },
-            "description": "This is also the Material/Recipe Receive Report's data source (same table, see List Stock Receipts).",
+            "description": "This is also the Material/Recipe Receive Report's data source (same table, see List Stock Receipts). inputVatRate (0-100) + supplierInvoiceRef capture recoverable input VAT = quantity x unitCost x rate (here 100 x 5.00 x 7.5% = 37.50), which the Audit VAT report reads as a factory input line.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"locationId\": \"{{factoryId}}\",\n  \"stockItemId\": \"{{rawMaterialId}}\",\n  \"supplierId\": \"{{supplierId}}\",\n  \"manufacturerId\": \"{{manufacturerId}}\",\n  \"quantity\": 100,\n  \"unitCost\": 5.0,\n  \"manufacturedDate\": \"2026-09-01\",\n  \"expiryDate\": \"2027-09-01\"\n}",
+              "raw": "{\n  \"locationId\": \"{{factoryId}}\",\n  \"stockItemId\": \"{{rawMaterialId}}\",\n  \"supplierId\": \"{{supplierId}}\",\n  \"manufacturerId\": \"{{manufacturerId}}\",\n  \"quantity\": 100,\n  \"unitCost\": 5.0,\n  \"manufacturedDate\": \"2026-09-01\",\n  \"expiryDate\": \"2027-09-01\",\n  \"supplierInvoiceRef\": \"SI-4471\",\n  \"inputVatRate\": 7.5\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -7669,10 +7669,10 @@
                     "raw-material"
                   ]
                 },
-                "description": "This is also the Material/Recipe Receive Report's data source (same table, see List Stock Receipts).",
+                "description": "This is also the Material/Recipe Receive Report's data source (same table, see List Stock Receipts). inputVatRate (0-100) + supplierInvoiceRef capture recoverable input VAT = quantity x unitCost x rate (here 100 x 5.00 x 7.5% = 37.50), which the Audit VAT report reads as a factory input line.",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"locationId\": \"{{factoryId}}\",\n  \"stockItemId\": \"{{rawMaterialId}}\",\n  \"supplierId\": \"{{supplierId}}\",\n  \"manufacturerId\": \"{{manufacturerId}}\",\n  \"quantity\": 100,\n  \"unitCost\": 5.0,\n  \"manufacturedDate\": \"2026-09-01\",\n  \"expiryDate\": \"2027-09-01\"\n}",
+                  "raw": "{\n  \"locationId\": \"{{factoryId}}\",\n  \"stockItemId\": \"{{rawMaterialId}}\",\n  \"supplierId\": \"{{supplierId}}\",\n  \"manufacturerId\": \"{{manufacturerId}}\",\n  \"quantity\": 100,\n  \"unitCost\": 5.0,\n  \"manufacturedDate\": \"2026-09-01\",\n  \"expiryDate\": \"2027-09-01\",\n  \"supplierInvoiceRef\": \"SI-4471\",\n  \"inputVatRate\": 7.5\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -7700,7 +7700,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": {\n    \"id\": \"{{stockReceiptId}}\",\n    \"ref\": \"DL-1\",\n    \"stockItem\": {\n      \"id\": \"{{rawMaterialId}}\",\n      \"code\": \"RM-0001\",\n      \"name\": \"Malted Barley\",\n      \"itemType\": \"RAW_MATERIAL\"\n    },\n    \"supplier\": {\n      \"id\": \"{{supplierId}}\",\n      \"code\": \"SUP-1\",\n      \"name\": \"Northern Grains Ltd\"\n    },\n    \"manufacturer\": {\n      \"id\": \"{{manufacturerId}}\",\n      \"code\": \"MFR-1\",\n      \"name\": \"Apex Maltings\"\n    },\n    \"quantity\": 100.0,\n    \"unitCost\": 5.0,\n    \"manufacturedDate\": \"2026-09-01\",\n    \"expiryDate\": \"2027-09-01\",\n    \"verifiedBy\": null,\n    \"offloadedAt\": null,\n    \"condition\": \"PENDING_VERIFICATION\"\n  }\n}"
+              "body": "{\n  \"data\": {\n    \"id\": \"{{stockReceiptId}}\",\n    \"ref\": \"DL-1\",\n    \"stockItem\": {\n      \"id\": \"{{rawMaterialId}}\",\n      \"code\": \"RM-0001\",\n      \"name\": \"Malted Barley\",\n      \"itemType\": \"RAW_MATERIAL\"\n    },\n    \"supplier\": {\n      \"id\": \"{{supplierId}}\",\n      \"code\": \"SUP-1\",\n      \"name\": \"Northern Grains Ltd\"\n    },\n    \"manufacturer\": {\n      \"id\": \"{{manufacturerId}}\",\n      \"code\": \"MFR-1\",\n      \"name\": \"Apex Maltings\"\n    },\n    \"quantity\": 100.0,\n    \"unitCost\": 5.0,\n    \"manufacturedDate\": \"2026-09-01\",\n    \"expiryDate\": \"2027-09-01\",\n    \"verifiedBy\": null,\n    \"offloadedAt\": null,\n    \"condition\": \"PENDING_VERIFICATION\",\n    \"supplierInvoiceRef\": \"SI-4471\",\n    \"inputVatRate\": 7.5,\n    \"inputVatAmount\": 37.5\n  }\n}"
             }
           ]
         },

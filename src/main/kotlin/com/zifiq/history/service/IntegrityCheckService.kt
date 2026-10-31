@@ -8,6 +8,8 @@ import com.zifiq.history.dto.IntegrityFindingRow
 import com.zifiq.history.dto.IntegrityRunDetail
 import com.zifiq.history.dto.IntegrityRunRow
 import com.zifiq.history.model.IntegrityCheckFindingsTable
+import com.zifiq.common.integrity.IntegrityChecks
+import com.zifiq.common.integrity.IntegrityFindingRef
 import com.zifiq.history.model.IntegrityCheckRunsTable
 import com.zifiq.inventory.model.StockBalancesTable
 import com.zifiq.inventory.model.StockItemsTable
@@ -48,8 +50,12 @@ class IntegrityCheckService(
     private val support: HistorySupport,
     private val tx: TenantScopedTransaction,
     private val notify: Notify,
+    // Every module's own integrity checks (docs/10 §4.10). Spring injects each @Service that
+    // implements the shared interface; this module only references the common type, not the modules.
+    private val moduleChecks: List<IntegrityChecks>,
 ) {
-    private data class Finding(val checkCode: String, val severity: String, val recordType: String, val recordRef: String, val expected: String?, val actual: String?, val message: String)
+    private fun Finding(checkCode: String, severity: String, recordType: String, recordRef: String, expected: String?, actual: String?, message: String) =
+        IntegrityFindingRef(checkCode, severity, recordType, recordRef, expected, actual, message)
 
     fun run(trigger: String): IntegrityRunDetail = tx.execute {
         val running = IntegrityCheckRunsTable.select(IntegrityCheckRunsTable.id)
@@ -66,7 +72,7 @@ class IntegrityCheckService(
         }.value
 
         val checks = listOf(::stockBalanceMatchesLedger, ::stockNotNegative, ::reservationWithinStock)
-        val findings = checks.flatMap { it() }
+        val findings = checks.flatMap { it() } + moduleChecks.flatMap { it.runIntegrityChecks() }
         findings.forEach { f ->
             IntegrityCheckFindingsTable.insert {
                 it[tenantId] = support.tenantId(); it[IntegrityCheckFindingsTable.runId] = runId
@@ -76,7 +82,7 @@ class IntegrityCheckService(
         }
         val critical = findings.count { it.severity == "CRITICAL" }
         IntegrityCheckRunsTable.update({ IntegrityCheckRunsTable.id eq runId }) {
-            it[finishedAt] = Instant.now(); it[checksRun] = checks.size; it[findingsCount] = findings.size
+            it[finishedAt] = Instant.now(); it[checksRun] = checks.size + moduleChecks.size; it[findingsCount] = findings.size
             it[status] = if (findings.isEmpty()) "PASSED" else "FINDINGS"
         }
         if (critical > 0) {
@@ -110,7 +116,7 @@ class IntegrityCheckService(
 
     // ---- checks (inventory, OPEN) ----
 
-    private fun stockBalanceMatchesLedger(): List<Finding> {
+    private fun stockBalanceMatchesLedger(): List<IntegrityFindingRef> {
         val inSum = StockLedgerEntriesTable.qtyIn.sum()
         val outSum = StockLedgerEntriesTable.qtyOut.sum()
         val ledger = StockLedgerEntriesTable
@@ -135,7 +141,7 @@ class IntegrityCheckService(
             }
     }
 
-    private fun stockNotNegative(): List<Finding> =
+    private fun stockNotNegative(): List<IntegrityFindingRef> =
         StockBalancesTable.join(StockItemsTable, org.jetbrains.exposed.sql.JoinType.INNER, StockBalancesTable.stockItemId, StockItemsTable.id)
             .select(StockBalancesTable.quantityOnHand, StockItemsTable.code)
             .where { (StockBalancesTable.tenantId eq support.tenantId()) and (StockBalancesTable.quantityOnHand less BigDecimal.ZERO) }
@@ -144,7 +150,7 @@ class IntegrityCheckService(
                     "Negative stock on hand for ${it[StockItemsTable.code]}")
             }
 
-    private fun reservationWithinStock(): List<Finding> {
+    private fun reservationWithinStock(): List<IntegrityFindingRef> {
         val reservedSum = StockReservationsTable.quantityReserved.sum()
         val releasedSum = StockReservationsTable.quantityReleased.sum()
         val open = StockReservationsTable

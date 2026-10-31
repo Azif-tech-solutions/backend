@@ -2,6 +2,7 @@ package com.zifiq.inventory.dto
 
 import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.UserRef
+import jakarta.validation.constraints.DecimalMax
 import jakarta.validation.constraints.DecimalMin
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
@@ -82,6 +83,10 @@ data class RawMaterialRefillRequest(
     @field:DecimalMin("0.0", inclusive = false) val unitCost: BigDecimal,
     val manufacturedDate: LocalDate?,
     val expiryDate: LocalDate?,
+    /** Supplier's VAT invoice/receipt reference, for the input-VAT audit trail (docs/10 §4.6). */
+    val supplierInvoiceRef: String? = null,
+    /** Input VAT rate on this receipt (0–100). Null/zero = no recoverable input VAT. */
+    @field:DecimalMin("0.0") @field:DecimalMax("100.0") val inputVatRate: BigDecimal? = null,
 )
 
 data class RefillSummary(
@@ -111,6 +116,9 @@ data class StockReceiptSummary(
     val verifiedBy: UserRef?,
     val offloadedAt: Instant?,
     val condition: String,
+    val supplierInvoiceRef: String?,
+    val inputVatRate: BigDecimal,
+    val inputVatAmount: BigDecimal,
 )
 
 // ---- Stock/Bin Card ----

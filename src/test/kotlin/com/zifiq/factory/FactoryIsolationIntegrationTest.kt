@@ -118,6 +118,32 @@ class FactoryIsolationIntegrationTest : PostgresIntegrationTest() {
     }
 
     @Test
+    fun `only delivered special-production runs surface as derived output VAT lines (docs 10 §4_6)`() {
+        val client = UUID.randomUUID()
+        val deliveredA = UUID.randomUUID()
+        val inProductionA = UUID.randomUUID()
+        val unitSub = "(select id from units_of_measure where tenant_id='$tenantId' limit 1)"
+        transaction(database) {
+            exec("select set_config('app.tenant_id', '$tenantId', true)")
+            exec("insert into special_production_clients (id, tenant_id, name) values ('$client', '$tenantId', 'Acme Co')")
+            exec(
+                "insert into special_production_runs (id, tenant_id, location_id, order_ref, batch_ref, client_id, quantity, unit_id, unit_cost, price, status, created_by_user_id) values " +
+                    "('$deliveredA', '$tenantId', '$factoryA', 'SP-A1', 'B-A1', '$client', 5, $unitSub, 100, 1500, 'DELIVERED', '$admin'), " +
+                    "('$inProductionA', '$tenantId', '$factoryA', 'SP-A2', 'B-A2', '$client', 5, $unitSub, 100, 999, 'IN_PRODUCTION', '$admin')",
+            )
+        }
+        signIn(admin, workingIn = factoryA)
+        val today = java.time.LocalDate.now()
+        val lines = production.specialProductionDeliveries(factoryA, today.minusDays(1), today.plusDays(1))
+        // The IN_PRODUCTION run is excluded; the delivered one carries its agreed price as the VAT base.
+        assertThat(lines.map { it.ref }).containsExactly("SP-A1")
+        assertThat(lines.single().clientName).isEqualTo("Acme Co")
+        assertThat(lines.single().base).isEqualByComparingTo(java.math.BigDecimal("1500"))
+        // A delivery outside the window is not reported.
+        assertThat(production.specialProductionDeliveries(factoryA, today.plusDays(5), today.plusDays(10))).isEmpty()
+    }
+
+    @Test
     fun `switching location - anyone may enter a factory, a user assigned to one can never leave it`() {
         signIn(admin)
         assertThat(switcher.switchable().map { it.id }).contains(factoryA, factoryB)

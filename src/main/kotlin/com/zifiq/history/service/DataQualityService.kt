@@ -12,6 +12,7 @@ import com.zifiq.history.dto.ScanResult
 import com.zifiq.history.model.DataQualityFlagsTable
 import com.zifiq.history.model.DataQualityIgnoresTable
 import com.zifiq.inventory.model.StockItemsTable
+import com.zifiq.inventory.model.StockLedgerEntriesTable
 import com.zifiq.platform.directory.Names
 import com.zifiq.platform.numbering.DocumentSequenceService
 import com.zifiq.platform.tenancy.TenantScopedTransaction
@@ -32,58 +33,67 @@ import org.springframework.stereotype.Service
  * Error Handler (docs/10 §4.8): finds likely spelling slips and naming inconsistencies in product
  * data and lets an Administrator correct the master record. The scan is a bounded nightly batch
  * (stock items per tenant are in the hundreds/thousands), so the token analysis runs in memory
- * rather than as hot SQL. This phase scans stock-item NAMEs; units and categories (owned by Factory,
- * not an open module) and BRAND need a factory SPI and are not scanned yet — manual flags still
- * accept them.
+ * rather than as hot SQL. It scans stock-item NAME and BRAND and, through the Factory SPI, unit and
+ * category names. A flag's detail view carries the correction's impact (records affected vs. issued
+ * documents that keep the original name) for STOCK_ITEM flags.
  */
 @Service
 class DataQualityService(
     private val support: HistorySupport,
     private val tx: TenantScopedTransaction,
     private val sequences: DocumentSequenceService,
+    private val factory: com.zifiq.factory.spi.FactoryVocabulary,
+    private val usage: com.zifiq.cashier.spi.StockItemUsageQueries,
+    private val invoices: com.zifiq.invoicing.spi.InvoiceQueries,
 ) {
     fun scan(): ScanResult = tx.execute {
         if (!support.settings().boolean(HistorySettings.DATA_QUALITY_SCAN_ENABLED)) return@execute ScanResult(0)
-        val products = StockItemsTable.select(StockItemsTable.id, StockItemsTable.code, StockItemsTable.name)
-            .where { (StockItemsTable.tenantId eq support.tenantId()) and (StockItemsTable.status inList listOf("ACTIVE", "SUSPENDED")) }
-            .map { Product(it[StockItemsTable.id].value, it[StockItemsTable.code], it[StockItemsTable.name]) }
-        if (products.isEmpty()) return@execute ScanResult(0)
         val ignores = DataQualityIgnoresTable.select(DataQualityIgnoresTable.token).where { DataQualityIgnoresTable.tenantId eq support.tenantId() }
             .map { it[DataQualityIgnoresTable.token] }.toSet()
-        val alreadyOpen = DataQualityFlagsTable.select(DataQualityFlagsTable.entityId)
-            .where { (DataQualityFlagsTable.tenantId eq support.tenantId()) and (DataQualityFlagsTable.field eq "NAME") and (DataQualityFlagsTable.status eq "OPEN") }
-            .map { it[DataQualityFlagsTable.entityId] }.toMutableSet()
-
-        val tokenProducts = HashMap<String, MutableSet<UUID>>()
-        products.forEach { p -> tokens(p.name, ignores).forEach { tokenProducts.getOrPut(it) { mutableSetOf() }.add(p.id) } }
-        val count = tokenProducts.mapValues { it.value.size }
+        val items = StockItemsTable.select(StockItemsTable.id, StockItemsTable.code, StockItemsTable.name, StockItemsTable.brand)
+            .where { (StockItemsTable.tenantId eq support.tenantId()) and (StockItemsTable.status inList listOf("ACTIVE", "SUSPENDED")) }.toList()
         var raised = 0
-
-        // SPELLING: a rare token near a common one.
-        for (p in products) {
-            if (p.id in alreadyOpen) continue
-            for (t in tokens(p.name, ignores)) {
-                if ((count[t] ?: 0) > 2) continue
-                val candidate = count.entries.firstOrNull { (c, n) ->
-                    c != t && n >= 3 && n >= 3 * (count[t] ?: 1) && levenshtein(t, c) <= (if (t.length >= 7) 2 else 1)
-                }?.key ?: continue
-                val suggested = replaceToken(p.name, t, candidate)
-                raise(p.id, p.code, p.name, suggested, "SPELLING"); alreadyOpen.add(p.id); raised++
-                break
-            }
-        }
-        // NAMING: distinct names that normalise to the same thing.
-        products.filter { it.id !in alreadyOpen }.groupBy { normalize(it.name) }.values
-            .filter { grp -> grp.map { it.name }.distinct().size > 1 }
-            .forEach { grp ->
-                val canonical = grp.groupingBy { it.name }.eachCount().maxByOrNull { it.value }!!.key
-                grp.filter { it.name != canonical && it.id !in alreadyOpen }.forEach { p ->
-                    raise(p.id, p.code, p.name, canonical, "NAMING"); alreadyOpen.add(p.id); raised++
-                }
-            }
-
+        raised += scanVocab("STOCK_ITEM", "NAME", items.map { Term(it[StockItemsTable.id].value, it[StockItemsTable.code], it[StockItemsTable.name]) }, ignores)
+        raised += scanVocab("STOCK_ITEM", "BRAND", items.mapNotNull { r -> r[StockItemsTable.brand]?.let { Term(r[StockItemsTable.id].value, r[StockItemsTable.code], it) } }, ignores)
+        raised += scanVocab("UNIT", "UNIT_NAME", factory.units().map { Term(it.id, it.code, it.name) }, ignores)
+        raised += scanVocab("CATEGORY", "CATEGORY_NAME", factory.categories().map { Term(it.id, it.code, it.name) }, ignores)
         if (raised > 0) support.record("history.data-quality.flagged", "data_quality", support.tenantId(), null, "$raised new data-quality flag(s)", mapOf("openCount" to raised))
         ScanResult(raised)
+    }
+
+    private data class Term(val id: UUID, val code: String?, val value: String)
+
+    /** Spelling + naming detection within one vocabulary (one entityType/field). Returns flags raised. */
+    private fun scanVocab(entityType: String, field: String, terms: List<Term>, ignores: Set<String>): Int {
+        if (terms.isEmpty()) return 0
+        val alreadyOpen = DataQualityFlagsTable.select(DataQualityFlagsTable.entityId)
+            .where { (DataQualityFlagsTable.tenantId eq support.tenantId()) and (DataQualityFlagsTable.field eq field) and (DataQualityFlagsTable.status eq "OPEN") }
+            .map { it[DataQualityFlagsTable.entityId] }.toMutableSet()
+        val tokenOwners = HashMap<String, MutableSet<UUID>>()
+        terms.forEach { t -> tokens(t.value, ignores).forEach { tokenOwners.getOrPut(it) { mutableSetOf() }.add(t.id) } }
+        val count = tokenOwners.mapValues { it.value.size }
+        var raised = 0
+        // SPELLING: a rare token near a common one.
+        for (t in terms) {
+            if (t.id in alreadyOpen) continue
+            for (tok in tokens(t.value, ignores)) {
+                if ((count[tok] ?: 0) > 2) continue
+                val candidate = count.entries.firstOrNull { (c, n) -> c != tok && n >= 3 && n >= 3 * (count[tok] ?: 1) && levenshtein(tok, c) <= (if (tok.length >= 7) 2 else 1) }?.key ?: continue
+                insertFlag(entityType, t.id, t.code, field, t.value, replaceToken(t.value, tok, candidate), "SPELLING", "SYSTEM", null)
+                alreadyOpen.add(t.id); raised++; break
+            }
+        }
+        // NAMING: distinct values that normalise to the same thing.
+        terms.filter { it.id !in alreadyOpen }.groupBy { normalize(it.value) }.values
+            .filter { grp -> grp.map { it.value }.distinct().size > 1 }
+            .forEach { grp ->
+                val canonical = grp.groupingBy { it.value }.eachCount().maxByOrNull { it.value }!!.key
+                grp.filter { it.value != canonical && it.id !in alreadyOpen }.forEach { t ->
+                    insertFlag(entityType, t.id, t.code, field, t.value, canonical, "NAMING", "SYSTEM", null)
+                    alreadyOpen.add(t.id); raised++
+                }
+            }
+        return raised
     }
 
     fun createFlag(request: ManualFlagRequest): DataQualityFlagRow = tx.execute {
@@ -93,7 +103,7 @@ class DataQualityService(
         if (field !in setOf("NAME", "BRAND")) throw ApiErrors.validationFailed(mapOf("field" to "NAME or BRAND"))
         val item = stockItem(request.entityId!!)
         val current = if (field == "NAME") item[StockItemsTable.name] else (item[StockItemsTable.brand] ?: "")
-        val id = insertFlag(request.entityId, item[StockItemsTable.code], field, current, request.suggestedValue?.trim()?.ifEmpty { null }, "NAMING", "USER", support.userId())
+        val id = insertFlag("STOCK_ITEM", request.entityId, item[StockItemsTable.code], field, current, request.suggestedValue?.trim()?.ifEmpty { null }, "NAMING", "USER", support.userId())
         row(id)
     }
 
@@ -114,15 +124,34 @@ class DataQualityService(
             ?: throw ApiErrors.validationFailed(mapOf("value" to "a correction is required"))
         if (value == flag[DataQualityFlagsTable.currentValue]) throw ApiErrors.validationFailed(mapOf("value" to "must differ from the current value"))
         val entityId = flag[DataQualityFlagsTable.entityId]
+        val entityType = flag[DataQualityFlagsTable.entityType]
         val field = flag[DataQualityFlagsTable.field]
-        val item = stockItem(entityId)
-        val current = if (field == "NAME") item[StockItemsTable.name] else (item[StockItemsTable.brand] ?: "")
-        if (current != flag[DataQualityFlagsTable.currentValue]) throw ApiErrors.flagStale()
-        StockItemsTable.update({ (StockItemsTable.id eq entityId) and (StockItemsTable.tenantId eq support.tenantId()) }) {
-            if (field == "NAME") it[name] = value else it[brand] = value
+        val recorded = flag[DataQualityFlagsTable.currentValue]
+        when (entityType) {
+            "STOCK_ITEM" -> {
+                val item = stockItem(entityId)
+                val current = if (field == "NAME") item[StockItemsTable.name] else (item[StockItemsTable.brand] ?: "")
+                if (current != recorded) throw ApiErrors.flagStale()
+                StockItemsTable.update({ (StockItemsTable.id eq entityId) and (StockItemsTable.tenantId eq support.tenantId()) }) {
+                    if (field == "NAME") it[name] = value else it[brand] = value
+                }
+                support.record("inventory.stock-item.updated", "stock_item", entityId, item[StockItemsTable.code],
+                    "${item[StockItemsTable.code]}: $field corrected to \"$value\"", mapOf("field" to field, "from" to current, "to" to value), item[StockItemsTable.locationId])
+            }
+            "UNIT" -> {
+                val current = factory.units().firstOrNull { it.id == entityId }?.name ?: throw ApiErrors.flagStale()
+                if (current != recorded) throw ApiErrors.flagStale()
+                factory.renameUnit(entityId, value)
+                support.record("factory.unit.renamed", "unit_of_measure", entityId, null, "Unit renamed to \"$value\"", mapOf("from" to current, "to" to value))
+            }
+            "CATEGORY" -> {
+                val current = factory.categories().firstOrNull { it.id == entityId }?.name ?: throw ApiErrors.flagStale()
+                if (current != recorded) throw ApiErrors.flagStale()
+                factory.renameCategory(entityId, value)
+                support.record("factory.category.renamed", "category", entityId, null, "Category renamed to \"$value\"", mapOf("from" to current, "to" to value))
+            }
+            else -> throw ApiErrors.validationFailed(mapOf("entityType" to "unsupported"))
         }
-        support.record("inventory.stock-item.updated", "stock_item", entityId, item[StockItemsTable.code],
-            "${item[StockItemsTable.code]}: $field corrected to \"$value\"", mapOf("field" to field, "from" to current, "to" to value), item[StockItemsTable.locationId])
         DataQualityFlagsTable.update({ DataQualityFlagsTable.id eq id }) {
             it[status] = "CORRECTED"; it[appliedValue] = value; it[resolvedByUserId] = support.userId(); it[resolvedAt] = Instant.now()
         }
@@ -149,18 +178,12 @@ class DataQualityService(
 
     // ---- helpers ----
 
-    private data class Product(val id: UUID, val code: String, val name: String)
-
-    private fun raise(entityId: UUID, code: String, current: String, suggested: String, kind: String) {
-        insertFlag(entityId, code, "NAME", current, suggested, kind, "SYSTEM", null)
-    }
-
-    private fun insertFlag(entityId: UUID, code: String?, field: String, current: String, suggested: String?, kind: String, source: String, byUser: UUID?): UUID {
+    private fun insertFlag(entityType: String, entityId: UUID, code: String?, field: String, current: String, suggested: String?, kind: String, source: String, byUser: UUID?): UUID {
         val ref = sequences.next("ER")
         return DataQualityFlagsTable.insertAndGetId {
             it[tenantId] = support.tenantId()
             it[DataQualityFlagsTable.ref] = ref
-            it[entityType] = "STOCK_ITEM"
+            it[DataQualityFlagsTable.entityType] = entityType
             it[DataQualityFlagsTable.entityId] = entityId
             it[entityCode] = code
             it[DataQualityFlagsTable.field] = field
@@ -184,15 +207,33 @@ class DataQualityService(
 
     private fun row(id: UUID): DataQualityFlagRow {
         val r = DataQualityFlagsTable.selectAll().where { DataQualityFlagsTable.id eq id }.single()
-        return toRow(r, Names.users(listOfNotNull(r[DataQualityFlagsTable.flaggedByUserId])))
+        return toRow(r, Names.users(listOfNotNull(r[DataQualityFlagsTable.flaggedByUserId])), impactCounts(r))
     }
 
-    private fun toRow(r: ResultRow, names: Map<UUID, String>) = DataQualityFlagRow(
+    /**
+     * The impact of applying a STOCK_ITEM correction (docs/10 §4.8): live records that would show the
+     * new name vs. issued documents that keep the original. Keyed by stock_item_id; each query is
+     * index-backed. Only computed for the single-flag detail (not the bulk list) and only for
+     * STOCK_ITEM — UNIT / CATEGORY names are not snapshotted onto transactional documents.
+     */
+    private fun impactCounts(flag: ResultRow): Pair<Int, Int>? {
+        if (flag[DataQualityFlagsTable.entityType] != "STOCK_ITEM") return null
+        val itemId = flag[DataQualityFlagsTable.entityId]
+        val ledgerEntries = StockLedgerEntriesTable.selectAll()
+            .where { (StockLedgerEntriesTable.tenantId eq support.tenantId()) and (StockLedgerEntriesTable.stockItemId eq itemId) }
+            .count().toInt()
+        val recordsAffected = ledgerEntries + usage.liveDocumentLineCount(itemId)
+        val documentsKeepingOriginal = invoices.issuedLineCount(itemId) + usage.waybillLineCount(itemId)
+        return recordsAffected to documentsKeepingOriginal
+    }
+
+    private fun toRow(r: ResultRow, names: Map<UUID, String>, impact: Pair<Int, Int>? = null) = DataQualityFlagRow(
         id = r[DataQualityFlagsTable.id].value, ref = r[DataQualityFlagsTable.ref], entityType = r[DataQualityFlagsTable.entityType],
         entityCode = r[DataQualityFlagsTable.entityCode], field = r[DataQualityFlagsTable.field], currentValue = r[DataQualityFlagsTable.currentValue],
         suggestedValue = r[DataQualityFlagsTable.suggestedValue], kind = if (r[DataQualityFlagsTable.kind] == "SPELLING") "Spelling" else "Naming",
         flaggedBy = r[DataQualityFlagsTable.flaggedByUserId]?.let { names[it] ?: "User" } ?: "System spell check",
         flaggedOn = r[DataQualityFlagsTable.createdAt], status = r[DataQualityFlagsTable.status], appliedValue = r[DataQualityFlagsTable.appliedValue],
+        recordsAffected = impact?.first, documentsKeepingOriginal = impact?.second,
     )
 
     private fun firstFlaggedToken(flag: ResultRow): String {

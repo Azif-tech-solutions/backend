@@ -226,6 +226,10 @@ class InventoryStockService(
         locationAccessService.assertAccess(request.locationId)
         requireActiveItem(request.stockItemId)
         val ref = documentSequenceService.next("DL")
+        val inputVatRate = request.inputVatRate ?: BigDecimal.ZERO
+        // Input VAT = VAT-exclusive cost (quantity × unit cost) × rate. Zero when no rate is given.
+        val inputVatAmount = request.quantity.multiply(request.unitCost).multiply(inputVatRate)
+            .divide(BigDecimal(100), 2, java.math.RoundingMode.HALF_UP)
 
         val id = StockReceiptsTable.insertAndGetId {
             it[StockReceiptsTable.tenantId] = actor.tenantId
@@ -239,6 +243,9 @@ class InventoryStockService(
             it[StockReceiptsTable.manufacturedDate] = request.manufacturedDate
             it[StockReceiptsTable.expiryDate] = request.expiryDate
             it[StockReceiptsTable.condition] = "PENDING_VERIFICATION"
+            it[StockReceiptsTable.supplierInvoiceRef] = request.supplierInvoiceRef?.trim()?.takeIf(String::isNotEmpty)
+            it[StockReceiptsTable.inputVatRate] = inputVatRate
+            it[StockReceiptsTable.inputVatAmount] = inputVatAmount
             it[StockReceiptsTable.createdByUserId] = actor.userId
             it[StockReceiptsTable.createdAt] = Instant.now()
         }.value
@@ -307,6 +314,9 @@ class InventoryStockService(
         verifiedBy = UserRef.of(row[StockReceiptsTable.verifiedByUserId]?.value),
         offloadedAt = row[StockReceiptsTable.offloadedAt],
         condition = row[StockReceiptsTable.condition],
+        supplierInvoiceRef = row[StockReceiptsTable.supplierInvoiceRef],
+        inputVatRate = row[StockReceiptsTable.inputVatRate],
+        inputVatAmount = row[StockReceiptsTable.inputVatAmount],
     )
 
     /**

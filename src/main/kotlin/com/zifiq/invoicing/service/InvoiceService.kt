@@ -9,6 +9,7 @@ import com.zifiq.invoicing.dto.DraftHeaderRequest
 import com.zifiq.invoicing.dto.ReissueRequest
 import com.zifiq.invoicing.dto.SandboxInvoiceRequest
 import com.zifiq.invoicing.dto.WalkInBuyerRequest
+import com.zifiq.invoicing.model.CreditNoteLinesTable
 import com.zifiq.invoicing.model.CreditNotesTable
 import com.zifiq.invoicing.model.InvoiceLinesTable
 import com.zifiq.invoicing.model.InvoiceWaybillLinksTable
@@ -37,8 +38,10 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
+import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.neq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertAndGetId
@@ -133,6 +136,20 @@ class InvoiceService(
             }
 
     override fun creditNoteLines(locationId: UUID?, from: LocalDate, to: LocalDate): List<CreditNoteLineView> = creditNotes.creditNoteLines(locationId, from, to)
+
+    override fun issuedLineCount(stockItemId: UUID): Int {
+        val invoiceLines = InvoiceLinesTable
+            .join(InvoicesTable, JoinType.INNER, InvoiceLinesTable.invoiceId, InvoicesTable.id)
+            .selectAll()
+            .where { (InvoiceLinesTable.tenantId eq support.tenantId()) and (InvoiceLinesTable.stockItemId eq stockItemId) and (InvoicesTable.status neq "DRAFT") }
+            .count()
+        val creditLines = CreditNoteLinesTable
+            .join(InvoiceLinesTable, JoinType.INNER, CreditNoteLinesTable.invoiceLineId, InvoiceLinesTable.id)
+            .selectAll()
+            .where { (CreditNoteLinesTable.tenantId eq support.tenantId()) and (InvoiceLinesTable.stockItemId eq stockItemId) }
+            .count()
+        return (invoiceLines + creditLines).toInt()
+    }
 
     override fun link(invoiceId: UUID, waybillId: UUID, waybillRef: String, waybillDate: LocalDate) {
         val invoice = row(invoiceId)
