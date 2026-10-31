@@ -809,7 +809,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | Index | Kind | Columns / expression | Only rows where |
 |---|---|---|---|
 | `stock_items_pkey` | primary key | id |  |
-| `stock_items_barcode_idx` | unique | tenant_id, barcode | (barcode IS NOT NULL) |
+| `stock_items_barcode_idx` | unique | tenant_id, barcode | (barcode IS NOT NULL) AND (status NOT IN ('DELETED', 'PURGED')) |
 | `stock_items_brand_trgm` | gin | f_unaccent(lower((brand)::text)) gin_trgm_ops |  |
 | `stock_items_category_idx` | btree | tenant_id, category_id | (category_id IS NOT NULL) |
 | `stock_items_lifecycle_idx` | btree | tenant_id, status, suspension_review_on |  |

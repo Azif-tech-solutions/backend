@@ -617,12 +617,16 @@ ep("07 - Inventory Stock", "Refill Finished Product", "POST", "/api/v1/inventory
 ep("07 - Inventory Stock", "Refill Raw Material (Receive)", "POST", "/api/v1/inventory/stock/refill/raw-material",
    body={"locationId": "{{factoryId}}", "stockItemId": "{{rawMaterialId}}", "supplierId": "{{supplierId}}",
          "manufacturerId": "{{manufacturerId}}", "quantity": 100, "unitCost": 5.00,
-         "manufacturedDate": "2026-09-01", "expiryDate": "2027-09-01"},
+         "manufacturedDate": "2026-09-01", "expiryDate": "2027-09-01",
+         "supplierInvoiceRef": "SI-4471", "inputVatRate": 7.50},
    resp={"data": {"id": "{{stockReceiptId}}", "ref": "DL-1", "stockItem": REF("stockItem", "{{rawMaterialId}}"), "supplier": REF("supplier", "{{supplierId}}"),
                   "manufacturer": REF("manufacturer", "{{manufacturerId}}"), "quantity": 100.000, "unitCost": 5.00, "manufacturedDate": "2026-09-01",
-                  "expiryDate": "2027-09-01", "verifiedBy": None, "offloadedAt": None, "condition": "PENDING_VERIFICATION"}},
+                  "expiryDate": "2027-09-01", "verifiedBy": None, "offloadedAt": None, "condition": "PENDING_VERIFICATION",
+                  "supplierInvoiceRef": "SI-4471", "inputVatRate": 7.50, "inputVatAmount": 37.50}},
    tests=["const json = pm.response.json();", "pm.collectionVariables.set('stockReceiptId', json.data.id);"],
-   desc="This is also the Material/Recipe Receive Report's data source (same table, see List Stock Receipts).")
+   desc="This is also the Material/Recipe Receive Report's data source (same table, see List Stock Receipts). "
+        "inputVatRate (0-100) + supplierInvoiceRef capture recoverable input VAT = quantity x unitCost x rate "
+        "(here 100 x 5.00 x 7.5% = 37.50), which the Audit VAT report reads as a factory input line.")
 
 ep("07 - Inventory Stock", "List Stock Receipts (Material Receive Report)", "GET", "/api/v1/inventory/stock/receipts",
    query=[{"key": "locationId", "value": "{{factoryId}}"}],
