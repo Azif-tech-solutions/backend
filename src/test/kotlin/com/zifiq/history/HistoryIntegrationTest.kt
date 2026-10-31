@@ -104,6 +104,7 @@ class HistoryIntegrationTest : PostgresIntegrationTest() {
     private val alerts = AuditAlertService(support, tx, violations, notify)
     private val detectors = AuditDetectors(support, alerts)
     private val dataQuality = com.zifiq.history.service.DataQualityService(support, tx, sequences)
+    private val integrity = com.zifiq.history.service.IntegrityCheckService(support, tx, notify)
     private val stockLedger = StockLedgerRepository(notify)
     private val today: LocalDate = LocalDate.now()
 
@@ -242,5 +243,35 @@ class HistoryIntegrationTest : PostgresIntegrationTest() {
         val second = dataQuality.scan()
         assertThat(dataQuality.list(null, null, null, PageRequest.of(0, 50)).items.count { it.currentValue == "Mango Drnk 33cl" }).isEqualTo(1)
         assertThat(second).isNotNull
+    }
+
+    @Test
+    fun `integrity run flags a stock balance that disagrees with the ledger`() {
+        val itg = UUID.randomUUID()
+        tx.executeForTenant(tenantId) {
+            TransactionManager.current().exec(
+                "insert into stock_items (id, tenant_id, location_id, item_type, code, name, unit_of_measure_id, reorder_level, landing_cost, vat_category_id, " +
+                    "hsn_section_id, isic_section_id, status, created_by_user_id, created_at) values ('$itg', '$tenantId', '$factory', 'FINISHED_PRODUCT', 'INTG-1', 'Integrity Widget', " +
+                    "'$unit', 0, 1000, (select id from vat_categories where code = 'STANDARD_RATE'), (select id from hsn_sections where code = 'IV'), " +
+                    "(select id from isic_sections where code = 'A'), 'ACTIVE', '$admin', now())",
+            )
+        }
+        signIn(admin)
+        tx.executeForTenant(tenantId) {
+            stockLedger.postEntry(tenantId, factory, itg, "REFILL", "RF-INTG", qtyIn = BigDecimal("10"), performedByUserId = admin, entryDate = today)
+        }
+        // Corrupt the materialised balance so it disagrees with the ledger.
+        tx.executeForTenant(tenantId) {
+            TransactionManager.current().exec("update stock_balances set quantity_on_hand = 5 where stock_item_id = '$itg' and location_id = '$factory'")
+        }
+        val detail = integrity.run("MANUAL")
+        assertThat(detail.run.status).isEqualTo("FINDINGS")
+        val finding = detail.findings.first { it.checkCode == "STOCK_BALANCE_MATCHES_LEDGER" && it.recordRef == "INTG-1" }
+        assertThat(finding.severity).isEqualTo("CRITICAL")
+        assertThat(finding.expected).isEqualTo("10.000")
+        assertThat(finding.actual).isEqualTo("5.000")
+
+        // Only one run at a time per tenant isn't violated by sequential runs; a second run completes.
+        assertThat(integrity.listRuns(PageRequest.of(0, 10)).items).isNotEmpty
     }
 }
