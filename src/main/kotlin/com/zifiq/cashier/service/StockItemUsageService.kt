@@ -1,5 +1,6 @@
 package com.zifiq.cashier.service
 
+import com.zifiq.cashier.model.CustomerWaybillLinesTable
 import com.zifiq.cashier.model.ProFormaLinesTable
 import com.zifiq.cashier.model.ProFormasTable
 import com.zifiq.cashier.model.SaleLinesTable
@@ -33,5 +34,27 @@ class StockItemUsageService(
                     (ProFormasTable.status inList listOf("DRAFT", "PENDING_APPROVAL", "SENT"))
             }
             .limit(1).any()
+    }
+
+    override fun liveDocumentLineCount(stockItemId: UUID): Int = tx.execute {
+        val onOpenSales = SaleLinesTable.join(SalesTable, JoinType.INNER, SaleLinesTable.saleId, SalesTable.id)
+            .selectAll()
+            .where { (SaleLinesTable.tenantId eq support.tenantId()) and (SaleLinesTable.stockItemId eq stockItemId) and (SalesTable.status eq "OPEN") }
+            .count()
+        val onOpenProFormas = ProFormaLinesTable.join(ProFormasTable, JoinType.INNER, ProFormaLinesTable.proFormaId, ProFormasTable.id)
+            .selectAll()
+            .where {
+                (ProFormaLinesTable.tenantId eq support.tenantId()) and (ProFormaLinesTable.stockItemId eq stockItemId) and
+                    (ProFormasTable.status inList listOf("DRAFT", "PENDING_APPROVAL", "SENT"))
+            }
+            .count()
+        (onOpenSales + onOpenProFormas).toInt()
+    }
+
+    override fun waybillLineCount(stockItemId: UUID): Int = tx.execute {
+        CustomerWaybillLinesTable.join(SaleLinesTable, JoinType.INNER, CustomerWaybillLinesTable.saleLineId, SaleLinesTable.id)
+            .selectAll()
+            .where { (CustomerWaybillLinesTable.tenantId eq support.tenantId()) and (SaleLinesTable.stockItemId eq stockItemId) }
+            .count().toInt()
     }
 }

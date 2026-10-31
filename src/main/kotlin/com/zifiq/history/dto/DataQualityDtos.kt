@@ -23,9 +23,11 @@ data class DismissFlagRequest(
 )
 
 /**
- * A data-quality flag (docs/10 §4.8). The cross-module `recordsAffected` / `documentsKeepingOriginal`
- * counts are not computed yet (they need inventory ledger + issued-document reads); the correction
- * workflow itself is complete.
+ * A data-quality flag (docs/10 §4.8). For a STOCK_ITEM flag, the detail view carries the impact of
+ * applying the correction: `recordsAffected` (live records that would reflect the new name — the
+ * inventory ledger plus open sale / pro-forma lines) and `documentsKeepingOriginal` (issued documents
+ * that snapshot the old name and never change — non-draft invoice lines, credit-note lines, waybill
+ * lines). Both are null in the bulk list and for non-STOCK_ITEM flags.
  */
 data class DataQualityFlagRow(
     val id: UUID,
@@ -42,6 +44,8 @@ data class DataQualityFlagRow(
     val flaggedOn: Instant,
     val status: String,
     val appliedValue: String?,
+    val recordsAffected: Int? = null,
+    val documentsKeepingOriginal: Int? = null,
 )
 
 data class ScanResult(val flagsRaised: Int)

@@ -38,6 +38,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.neq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.lowerCase
@@ -87,6 +88,17 @@ class RecycleBinService(
     fun restore(stockItemId: UUID, request: RecycleNoteRequest): RecycleActionView = tx.execute {
         val item = itemForUpdate(stockItemId)
         if (item[StockItemsTable.status] != "DELETED") throw ApiErrors.itemNotDeleted()
+        // Its barcode stayed in the bin but may have been reused by a live item meanwhile (V16_3): the
+        // restore would collide on the uniqueness index, so refuse it with a clear 409 instead.
+        item[StockItemsTable.barcode]?.let { barcode ->
+            val reused = StockItemsTable.selectAll()
+                .where {
+                    (StockItemsTable.tenantId eq support.tenantId()) and (StockItemsTable.barcode eq barcode) and
+                        (StockItemsTable.id neq stockItemId) and (StockItemsTable.status inList listOf("ACTIVE", "SUSPENDED"))
+                }
+                .limit(1).any()
+            if (reused) throw ApiErrors.duplicateBarcode(barcode)
+        }
         StockItemsTable.update({ StockItemsTable.id eq stockItemId }) {
             it[status] = "ACTIVE"
             it[statusReason] = request.note?.trim()?.ifEmpty { null }

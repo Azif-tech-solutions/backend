@@ -103,7 +103,22 @@ class HistoryIntegrationTest : PostgresIntegrationTest() {
     private val violations = ViolationService(support, tx, sequences, notify)
     private val alerts = AuditAlertService(support, tx, violations, notify)
     private val detectors = AuditDetectors(support, alerts)
-    private val dataQuality = com.zifiq.history.service.DataQualityService(support, tx, sequences, com.zifiq.factory.service.FactorySetupService(actors, tx, sequences, locationAccess))
+    // Cross-module line counts come through SPI; the inventory-ledger half of recordsAffected is read
+    // directly (inventory is OPEN). These stubs stand in for the Sales/Invoicing halves in this
+    // hand-wired test — the real wiring is exercised by ModularityTests and the end-to-end suite.
+    private val stockItemUsage = object : com.zifiq.cashier.spi.StockItemUsageQueries {
+        override fun inOpenDocuments(stockItemId: UUID) = false
+        override fun liveDocumentLineCount(stockItemId: UUID) = 0
+        override fun waybillLineCount(stockItemId: UUID) = 0
+    }
+    private val invoiceQueries = object : com.zifiq.invoicing.spi.InvoiceQueries {
+        override fun byNumber(number: String): com.zifiq.invoicing.spi.InvoiceRef? = null
+        override fun bySource(sourceType: String, sourceId: UUID): com.zifiq.invoicing.spi.InvoiceRef? = null
+        override fun linesOf(invoiceId: UUID): List<com.zifiq.invoicing.spi.InvoiceLineView> = emptyList()
+        override fun creditNoteLines(locationId: UUID?, from: LocalDate, to: LocalDate): List<com.zifiq.invoicing.spi.CreditNoteLineView> = emptyList()
+        override fun issuedLineCount(stockItemId: UUID) = 0
+    }
+    private val dataQuality = com.zifiq.history.service.DataQualityService(support, tx, sequences, com.zifiq.factory.service.FactorySetupService(actors, tx, sequences, locationAccess), stockItemUsage, invoiceQueries)
     private val integrity = com.zifiq.history.service.IntegrityCheckService(support, tx, notify, emptyList())
     private val stockLedger = StockLedgerRepository(notify)
     private val today: LocalDate = LocalDate.now()

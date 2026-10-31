@@ -12,6 +12,7 @@ import com.zifiq.history.dto.ScanResult
 import com.zifiq.history.model.DataQualityFlagsTable
 import com.zifiq.history.model.DataQualityIgnoresTable
 import com.zifiq.inventory.model.StockItemsTable
+import com.zifiq.inventory.model.StockLedgerEntriesTable
 import com.zifiq.platform.directory.Names
 import com.zifiq.platform.numbering.DocumentSequenceService
 import com.zifiq.platform.tenancy.TenantScopedTransaction
@@ -32,9 +33,9 @@ import org.springframework.stereotype.Service
  * Error Handler (docs/10 §4.8): finds likely spelling slips and naming inconsistencies in product
  * data and lets an Administrator correct the master record. The scan is a bounded nightly batch
  * (stock items per tenant are in the hundreds/thousands), so the token analysis runs in memory
- * rather than as hot SQL. This phase scans stock-item NAMEs; units and categories (owned by Factory,
- * not an open module) and BRAND need a factory SPI and are not scanned yet — manual flags still
- * accept them.
+ * rather than as hot SQL. It scans stock-item NAME and BRAND and, through the Factory SPI, unit and
+ * category names. A flag's detail view carries the correction's impact (records affected vs. issued
+ * documents that keep the original name) for STOCK_ITEM flags.
  */
 @Service
 class DataQualityService(
@@ -42,6 +43,8 @@ class DataQualityService(
     private val tx: TenantScopedTransaction,
     private val sequences: DocumentSequenceService,
     private val factory: com.zifiq.factory.spi.FactoryVocabulary,
+    private val usage: com.zifiq.cashier.spi.StockItemUsageQueries,
+    private val invoices: com.zifiq.invoicing.spi.InvoiceQueries,
 ) {
     fun scan(): ScanResult = tx.execute {
         if (!support.settings().boolean(HistorySettings.DATA_QUALITY_SCAN_ENABLED)) return@execute ScanResult(0)
@@ -204,15 +207,33 @@ class DataQualityService(
 
     private fun row(id: UUID): DataQualityFlagRow {
         val r = DataQualityFlagsTable.selectAll().where { DataQualityFlagsTable.id eq id }.single()
-        return toRow(r, Names.users(listOfNotNull(r[DataQualityFlagsTable.flaggedByUserId])))
+        return toRow(r, Names.users(listOfNotNull(r[DataQualityFlagsTable.flaggedByUserId])), impactCounts(r))
     }
 
-    private fun toRow(r: ResultRow, names: Map<UUID, String>) = DataQualityFlagRow(
+    /**
+     * The impact of applying a STOCK_ITEM correction (docs/10 §4.8): live records that would show the
+     * new name vs. issued documents that keep the original. Keyed by stock_item_id; each query is
+     * index-backed. Only computed for the single-flag detail (not the bulk list) and only for
+     * STOCK_ITEM — UNIT / CATEGORY names are not snapshotted onto transactional documents.
+     */
+    private fun impactCounts(flag: ResultRow): Pair<Int, Int>? {
+        if (flag[DataQualityFlagsTable.entityType] != "STOCK_ITEM") return null
+        val itemId = flag[DataQualityFlagsTable.entityId]
+        val ledgerEntries = StockLedgerEntriesTable.selectAll()
+            .where { (StockLedgerEntriesTable.tenantId eq support.tenantId()) and (StockLedgerEntriesTable.stockItemId eq itemId) }
+            .count().toInt()
+        val recordsAffected = ledgerEntries + usage.liveDocumentLineCount(itemId)
+        val documentsKeepingOriginal = invoices.issuedLineCount(itemId) + usage.waybillLineCount(itemId)
+        return recordsAffected to documentsKeepingOriginal
+    }
+
+    private fun toRow(r: ResultRow, names: Map<UUID, String>, impact: Pair<Int, Int>? = null) = DataQualityFlagRow(
         id = r[DataQualityFlagsTable.id].value, ref = r[DataQualityFlagsTable.ref], entityType = r[DataQualityFlagsTable.entityType],
         entityCode = r[DataQualityFlagsTable.entityCode], field = r[DataQualityFlagsTable.field], currentValue = r[DataQualityFlagsTable.currentValue],
         suggestedValue = r[DataQualityFlagsTable.suggestedValue], kind = if (r[DataQualityFlagsTable.kind] == "SPELLING") "Spelling" else "Naming",
         flaggedBy = r[DataQualityFlagsTable.flaggedByUserId]?.let { names[it] ?: "User" } ?: "System spell check",
         flaggedOn = r[DataQualityFlagsTable.createdAt], status = r[DataQualityFlagsTable.status], appliedValue = r[DataQualityFlagsTable.appliedValue],
+        recordsAffected = impact?.first, documentsKeepingOriginal = impact?.second,
     )
 
     private fun firstFlaggedToken(flag: ResultRow): String {
