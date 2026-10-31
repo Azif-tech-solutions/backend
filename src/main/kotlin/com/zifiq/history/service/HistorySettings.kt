@@ -34,11 +34,29 @@ class HistorySettings : ModuleSettingProvider {
             default = BigDecimal("100000.00"),
             min = BigDecimal.ZERO,
         ),
+        SettingDefinition(
+            key = RECYCLE_BIN_RETENTION_DAYS,
+            module = "history",
+            label = "Days a deleted product stays in the Recycle Bin before it is purge-eligible",
+            type = SettingType.INT,
+            default = 30,
+            min = BigDecimal.ONE,
+            max = BigDecimal(3650),
+        ),
+        SettingDefinition(
+            key = DATA_QUALITY_SCAN_ENABLED,
+            module = "history",
+            label = "Run the nightly product data-quality (spelling / naming) scan",
+            type = SettingType.BOOLEAN,
+            default = true,
+        ),
     )
 
     companion object {
         const val TILL_VARIANCE_THRESHOLD = "history.alerts.tillVarianceThreshold"
         const val REPEATED_DECLINES_PER_WEEK = "history.alerts.repeatedDeclinesPerWeek"
         const val ADJUSTMENT_VALUE_THRESHOLD = "history.alerts.adjustmentValueThreshold"
+        const val RECYCLE_BIN_RETENTION_DAYS = "history.recycleBin.retentionDays"
+        const val DATA_QUALITY_SCAN_ENABLED = "history.dataQuality.scanEnabled"
     }
 }

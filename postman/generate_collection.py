@@ -3340,6 +3340,50 @@ ep(AU, "B8 Audit Alert Filters", "GET", "/api/v1/history/audit-alerts/filters",
    resp={"data": {"filters": [], "sorts": [], "qualifiers": []}},
    desc="Perm history.violations.read. The filter grammar the alerts list accepts.")
 
+# ---- C. VAT compliance, Recycle Bin, Error Handler, Integrity (slice 3, §4.6/4.8/4.9/4.10) ----
+
+ep(AU, "C1 VAT Report", "GET", "/api/v1/compliance/vat/report",
+   query=[{"key": "locationId", "value": "{{showroomId}}"}, {"key": "from", "value": "2026-01-01"}, {"key": "to", "value": "2026-12-31"}],
+   resp={"data": {"header": {"location": REF("location", "{{showroomId}}"), "vatEnabled": True, "currentRate": 7.50, "rateChanges": [{"rate": 7.50, "effectiveFrom": "2026-01-01"}],
+                             "outputVat": 320.63, "outputBase": 4275.00, "inputVat": 0.00, "inputBase": 0.00, "netVatPayable": 320.63, "costVisible": True},
+                  "rows": [{"date": "2026-10-10", "document": "INV-1", "counterparty": "Okafor & Sons", "counterpartyTin": None, "description": "Sale TXN-1",
+                            "type": "Output", "taxableAmount": 4275.00, "rate": 7.50, "vat": 320.63}]}},
+   desc="Perm compliance.vat.read. Output VAT (sales + credit notes) vs input VAT (showroom entries + running costs), reconciling with the Sales Report. Input taxable amounts are zeroed without factory.costing.read; VAT is never masked. type=OUTPUT|INPUT narrows it.")
+
+ep(AU, "C2 VAT Return (period)", "GET", "/api/v1/compliance/vat/return", query=[{"key": "period", "value": "2026-10"}],
+   resp={"data": {"period": "2026-10", "rows": [{"location": REF("location", "{{showroomId}}"), "vatRegistrationNumber": None, "outputBase": 4275.00, "outputVat": 320.63,
+                                                  "creditNoteVat": 0.00, "inputVat": 0.00, "netPayable": 320.63, "salesCount": 1, "zeroRatedSales": 0.00, "exemptSales": 0.00}],
+                  "companyTotal": {"location": None, "vatRegistrationNumber": None, "outputBase": 4275.00, "outputVat": 320.63, "creditNoteVat": 0.00, "inputVat": 0.00,
+                                   "netPayable": 320.63, "salesCount": 1, "zeroRatedSales": 0.00, "exemptSales": 0.00}}},
+   desc="Perm compliance.vat.read. One row per location with activity plus a company total (location null). YYYY-MM. GET /compliance/vat/return.csv for the same as CSV.")
+
+ep(AU, "C3 Data-Quality Scan", "POST", "/api/v1/history/data-quality/scan",
+   resp={"data": {"flagsRaised": 0}},
+   desc="Perm history.data-quality.manage. Runs the product spelling/naming scan now; nightly at 02:00. Idempotent (an entity/field with an open flag is skipped).")
+
+ep(AU, "C4 Data-Quality Flags", "GET", "/api/v1/history/data-quality/flags", query=[{"key": "status", "value": "OPEN"}, {"key": "page", "value": "0"}, {"key": "size", "value": "20"}],
+   resp={"data": {"items": [], "page": 0, "size": 20, "totalItems": 0, "totalPages": 0}},
+   desc="Perm history.data-quality.manage. Flags are applied (corrects the master name/brand) at POST /flags/{id}/apply, or dismissed at /dismiss (with ignoreToken to never flag it again). Manual flag: POST /flags.")
+
+ep(AU, "C5 Recycle Bin — Deleted", "GET", "/api/v1/history/recycle-bin/deleted", query=[{"key": "page", "value": "0"}, {"key": "size", "value": "20"}],
+   resp={"data": {"items": [], "page": 0, "size": 20, "totalItems": 0, "totalPages": 0}},
+   desc="Perm history.recycle-bin.manage. Deleted products awaiting purge or restore. Delete with POST /recycle-bin/deleted (blocked by reservations, in-transit transfers or open documents); restore / purge at /deleted/{stockItemId}/restore|purge (purge needs history.recycle-bin.purge, confirmCode = the item code, and writeOffConfirmed when stock is held).")
+
+ep(AU, "C6 Recycle Bin — Suspended", "GET", "/api/v1/history/recycle-bin/suspended", query=[{"key": "page", "value": "0"}, {"key": "size", "value": "20"}],
+   resp={"data": {"items": [], "page": 0, "size": 20, "totalItems": 0, "totalPages": 0}},
+   desc="Perm history.recycle-bin.manage. Products suspended from sale. Suspend with POST /recycle-bin/suspended; resume / set-review / reprice-and-resume at /suspended/{stockItemId}/resume|review|reprice-and-resume.")
+
+ep(AU, "C7 Run Integrity Checks", "POST", "/api/v1/audit/integrity/runs",
+   resp={"data": {"run": {"id": "{{integrityRunId}}", "startedAt": NOW, "finishedAt": NOW, "trigger": "MANUAL", "triggeredBy": USER, "checksRun": 3, "findingsCount": 0, "status": "PASSED"},
+                  "findings": []}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('integrityRunId', json.data.run.id);"],
+   desc="Perm history.integrity.read. One run at a time per tenant (409 RUN_IN_PROGRESS). Stock checks this phase (balance-vs-ledger, non-negative, reservations within stock); financial checks follow. CRITICAL findings notify Administrators. Nightly at 03:00.")
+
+ep(AU, "C8 Integrity Runs", "GET", "/api/v1/audit/integrity/runs", query=[{"key": "page", "value": "0"}, {"key": "size", "value": "20"}],
+   resp={"data": {"items": [{"id": "{{integrityRunId}}", "startedAt": NOW, "finishedAt": NOW, "trigger": "MANUAL", "triggeredBy": USER, "checksRun": 3, "findingsCount": 0, "status": "PASSED"}],
+                  "page": 0, "size": 20, "totalItems": 1, "totalPages": 1}},
+   desc="Perm history.integrity.read. Newest first. GET /audit/integrity/runs/{id} returns one run with its findings.")
+
 def pm_url(path, query):
     full = "{{baseUrl}}" + path
     parts = [p for p in path.split("/") if p]

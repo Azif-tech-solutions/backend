@@ -226,6 +226,22 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `customers_type_status_idx` | btree | tenant_id, type, status, name |  |
 | `customers_user_uq` | unique | tenant_id, user_id | (user_id IS NOT NULL) |
 
+### `data_quality_flags`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `data_quality_flags_pkey` | primary key | id |  |
+| `data_quality_flags_ref_uq` | unique | tenant_id, ref |  |
+| `dqf_list_idx` | btree | tenant_id, status, kind, created_at DESC |  |
+| `dqf_open_uq` | unique | tenant_id, entity_type, entity_id, field | ((status)::text = 'OPEN'::text) |
+| `dqf_value_trgm` | gin | f_unaccent(lower((current_value)::text)) gin_trgm_ops |  |
+
+### `data_quality_ignores`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `data_quality_ignores_pkey` | primary key | tenant_id, token |  |
+
 ### `dealer_categories`
 
 | Index | Kind | Columns / expression | Only rows where |
@@ -351,6 +367,22 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `instant_discounts_one_live_uq` | unique | sale_id | ((status)::text = ANY ((ARRAY['PENDING_APPROVAL'::character varying, 'APPLIED'::character varying])::text[])) |
 | `instant_discounts_ref_uq` | unique | tenant_id, ref |  |
 | `instant_discounts_tenant_id_key` | unique | tenant_id, id |  |
+
+### `integrity_check_findings`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `integrity_check_findings_pkey` | primary key | id |  |
+| `integrity_findings_run_idx` | btree | tenant_id, run_id, severity |  |
+
+### `integrity_check_runs`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `integrity_check_runs_pkey` | primary key | id |  |
+| `integrity_check_runs_tenant_id_key` | unique | tenant_id, id |  |
+| `integrity_runs_idx` | btree | tenant_id, started_at DESC |  |
+| `integrity_runs_one_running` | unique | tenant_id | ((status)::text = 'RUNNING'::text) |
 
 ### `invoice_deliveries`
 
@@ -653,6 +685,13 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `recipes_tenant_id_code_key` | unique | tenant_id, code |  |
 | `recipes_tenant_id_key` | unique | tenant_id, id |  |
 
+### `recycle_bin_log`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `recycle_bin_log_pkey` | primary key | id |  |
+| `rbl_item_idx` | btree | tenant_id, stock_item_id, at DESC |  |
+
 ### `refresh_tokens`
 
 | Index | Kind | Columns / expression | Only rows where |
@@ -773,6 +812,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `stock_items_barcode_idx` | unique | tenant_id, barcode | (barcode IS NOT NULL) |
 | `stock_items_brand_trgm` | gin | f_unaccent(lower((brand)::text)) gin_trgm_ops |  |
 | `stock_items_category_idx` | btree | tenant_id, category_id | (category_id IS NOT NULL) |
+| `stock_items_lifecycle_idx` | btree | tenant_id, status, suspension_review_on |  |
 | `stock_items_location_name_idx` | btree | tenant_id, location_id, name, id |  |
 | `stock_items_name_idx` | btree | tenant_id, name, id |  |
 | `stock_items_name_trgm` | gin | f_unaccent(lower((name)::text)) gin_trgm_ops |  |
@@ -947,6 +987,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 |---|---|---|---|
 | `violation_records_pkey` | primary key | id |  |
 | `violation_records_ref_uq` | unique | tenant_id, ref |  |
+| `violation_records_tenant_id_key` | unique | tenant_id, id |  |
 | `vr_linked_refs_idx` | gin | linked_refs jsonb_path_ops |  |
 | `vr_location_idx` | btree | tenant_id, location_id, status |  |
 | `vr_search_idx` | gin | search_vector |  |

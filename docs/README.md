@@ -18,7 +18,7 @@ One design doc per module, numbered in build order (`implemented/03-cross-module
 | 07 | Finance & accounting | Implemented | [implemented/07-finance-accounting.md](implemented/07-finance-accounting.md) |
 | 08 | Electronic invoicing | Implemented | [implemented/08-electronic-invoicing.md](implemented/08-electronic-invoicing.md) |
 | 09 | Sales & POS | Implemented | [implemented/09-sales-pos.md](implemented/09-sales-pos.md) |
-| 10 | Audit & compliance | In progress (slices 1–2 of 3) | [in-progress/10-audit-compliance.md](in-progress/10-audit-compliance.md) |
+| 10 | Audit & compliance | Implemented | [implemented/10-audit-compliance.md](implemented/10-audit-compliance.md) |
 | 11 | Barcode & QR | Planned | [planned/11-barcode-qr.md](planned/11-barcode-qr.md) |
 | 12 | Communication | Planned | [planned/12-communication.md](planned/12-communication.md) |
 | 13 | Reports & analytics | Planned | [planned/13-reports-analytics.md](planned/13-reports-analytics.md) |

@@ -2648,7 +2648,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"51d943a2-f2c1-4a6c-a095-420379629ee6\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"cca83137-fc02-47dc-bb66-ac81d5db174f\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -2739,7 +2739,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"70f0621e-6c01-4f8d-a939-4d60f49bbd99\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"e963db48-e253-4381-b1cb-6d6702c520e8\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -46314,6 +46314,826 @@
               ],
               "cookie": [],
               "body": "{\n  \"data\": {\n    \"filters\": [],\n    \"sorts\": [],\n    \"qualifiers\": []\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "C1 VAT Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/compliance/vat/report?locationId={{showroomId}}&from=2026-01-01&to=2026-12-31",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "compliance",
+                "vat",
+                "report"
+              ],
+              "query": [
+                {
+                  "key": "locationId",
+                  "value": "{{showroomId}}"
+                },
+                {
+                  "key": "from",
+                  "value": "2026-01-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-12-31"
+                }
+              ]
+            },
+            "description": "Perm compliance.vat.read. Output VAT (sales + credit notes) vs input VAT (showroom entries + running costs), reconciling with the Sales Report. Input taxable amounts are zeroed without factory.costing.read; VAT is never masked. type=OUTPUT|INPUT narrows it.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "C1 VAT Report - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/compliance/vat/report?locationId={{showroomId}}&from=2026-01-01&to=2026-12-31",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "compliance",
+                    "vat",
+                    "report"
+                  ],
+                  "query": [
+                    {
+                      "key": "locationId",
+                      "value": "{{showroomId}}"
+                    },
+                    {
+                      "key": "from",
+                      "value": "2026-01-01"
+                    },
+                    {
+                      "key": "to",
+                      "value": "2026-12-31"
+                    }
+                  ]
+                },
+                "description": "Perm compliance.vat.read. Output VAT (sales + credit notes) vs input VAT (showroom entries + running costs), reconciling with the Sales Report. Input taxable amounts are zeroed without factory.costing.read; VAT is never masked. type=OUTPUT|INPUT narrows it.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"header\": {\n      \"location\": {\n        \"id\": \"{{showroomId}}\",\n        \"code\": \"SHR-1\",\n        \"name\": \"Showroom Ikeja\",\n        \"type\": \"SHOWROOM\"\n      },\n      \"vatEnabled\": true,\n      \"currentRate\": 7.5,\n      \"rateChanges\": [\n        {\n          \"rate\": 7.5,\n          \"effectiveFrom\": \"2026-01-01\"\n        }\n      ],\n      \"outputVat\": 320.63,\n      \"outputBase\": 4275.0,\n      \"inputVat\": 0.0,\n      \"inputBase\": 0.0,\n      \"netVatPayable\": 320.63,\n      \"costVisible\": true\n    },\n    \"rows\": [\n      {\n        \"date\": \"2026-10-10\",\n        \"document\": \"INV-1\",\n        \"counterparty\": \"Okafor & Sons\",\n        \"counterpartyTin\": null,\n        \"description\": \"Sale TXN-1\",\n        \"type\": \"Output\",\n        \"taxableAmount\": 4275.0,\n        \"rate\": 7.5,\n        \"vat\": 320.63\n      }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "C2 VAT Return (period)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/compliance/vat/return?period=2026-10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "compliance",
+                "vat",
+                "return"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "2026-10"
+                }
+              ]
+            },
+            "description": "Perm compliance.vat.read. One row per location with activity plus a company total (location null). YYYY-MM. GET /compliance/vat/return.csv for the same as CSV.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "C2 VAT Return (period) - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/compliance/vat/return?period=2026-10",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "compliance",
+                    "vat",
+                    "return"
+                  ],
+                  "query": [
+                    {
+                      "key": "period",
+                      "value": "2026-10"
+                    }
+                  ]
+                },
+                "description": "Perm compliance.vat.read. One row per location with activity plus a company total (location null). YYYY-MM. GET /compliance/vat/return.csv for the same as CSV.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"period\": \"2026-10\",\n    \"rows\": [\n      {\n        \"location\": {\n          \"id\": \"{{showroomId}}\",\n          \"code\": \"SHR-1\",\n          \"name\": \"Showroom Ikeja\",\n          \"type\": \"SHOWROOM\"\n        },\n        \"vatRegistrationNumber\": null,\n        \"outputBase\": 4275.0,\n        \"outputVat\": 320.63,\n        \"creditNoteVat\": 0.0,\n        \"inputVat\": 0.0,\n        \"netPayable\": 320.63,\n        \"salesCount\": 1,\n        \"zeroRatedSales\": 0.0,\n        \"exemptSales\": 0.0\n      }\n    ],\n    \"companyTotal\": {\n      \"location\": null,\n      \"vatRegistrationNumber\": null,\n      \"outputBase\": 4275.0,\n      \"outputVat\": 320.63,\n      \"creditNoteVat\": 0.0,\n      \"inputVat\": 0.0,\n      \"netPayable\": 320.63,\n      \"salesCount\": 1,\n      \"zeroRatedSales\": 0.0,\n      \"exemptSales\": 0.0\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "C3 Data-Quality Scan",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/history/data-quality/scan",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "history",
+                "data-quality",
+                "scan"
+              ]
+            },
+            "description": "Perm history.data-quality.manage. Runs the product spelling/naming scan now; nightly at 02:00. Idempotent (an entity/field with an open flag is skipped).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "C3 Data-Quality Scan - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/history/data-quality/scan",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "history",
+                    "data-quality",
+                    "scan"
+                  ]
+                },
+                "description": "Perm history.data-quality.manage. Runs the product spelling/naming scan now; nightly at 02:00. Idempotent (an entity/field with an open flag is skipped).",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"flagsRaised\": 0\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "C4 Data-Quality Flags",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/history/data-quality/flags?status=OPEN&page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "history",
+                "data-quality",
+                "flags"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "OPEN"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Perm history.data-quality.manage. Flags are applied (corrects the master name/brand) at POST /flags/{id}/apply, or dismissed at /dismiss (with ignoreToken to never flag it again). Manual flag: POST /flags.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "C4 Data-Quality Flags - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/history/data-quality/flags?status=OPEN&page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "history",
+                    "data-quality",
+                    "flags"
+                  ],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "OPEN"
+                    },
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    }
+                  ]
+                },
+                "description": "Perm history.data-quality.manage. Flags are applied (corrects the master name/brand) at POST /flags/{id}/apply, or dismissed at /dismiss (with ignoreToken to never flag it again). Manual flag: POST /flags.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [],\n    \"page\": 0,\n    \"size\": 20,\n    \"totalItems\": 0,\n    \"totalPages\": 0\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "C5 Recycle Bin — Deleted",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/history/recycle-bin/deleted?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "history",
+                "recycle-bin",
+                "deleted"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Perm history.recycle-bin.manage. Deleted products awaiting purge or restore. Delete with POST /recycle-bin/deleted (blocked by reservations, in-transit transfers or open documents); restore / purge at /deleted/{stockItemId}/restore|purge (purge needs history.recycle-bin.purge, confirmCode = the item code, and writeOffConfirmed when stock is held).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "C5 Recycle Bin — Deleted - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/history/recycle-bin/deleted?page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "history",
+                    "recycle-bin",
+                    "deleted"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    }
+                  ]
+                },
+                "description": "Perm history.recycle-bin.manage. Deleted products awaiting purge or restore. Delete with POST /recycle-bin/deleted (blocked by reservations, in-transit transfers or open documents); restore / purge at /deleted/{stockItemId}/restore|purge (purge needs history.recycle-bin.purge, confirmCode = the item code, and writeOffConfirmed when stock is held).",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [],\n    \"page\": 0,\n    \"size\": 20,\n    \"totalItems\": 0,\n    \"totalPages\": 0\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "C6 Recycle Bin — Suspended",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/history/recycle-bin/suspended?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "history",
+                "recycle-bin",
+                "suspended"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Perm history.recycle-bin.manage. Products suspended from sale. Suspend with POST /recycle-bin/suspended; resume / set-review / reprice-and-resume at /suspended/{stockItemId}/resume|review|reprice-and-resume.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "C6 Recycle Bin — Suspended - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/history/recycle-bin/suspended?page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "history",
+                    "recycle-bin",
+                    "suspended"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    }
+                  ]
+                },
+                "description": "Perm history.recycle-bin.manage. Products suspended from sale. Suspend with POST /recycle-bin/suspended; resume / set-review / reprice-and-resume at /suspended/{stockItemId}/resume|review|reprice-and-resume.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [],\n    \"page\": 0,\n    \"size\": 20,\n    \"totalItems\": 0,\n    \"totalPages\": 0\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "C7 Run Integrity Checks",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/audit/integrity/runs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit",
+                "integrity",
+                "runs"
+              ]
+            },
+            "description": "Perm history.integrity.read. One run at a time per tenant (409 RUN_IN_PROGRESS). Stock checks this phase (balance-vs-ledger, non-negative, reservations within stock); financial checks follow. CRITICAL findings notify Administrators. Nightly at 03:00.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('integrityRunId', json.data.run.id);",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "C7 Run Integrity Checks - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/audit/integrity/runs",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "audit",
+                    "integrity",
+                    "runs"
+                  ]
+                },
+                "description": "Perm history.integrity.read. One run at a time per tenant (409 RUN_IN_PROGRESS). Stock checks this phase (balance-vs-ledger, non-negative, reservations within stock); financial checks follow. CRITICAL findings notify Administrators. Nightly at 03:00.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"run\": {\n      \"id\": \"{{integrityRunId}}\",\n      \"startedAt\": \"2026-10-01T10:15:30Z\",\n      \"finishedAt\": \"2026-10-01T10:15:30Z\",\n      \"trigger\": \"MANUAL\",\n      \"triggeredBy\": {\n        \"id\": \"{{userId}}\",\n        \"name\": \"Alice Admin\",\n        \"email\": \"admin@apex.com\"\n      },\n      \"checksRun\": 3,\n      \"findingsCount\": 0,\n      \"status\": \"PASSED\"\n    },\n    \"findings\": []\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "C8 Integrity Runs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/audit/integrity/runs?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit",
+                "integrity",
+                "runs"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Perm history.integrity.read. Newest first. GET /audit/integrity/runs/{id} returns one run with its findings.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "C8 Integrity Runs - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/audit/integrity/runs?page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "audit",
+                    "integrity",
+                    "runs"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    }
+                  ]
+                },
+                "description": "Perm history.integrity.read. Newest first. GET /audit/integrity/runs/{id} returns one run with its findings.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": \"{{integrityRunId}}\",\n        \"startedAt\": \"2026-10-01T10:15:30Z\",\n        \"finishedAt\": \"2026-10-01T10:15:30Z\",\n        \"trigger\": \"MANUAL\",\n        \"triggeredBy\": {\n          \"id\": \"{{userId}}\",\n          \"name\": \"Alice Admin\",\n          \"email\": \"admin@apex.com\"\n        },\n        \"checksRun\": 3,\n        \"findingsCount\": 0,\n        \"status\": \"PASSED\"\n      }\n    ],\n    \"page\": 0,\n    \"size\": 20,\n    \"totalItems\": 1,\n    \"totalPages\": 1\n  }\n}"
             }
           ]
         }

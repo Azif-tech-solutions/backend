@@ -20,6 +20,10 @@ object StockReceiptsTable : UUIDTable("stock_receipts") {
     val verifiedByUserId = reference("verified_by_user_id", AppUsersTable).nullable()
     val offloadedAt = timestamp("offloaded_at").nullable()
     val condition = varchar("condition", 30).default("PENDING_VERIFICATION")
+    // Input VAT (V16_2, docs/10 §4.6).
+    val supplierInvoiceRef = varchar("supplier_invoice_ref", 60).nullable()
+    val inputVatRate = decimal("input_vat_rate", 5, 2)
+    val inputVatAmount = decimal("input_vat_amount", 14, 2)
     val createdByUserId = reference("created_by_user_id", AppUsersTable)
     val createdAt = timestamp("created_at")
 }
