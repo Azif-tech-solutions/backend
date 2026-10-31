@@ -5,7 +5,16 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Nightly full run (02:00 UTC) so the heavy jobs that PRs skip still guard main daily.
+  schedule:
+    - cron: "0 2 * * *"
   workflow_dispatch:
+
+# One in-flight run per ref: a new push to a PR cancels the previous run (saves Actions
+# minutes). Never cancel on main — a cancelled run there could abort a deploy mid-flight.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
@@ -90,6 +99,8 @@ jobs:
   # ---------------------------------------------------------------------------
   trivy-fs:
     name: Dependency & config scan (trivy)
+    # Heavy; skip on PRs. Runs on main pushes, the nightly schedule and manual dispatch.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -114,6 +125,8 @@ jobs:
   # ---------------------------------------------------------------------------
   docker-build-and-scan:
     name: Docker build + image scan (trivy)
+    # Heavy (builds the image + Trivy scan); skip on PRs. The image is published only on main anyway.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -170,6 +183,8 @@ jobs:
   # ---------------------------------------------------------------------------
   migration-and-smoke-check:
     name: Migration + API smoke test
+    # Heavy (spins the Compose stack + Newman); skip on PRs. Runs on main, nightly and dispatch.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
