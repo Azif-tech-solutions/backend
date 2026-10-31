@@ -103,7 +103,7 @@ class HistoryIntegrationTest : PostgresIntegrationTest() {
     private val violations = ViolationService(support, tx, sequences, notify)
     private val alerts = AuditAlertService(support, tx, violations, notify)
     private val detectors = AuditDetectors(support, alerts)
-    private val dataQuality = com.zifiq.history.service.DataQualityService(support, tx, sequences)
+    private val dataQuality = com.zifiq.history.service.DataQualityService(support, tx, sequences, com.zifiq.factory.service.FactorySetupService(actors, tx, sequences, locationAccess))
     private val integrity = com.zifiq.history.service.IntegrityCheckService(support, tx, notify, emptyList())
     private val stockLedger = StockLedgerRepository(notify)
     private val today: LocalDate = LocalDate.now()

@@ -50,7 +50,36 @@ class FactorySetupService(
     private val tenantScopedTransaction: TenantScopedTransaction,
     private val documentSequenceService: DocumentSequenceService,
     private val locationAccess: LocationAccessService,
-) {
+) : com.zifiq.factory.spi.FactoryVocabulary {
+    // ---- Product vocabulary SPI for Audit's Error Handler (docs/10 §4.8) ----
+
+    override fun units(): List<com.zifiq.factory.spi.VocabularyTerm> = tenantScopedTransaction.execute {
+        val tenantId = currentActorProvider.current().tenantId
+        UnitsOfMeasureTable.selectAll().where { UnitsOfMeasureTable.tenantId eq tenantId }
+            .map { com.zifiq.factory.spi.VocabularyTerm(it[UnitsOfMeasureTable.id].value, it[UnitsOfMeasureTable.code], it[UnitsOfMeasureTable.name]) }
+    }
+
+    override fun categories(): List<com.zifiq.factory.spi.VocabularyTerm> = tenantScopedTransaction.execute {
+        val tenantId = currentActorProvider.current().tenantId
+        CategoriesTable.selectAll().where { CategoriesTable.tenantId eq tenantId }
+            .map { com.zifiq.factory.spi.VocabularyTerm(it[CategoriesTable.id].value, null, it[CategoriesTable.name]) }
+    }
+
+    override fun renameUnit(id: java.util.UUID, name: String) = tenantScopedTransaction.execute {
+        val tenantId = currentActorProvider.current().tenantId
+        UnitsOfMeasureTable.update({ (UnitsOfMeasureTable.id eq id) and (UnitsOfMeasureTable.tenantId eq tenantId) }) { it[UnitsOfMeasureTable.name] = name.trim() }
+        Unit
+    }
+
+    override fun renameCategory(id: java.util.UUID, name: String) = tenantScopedTransaction.execute {
+        val tenantId = currentActorProvider.current().tenantId
+        val trimmed = name.trim()
+        val clash = CategoriesTable.selectAll()
+            .where { (CategoriesTable.tenantId eq tenantId) and (CategoriesTable.name.lowerCase() eq trimmed.lowercase()) and (CategoriesTable.id neq id) }.empty().not()
+        if (clash) throw ApiErrors.duplicateName(trimmed)
+        CategoriesTable.update({ (CategoriesTable.id eq id) and (CategoriesTable.tenantId eq tenantId) }) { it[CategoriesTable.name] = trimmed }
+        Unit
+    }
     // ---- Factories ----
 
     /** A user assigned to one location sees only their own factory (none, at a showroom). */
