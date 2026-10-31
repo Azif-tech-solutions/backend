@@ -6,15 +6,19 @@ import com.zifiq.account.model.PettyCashPaymentsTable
 import com.zifiq.account.spi.ExpenseAuditRow
 import com.zifiq.account.spi.ExpenseFilter
 import com.zifiq.account.spi.ExpenseQueries
+import com.zifiq.account.spi.InputVatLineRef
+import com.zifiq.account.spi.VatInputQueries
 import com.zifiq.common.errors.ApiErrors
 import com.zifiq.common.paging.PageRequest
 import com.zifiq.common.paging.PageResult
 import com.zifiq.platform.directory.Names
 import com.zifiq.platform.tenancy.TenantScopedTransaction
 import java.math.BigDecimal
+import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.lessEq
@@ -33,7 +37,25 @@ import org.springframework.stereotype.Service
 class ExpenseAuditService(
     private val support: AccountSupport,
     private val tx: TenantScopedTransaction,
-) : ExpenseQueries {
+) : ExpenseQueries, VatInputQueries {
+    override fun runningCostInputVat(locationId: UUID, from: LocalDate, to: LocalDate): List<InputVatLineRef> = tx.execute {
+        OperatingCostsTable.selectAll()
+            .andWhere { OperatingCostsTable.tenantId eq support.tenantId() }
+            .andWhere { OperatingCostsTable.locationId eq locationId }
+            .andWhere { OperatingCostsTable.status eq "APPROVED" }
+            .andWhere { OperatingCostsTable.paymentDate greaterEq from }
+            .andWhere { OperatingCostsTable.paymentDate lessEq to }
+            .andWhere { OperatingCostsTable.inputVatAmount greater java.math.BigDecimal.ZERO }
+            .map {
+                val vat = it[OperatingCostsTable.inputVatAmount]
+                InputVatLineRef(
+                    date = it[OperatingCostsTable.paymentDate], ref = it[OperatingCostsTable.ref],
+                    counterparty = it[OperatingCostsTable.payee], counterpartyTin = it[OperatingCostsTable.supplierTin],
+                    taxableAmount = it[OperatingCostsTable.amount] - vat, vat = vat,
+                )
+            }
+    }
+
     override fun expenses(filter: ExpenseFilter): PageResult<ExpenseAuditRow> = tx.execute {
         if (ChronoUnit.DAYS.between(filter.from, filter.to) > 366) throw ApiErrors.rangeTooLarge(366)
         val tenant = support.tenantId()
