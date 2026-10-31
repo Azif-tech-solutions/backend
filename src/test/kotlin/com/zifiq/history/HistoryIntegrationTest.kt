@@ -3,11 +3,20 @@ package com.zifiq.history
 import com.zifiq.common.errors.ErrorCode
 import com.zifiq.platform.api.ApiException
 import com.zifiq.common.filter.ListSearchRequest
+import com.zifiq.common.paging.PageRequest
 import com.zifiq.history.dto.AuditReviewUpsertRequest
+import com.zifiq.history.dto.ViolationConcludeRequest
+import com.zifiq.history.dto.ViolationRaiseRequest
 import com.zifiq.history.service.ActivityLogService
+import com.zifiq.history.service.AuditAlertService
+import com.zifiq.history.service.AuditDetectors
 import com.zifiq.history.service.AuditReviewService
+import com.zifiq.history.service.HistorySettings
 import com.zifiq.history.service.HistorySupport
 import com.zifiq.history.service.StockMovementHistoryService
+import com.zifiq.history.service.ViolationService
+import com.zifiq.platform.events.DomainEventRecord
+import com.zifiq.platform.numbering.DocumentSequenceService
 import com.zifiq.inventory.repository.StockLedgerRepository
 import com.zifiq.platform.PostgresIntegrationTest
 import com.zifiq.platform.events.DomainEvents
@@ -82,7 +91,7 @@ class HistoryIntegrationTest : PostgresIntegrationTest() {
     private val tx = TenantScopedTransaction(database, tenantContext)
     private val actors = CurrentActorProvider(tenantContext)
     private val permissions = PermissionAuthorizer(actors, tx)
-    private val moduleSettings = ModuleSettings(listOf(PlatformSettings()), tenantContext)
+    private val moduleSettings = ModuleSettings(listOf(PlatformSettings(), HistorySettings()), tenantContext)
     private val events = DomainEvents(tenantContext, actors)
     private val locationAccess = LocationAccessService(actors)
     private val notify = Notify(tenantContext, Recipients(tenantContext))
@@ -90,6 +99,12 @@ class HistoryIntegrationTest : PostgresIntegrationTest() {
     private val reviews = AuditReviewService(support, tx)
     private val activity = ActivityLogService(support, tx)
     private val movements = StockMovementHistoryService(support, tx, CostVisibility())
+    private val sequences = DocumentSequenceService(actors, tx)
+    private val violations = ViolationService(support, tx, sequences, notify)
+    private val alerts = AuditAlertService(support, tx, violations, notify)
+    private val detectors = AuditDetectors(support, alerts)
+    private val dataQuality = com.zifiq.history.service.DataQualityService(support, tx, sequences)
+    private val integrity = com.zifiq.history.service.IntegrityCheckService(support, tx, notify)
     private val stockLedger = StockLedgerRepository(notify)
     private val today: LocalDate = LocalDate.now()
 
@@ -150,5 +165,113 @@ class HistoryIntegrationTest : PostgresIntegrationTest() {
         assertThat(keeperRow.quantity).isEqualByComparingTo("100")
         assertThat(keeperRow.unitCost).isEqualByComparingTo("0")
         assertThat(keeperRow.value).isEqualByComparingTo("0")
+    }
+
+    @Test
+    fun `violation record respects self-exclusion and the raise-against-self rule`() {
+        signIn(admin)
+        val detail = violations.raise(ViolationRaiseRequest(
+            subjectUserId = keeper, locationId = factory, category = "CASH_SHORTAGE",
+            description = "Till came up short at the end of the shift and could not be explained",
+            amountInvolved = BigDecimal("8000"), severity = "MEDIUM",
+        ))
+        assertThat(detail.status).isEqualTo("UNDER_INVESTIGATION")
+        assertThat(detail.events.map { it.kind }).contains("RAISED")
+
+        // Can't raise against yourself.
+        assertThatThrownBy {
+            violations.raise(ViolationRaiseRequest(subjectUserId = admin, category = "OTHER", description = "x".repeat(25), severity = "LOW"))
+        }.isInstanceOf(ApiException::class.java).extracting { (it as ApiException).code }.isEqualTo(ErrorCode.CANNOT_RAISE_AGAINST_SELF)
+
+        // The admin sees the record; the subject (keeper) never does.
+        assertThat(violations.list(ListSearchRequest()).items.map { it.id }).contains(detail.id)
+        signIn(keeper)
+        assertThat(violations.list(ListSearchRequest()).items.map { it.id }).doesNotContain(detail.id)
+
+        // Conclude (admin is the raiser but is exempt from the two-person rule).
+        signIn(admin)
+        val concluded = violations.conclude(detail.id, ViolationConcludeRequest("RESOLVED", "Miscount; cash found in the vault bag and lodged"))
+        assertThat(concluded.status).isEqualTo("RESOLVED")
+        assertThat(concluded.events.map { it.kind }).contains("CONCLUDED")
+    }
+
+    @Test
+    fun `a till-variance event over the threshold raises an audit alert`() {
+        signIn(admin)
+        val event = DomainEventRecord(
+            id = UUID.randomUUID(), tenantId = tenantId, eventType = "cashier.till.variance", aggregateType = "till-session",
+            aggregateId = UUID.randomUUID(), aggregateRef = "T-99", locationId = factory, actorUserId = keeper, actorLabel = null,
+            occurredAt = java.time.Instant.now(), payload = mapOf("variance" to BigDecimal("-8000")), summary = "T-99 closed with a variance", txid = 1, seq = 1,
+        )
+        tx.executeForTenant(tenantId) { detectors.handle(event) }
+        signIn(admin)
+        val open = alerts.list(ListSearchRequest())
+        val alert = open.items.first { it.ruleCode == "TILL_VARIANCE" }
+        assertThat(alert.status).isEqualTo("OPEN")
+        assertThat(alert.amount).isEqualByComparingTo("8000")
+
+        // Dedupe: the same trigger does not alert twice.
+        tx.executeForTenant(tenantId) { detectors.handle(event) }
+        assertThat(alerts.list(ListSearchRequest()).items.count { it.ruleCode == "TILL_VARIANCE" }).isEqualTo(1)
+    }
+
+    @Test
+    fun `data-quality scan flags a misspelled product name`() {
+        fun seedItem(code: String, name: String) = tx.executeForTenant(tenantId) {
+            TransactionManager.current().exec(
+                "insert into stock_items (tenant_id, location_id, item_type, code, name, unit_of_measure_id, reorder_level, landing_cost, vat_category_id, " +
+                    "hsn_section_id, isic_section_id, status, created_by_user_id, created_at) values ('$tenantId', '$factory', 'FINISHED_PRODUCT', '$code', '$name', " +
+                    "'$unit', 0, 1000, (select id from vat_categories where code = 'STANDARD_RATE'), (select id from hsn_sections where code = 'IV'), " +
+                    "(select id from isic_sections where code = 'A'), 'ACTIVE', '$admin', now())",
+            )
+        }
+        signIn(admin)
+        seedItem("DRK-1", "Citrus Drink 33cl")
+        seedItem("DRK-2", "Orange Drink 50cl")
+        seedItem("DRK-3", "Cola Drink 35cl")
+        seedItem("DRK-4", "Mango Drnk 33cl")
+
+        val result = dataQuality.scan()
+        assertThat(result.flagsRaised).isGreaterThanOrEqualTo(1)
+        val flags = dataQuality.list(null, null, null, PageRequest.of(0, 50))
+        val flag = flags.items.first { it.currentValue == "Mango Drnk 33cl" }
+        assertThat(flag.kind).isEqualTo("Spelling")
+        assertThat(flag.suggestedValue).isEqualTo("Mango Drink 33cl")
+        assertThat(flag.flaggedBy).isEqualTo("System spell check")
+
+        // Re-running is idempotent (the open flag is skipped).
+        val second = dataQuality.scan()
+        assertThat(dataQuality.list(null, null, null, PageRequest.of(0, 50)).items.count { it.currentValue == "Mango Drnk 33cl" }).isEqualTo(1)
+        assertThat(second).isNotNull
+    }
+
+    @Test
+    fun `integrity run flags a stock balance that disagrees with the ledger`() {
+        val itg = UUID.randomUUID()
+        tx.executeForTenant(tenantId) {
+            TransactionManager.current().exec(
+                "insert into stock_items (id, tenant_id, location_id, item_type, code, name, unit_of_measure_id, reorder_level, landing_cost, vat_category_id, " +
+                    "hsn_section_id, isic_section_id, status, created_by_user_id, created_at) values ('$itg', '$tenantId', '$factory', 'FINISHED_PRODUCT', 'INTG-1', 'Integrity Widget', " +
+                    "'$unit', 0, 1000, (select id from vat_categories where code = 'STANDARD_RATE'), (select id from hsn_sections where code = 'IV'), " +
+                    "(select id from isic_sections where code = 'A'), 'ACTIVE', '$admin', now())",
+            )
+        }
+        signIn(admin)
+        tx.executeForTenant(tenantId) {
+            stockLedger.postEntry(tenantId, factory, itg, "REFILL", "RF-INTG", qtyIn = BigDecimal("10"), performedByUserId = admin, entryDate = today)
+        }
+        // Corrupt the materialised balance so it disagrees with the ledger.
+        tx.executeForTenant(tenantId) {
+            TransactionManager.current().exec("update stock_balances set quantity_on_hand = 5 where stock_item_id = '$itg' and location_id = '$factory'")
+        }
+        val detail = integrity.run("MANUAL")
+        assertThat(detail.run.status).isEqualTo("FINDINGS")
+        val finding = detail.findings.first { it.checkCode == "STOCK_BALANCE_MATCHES_LEDGER" && it.recordRef == "INTG-1" }
+        assertThat(finding.severity).isEqualTo("CRITICAL")
+        assertThat(finding.expected).isEqualTo("10.000")
+        assertThat(finding.actual).isEqualTo("5.000")
+
+        // Only one run at a time per tenant isn't violated by sequential runs; a second run completes.
+        assertThat(integrity.listRuns(PageRequest.of(0, 10)).items).isNotEmpty
     }
 }

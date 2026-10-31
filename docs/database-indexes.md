@@ -10,6 +10,16 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `app_users_display_name_trgm` | gin | f_unaccent(lower((display_name)::text)) gin_trgm_ops |  |
 | `app_users_email_key` | unique | email |  |
 
+### `audit_alerts`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `audit_alerts_pkey` | primary key | id |  |
+| `audit_alerts_dedupe_uq` | unique | tenant_id, dedupe_key |  |
+| `audit_alerts_evidence_idx` | gin | evidence |  |
+| `audit_alerts_open_idx` | btree | tenant_id, status, created_at DESC |  |
+| `audit_alerts_rule_idx` | btree | tenant_id, rule_code, created_at DESC |  |
+
 ### `audit_reviews`
 
 | Index | Kind | Columns / expression | Only rows where |
@@ -216,6 +226,22 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `customers_type_status_idx` | btree | tenant_id, type, status, name |  |
 | `customers_user_uq` | unique | tenant_id, user_id | (user_id IS NOT NULL) |
 
+### `data_quality_flags`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `data_quality_flags_pkey` | primary key | id |  |
+| `data_quality_flags_ref_uq` | unique | tenant_id, ref |  |
+| `dqf_list_idx` | btree | tenant_id, status, kind, created_at DESC |  |
+| `dqf_open_uq` | unique | tenant_id, entity_type, entity_id, field | ((status)::text = 'OPEN'::text) |
+| `dqf_value_trgm` | gin | f_unaccent(lower((current_value)::text)) gin_trgm_ops |  |
+
+### `data_quality_ignores`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `data_quality_ignores_pkey` | primary key | tenant_id, token |  |
+
 ### `dealer_categories`
 
 | Index | Kind | Columns / expression | Only rows where |
@@ -341,6 +367,22 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `instant_discounts_one_live_uq` | unique | sale_id | ((status)::text = ANY ((ARRAY['PENDING_APPROVAL'::character varying, 'APPLIED'::character varying])::text[])) |
 | `instant_discounts_ref_uq` | unique | tenant_id, ref |  |
 | `instant_discounts_tenant_id_key` | unique | tenant_id, id |  |
+
+### `integrity_check_findings`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `integrity_check_findings_pkey` | primary key | id |  |
+| `integrity_findings_run_idx` | btree | tenant_id, run_id, severity |  |
+
+### `integrity_check_runs`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `integrity_check_runs_pkey` | primary key | id |  |
+| `integrity_check_runs_tenant_id_key` | unique | tenant_id, id |  |
+| `integrity_runs_idx` | btree | tenant_id, started_at DESC |  |
+| `integrity_runs_one_running` | unique | tenant_id | ((status)::text = 'RUNNING'::text) |
 
 ### `invoice_deliveries`
 
@@ -643,6 +685,13 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `recipes_tenant_id_code_key` | unique | tenant_id, code |  |
 | `recipes_tenant_id_key` | unique | tenant_id, id |  |
 
+### `recycle_bin_log`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `recycle_bin_log_pkey` | primary key | id |  |
+| `rbl_item_idx` | btree | tenant_id, stock_item_id, at DESC |  |
+
 ### `refresh_tokens`
 
 | Index | Kind | Columns / expression | Only rows where |
@@ -763,6 +812,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `stock_items_barcode_idx` | unique | tenant_id, barcode | (barcode IS NOT NULL) |
 | `stock_items_brand_trgm` | gin | f_unaccent(lower((brand)::text)) gin_trgm_ops |  |
 | `stock_items_category_idx` | btree | tenant_id, category_id | (category_id IS NOT NULL) |
+| `stock_items_lifecycle_idx` | btree | tenant_id, status, suspension_review_on |  |
 | `stock_items_location_name_idx` | btree | tenant_id, location_id, name, id |  |
 | `stock_items_name_idx` | btree | tenant_id, name, id |  |
 | `stock_items_name_trgm` | gin | f_unaccent(lower((name)::text)) gin_trgm_ops |  |
@@ -923,6 +973,25 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 |---|---|---|---|
 | `vat_categories_pkey` | primary key | id |  |
 | `vat_categories_code_key` | unique | code |  |
+
+### `violation_record_events`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `violation_record_events_pkey` | primary key | id |  |
+| `vre_record_idx` | btree | tenant_id, violation_record_id, at |  |
+
+### `violation_records`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `violation_records_pkey` | primary key | id |  |
+| `violation_records_ref_uq` | unique | tenant_id, ref |  |
+| `violation_records_tenant_id_key` | unique | tenant_id, id |  |
+| `vr_linked_refs_idx` | gin | linked_refs jsonb_path_ops |  |
+| `vr_location_idx` | btree | tenant_id, location_id, status |  |
+| `vr_search_idx` | gin | search_vector |  |
+| `vr_subject_idx` | btree | tenant_id, subject_user_id, raised_at DESC |  |
 
 ### `wallet_fundings`
 

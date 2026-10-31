@@ -3288,6 +3288,102 @@ ep(AU, "A8 Review Badge Lookup", "GET", "/api/v1/audit/reviews/lookup",
    resp={"data": [{"recordId": "{{withdrawalId}}", "status": "UNDER_REVIEW", "note": "Confirming the dealer authorised this", "reviewer": USER, "updatedAt": NOW}]},
    desc="Perm history.reviews.manage. The review badge for records a screen already holds (batch); used by report rows and detail screens.")
 
+# ---- B. Violations / Fraud History + audit alerts (slice 2, §4.4) ----
+VIOLATION = {"id": "{{violationId}}", "ref": "VN-1", "subject": {"id": "{{memberUserId}}", "name": "Kelvin Keeper", "email": "keeper@apex.com"},
+             "location": REF("location", "{{factoryId}}"), "category": "CASH_SHORTAGE", "description": "Till came up short at the end of the shift and could not be explained",
+             "amountInvolved": 8000.00, "severity": "MEDIUM", "status": "UNDER_INVESTIGATION", "source": "MANUAL", "occurredOn": "{{today}}",
+             "linkedRefs": [], "raisedBy": USER, "raisedAt": NOW, "conclusion": None, "concludedBy": None, "concludedAt": None,
+             "events": [{"kind": "RAISED", "fromValue": None, "toValue": "MEDIUM", "note": None, "by": USER, "at": NOW}]}
+
+ep(AU, "B1 Raise Violation Record", "POST", "/api/v1/history/violations",
+   body={"subjectUserId": "{{memberUserId}}", "locationId": "{{factoryId}}", "category": "CASH_SHORTAGE",
+         "description": "Till came up short at the end of the shift and could not be explained", "amountInvolved": 8000, "severity": "MEDIUM", "occurredOn": "{{today}}"},
+   resp={"data": VIOLATION},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('violationId', json.data.id);",
+          "pm.test('under investigation', () => pm.expect(json.data.status).to.eql('UNDER_INVESTIGATION'));"],
+   desc="Perm history.violations.manage. The subject must be a tenant member and not the caller (400 CANNOT_RAISE_AGAINST_SELF). Description >= 20 chars. The event carries no description text, only ref/category/severity.")
+
+ep(AU, "B2 Add Investigation Note", "POST", "/api/v1/history/violations/{{violationId}}/notes",
+   body={"note": "Reviewed the till session and the CCTV log for the shift"},
+   resp={"data": dict(VIOLATION, events=VIOLATION["events"] + [{"kind": "NOTE", "fromValue": None, "toValue": None, "note": "Reviewed the till session and the CCTV log for the shift", "by": USER, "at": NOW}])},
+   desc="Appends a NOTE to the append-only investigation trail.")
+
+ep(AU, "B3 Violations List", "GET", "/api/v1/history/violations", query=[{"key": "page", "value": "0"}, {"key": "size", "value": "20"}],
+   resp={"data": {"items": [{"id": "{{violationId}}", "ref": "VN-1", "dateRaised": NOW, "subject": VIOLATION["subject"], "location": REF("location", "{{factoryId}}"),
+                             "category": "CASH_SHORTAGE", "description": VIOLATION["description"], "amountInvolved": 8000.00, "severity": "MEDIUM", "raisedBy": USER, "outcome": "UNDER_INVESTIGATION"}],
+                  "page": 0, "size": 20, "totalItems": 1, "totalPages": 1}},
+   desc="Perm history.violations.read. A caller never sees records where they are the subject. Filters: subjectUserId, locationId, status, category, severity, source, raisedBy, amountInvolved, from/to, q.")
+
+ep(AU, "B4 Violation Detail", "GET", "/api/v1/history/violations/{{violationId}}",
+   resp={"data": VIOLATION},
+   desc="Perm history.violations.read. The record with its full investigation trail.")
+
+ep(AU, "B5 Staff Panel", "GET", "/api/v1/history/violations/staff/{{memberUserId}}",
+   resp={"data": {"staff": {"user": VIOLATION["subject"], "location": REF("location", "{{factoryId}}")},
+                  "stats": {"recordsOnFile": 1, "underInvestigation": 1, "substantiated": 0, "amountInvolved": 8000.00, "clearedWithoutCase": 0},
+                  "records": [VIOLATION]}},
+   desc="Perm history.violations.read. One staff member's record, most recent first; a clean record returns an empty list.")
+
+ep(AU, "B6 Conclude Violation", "POST", "/api/v1/history/violations/{{violationId}}/conclude",
+   body={"outcome": "RESOLVED", "conclusion": "Miscount; cash found in the vault bag and lodged as a correction"},
+   resp={"data": dict(VIOLATION, status="RESOLVED", conclusion="Miscount; cash found in the vault bag and lodged as a correction", concludedBy=USER, concludedAt=NOW)},
+   tests=["const json = pm.response.json();", "pm.test('resolved', () => pm.expect(json.data.status).to.eql('RESOLVED'));"],
+   desc="Perm history.violations.manage. Outcome SUBSTANTIATED|RESOLVED|DISMISSED, conclusion >= 20 chars. The concluder must differ from the raiser (403 CONCLUDER_MUST_DIFFER), unless they are an Administrator. Reopen with POST /{id}/reopen.")
+
+ep(AU, "B7 Audit Alerts (OPEN)", "GET", "/api/v1/history/audit-alerts", query=[{"key": "page", "value": "0"}, {"key": "size", "value": "20"}],
+   resp={"data": {"items": [{"id": "{{alertId}}", "ruleCode": "TILL_VARIANCE", "subject": USER, "location": REF("location", "{{showroomId}}"),
+                             "summary": "Till variance of 8000 on T-1", "amount": 8000.00, "status": "OPEN", "evidence": {}, "createdAt": NOW}],
+                  "page": 0, "size": 20, "totalItems": 1, "totalPages": 1}},
+   desc="Perm history.violations.read. Detectors raise these from other modules' events (the background consumer runs every ~15s, so a fresh run may show an empty list). Open one as a record with POST /{id}/open-record, or dismiss with POST /{id}/dismiss. Filters: status (default OPEN), ruleCode, subjectUserId, locationId, amount, from/to.")
+
+ep(AU, "B8 Audit Alert Filters", "GET", "/api/v1/history/audit-alerts/filters",
+   resp={"data": {"filters": [], "sorts": [], "qualifiers": []}},
+   desc="Perm history.violations.read. The filter grammar the alerts list accepts.")
+
+# ---- C. VAT compliance, Recycle Bin, Error Handler, Integrity (slice 3, §4.6/4.8/4.9/4.10) ----
+
+ep(AU, "C1 VAT Report", "GET", "/api/v1/compliance/vat/report",
+   query=[{"key": "locationId", "value": "{{showroomId}}"}, {"key": "from", "value": "2026-01-01"}, {"key": "to", "value": "2026-12-31"}],
+   resp={"data": {"header": {"location": REF("location", "{{showroomId}}"), "vatEnabled": True, "currentRate": 7.50, "rateChanges": [{"rate": 7.50, "effectiveFrom": "2026-01-01"}],
+                             "outputVat": 320.63, "outputBase": 4275.00, "inputVat": 0.00, "inputBase": 0.00, "netVatPayable": 320.63, "costVisible": True},
+                  "rows": [{"date": "2026-10-10", "document": "INV-1", "counterparty": "Okafor & Sons", "counterpartyTin": None, "description": "Sale TXN-1",
+                            "type": "Output", "taxableAmount": 4275.00, "rate": 7.50, "vat": 320.63}]}},
+   desc="Perm compliance.vat.read. Output VAT (sales + credit notes) vs input VAT (showroom entries + running costs), reconciling with the Sales Report. Input taxable amounts are zeroed without factory.costing.read; VAT is never masked. type=OUTPUT|INPUT narrows it.")
+
+ep(AU, "C2 VAT Return (period)", "GET", "/api/v1/compliance/vat/return", query=[{"key": "period", "value": "2026-10"}],
+   resp={"data": {"period": "2026-10", "rows": [{"location": REF("location", "{{showroomId}}"), "vatRegistrationNumber": None, "outputBase": 4275.00, "outputVat": 320.63,
+                                                  "creditNoteVat": 0.00, "inputVat": 0.00, "netPayable": 320.63, "salesCount": 1, "zeroRatedSales": 0.00, "exemptSales": 0.00}],
+                  "companyTotal": {"location": None, "vatRegistrationNumber": None, "outputBase": 4275.00, "outputVat": 320.63, "creditNoteVat": 0.00, "inputVat": 0.00,
+                                   "netPayable": 320.63, "salesCount": 1, "zeroRatedSales": 0.00, "exemptSales": 0.00}}},
+   desc="Perm compliance.vat.read. One row per location with activity plus a company total (location null). YYYY-MM. GET /compliance/vat/return.csv for the same as CSV.")
+
+ep(AU, "C3 Data-Quality Scan", "POST", "/api/v1/history/data-quality/scan",
+   resp={"data": {"flagsRaised": 0}},
+   desc="Perm history.data-quality.manage. Runs the product spelling/naming scan now; nightly at 02:00. Idempotent (an entity/field with an open flag is skipped).")
+
+ep(AU, "C4 Data-Quality Flags", "GET", "/api/v1/history/data-quality/flags", query=[{"key": "status", "value": "OPEN"}, {"key": "page", "value": "0"}, {"key": "size", "value": "20"}],
+   resp={"data": {"items": [], "page": 0, "size": 20, "totalItems": 0, "totalPages": 0}},
+   desc="Perm history.data-quality.manage. Flags are applied (corrects the master name/brand) at POST /flags/{id}/apply, or dismissed at /dismiss (with ignoreToken to never flag it again). Manual flag: POST /flags.")
+
+ep(AU, "C5 Recycle Bin — Deleted", "GET", "/api/v1/history/recycle-bin/deleted", query=[{"key": "page", "value": "0"}, {"key": "size", "value": "20"}],
+   resp={"data": {"items": [], "page": 0, "size": 20, "totalItems": 0, "totalPages": 0}},
+   desc="Perm history.recycle-bin.manage. Deleted products awaiting purge or restore. Delete with POST /recycle-bin/deleted (blocked by reservations, in-transit transfers or open documents); restore / purge at /deleted/{stockItemId}/restore|purge (purge needs history.recycle-bin.purge, confirmCode = the item code, and writeOffConfirmed when stock is held).")
+
+ep(AU, "C6 Recycle Bin — Suspended", "GET", "/api/v1/history/recycle-bin/suspended", query=[{"key": "page", "value": "0"}, {"key": "size", "value": "20"}],
+   resp={"data": {"items": [], "page": 0, "size": 20, "totalItems": 0, "totalPages": 0}},
+   desc="Perm history.recycle-bin.manage. Products suspended from sale. Suspend with POST /recycle-bin/suspended; resume / set-review / reprice-and-resume at /suspended/{stockItemId}/resume|review|reprice-and-resume.")
+
+ep(AU, "C7 Run Integrity Checks", "POST", "/api/v1/audit/integrity/runs",
+   resp={"data": {"run": {"id": "{{integrityRunId}}", "startedAt": NOW, "finishedAt": NOW, "trigger": "MANUAL", "triggeredBy": USER, "checksRun": 3, "findingsCount": 0, "status": "PASSED"},
+                  "findings": []}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('integrityRunId', json.data.run.id);"],
+   desc="Perm history.integrity.read. One run at a time per tenant (409 RUN_IN_PROGRESS). Stock checks this phase (balance-vs-ledger, non-negative, reservations within stock); financial checks follow. CRITICAL findings notify Administrators. Nightly at 03:00.")
+
+ep(AU, "C8 Integrity Runs", "GET", "/api/v1/audit/integrity/runs", query=[{"key": "page", "value": "0"}, {"key": "size", "value": "20"}],
+   resp={"data": {"items": [{"id": "{{integrityRunId}}", "startedAt": NOW, "finishedAt": NOW, "trigger": "MANUAL", "triggeredBy": USER, "checksRun": 3, "findingsCount": 0, "status": "PASSED"}],
+                  "page": 0, "size": 20, "totalItems": 1, "totalPages": 1}},
+   desc="Perm history.integrity.read. Newest first. GET /audit/integrity/runs/{id} returns one run with its findings.")
+
 def pm_url(path, query):
     full = "{{baseUrl}}" + path
     parts = [p for p in path.split("/") if p]
