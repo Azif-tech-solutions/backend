@@ -46,7 +46,7 @@ class ProductionService(
     private val costVisibility: CostVisibility,
     private val locationAccessService: LocationAccessService,
     private val moduleSettings: com.zifiq.platform.settings.ModuleSettings,
-) {
+) : com.zifiq.factory.spi.FactoryVatQueries {
     // ---- Recipes ----
 
     fun registerRecipe(request: RecipeRequest): RecipeSummary = tenantScopedTransaction.execute {
@@ -459,5 +459,43 @@ class ProductionService(
                 row[SpecialProductionRunsTable.price], row[SpecialProductionRunsTable.status],
             )
         }
+    }
+
+    // ---- SPI: FactoryVatQueries (docs/10 §4.6) ----
+
+    /**
+     * DELIVERED special-production runs feed the VAT report's output side as derived VAT: there is no
+     * invoice, so Audit applies the location's rate to the agreed price. Runs are dated by creation
+     * (the only timestamp the run carries). Scoped by tenant (RLS) and by the requested location.
+     */
+    override fun specialProductionDeliveries(
+        locationId: UUID,
+        from: LocalDate,
+        to: LocalDate,
+    ): List<com.zifiq.factory.spi.SpecialProductionVatLineRef> = tenantScopedTransaction.execute {
+        val tenantId = currentActorProvider.current().tenantId
+        val fromInstant = from.atStartOfDay(java.time.ZoneOffset.UTC).toInstant()
+        val toInstant = to.plusDays(1).atStartOfDay(java.time.ZoneOffset.UTC).toInstant()
+        SpecialProductionRunsTable
+            .join(SpecialProductionClientsTable, org.jetbrains.exposed.sql.JoinType.INNER, SpecialProductionRunsTable.clientId, SpecialProductionClientsTable.id)
+            .select(
+                SpecialProductionRunsTable.orderRef, SpecialProductionRunsTable.price,
+                SpecialProductionRunsTable.createdAt, SpecialProductionClientsTable.name,
+            )
+            .where {
+                (SpecialProductionRunsTable.tenantId eq tenantId) and
+                    (SpecialProductionRunsTable.locationId eq locationId) and
+                    (SpecialProductionRunsTable.status eq "DELIVERED") and
+                    (SpecialProductionRunsTable.createdAt greaterEq fromInstant) and
+                    (SpecialProductionRunsTable.createdAt less toInstant)
+            }
+            .map {
+                com.zifiq.factory.spi.SpecialProductionVatLineRef(
+                    date = it[SpecialProductionRunsTable.createdAt].atZone(java.time.ZoneOffset.UTC).toLocalDate(),
+                    ref = it[SpecialProductionRunsTable.orderRef],
+                    clientName = it[SpecialProductionClientsTable.name],
+                    base = it[SpecialProductionRunsTable.price],
+                )
+            }
     }
 }

@@ -3,6 +3,8 @@ package com.zifiq.history.service
 import com.zifiq.account.spi.VatInputQueries
 import com.zifiq.account.spi.VatRates
 import com.zifiq.common.errors.ApiErrors
+import com.zifiq.factory.spi.FactoryVatQueries
+import com.zifiq.inventory.model.StockReceiptsTable
 import com.zifiq.history.dto.VatRateChange
 import com.zifiq.history.dto.VatReport
 import com.zifiq.history.dto.VatReportHeader
@@ -24,9 +26,13 @@ import java.time.YearMonth
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.selectAll
+import java.time.ZoneOffset
 import org.springframework.stereotype.Service
 
 /**
@@ -35,9 +41,10 @@ import org.springframework.stereotype.Service
  * modules' SPI. Input-line taxable amounts are cost figures, zeroed without `factory.costing.read`;
  * VAT itself is never masked (it is a tax liability, not a cost price).
  *
- * Covered input sources: showroom direct-entry / outsource receipts and running costs. Factory
- * raw-material-receipt input VAT and the derived special-production VAT (doc §11 open items) are not
- * included yet — they contribute zero until those capture paths are wired.
+ * Input sources: showroom direct-entry / outsource receipts, APPROVED running costs, and factory
+ * raw-material receipts (stock_receipts input VAT, captured at refill). Output also includes derived
+ * special-production VAT: a DELIVERED run has no invoice, so the location's rate is applied to the
+ * agreed price here.
  */
 @Service
 class VatComplianceService(
@@ -47,6 +54,7 @@ class VatComplianceService(
     private val invoices: InvoiceQueries,
     private val showroom: ShowroomQueries,
     private val runningCosts: VatInputQueries,
+    private val factoryVat: FactoryVatQueries,
     private val vatRates: VatRates,
 ) {
     fun report(locationId: UUID, from: LocalDate, to: LocalDate, type: String?): VatReport = tx.execute {
@@ -54,6 +62,7 @@ class VatComplianceService(
         support.assertAccess(locationId)
         val want = type?.trim()?.uppercase()
         val costVisible = support.costVisible()
+        val setting = vatRates.forLocation(locationId, to)
         val rows = mutableListOf<VatReportRow>()
 
         if (want != "INPUT") {
@@ -62,6 +71,9 @@ class VatComplianceService(
             }
             invoices.creditNoteLines(locationId, from, to).forEach {
                 rows += VatReportRow(it.date, it.creditNoteNumber, it.buyerName, it.buyerTin, "Credit note (inv ${it.invoiceNumber})", "Output", it.lineNet.negate(), it.vatRate, it.vatAmount.negate())
+            }
+            factoryVat.specialProductionDeliveries(locationId, from, to).forEach {
+                rows += VatReportRow(it.date, it.ref, it.clientName, null, "Special production (delivered)", "Output", it.base, setting.rate, vatOn(it.base, setting.rate))
             }
         }
         val inputRows = mutableListOf<VatReportRow>()
@@ -72,13 +84,13 @@ class VatComplianceService(
             runningCosts.runningCostInputVat(locationId, from, to).forEach {
                 inputRows += VatReportRow(it.date, it.ref, it.counterparty, it.counterpartyTin, "Running cost", "Input", it.taxableAmount, rate(it.vat, it.taxableAmount), it.vat)
             }
+            inputRows += factoryReceiptInputVat(locationId, from, to)
         }
 
         val outputVat = rows.sumBd { it.vat }
         val outputBase = rows.sumBd { it.taxableAmount }
         val inputVat = inputRows.sumBd { it.vat }
         val inputBase = inputRows.sumBd { it.taxableAmount }
-        val setting = vatRates.forLocation(locationId, to)
         val displayInput = if (costVisible) inputRows else inputRows.map { it.copy(taxableAmount = BigDecimal.ZERO) }
         VatReport(
             header = VatReportHeader(
@@ -120,19 +132,56 @@ class VatComplianceService(
     private fun returnRow(locationId: UUID, tin: String?, from: LocalDate, to: LocalDate): VatReturnRow? {
         val saleLines = sales.outputVatLines(locationId, from, to)
         val creditVat = invoices.creditNoteLines(locationId, from, to).sumBd { it.vatAmount }
+        val setting = vatRates.forLocation(locationId, to)
+        val special = factoryVat.specialProductionDeliveries(locationId, from, to)
+        val specialBase = special.sumBd { it.base }
+        val specialVat = vatOn(specialBase, setting.rate)
         val inputVat = showroom.stockEntries(StockEntryFilter(null, setOf(locationId), from, to)).sumBd { it.inputVatAmount } +
-            runningCosts.runningCostInputVat(locationId, from, to).sumBd { it.vat }
-        if (saleLines.isEmpty() && creditVat.signum() == 0 && inputVat.signum() == 0) return null
+            runningCosts.runningCostInputVat(locationId, from, to).sumBd { it.vat } +
+            factoryReceiptInputVat(locationId, from, to).sumBd { it.vat }
+        if (saleLines.isEmpty() && creditVat.signum() == 0 && inputVat.signum() == 0 && specialVat.signum() == 0) return null
         val standard = saleLines.filter { it.vatCategoryCode == "STANDARD_RATE" }
-        val outputVat = saleLines.sumBd { it.vat }
+        val outputVat = saleLines.sumBd { it.vat } + specialVat
         return VatReturnRow(
             location = ref(locationId, Ref::location), vatRegistrationNumber = tin,
-            outputBase = standard.sumBd { it.taxableAmount }, outputVat = outputVat, creditNoteVat = creditVat, inputVat = inputVat,
+            outputBase = standard.sumBd { it.taxableAmount } + specialBase, outputVat = outputVat, creditNoteVat = creditVat, inputVat = inputVat,
             netPayable = outputVat - creditVat - inputVat,
-            salesCount = saleLines.map { it.saleRef }.distinct().size,
+            salesCount = saleLines.map { it.saleRef }.distinct().size + special.size,
             zeroRatedSales = saleLines.filter { it.vatCategoryCode == "ZERO_RATED" }.sumBd { it.taxableAmount },
             exemptSales = saleLines.filter { it.vatCategoryCode == "EXEMPT" }.sumBd { it.taxableAmount },
         )
+    }
+
+    /**
+     * Factory raw-material receipts with input VAT (inventory is OPEN, read directly). Dated by the
+     * receipt timestamp; the VAT-exclusive base is quantity × unit cost (a cost figure, masked by the
+     * caller without factory.costing.read, like every other input line).
+     */
+    private fun factoryReceiptInputVat(locationId: UUID, from: LocalDate, to: LocalDate): List<VatReportRow> {
+        val fromInstant = from.atStartOfDay(ZoneOffset.UTC).toInstant()
+        val toInstant = to.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant()
+        return StockReceiptsTable
+            .select(
+                StockReceiptsTable.ref, StockReceiptsTable.supplierInvoiceRef, StockReceiptsTable.quantity,
+                StockReceiptsTable.unitCost, StockReceiptsTable.inputVatRate, StockReceiptsTable.inputVatAmount,
+                StockReceiptsTable.createdAt,
+            )
+            .where {
+                (StockReceiptsTable.tenantId eq support.tenantId()) and
+                    (StockReceiptsTable.locationId eq locationId) and
+                    (StockReceiptsTable.inputVatAmount greater BigDecimal.ZERO) and
+                    (StockReceiptsTable.createdAt greaterEq fromInstant) and
+                    (StockReceiptsTable.createdAt less toInstant)
+            }
+            .map {
+                val base = it[StockReceiptsTable.quantity].multiply(it[StockReceiptsTable.unitCost]).setScale(2, RoundingMode.HALF_UP)
+                VatReportRow(
+                    it[StockReceiptsTable.createdAt].atZone(ZoneOffset.UTC).toLocalDate(),
+                    it[StockReceiptsTable.supplierInvoiceRef] ?: it[StockReceiptsTable.ref], "", null,
+                    "Raw material receipt (${it[StockReceiptsTable.ref]})", "Input",
+                    base, it[StockReceiptsTable.inputVatRate], it[StockReceiptsTable.inputVatAmount],
+                )
+            }
     }
 
     private fun companyTotal(rows: List<VatReturnRow>) = VatReturnRow(
@@ -148,6 +197,9 @@ class VatComplianceService(
 
     private fun rate(vat: BigDecimal, taxable: BigDecimal): BigDecimal =
         if (taxable.signum() == 0) BigDecimal.ZERO else (vat * BigDecimal(100)).divide(taxable, 2, RoundingMode.HALF_UP)
+
+    private fun vatOn(base: BigDecimal, rate: BigDecimal): BigDecimal =
+        base.multiply(rate).divide(BigDecimal(100), 2, RoundingMode.HALF_UP)
 
     private fun label(kind: String) = kind.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }
 
