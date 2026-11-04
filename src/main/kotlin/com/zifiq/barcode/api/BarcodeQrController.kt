@@ -12,12 +12,6 @@ import org.springframework.web.bind.annotation.*
 class BarcodeQrController(
     private val barcodeQrService: BarcodeQrService,
 ) : BarcodeQrApi {
-    @PostMapping("/scan")
-    override fun scanCode(
-        @Valid @RequestBody request: BarcodeScanRequest,
-    ): ApiEnvelope<BarcodeScanSummary> =
-        ApiEnvelope(barcodeQrService.scanCode(request))
-
     @PostMapping("/labels")
     @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'inventory.stock.read')")
     override fun generateLabels(

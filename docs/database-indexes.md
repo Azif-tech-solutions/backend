@@ -752,6 +752,17 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `saved_views_one_default_uq` | unique | tenant_id, owner_user_id, list_key | is_default |
 | `saved_views_tenant_id_owner_user_id_list_key_name_key` | unique | tenant_id, owner_user_id, list_key, name |  |
 
+### `scan_events`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `scan_events_pkey` | primary key | id |  |
+| `scan_events_time_idx` | btree | tenant_id, scanned_at DESC |  |
+| `scan_events_outcome_idx` | btree | tenant_id, outcome, scanned_at DESC |  |
+| `scan_events_code_idx` | btree | tenant_id, code |  |
+| `scan_events_user_idx` | btree | tenant_id, user_id, scanned_at DESC |  |
+| `scan_events_context_idx` | btree | tenant_id, context, scanned_at DESC |  |
+
 ### `showroom_stock_entries`
 
 | Index | Kind | Columns / expression | Only rows where |

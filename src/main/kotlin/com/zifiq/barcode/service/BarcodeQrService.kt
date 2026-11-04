@@ -7,17 +7,6 @@ import java.time.Instant
 
 @Service
 class BarcodeQrService {
-    fun scanCode(request: BarcodeScanRequest): BarcodeScanSummary {
-        return BarcodeScanSummary(
-            productCode = request.rawCode.takeIf { it.startsWith("P-") } ?: "P-1001",
-            productName = "Premium Blend",
-            category = "finished-product",
-            currentStock = 420.0,
-            unitPrice = BigDecimal("24.99"),
-            scannedAt = Instant.now(),
-        )
-    }
-
     fun generateLabels(request: LabelGenerationRequest): LabelPayloadSummary {
         return LabelPayloadSummary(
             productCode = request.productCode,

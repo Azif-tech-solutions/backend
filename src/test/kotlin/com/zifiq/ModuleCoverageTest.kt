@@ -2,8 +2,6 @@ package com.zifiq
 
 import com.zifiq.ai.dto.AssistantQueryRequest
 import com.zifiq.ai.service.AiOperationsService
-import com.zifiq.barcode.dto.BarcodeScanRequest
-import com.zifiq.barcode.service.BarcodeQrService
 import com.zifiq.platform.accesscontrol.RoleAssignmentService
 import com.zifiq.platform.notifications.EmailNotificationAdapter
 import com.zifiq.platform.notifications.NotificationMessage
@@ -30,13 +28,6 @@ class ModuleCoverageTest {
 
         val briefing = service.getExecutiveBriefing()
         assertNotNull(briefing.headlineSummary)
-    }
-
-    @Test
-    fun `barcode service scans product codes`() {
-        val service = BarcodeQrService()
-        val result = service.scanCode(BarcodeScanRequest("P-1001", "LOC-01"))
-        assertEquals("P-1001", result.productCode)
     }
 
     @Test
