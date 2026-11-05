@@ -166,3 +166,29 @@ interface VatRates {
     /** The setting in force at a showroom/factory (an area resolves to its parent) on [onDate]; disabled = rate 0. */
     fun forLocation(locationId: UUID, onDate: LocalDate): VatSetting
 }
+
+// ---- Commission payouts (§5.6) — used by Communication (doc 12 §4.3) ----
+
+/** A cash/bank commission payout. WALLET payouts are the caller's own (customers WalletLedger). */
+data class CommissionPayoutRequest(
+    /** CASH or BANK. */
+    val method: String,
+    val cashAccountId: UUID?,
+    val bankAccountId: UUID?,
+    val amount: BigDecimal,
+    /** The commission payment's reference (CP-n). */
+    val ref: String,
+    val description: String,
+    /** The commission payment id, for the ledger entry's source link. */
+    val sourceId: UUID,
+)
+
+data class CommissionPayoutPosting(val cashTransactionId: UUID?, val bankTransactionId: UUID?)
+
+interface CommissionPayouts {
+    /** Pays commission out of a cash or bank account (sufficiency enforced); runs in the caller's transaction. */
+    fun payOut(request: CommissionPayoutRequest): CommissionPayoutPosting
+
+    /** Reverses a payout back into the same account. */
+    fun reversePayout(request: CommissionPayoutRequest, reason: String): CommissionPayoutPosting
+}
