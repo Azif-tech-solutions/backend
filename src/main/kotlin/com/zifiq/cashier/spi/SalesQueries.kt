@@ -23,6 +23,8 @@ data class SalesLineRef(
     val saleDate: LocalDate,
     val saleRef: String,
     val customerId: UUID?,
+    val customerCode: String?,
+    val customerName: String,
     val customerType: String?,
     val correspondentId: UUID?,
     val stockItemId: UUID,
@@ -37,4 +39,7 @@ data class SalesLineRef(
 interface SalesQueries {
     /** Lines of COMPLETED, non-voided sales matching [filter]. Runs in the caller's transaction. */
     fun linesFor(filter: SalesLineFilter): List<SalesLineRef>
+
+    /** The earliest COMPLETED sale date for each of [customerIds] — for "brought in" detection (docs/12 §4.5). */
+    fun firstCompletedSaleDates(customerIds: Collection<UUID>): Map<UUID, LocalDate>
 }

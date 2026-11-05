@@ -113,9 +113,11 @@ class CommissionRunIntegrationTest : PostgresIntegrationTest() {
         )
         private fun line(lineId: String, dealer: UUID, item: UUID, code: String, qty: BigDecimal, net: BigDecimal, confirmed: Boolean) = SalesLineRef(
             saleId = UUID.nameUUIDFromBytes(lineId.toByteArray()), saleLineId = UUID.nameUUIDFromBytes("line-$lineId".toByteArray()),
-            saleDate = saleDate, saleRef = "TXN-$lineId", customerId = dealer, customerType = "AUTHORISED_DEALER", correspondentId = null,
+            saleDate = saleDate, saleRef = "TXN-$lineId", customerId = dealer, customerCode = if (dealer == dlr42) "DLR-42" else "DLR-17", customerName = "Dealer",
+            customerType = "AUTHORISED_DEALER", correspondentId = null,
             stockItemId = item, itemCode = code, itemName = code, quantity = qty, lineNet = net, receiptsConfirmed = confirmed, invoicePaid = confirmed,
         )
+        override fun firstCompletedSaleDates(customerIds: Collection<UUID>): Map<UUID, java.time.LocalDate> = emptyMap()
     }
     private val showroomStub = object : ShowroomQueries {
         override fun showroom(id: UUID): ShowroomRef = error("not used")

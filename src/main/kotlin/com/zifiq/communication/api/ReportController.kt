@@ -3,6 +3,7 @@ package com.zifiq.communication.api
 import com.zifiq.common.paging.PageRequest
 import com.zifiq.common.paging.PageResult
 import com.zifiq.communication.dto.CommsReportRow
+import com.zifiq.communication.dto.CorrespondentsReport
 import com.zifiq.communication.service.ReportService
 import com.zifiq.platform.api.ApiEnvelope
 import io.swagger.v3.oas.annotations.Operation
@@ -22,6 +23,9 @@ import org.springframework.web.bind.annotation.RestController
 interface ReportApi {
     @Operation(summary = "Comms. Report: unpaid commission by beneficiary and period")
     fun commissions(beneficiaryType: String, from: LocalDate?, to: LocalDate?, status: String?, beneficiaryId: UUID?, page: Int?, size: Int?): ApiEnvelope<PageResult<CommsReportRow>>
+
+    @Operation(summary = "Correspondents Report: rep activity by rep or customer")
+    fun correspondents(locationId: UUID?, from: LocalDate, to: LocalDate, correspondentId: UUID?, view: String): ApiEnvelope<CorrespondentsReport>
 }
 
 @RestController
@@ -40,4 +44,14 @@ class ReportController(
         @RequestParam(required = false) page: Int?,
         @RequestParam(required = false) size: Int?,
     ): ApiEnvelope<PageResult<CommsReportRow>> = ApiEnvelope(reports.commissions(beneficiaryType, from, to, status, beneficiaryId, PageRequest.of(page, size)))
+
+    @GetMapping("/correspondents")
+    @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'communication.reports.read')")
+    override fun correspondents(
+        @RequestParam(required = false) locationId: UUID?,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
+        @RequestParam(required = false) correspondentId: UUID?,
+        @RequestParam(required = false, defaultValue = "rep") view: String,
+    ): ApiEnvelope<CorrespondentsReport> = ApiEnvelope(reports.correspondents(locationId, from, to, correspondentId, view))
 }

@@ -3,13 +3,21 @@ package com.zifiq.communication.service
 import com.zifiq.common.paging.PageRequest
 import com.zifiq.common.paging.PageResult
 import com.zifiq.common.paging.Paging
+import com.zifiq.cashier.spi.SalesLineFilter
+import com.zifiq.cashier.spi.SalesLineRef
+import com.zifiq.cashier.spi.SalesQueries
 import com.zifiq.communication.dto.CommsReportRow
+import com.zifiq.communication.dto.CorrespondentCustomerRow
+import com.zifiq.communication.dto.CorrespondentRepRow
+import com.zifiq.communication.dto.CorrespondentsReport
+import com.zifiq.customers.spi.Correspondents
 import com.zifiq.communication.model.CommissionPaymentsTable
 import com.zifiq.communication.model.CommissionRunBeneficiariesTable
 import com.zifiq.communication.model.CommissionRunLinesTable
 import com.zifiq.communication.model.CommissionRunsTable
 import com.zifiq.platform.tenancy.TenantScopedTransaction
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
@@ -35,7 +43,58 @@ import org.springframework.stereotype.Service
 class ReportService(
     private val support: CommunicationSupport,
     private val tx: TenantScopedTransaction,
+    private val sales: SalesQueries,
+    private val correspondents: Correspondents,
 ) {
+    /**
+     * The Correspondents Report (docs/12 §4.5): rep activity by customer, independent of receipt
+     * confirmation (with a pending-confirmation column to reconcile against commission). "Brought in"
+     * is the customer's first-ever completed sale falling inside the range.
+     */
+    fun correspondents(locationId: UUID?, from: LocalDate, to: LocalDate, correspondentId: UUID?, view: String): CorrespondentsReport = tx.execute {
+        val lines = sales.linesFor(SalesLineFilter(completedTo = to, locationId = locationId))
+            .filter { !it.saleDate.isBefore(from) && it.correspondentId != null && (correspondentId == null || it.correspondentId == correspondentId) }
+        val firstSale = sales.firstCompletedSaleDates(lines.mapNotNull { it.customerId }.distinct())
+        fun broughtIn(customerId: UUID?) = customerId != null && firstSale[customerId]?.let { !it.isBefore(from) && !it.isAfter(to) } == true
+        val repInfo = lines.mapNotNull { it.correspondentId }.distinct().associateWith { runCatching { correspondents.get(it) }.getOrNull() }
+        val totalRevenue = lines.fold(BigDecimal.ZERO) { a, l -> a + l.lineNet }
+
+        if (view == "customer") {
+            val rows = lines.groupBy { it.correspondentId!! to (it.customerId ?: NO_CUSTOMER) }.map { (key, ls) ->
+                val rep = repInfo[key.first]
+                CorrespondentCustomerRow(
+                    rep = rep?.name ?: "", repCode = rep?.code ?: "", customer = ls.first().customerName, customerCode = ls.first().customerCode,
+                    newCustomer = broughtIn(ls.first().customerId), transactions = ls.map { it.saleId }.distinct().size,
+                    units = ls.fold(BigDecimal.ZERO) { a, l -> a + l.quantity }, revenue = ls.fold(BigDecimal.ZERO) { a, l -> a + l.lineNet },
+                    pendingConfirmationValue = ls.filter { !it.receiptsConfirmed }.fold(BigDecimal.ZERO) { a, l -> a + l.lineNet },
+                )
+            }.sortedByDescending { it.revenue }
+            CorrespondentsReport("customer", null, rows, correspondentStats(lines, firstSale, from, to, totalRevenue, repInfo.size))
+        } else {
+            val rows = lines.groupBy { it.correspondentId!! }.map { (repId, ls) ->
+                val rep = repInfo[repId]
+                val revenue = ls.fold(BigDecimal.ZERO) { a, l -> a + l.lineNet }
+                CorrespondentRepRow(
+                    rep = rep?.name ?: "", repCode = rep?.code ?: "", region = rep?.region, status = rep?.status ?: "",
+                    customers = ls.mapNotNull { it.customerId }.distinct().size, newCustomers = ls.mapNotNull { it.customerId }.distinct().count { broughtIn(it) },
+                    transactions = ls.map { it.saleId }.distinct().size, units = ls.fold(BigDecimal.ZERO) { a, l -> a + l.quantity }, revenue = revenue,
+                    sharePct = if (totalRevenue.signum() == 0) BigDecimal.ZERO else revenue.multiply(BigDecimal(100)).divide(totalRevenue, 1, RoundingMode.HALF_UP),
+                    pendingConfirmationValue = ls.filter { !it.receiptsConfirmed }.fold(BigDecimal.ZERO) { a, l -> a + l.lineNet },
+                )
+            }.sortedByDescending { it.revenue }
+            CorrespondentsReport("rep", rows, null, correspondentStats(lines, firstSale, from, to, totalRevenue, repInfo.size))
+        }
+    }
+
+    private fun correspondentStats(lines: List<SalesLineRef>, firstSale: Map<UUID, LocalDate>, from: LocalDate, to: LocalDate, totalRevenue: BigDecimal, reps: Int): Map<String, Any?> {
+        val customers = lines.mapNotNull { it.customerId }.distinct()
+        val newCustomers = customers.count { firstSale[it]?.let { d -> !d.isBefore(from) && !d.isAfter(to) } == true }
+        val top = lines.groupBy { it.correspondentId!! }.mapValues { e -> e.value.fold(BigDecimal.ZERO) { a, l -> a + l.lineNet } }.maxByOrNull { it.value }
+        return mapOf(
+            "reps" to reps, "customersServed" to customers.size, "newCustomers" to newCustomers, "revenue" to totalRevenue,
+            "topRep" to top?.let { mapOf("revenue" to it.value) },
+        )
+    }
     fun commissions(
         beneficiaryType: String, from: LocalDate?, to: LocalDate?, status: String?, beneficiaryId: UUID?, paging: PageRequest,
     ): PageResult<CommsReportRow> = tx.execute {
@@ -107,4 +166,8 @@ class ReportService(
     }
 
     private fun periodLabel(month: LocalDate): String = "${month.month.getDisplayName(TextStyle.FULL, Locale.UK)} ${month.year}"
+
+    private companion object {
+        val NO_CUSTOMER: UUID = UUID(0, 0)
+    }
 }

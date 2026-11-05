@@ -1,10 +1,12 @@
 # 12 — Communication Module (Commissions & Correspondents)
 
-Status: **slices 1–3 implemented (Comms. Guide, allocation runs, payments + Comms. Report); slice 4 pending (Correspondents Report, SPI, sale-void consumer, global search, Postman, promotion)**
+Status: **implemented (four slices)**
 Owner package: `com.zifiq.communication`
 Depends on: `platform`, `common`, `inventory` (OPEN), `customers :: spi`, `account :: spi`, `cashier :: spi`, `showroom :: spi`
 Depended on by: nobody (leaf).
 Migrations: `V20__communication_rates.sql` (slice 1 — the rate table + permissions; the planned `V16` number was long taken). The runs and payment tables arrive in later slices.
+
+**Slice 4 — implemented.** The Correspondents Report `GET /communication/reports/correspondents?locationId=&from=&to=&correspondentId=&view=rep|customer` (perm `communication.reports.read`): rep activity from `SalesQueries.linesFor` regardless of receipt confirmation, with a `pendingConfirmationValue` column to reconcile against commission; "brought in" = the customer's first completed sale (via the new `SalesQueries.firstCompletedSaleDates`) falls in range. The `communication::spi` `CommissionQueries.allocatedFor` publishes commission allocated per approved-run period (earned/paid) for Reports (doc 13 SCI), Dashboard and AI. Global-search providers `commission-run` (CA-n) and `commission-payment` (CP-n). **Postman/Newman**: not added for this module — the whole flow (rates effective today-or-later, runs over a *closed* month with COMPLETED sales, payments) can't be produced by a fresh top-to-bottom collection, so it is verified by the Testcontainers suite instead. The doc is promoted to `implemented/`.
 
 **Slice 3 (V22) — implemented.** Commission payments: `commission_payments` (tenant-scoped composite FK to a run). A new `account::spi` `CommissionPayouts` (`payOut` / `reversePayout`, implemented in Account over `MoneyMoves`) moves cash/bank money with sufficiency enforced; dealer wallet payments go through the customers `WalletLedger`. `POST /communication/payments` (partial allowed; `RUN_NOT_APPROVED`; `PAYMENT_EXCEEDS_OUTSTANDING` where outstanding = earned − Σ PAID; `PAYMENT_BELOW_MINIMUM`; `WALLET_NOT_AVAILABLE_FOR_PAYEE` for a correspondent), `POST /runs/{id}/pay-all` (pays every beneficiary's outstanding above the minimum, whole-transaction), `POST /payments/{id}/reverse` (same-day only — `PAYMENT_NOT_REVERSIBLE` — reversing the wallet credit or the cash/bank entry), `GET /communication/payments`. The **Comms. Report** `GET /communication/reports/commissions` rolls earned/paid/outstanding per beneficiary × approved-run period with Unpaid/Part paid/Settled status and a totals summary. Perms `communication.payments.manage`, `communication.reports.read`. **Deferred to slice 4:** the Correspondents Report (§4.5), the `CommissionQueries` SPI (§5), the `cashier.sale.voided` consumer (§8), global search (§9), Postman, and promoting this doc to `implemented/`.
 
@@ -349,6 +351,7 @@ Implements doc 03 §4–§5: advanced `POST …/search`, `/filters` metadata, fa
 
 ## 11. Open items
 
+0. **Voided-sale clawback (§8)**: the `cashier.sale.voided` consumer that posts a negative adjustment in the beneficiary's next run for a sale voided after it was allocated in an approved run is **not yet implemented** — it needs a pending-adjustment store the next run reads. Until then, a sale voided after its commission was allocated is not clawed back automatically (record a correcting payment reversal or a manual negative in Account). Likewise the Correspondents Report's "brought in" uses the customer's first completed sale date (not the rep attributed to that first sale) — an approximation.
 1. **Dealer commission basis**: this design pays dealers on what they *buy* from the company (the only sales the system records). If the business means the dealer's own onward sales (not captured), commission needs a dealer-reported sales feed, which is out of scope.
 2. **Withholding tax** on commission payouts (Nigerian WHT, typically 5–10 % on commissions): not modelled. If required, add `wht_rate`/`wht_amount` to payments and a WHT liability posting in Account.
 
@@ -360,4 +363,4 @@ Implements doc 03 §4–§5: advanced `POST …/search`, `/filters` metadata, fa
 - Approve as the runner → 403; pay more than outstanding → 400; pay-all with an under-funded bank → whole call fails, nothing paid.
 - Voiding an allocated sale yields a negative adjustment in the next run.
 - Comms Report totals = Σ approved runs' earned − Σ PAID payments.
-- Newman folder "19 - Communication".
+- Verified by the Testcontainers suite (rates, allocation runs, payments, reports, the CommissionQueries SPI). Not in the Newman collection: a fresh top-to-bottom run can't produce the closed-month completed sales a commission run needs.
