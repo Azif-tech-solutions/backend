@@ -58,6 +58,7 @@ class ShowroomSpiService(private val tenantContext: TenantContext) : ShowroomQue
             .orderBy(CustomerReturnsTable.returnDate to SortOrder.ASC, CustomerReturnLinesTable.id to SortOrder.ASC)
             .map {
                 ReturnLineRef(
+                    lineId = it[CustomerReturnLinesTable.id].value,
                     returnId = it[CustomerReturnsTable.id].value, ref = it[CustomerReturnsTable.ref], returnType = it[CustomerReturnsTable.returnType],
                     locationId = it[CustomerReturnsTable.locationId], customerId = it[CustomerReturnsTable.customerId], customerType = it[CustomerReturnsTable.customerType],
                     returnDate = it[CustomerReturnsTable.returnDate], stockItemId = it[CustomerReturnLinesTable.stockItemId], quantity = it[CustomerReturnLinesTable.quantity],
