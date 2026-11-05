@@ -8,11 +8,14 @@ import com.zifiq.cashier.spi.SalesLineFilter
 import com.zifiq.cashier.spi.SalesLineRef
 import com.zifiq.cashier.spi.SalesQueries
 import com.zifiq.platform.tenancy.TenantScopedTransaction
+import java.time.LocalDate
 import java.util.UUID
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.lessEq
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.min
 import org.jetbrains.exposed.sql.selectAll
 import org.springframework.stereotype.Service
 
@@ -42,12 +45,22 @@ class SalesQueryService(
             val saleId = r[SalesTable.id].value
             SalesLineRef(
                 saleId = saleId, saleLineId = r[SaleLinesTable.id].value, saleDate = r[SalesTable.saleDate] ?: filter.completedTo,
-                saleRef = r[SalesTable.ref] ?: "", customerId = r[SalesTable.customerId], customerType = r[SalesTable.customerType],
+                saleRef = r[SalesTable.ref] ?: "", customerId = r[SalesTable.customerId], customerCode = r[SalesTable.customerCode], customerName = r[SalesTable.customerName], customerType = r[SalesTable.customerType],
                 correspondentId = r[SalesTable.correspondentId], stockItemId = r[SaleLinesTable.stockItemId], itemCode = r[SaleLinesTable.itemCode],
                 itemName = r[SaleLinesTable.itemName], quantity = r[SaleLinesTable.quantity], lineNet = r[SaleLinesTable.lineNet],
                 receiptsConfirmed = confirmed[saleId] ?: true, invoicePaid = r[SalesTable.onAccount].signum() == 0,
             )
         }
+    }
+
+    override fun firstCompletedSaleDates(customerIds: Collection<UUID>): Map<UUID, LocalDate> = tx.execute {
+        if (customerIds.isEmpty()) return@execute emptyMap()
+        val earliest = SalesTable.saleDate.min()
+        SalesTable.select(SalesTable.customerId, earliest)
+            .where { (SalesTable.tenantId eq support.tenantId()) and (SalesTable.status eq "COMPLETED") and (SalesTable.customerId inList customerIds) }
+            .groupBy(SalesTable.customerId)
+            .mapNotNull { r -> r[earliest]?.let { (r[SalesTable.customerId] ?: return@mapNotNull null) to it } }
+            .toMap()
     }
 
     private fun confirmedBySale(saleIds: List<UUID>): Map<UUID, Boolean> {

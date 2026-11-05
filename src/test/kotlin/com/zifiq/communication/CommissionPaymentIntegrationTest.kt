@@ -89,7 +89,17 @@ class CommissionPaymentIntegrationTest : PostgresIntegrationTest() {
         override fun reverse(entryId: UUID, reason: String, sourceModule: String) = LedgerEntryRef(UUID.randomUUID(), dlr42, BalanceType.WALLET, LedgerEntryType.REVERSAL_DEBIT, BigDecimal.ZERO, BigDecimal.ZERO, "rev")
     }
     private val payments = PaymentService(support, tx, sequences, payoutsStub, walletStub)
-    private val reports = ReportService(support, tx)
+    private val salesStub = object : com.zifiq.cashier.spi.SalesQueries {
+        override fun linesFor(filter: com.zifiq.cashier.spi.SalesLineFilter): List<com.zifiq.cashier.spi.SalesLineRef> = emptyList()
+        override fun firstCompletedSaleDates(customerIds: Collection<UUID>): Map<UUID, LocalDate> = emptyMap()
+    }
+    private val correspondentsStub = object : com.zifiq.customers.spi.Correspondents {
+        override fun get(id: UUID): com.zifiq.customers.spi.CorrespondentRef = error("not used")
+        override fun names(ids: Collection<UUID>): Map<UUID, String> = emptyMap()
+        override fun creditableFor(customerId: UUID): com.zifiq.customers.spi.CorrespondentRef? = null
+        override fun listAssigned(locationId: UUID?): List<com.zifiq.customers.spi.CorrespondentRef> = emptyList()
+    }
+    private val reports = ReportService(support, tx, salesStub, correspondentsStub)
 
     private fun signIn() {
         tenantContext.set(tenantId)
