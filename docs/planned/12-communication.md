@@ -1,10 +1,12 @@
 # 12 — Communication Module (Commissions & Correspondents)
 
-Status: **design finalized, not yet implemented**
+Status: **slice 1 implemented (Comms. Guide / rates); slices 2 (allocation runs) and 3 (payments, reports, SPI) pending**
 Owner package: `com.zifiq.communication`
 Depends on: `platform`, `common`, `inventory` (OPEN), `customers :: spi`, `account :: spi`, `cashier :: spi`, `showroom :: spi`
 Depended on by: nobody (leaf).
-Migration: `V16__communication_module.sql`
+Migrations: `V20__communication_rates.sql` (slice 1 — the rate table + permissions; the planned `V16` number was long taken). The runs and payment tables arrive in later slices.
+
+**Slice 1 (V20) — implemented.** The Comms. Guide: `commission_rates` (effective-dated, per product × beneficiary type, tenant-scoped composite FK to stock_items) and the `communication.guide.read` / `.manage` permissions. `GET /communication/rates` shows the rate in force today per sellable product with a `nextChange` preview and a `commissionPerUnit` figure (unrated products appear "Not set" unless `includeUnrated=false`); `GET /communication/rates/{stockItemId}/history`; `POST /communication/rates` (+ `/bulk`) sets a rate effective today or later (never backdated — `RATE_CANNOT_BE_BACKDATED`; a duplicate start date is `RATE_ALREADY_SET_FOR_DATE`), closing the predecessor's `effective_to`; `PUT`/`DELETE /communication/rates/{id}` edit or withdraw a **future** row only (`RATE_NOT_EDITABLE`). Module settings (`requireInvoicePaid`, `allowLocationRuns`, `minimumPayout`) are registered. **Deferred to later slices:** allocation runs (§4.2), payments (§4.3), the two reports (§4.4–4.5), the `CommissionQueries` SPI (§5), the sale-void consumer (§8), global search (§9), Postman, and promoting this doc to `implemented/`.
 Replaces: the misfiled mock in `process` (`GET/POST /api/v1/process/commissions/guide` — a flat per-*role* percentage gated by `iam.roles.manage`). That shape is wrong for the real requirement (per-product, per-unit or percentage) and is not carried forward.
 
 The sketch names this module "Communication (Guides, Allocator, Correspondent & Reports)". The correspondent **register** (assign/reassign/de-assign, `process/Correspondent.jsx`) already lives in Customers (doc 04 §2.2), because sales and customers reference correspondents and Customers is a substrate. This module owns commissions and the two reports.

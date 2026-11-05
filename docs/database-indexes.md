@@ -89,6 +89,15 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `categories_tenant_id_key` | unique | tenant_id, id |  |
 | `categories_tenant_id_name_key` | unique | tenant_id, name |  |
 
+### `commission_rates`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `commission_rates_pkey` | primary key | id |  |
+| `commission_rates_tenant_id_stock_item_id_beneficiary_type_eff_key` | unique | tenant_id, stock_item_id, beneficiary_type, effective_from |  |
+| `cr_lookup_idx` | btree | tenant_id, stock_item_id, beneficiary_type, effective_from DESC |  |
+| `cr_type_status_idx` | btree | tenant_id, beneficiary_type, status, effective_from |  |
+
 ### `company_profiles`
 
 | Index | Kind | Columns / expression | Only rows where |
