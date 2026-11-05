@@ -464,6 +464,23 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `issued_documents_tenant_id_ref_key` | unique | tenant_id, ref |  |
 | `issued_documents_type_time_idx` | btree | tenant_id, doc_type, issued_at DESC |  |
 
+### `label_print_run_items`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `label_print_run_items_pkey` | primary key | id |  |
+| `label_print_run_items_run_idx` | btree | tenant_id, run_id |  |
+| `label_print_run_items_item_idx` | btree | tenant_id, stock_item_id |  |
+
+### `label_print_runs`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `label_print_runs_pkey` | primary key | id |  |
+| `label_print_runs_tenant_id_ref_key` | unique | tenant_id, ref |  |
+| `label_print_runs_tenant_id_key` | unique | tenant_id, id |  |
+| `label_print_runs_recent_idx` | btree | tenant_id, created_at DESC |  |
+
 ### `location_vat_settings`
 
 | Index | Kind | Columns / expression | Only rows where |
@@ -823,6 +840,7 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `stock_item_codes_code_uq` | unique | tenant_id, code_normalized |  |
 | `stock_item_codes_primary_uq` | unique | stock_item_id | (is_primary AND (status = 'ACTIVE')) |
 | `stock_item_codes_item_idx` | btree | tenant_id, stock_item_id |  |
+| `stock_item_codes_tenant_id_key` | unique | tenant_id, id |  |
 
 ### `stock_items`
 

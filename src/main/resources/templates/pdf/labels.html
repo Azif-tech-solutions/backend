@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Labels</title>
+    <style th:utext="${pageCss}">/* page and label CSS, built per label size */</style>
+</head>
+<body>
+    <div class="label" th:each="l : ${labels}">
+        <div class="name" th:text="${l.name}">Product name</div>
+        <img class="sym" th:src="${l.symbol}" alt="" />
+        <div class="sub" th:text="${l.sub}">CODE &#183; Unit</div>
+        <div class="price" th:if="${l.price != null}" th:text="${l.price}">&#8358;0.00</div>
+    </div>
+</body>
+</html>

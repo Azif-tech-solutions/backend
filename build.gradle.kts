@@ -73,6 +73,9 @@ dependencies {
     implementation("software.amazon.awssdk:s3") {
         exclude(group = "software.amazon.awssdk", module = "netty-nio-client")
     }
+    // Barcode & QR (docs/11): ZXing renders label symbols (core) and decodes uploaded images (javase).
+    implementation("com.google.zxing:core:3.5.3")
+    implementation("com.google.zxing:javase:3.5.3")
     runtimeOnly("org.postgresql:postgresql")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
