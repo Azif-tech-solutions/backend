@@ -96,6 +96,15 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `commission_allocated_lines_pkey` | primary key | tenant_id, beneficiary_type, source, sale_line_id |  |
 | `cal_run_idx` | btree | tenant_id, run_id |  |
 
+### `commission_payments`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `commission_payments_pkey` | primary key | id |  |
+| `commission_payments_tenant_id_ref_key` | unique | tenant_id, ref |  |
+| `cp_beneficiary_idx` | btree | tenant_id, beneficiary_type, beneficiary_id, run_id |  |
+| `cp_run_idx` | btree | tenant_id, run_id |  |
+
 ### `commission_rates`
 
 | Index | Kind | Columns / expression | Only rows where |
