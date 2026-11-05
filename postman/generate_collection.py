@@ -3482,7 +3482,62 @@ def pm_request_item(e, with_examples=True):
         item["response"] = [example]
     return item
 
+# ============================== BARCODE & QR ==============================
+BC = "21 - Barcode & QR"
+ep(BC, "Register Barcode Test Item (no auto code)", "POST", "/api/v1/inventory/stock-items",
+   body={"locationId": "{{factoryId}}", "itemType": "FINISHED_PRODUCT", "code": None, "name": "Barcode Test Drink",
+         "categoryId": "{{categoryId}}", "brand": None, "unitOfMeasureId": "{{unitId}}", "reorderLevel": 5,
+         "barcode": None, "generateBarcode": False, "landingCost": 10.00, "markupCost": None,
+         "vatCategoryId": "{{standardRateVatCategoryId}}", "hsnSectionId": "{{hsnSectionId}}", "isicSectionId": "{{isicSectionId}}"},
+   resp={"data": {"id": "{{barcodeItemId}}", "code": "ITM-9", "name": "Barcode Test Drink", "barcode": None, "status": "ACTIVE"}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('barcodeItemId', json.data.id);"],
+   desc="generateBarcode false leaves the item without a code so the next call can generate one. Omitting it uses the tenant's barcode.autoGenerateOnRegister setting.")
+ep(BC, "Generate Primary Code", "POST", "/api/v1/barcode/items/{{barcodeItemId}}/codes/generate",
+   body={"symbology": None},
+   resp={"data": {"id": "{{generatedCodeId}}", "code": "2000000000012", "symbology": "EAN_13", "source": "GENERATED", "isPrimary": True, "packQuantity": 1.000, "packLabel": None, "status": "ACTIVE", "assignedBy": USER, "assignedAt": NOW}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('generatedCodeId', json.data.id);", "pm.collectionVariables.set('generatedBarcode', json.data.code);"],
+   desc="EAN-13 by default for goods (QR for in-house recipes). Without a GS1 company prefix the number uses GS1's restricted 20-29 range. A second generate returns 409 PRIMARY_CODE_EXISTS.")
+ep(BC, "List Item Codes", "GET", "/api/v1/barcode/items/{{barcodeItemId}}/codes",
+   resp={"data": [{"id": "{{generatedCodeId}}", "code": "2000000000012", "symbology": "EAN_13", "source": "GENERATED", "isPrimary": True, "packQuantity": 1.000, "packLabel": None, "status": "ACTIVE", "assignedBy": USER, "assignedAt": NOW}]})
+ep(BC, "Assign Manufacturer Alias (QR)", "POST", "/api/v1/barcode/items/{{barcodeItemId}}/codes",
+   body={"code": "ZIQ-MAN-0001", "symbology": "QR", "source": "MANUFACTURER", "isPrimary": False},
+   resp={"data": {"id": "{{aliasCodeId}}", "code": "ZIQ-MAN-0001", "symbology": "QR", "source": "MANUFACTURER", "isPrimary": False, "packQuantity": 1.000, "packLabel": None, "status": "ACTIVE", "assignedBy": USER, "assignedAt": NOW}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('aliasCodeId', json.data.id);"],
+   desc="A code is unique per tenant forever (retired codes stay reserved). An EAN/UPC code with a bad check digit is 400 INVALID_CHECK_DIGIT; a duplicate is 409 DUPLICATE_BARCODE.")
+ep(BC, "Scan Generated Code (lookup)", "POST", "/api/v1/barcode/scan",
+   body={"code": "{{generatedBarcode}}", "context": "LOOKUP"},
+   resp={"data": {"outcome": "MATCHED", "blockReason": None, "code": "2000000000012",
+                  "item": {"stockItem": REF("stockItem", "{{barcodeItemId}}"), "unit": "Kilogram", "status": "ACTIVE", "symbology": "EAN_13", "category": "Chemicals"},
+                  "packQuantity": 1.000, "packLabel": None, "price": None, "stock": None, "canRegister": False, "canRegisterInline": False, "message": "Barcode Test Drink -- ready to use"}},
+   desc="The permission required is the scanning context's (LOOKUP needs barcode.lookup). Submit item.stockItem.id to your own endpoint. MATCHED carries price (POS/pro-forma/lookup) and stock (when locationId is given); cost is never returned.")
+ep(BC, "Scan Unknown Code", "POST", "/api/v1/barcode/scan",
+   body={"code": "ZIQ-UNKNOWN-123", "context": "LOOKUP"},
+   resp={"data": {"outcome": "NOT_RECOGNISED", "blockReason": None, "code": "ZIQ-UNKNOWN-123", "item": None, "packQuantity": None, "packLabel": None, "price": None, "stock": None, "canRegister": True, "canRegisterInline": False, "message": "Code not recognised -- register this item or enter it manually"}},
+   desc="A well-formed but unknown code is NOT_RECOGNISED (canRegister true for a user who may register items). A bad GTIN check digit is MISREAD and is never looked up.")
+ep(BC, "Scan Log", "GET", "/api/v1/barcode/scan-events",
+   resp=PAGED([{"time": NOW, "code": "ZIQ-UNKNOWN-123", "result": "NOT_RECOGNISED", "resolvedTo": "--", "scannedIn": "Lookup", "scannedBy": USER, "location": None, "note": None}],
+              summary={"scans": 2, "matchRate": 50.0, "notRecognised": 1, "blocked": 0, "misread": 0, "topUnrecognised": [{"code": "ZIQ-UNKNOWN-123", "count": 1}]}),
+   desc="A user without barcode.scan-log.read sees only their own scans (mine=true is forced). Filters: outcome, context, userId, locationId, stockItemId, code, from, to.")
+ep(BC, "Label Picker", "GET", "/api/v1/barcode/labels/items",
+   query=[{"key": "hasCode", "value": "true"}],
+   resp=PAGED([{"stockItem": REF("stockItem", "{{barcodeItemId}}"), "code": "ITM-9", "name": "Barcode Test Drink", "kind": "FINISHED_PRODUCT", "unit": "Kilogram", "primaryCode": "2000000000012", "symbology": "EAN_13", "packCodes": 0}]),
+   desc="Perm barcode.labels.print. hasCode=false is the 'registered items with no code' callout; also kind, status, q.")
+ep(BC, "Create Label Run (PDF)", "POST", "/api/v1/barcode/labels/runs",
+   body={"size": "58x40", "outputFormat": "PDF", "showPrice": False, "generateMissing": False,
+         "items": [{"stockItemId": "{{barcodeItemId}}", "copies": 2}]},
+   resp={"data": {"ref": "LBL-1", "totalLabels": 2, "codesGenerated": 0, "downloadUrl": "/api/v1/barcode/labels/runs/{{labelRunId}}/labels.pdf"}},
+   tests=["const json = pm.response.json();", "pm.collectionVariables.set('labelRunId', json.data.downloadUrl.split('/runs/')[1].split('/')[0]);"],
+   desc="generateMissing generates a code for any item without one (needs barcode.codes.manage). showPrice with no price set is 409 NO_PRICE_SET; over 5,000 labels is 400 TOO_MANY_LABELS.")
+ep(BC, "Download Labels PDF", "GET", "/api/v1/barcode/labels/runs/{{labelRunId}}/labels.pdf", pdf=True,
+   desc="Renders the run: product name, code + unit, the ZXing symbol, and an optional price. labels.zpl renders the same run as Zebra ZPL.")
+
 FOLDER_DESCRIPTIONS = {
+    "21 - Barcode & QR": (
+        "Barcode & QR (backend docs/11): register an item without an auto code, generate its primary EAN-13, assign a "
+        "manufacturer QR alias, resolve codes through the scan endpoint (matched / not-recognised), read the scan log, "
+        "then pick, print (PDF) and download labels. Run after folders 04 (VAT category/HSN/ISIC ids), 06 (factoryId, "
+        "categoryId, unitId). Captured variables: barcodeItemId, generatedCodeId, generatedBarcode, aliasCodeId, labelRunId."
+    ),
     "18 - Electronic Invoicing": (
         "Electronic Invoicing (backend docs/08): A NRS classification on a stock item, B raising invoices through the sandbox endpoint "
         "(which stands in for Sales & POS until docs/09 exists), C history, search, detail, PDF and pickers, D drafts (edit, issue, discard), "
@@ -3564,7 +3619,7 @@ def build_collection():
     collection = {
         "info": {
             "name": "ZifIQ Backend API",
-            "description": "Test collection for the ZifIQ Kotlin/Spring Boot backend: every module with real persistence and business logic (Auth, Tenants & Members, OTP, VAT Control, Settings, Factory, Inventory, NRS Reference Data, Customers, Documents & Files, Showroom, Finance & Accounting, Electronic Invoicing, Sales & POS, Audit & Compliance). Modules still returning mock data (AI, Barcode, Process Guide) are left out until they are built. Run the folders top to bottom, 01 through 20: each request's Tests script captures IDs and tokens into collection variables that later requests reuse, so the whole collection runs end to end in the Collection Runner or Newman with no manual edits. See docs/ in the backend repo for the design each module implements.",
+            "description": "Test collection for the ZifIQ Kotlin/Spring Boot backend: every module with real persistence and business logic (Auth, Tenants & Members, OTP, VAT Control, Settings, Factory, Inventory, NRS Reference Data, Customers, Documents & Files, Showroom, Finance & Accounting, Electronic Invoicing, Sales & POS, Audit & Compliance, Barcode & QR). Modules still returning mock data (AI, Process Guide) are left out until they are built. Run the folders top to bottom, 01 through 21: each request's Tests script captures IDs and tokens into collection variables that later requests reuse, so the whole collection runs end to end in the Collection Runner or Newman with no manual edits. See docs/ in the backend repo for the design each module implements.",
             "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
         },
         "auth": BEARER_AUTH,

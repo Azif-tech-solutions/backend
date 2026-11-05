@@ -106,7 +106,7 @@ class ScanResolutionIntegrationTest : PostgresIntegrationTest() {
         override fun findActiveByPhone(phone: String): CustomerRef? = error("not used")
         override fun search(q: String, limit: Int, types: Set<CustomerType>?): List<CustomerRef> = error("not used")
     }
-    private val scans = ScanResolutionService(support, tx, availability, customers, hierarchy)
+    private val scans = ScanResolutionService(support, tx, availability, customers, hierarchy, com.zifiq.barcode.service.BarcodeImageDecoder())
     private val scanLog = ScanLogService(support, tx)
 
     private fun signIn() {

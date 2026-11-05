@@ -45,6 +45,7 @@ class ScanResolutionService(
     private val availability: StockAvailability,
     private val customers: CustomerDirectory,
     private val hierarchy: LocationHierarchy,
+    private val imageDecoder: BarcodeImageDecoder,
 ) {
     fun resolve(req: ScanRequest): ScanResolution = tx.execute {
         val ctx = parseContext(req.context)
@@ -56,6 +57,16 @@ class ScanResolutionService(
         val ctx = parseContext(req.context)
         checkAccess(ctx, req.locationId)
         req.codes.map { resolveOne(ctx, it, req.locationId, req.customerId, "SCANNER", null) }
+    }
+
+    /** Decode the barcode(s) in [image] (docs/11 §4.3), then resolve each exactly as a typed scan. */
+    fun resolveImage(context: String, image: ByteArray, locationId: UUID?, customerId: UUID?): List<ScanResolution> {
+        val codes = imageDecoder.decode(image)
+        return tx.execute {
+            val ctx = parseContext(context)
+            checkAccess(ctx, locationId)
+            codes.map { resolveOne(ctx, it, locationId, customerId, "IMAGE", null) }
+        }
     }
 
     private fun parseContext(raw: String): ScanContext =

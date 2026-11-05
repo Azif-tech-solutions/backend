@@ -14,6 +14,7 @@ import com.zifiq.common.search.allOf
 import com.zifiq.customers.spi.CustomerDirectory
 import com.zifiq.customers.spi.CustomerType
 import com.zifiq.inventory.model.StockBalancesTable
+import com.zifiq.inventory.model.StockItemCodesTable
 import com.zifiq.inventory.model.StockItemsTable
 import com.zifiq.inventory.repository.StockSql
 import com.zifiq.inventory.service.StockAvailability
@@ -66,6 +67,14 @@ class CatalogueService(
         val category = StockSql.categoryName()
         val locations = hierarchy.withAreas(root)
         val parsed = search.parse(q)
+        // An exact code (any of an item's codes — primary, manufacturer alias or carton) wins over the
+        // name search, so scanning at the till jumps straight to the one product (docs/11 §5).
+        val exactCodeItemId = q?.trim()?.takeIf { it.isNotEmpty() }?.let { term ->
+            val norm = term.uppercase().replace(Regex("\\s"), "")
+            StockItemCodesTable.select(StockItemCodesTable.stockItemId)
+                .where { (StockItemCodesTable.tenantId eq support.tenantId()) and (StockItemCodesTable.codeNormalized eq norm) and (StockItemCodesTable.status eq "ACTIVE") }
+                .firstOrNull()?.get(StockItemCodesTable.stockItemId)?.value
+        }
         val onHand = StockBalancesTable.quantityOnHand.sum()
         val inStock = StockBalancesTable.select(StockBalancesTable.stockItemId)
             .where { StockBalancesTable.locationId inList locations }
@@ -78,7 +87,7 @@ class CatalogueService(
             retail.isNotNull(),
             categoryId?.let { StockItemsTable.categoryId eq it },
             if (includeOutOfStock) null else StockItemsTable.id inSubQuery inStock,
-            search.condition(parsed),
+            if (exactCodeItemId != null) StockItemsTable.id eq exactCodeItemId else search.condition(parsed),
         ).allOf()!!
         val order = search.rank(parsed) + listOf(StockItemsTable.name to SortOrder.ASC, StockItemsTable.id to SortOrder.ASC)
         Paging.limitStatementTime()
