@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "ZifIQ Backend API",
-    "description": "Test collection for the ZifIQ Kotlin/Spring Boot backend: every module with real persistence and business logic (Auth, Tenants & Members, OTP, VAT Control, Settings, Factory, Inventory, NRS Reference Data, Customers, Documents & Files, Showroom, Finance & Accounting, Electronic Invoicing, Sales & POS, Audit & Compliance). Modules still returning mock data (AI, Barcode, Process Guide) are left out until they are built. Run the folders top to bottom, 01 through 20: each request's Tests script captures IDs and tokens into collection variables that later requests reuse, so the whole collection runs end to end in the Collection Runner or Newman with no manual edits. See docs/ in the backend repo for the design each module implements.",
+    "description": "Test collection for the ZifIQ Kotlin/Spring Boot backend: every module with real persistence and business logic (Auth, Tenants & Members, OTP, VAT Control, Settings, Factory, Inventory, NRS Reference Data, Customers, Documents & Files, Showroom, Finance & Accounting, Electronic Invoicing, Sales & POS, Audit & Compliance, Barcode & QR). Modules still returning mock data (AI, Process Guide) are left out until they are built. Run the folders top to bottom, 01 through 21: each request's Tests script captures IDs and tokens into collection variables that later requests reuse, so the whole collection runs end to end in the Collection Runner or Newman with no manual edits. See docs/ in the backend repo for the design each module implements.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -2648,7 +2648,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"3ea5369d-cfbc-40ef-a886-dca02de96eca\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{hsnSectionId}}\",\n      \"code\": \"VI\",\n      \"chapterRange\": \"28-38\",\n      \"name\": \"Products of the chemical or allied industries\"\n    },\n    {\n      \"id\": \"46445b38-4a14-4929-bc2f-bbda07f2c159\",\n      \"code\": \"IV\",\n      \"chapterRange\": \"16-24\",\n      \"name\": \"Prepared foodstuffs; beverages, spirits and vinegar; tobacco and manufactured tobacco substitutes\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -2739,7 +2739,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"3f7a10ea-59a1-4e9e-a247-938f467eb6c7\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{isicSectionId}}\",\n      \"code\": \"C\",\n      \"name\": \"Manufacturing\"\n    },\n    {\n      \"id\": \"96432fa9-b037-4db1-b082-81e74df81206\",\n      \"code\": \"A\",\n      \"name\": \"Agriculture, forestry and fishing\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -47138,6 +47138,1072 @@
           ]
         }
       ]
+    },
+    {
+      "name": "21 - Barcode & QR",
+      "item": [
+        {
+          "name": "Register Barcode Test Item (no auto code)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/inventory/stock-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "inventory",
+                "stock-items"
+              ]
+            },
+            "description": "generateBarcode false leaves the item without a code so the next call can generate one. Omitting it uses the tenant's barcode.autoGenerateOnRegister setting.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"locationId\": \"{{factoryId}}\",\n  \"itemType\": \"FINISHED_PRODUCT\",\n  \"code\": null,\n  \"name\": \"Barcode Test Drink\",\n  \"categoryId\": \"{{categoryId}}\",\n  \"brand\": null,\n  \"unitOfMeasureId\": \"{{unitId}}\",\n  \"reorderLevel\": 5,\n  \"barcode\": null,\n  \"generateBarcode\": false,\n  \"landingCost\": 10.0,\n  \"markupCost\": null,\n  \"vatCategoryId\": \"{{standardRateVatCategoryId}}\",\n  \"hsnSectionId\": \"{{hsnSectionId}}\",\n  \"isicSectionId\": \"{{isicSectionId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('barcodeItemId', json.data.id);",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Register Barcode Test Item (no auto code) - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/inventory/stock-items",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "inventory",
+                    "stock-items"
+                  ]
+                },
+                "description": "generateBarcode false leaves the item without a code so the next call can generate one. Omitting it uses the tenant's barcode.autoGenerateOnRegister setting.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"locationId\": \"{{factoryId}}\",\n  \"itemType\": \"FINISHED_PRODUCT\",\n  \"code\": null,\n  \"name\": \"Barcode Test Drink\",\n  \"categoryId\": \"{{categoryId}}\",\n  \"brand\": null,\n  \"unitOfMeasureId\": \"{{unitId}}\",\n  \"reorderLevel\": 5,\n  \"barcode\": null,\n  \"generateBarcode\": false,\n  \"landingCost\": 10.0,\n  \"markupCost\": null,\n  \"vatCategoryId\": \"{{standardRateVatCategoryId}}\",\n  \"hsnSectionId\": \"{{hsnSectionId}}\",\n  \"isicSectionId\": \"{{isicSectionId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{barcodeItemId}}\",\n    \"code\": \"ITM-9\",\n    \"name\": \"Barcode Test Drink\",\n    \"barcode\": null,\n    \"status\": \"ACTIVE\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Generate Primary Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/barcode/items/{{barcodeItemId}}/codes/generate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "barcode",
+                "items",
+                "{{barcodeItemId}}",
+                "codes",
+                "generate"
+              ]
+            },
+            "description": "EAN-13 by default for goods (QR for in-house recipes). Without a GS1 company prefix the number uses GS1's restricted 20-29 range. A second generate returns 409 PRIMARY_CODE_EXISTS.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"symbology\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('generatedCodeId', json.data.id);",
+                  "    pm.collectionVariables.set('generatedBarcode', json.data.code);",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Generate Primary Code - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/barcode/items/{{barcodeItemId}}/codes/generate",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "barcode",
+                    "items",
+                    "{{barcodeItemId}}",
+                    "codes",
+                    "generate"
+                  ]
+                },
+                "description": "EAN-13 by default for goods (QR for in-house recipes). Without a GS1 company prefix the number uses GS1's restricted 20-29 range. A second generate returns 409 PRIMARY_CODE_EXISTS.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"symbology\": null\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{generatedCodeId}}\",\n    \"code\": \"2000000000012\",\n    \"symbology\": \"EAN_13\",\n    \"source\": \"GENERATED\",\n    \"isPrimary\": true,\n    \"packQuantity\": 1.0,\n    \"packLabel\": null,\n    \"status\": \"ACTIVE\",\n    \"assignedBy\": {\n      \"id\": \"{{userId}}\",\n      \"name\": \"Alice Admin\",\n      \"email\": \"admin@apex.com\"\n    },\n    \"assignedAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "List Item Codes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/barcode/items/{{barcodeItemId}}/codes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "barcode",
+                "items",
+                "{{barcodeItemId}}",
+                "codes"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "List Item Codes - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/barcode/items/{{barcodeItemId}}/codes",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "barcode",
+                    "items",
+                    "{{barcodeItemId}}",
+                    "codes"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"{{generatedCodeId}}\",\n      \"code\": \"2000000000012\",\n      \"symbology\": \"EAN_13\",\n      \"source\": \"GENERATED\",\n      \"isPrimary\": true,\n      \"packQuantity\": 1.0,\n      \"packLabel\": null,\n      \"status\": \"ACTIVE\",\n      \"assignedBy\": {\n        \"id\": \"{{userId}}\",\n        \"name\": \"Alice Admin\",\n        \"email\": \"admin@apex.com\"\n      },\n      \"assignedAt\": \"2026-10-01T10:15:30Z\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Assign Manufacturer Alias (QR)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/barcode/items/{{barcodeItemId}}/codes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "barcode",
+                "items",
+                "{{barcodeItemId}}",
+                "codes"
+              ]
+            },
+            "description": "A code is unique per tenant forever (retired codes stay reserved). An EAN/UPC code with a bad check digit is 400 INVALID_CHECK_DIGIT; a duplicate is 409 DUPLICATE_BARCODE.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"ZIQ-MAN-0001\",\n  \"symbology\": \"QR\",\n  \"source\": \"MANUFACTURER\",\n  \"isPrimary\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('aliasCodeId', json.data.id);",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Assign Manufacturer Alias (QR) - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/barcode/items/{{barcodeItemId}}/codes",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "barcode",
+                    "items",
+                    "{{barcodeItemId}}",
+                    "codes"
+                  ]
+                },
+                "description": "A code is unique per tenant forever (retired codes stay reserved). An EAN/UPC code with a bad check digit is 400 INVALID_CHECK_DIGIT; a duplicate is 409 DUPLICATE_BARCODE.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"code\": \"ZIQ-MAN-0001\",\n  \"symbology\": \"QR\",\n  \"source\": \"MANUFACTURER\",\n  \"isPrimary\": false\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"id\": \"{{aliasCodeId}}\",\n    \"code\": \"ZIQ-MAN-0001\",\n    \"symbology\": \"QR\",\n    \"source\": \"MANUFACTURER\",\n    \"isPrimary\": false,\n    \"packQuantity\": 1.0,\n    \"packLabel\": null,\n    \"status\": \"ACTIVE\",\n    \"assignedBy\": {\n      \"id\": \"{{userId}}\",\n      \"name\": \"Alice Admin\",\n      \"email\": \"admin@apex.com\"\n    },\n    \"assignedAt\": \"2026-10-01T10:15:30Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Scan Generated Code (lookup)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/barcode/scan",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "barcode",
+                "scan"
+              ]
+            },
+            "description": "The permission required is the scanning context's (LOOKUP needs barcode.lookup). Submit item.stockItem.id to your own endpoint. MATCHED carries price (POS/pro-forma/lookup) and stock (when locationId is given); cost is never returned.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{generatedBarcode}}\",\n  \"context\": \"LOOKUP\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Scan Generated Code (lookup) - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/barcode/scan",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "barcode",
+                    "scan"
+                  ]
+                },
+                "description": "The permission required is the scanning context's (LOOKUP needs barcode.lookup). Submit item.stockItem.id to your own endpoint. MATCHED carries price (POS/pro-forma/lookup) and stock (when locationId is given); cost is never returned.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"code\": \"{{generatedBarcode}}\",\n  \"context\": \"LOOKUP\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"outcome\": \"MATCHED\",\n    \"blockReason\": null,\n    \"code\": \"2000000000012\",\n    \"item\": {\n      \"stockItem\": {\n        \"id\": \"{{barcodeItemId}}\",\n        \"code\": \"RM-0001\",\n        \"name\": \"Malted Barley\",\n        \"itemType\": \"RAW_MATERIAL\"\n      },\n      \"unit\": \"Kilogram\",\n      \"status\": \"ACTIVE\",\n      \"symbology\": \"EAN_13\",\n      \"category\": \"Chemicals\"\n    },\n    \"packQuantity\": 1.0,\n    \"packLabel\": null,\n    \"price\": null,\n    \"stock\": null,\n    \"canRegister\": false,\n    \"canRegisterInline\": false,\n    \"message\": \"Barcode Test Drink -- ready to use\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Scan Unknown Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/barcode/scan",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "barcode",
+                "scan"
+              ]
+            },
+            "description": "A well-formed but unknown code is NOT_RECOGNISED (canRegister true for a user who may register items). A bad GTIN check digit is MISREAD and is never looked up.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"ZIQ-UNKNOWN-123\",\n  \"context\": \"LOOKUP\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Scan Unknown Code - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/barcode/scan",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "barcode",
+                    "scan"
+                  ]
+                },
+                "description": "A well-formed but unknown code is NOT_RECOGNISED (canRegister true for a user who may register items). A bad GTIN check digit is MISREAD and is never looked up.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"code\": \"ZIQ-UNKNOWN-123\",\n  \"context\": \"LOOKUP\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"outcome\": \"NOT_RECOGNISED\",\n    \"blockReason\": null,\n    \"code\": \"ZIQ-UNKNOWN-123\",\n    \"item\": null,\n    \"packQuantity\": null,\n    \"packLabel\": null,\n    \"price\": null,\n    \"stock\": null,\n    \"canRegister\": true,\n    \"canRegisterInline\": false,\n    \"message\": \"Code not recognised -- register this item or enter it manually\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Scan Log",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/barcode/scan-events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "barcode",
+                "scan-events"
+              ]
+            },
+            "description": "A user without barcode.scan-log.read sees only their own scans (mine=true is forced). Filters: outcome, context, userId, locationId, stockItemId, code, from, to.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Scan Log - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/barcode/scan-events",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "barcode",
+                    "scan-events"
+                  ]
+                },
+                "description": "A user without barcode.scan-log.read sees only their own scans (mine=true is forced). Filters: outcome, context, userId, locationId, stockItemId, code, from, to.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"time\": \"2026-10-01T10:15:30Z\",\n        \"code\": \"ZIQ-UNKNOWN-123\",\n        \"result\": \"NOT_RECOGNISED\",\n        \"resolvedTo\": \"--\",\n        \"scannedIn\": \"Lookup\",\n        \"scannedBy\": {\n          \"id\": \"{{userId}}\",\n          \"name\": \"Alice Admin\",\n          \"email\": \"admin@apex.com\"\n        },\n        \"location\": null,\n        \"note\": null\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": {\n      \"scans\": 2,\n      \"matchRate\": 50.0,\n      \"notRecognised\": 1,\n      \"blocked\": 0,\n      \"misread\": 0,\n      \"topUnrecognised\": [\n        {\n          \"code\": \"ZIQ-UNKNOWN-123\",\n          \"count\": 1\n        }\n      ]\n    },\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Label Picker",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/barcode/labels/items?hasCode=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "barcode",
+                "labels",
+                "items"
+              ],
+              "query": [
+                {
+                  "key": "hasCode",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "Perm barcode.labels.print. hasCode=false is the 'registered items with no code' callout; also kind, status, q.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Label Picker - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/barcode/labels/items?hasCode=true",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "barcode",
+                    "labels",
+                    "items"
+                  ],
+                  "query": [
+                    {
+                      "key": "hasCode",
+                      "value": "true"
+                    }
+                  ]
+                },
+                "description": "Perm barcode.labels.print. hasCode=false is the 'registered items with no code' callout; also kind, status, q.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"items\": [\n      {\n        \"stockItem\": {\n          \"id\": \"{{barcodeItemId}}\",\n          \"code\": \"RM-0001\",\n          \"name\": \"Malted Barley\",\n          \"itemType\": \"RAW_MATERIAL\"\n        },\n        \"code\": \"ITM-9\",\n        \"name\": \"Barcode Test Drink\",\n        \"kind\": \"FINISHED_PRODUCT\",\n        \"unit\": \"Kilogram\",\n        \"primaryCode\": \"2000000000012\",\n        \"symbology\": \"EAN_13\",\n        \"packCodes\": 0\n      }\n    ],\n    \"page\": 0,\n    \"size\": 50,\n    \"totalItems\": 1,\n    \"totalPages\": 1,\n    \"totalIsEstimate\": false,\n    \"facets\": null,\n    \"summary\": null,\n    \"meta\": {\n      \"appliedFilters\": {},\n      \"ignoredQualifiers\": [],\n      \"suggestions\": [],\n      \"matches\": {}\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Label Run (PDF)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/barcode/labels/runs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "barcode",
+                "labels",
+                "runs"
+              ]
+            },
+            "description": "generateMissing generates a code for any item without one (needs barcode.codes.manage). showPrice with no price set is 409 NO_PRICE_SET; over 5,000 labels is 400 TOO_MANY_LABELS.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"size\": \"58x40\",\n  \"outputFormat\": \"PDF\",\n  \"showPrice\": false,\n  \"generateMissing\": false,\n  \"items\": [\n    {\n      \"stockItemId\": \"{{barcodeItemId}}\",\n      \"copies\": 2\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('labelRunId', json.data.downloadUrl.split('/runs/')[1].split('/')[0]);",
+                  "}",
+                  "pm.test('response has data envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('data'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Create Label Run (PDF) - 200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/barcode/labels/runs",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "barcode",
+                    "labels",
+                    "runs"
+                  ]
+                },
+                "description": "generateMissing generates a code for any item without one (needs barcode.codes.manage). showPrice with no price set is 409 NO_PRICE_SET; over 5,000 labels is 400 TOO_MANY_LABELS.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"size\": \"58x40\",\n  \"outputFormat\": \"PDF\",\n  \"showPrice\": false,\n  \"generateMissing\": false,\n  \"items\": [\n    {\n      \"stockItemId\": \"{{barcodeItemId}}\",\n      \"copies\": 2\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": {\n    \"ref\": \"LBL-1\",\n    \"totalLabels\": 2,\n    \"codesGenerated\": 0,\n    \"downloadUrl\": \"/api/v1/barcode/labels/runs/{{labelRunId}}/labels.pdf\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Download Labels PDF",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/barcode/labels/runs/{{labelRunId}}/labels.pdf",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "barcode",
+                "labels",
+                "runs",
+                "{{labelRunId}}",
+                "labels.pdf"
+              ]
+            },
+            "description": "Renders the run: product name, code + unit, the ZXing symbol, and an optional price. labels.zpl renders the same run as Zebra ZPL.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('response is a PDF', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/pdf'));"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Download Labels PDF - 200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/barcode/labels/runs/{{labelRunId}}/labels.pdf",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "barcode",
+                    "labels",
+                    "runs",
+                    "{{labelRunId}}",
+                    "labels.pdf"
+                  ]
+                },
+                "description": "Renders the run: product name, code + unit, the ZXing symbol, and an optional price. labels.zpl renders the same run as Zebra ZPL.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "%PDF-1.7 ... (binary PDF)"
+            }
+          ]
+        }
+      ],
+      "description": "Barcode & QR (backend docs/11): register an item without an auto code, generate its primary EAN-13, assign a manufacturer QR alias, resolve codes through the scan endpoint (matched / not-recognised), read the scan log, then pick, print (PDF) and download labels. Run after folders 04 (VAT category/HSN/ISIC ids), 06 (factoryId, categoryId, unitId). Captured variables: barcodeItemId, generatedCodeId, generatedBarcode, aliasCodeId, labelRunId."
     }
   ]
 }
