@@ -35,6 +35,7 @@ data class ReturnFilter(
 )
 
 data class ReturnLineRef(
+    val lineId: UUID,
     val returnId: UUID,
     val ref: String,
     val returnType: String,

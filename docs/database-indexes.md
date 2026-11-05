@@ -89,6 +89,13 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `categories_tenant_id_key` | unique | tenant_id, id |  |
 | `categories_tenant_id_name_key` | unique | tenant_id, name |  |
 
+### `commission_allocated_lines`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `commission_allocated_lines_pkey` | primary key | tenant_id, beneficiary_type, source, sale_line_id |  |
+| `cal_run_idx` | btree | tenant_id, run_id |  |
+
 ### `commission_rates`
 
 | Index | Kind | Columns / expression | Only rows where |
@@ -97,6 +104,30 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `commission_rates_tenant_id_stock_item_id_beneficiary_type_eff_key` | unique | tenant_id, stock_item_id, beneficiary_type, effective_from |  |
 | `cr_lookup_idx` | btree | tenant_id, stock_item_id, beneficiary_type, effective_from DESC |  |
 | `cr_type_status_idx` | btree | tenant_id, beneficiary_type, status, effective_from |  |
+
+### `commission_run_beneficiaries`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `commission_run_beneficiaries_pkey` | primary key | id |  |
+| `commission_run_beneficiaries_run_id_beneficiary_id_key` | unique | run_id, beneficiary_id |  |
+
+### `commission_run_lines`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `commission_run_lines_pkey` | primary key | id |  |
+| `crl_run_idx` | btree | tenant_id, run_id, beneficiary_id |  |
+
+### `commission_runs`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `commission_runs_pkey` | primary key | id |  |
+| `commission_runs_tenant_id_ref_key` | unique | tenant_id, ref |  |
+| `commission_runs_live_uq` | unique | tenant_id, beneficiary_type, period_month, COALESCE(location_id, '00000000-0000-0000-0000-000000000000') | (status <> 'CANCELLED') |
+| `commission_runs_tenant_id_key` | unique | tenant_id, id |  |
+| `commission_runs_period_idx` | btree | tenant_id, beneficiary_type, period_month DESC |  |
 
 ### `company_profiles`
 
