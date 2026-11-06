@@ -1,6 +1,6 @@
 # 13 — Reports & Analytics Module
 
-Status: **slices 1–3 + 4a–4d implemented (ReportProvider contract, catalogue, export engine — CSV/XLSX/PDF, synchronous and queued/async with by-ref download; SCI + `FinancialSummary` SPI; Out-Source Stock Report; Sales analytics + `SalesAnalytics` SPI; Stock analytics VALUE/SLOW_MOVING/DAYS_OF_COVER/NEAR_EXPIRY + `StockAnalytics` SPI; **scheduled reports**). Slice 4 remainder: reports global search, Postman, promote to `implemented/`. Slices 3 and 4 are built as sub-slices, one PR each.**
+Status: **slices 1–3 + 4a–4d implemented (ReportProvider contract, catalogue, export engine — CSV/XLSX/PDF, synchronous and queued/async with by-ref download; SCI + `FinancialSummary` SPI; Out-Source Stock Report; Sales analytics + `SalesAnalytics` SPI; Stock analytics VALUE/SLOW_MOVING/DAYS_OF_COVER/NEAR_EXPIRY + `StockAnalytics` SPI; **scheduled reports**). Slice 4 remainder: Postman, promote to `implemented/`. Slices 3 and 4 are built as sub-slices, one PR each.**
 Owner package: `com.zifiq.reports`
 Depends on: `platform`, `common`, `inventory` (OPEN), and every `spi`: `customers`, `settings`, `account`, `invoicing`, `cashier`, `showroom`, `communication`
 Depended on by: `dashboard`, `ai` (through `reports::spi`, read-only)
@@ -356,6 +356,8 @@ Reports is where the shared filter framework pays off. Every catalogued report's
 SCI and the statement-style reports take filters (scope, locations, period, comparison) rather than `q`.
 
 **Global search provider**: `report` (title report name, subtitle stream, route to the screen). Typing "vat return" or "debtors" in the header search jumps to the report; only reports the caller can run are returned.
+
+> **As implemented (slice 4e).** `ReportSearchProvider` (platform `SearchProvider`, type `report`) makes the catalogue searchable from `GET /api/v1/search`: each hit is `{ title = report name, subtitle = stream, ref = reportKey, route = screenPath }`, ordered by title. Matching is in-memory over the bean catalogue — accent-insensitive, over title + description + stream + key, with a few synonyms (`P&L`/`profit`/`income statement` → the SCI, `bin card`/`stock card` → stock, `debtors`/`receivables`). Only reports whose `canRun()` passes for the caller are returned. The hit id is a stable UUID derived from the report key (reports have no row id).
 
 **Indexes (V17)**: `report_exports_user_idx`, `report_exports_queue_idx` (exist); `report_schedules_due_idx` (exists); trigram on `report_schedules(name)`.
 
