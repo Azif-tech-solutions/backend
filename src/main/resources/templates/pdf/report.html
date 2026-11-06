@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title th:text="${title}">Report</title>
+    <style>
+        @page { size: A4 landscape; margin: 14mm 12mm 18mm 12mm;
+                @bottom-center { content: "Page " counter(page) " of " counter(pages); font-family: 'Noto Sans'; font-size: 7.5pt; color: #666; } }
+        body { font-family: 'Noto Sans'; font-size: 8.5pt; color: #1a1a1a; }
+        .header { display: table; width: 100%; border-bottom: 2px solid #1a1a1a; padding-bottom: 7pt; }
+        .header .left, .header .right { display: table-cell; vertical-align: top; }
+        .header .right { text-align: right; width: 42%; }
+        .logo { max-height: 38pt; max-width: 140pt; margin-bottom: 3pt; }
+        .company { font-size: 12pt; font-weight: 700; }
+        .muted { color: #555; }
+        .doc-title { font-size: 13pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5pt; }
+        .filters { margin: 8pt 0 2pt 0; font-size: 7.6pt; color: #555; }
+        .note { margin-top: 4pt; font-size: 7.6pt; color: #a15c00; }
+        table.summary { margin-top: 8pt; border-collapse: collapse; }
+        table.summary td { padding: 2pt 10pt 2pt 0; font-size: 8.5pt; }
+        table.summary td.lbl { color: #555; text-transform: uppercase; font-size: 7.3pt; letter-spacing: 0.3pt; }
+        table.lines { width: 100%; margin-top: 8pt; border-collapse: collapse; }
+        table.lines th { background: #f0f0f0; font-size: 7.4pt; text-transform: uppercase; color: #444; border-bottom: 1px solid #999; padding: 4pt; text-align: left; }
+        table.lines th.num, table.lines td.num { text-align: right; white-space: nowrap; }
+        table.lines td { border-bottom: 1px solid #e6e6e6; padding: 3.5pt 4pt; }
+        .footer { margin-top: 16pt; font-size: 7.2pt; color: #555; border-top: 1px solid #ddd; padding-top: 5pt; }
+    </style>
+</head>
+<body>
+<div class="header">
+    <div class="left">
+        <img class="logo" th:if="${logo != null}" th:src="${logo}" alt="logo"/>
+        <div class="company" th:text="${company.tradingName}">Company</div>
+        <div class="muted" th:if="${company.streetAddress != null}" th:text="${company.streetAddress}">Address</div>
+        <div class="muted" th:if="${company.phone != null}" th:text="${company.phone}">Phone</div>
+    </div>
+    <div class="right">
+        <div class="doc-title" th:text="${title}">Report</div>
+        <div class="muted" th:text="${generatedAt}">Generated</div>
+    </div>
+</div>
+
+<div class="filters" th:if="${filters != null and !filters.isEmpty()}">
+    <span th:each="f,i : ${filters}"><span th:text="${f.label} + ': ' + ${f.value}">filter</span><span th:if="${!i.last}"> &#183; </span></span>
+</div>
+<div class="note" th:if="${note != null}" th:text="${note}">note</div>
+
+<table class="summary" th:if="${summaries != null and !summaries.isEmpty()}">
+    <tr th:each="s : ${summaries}">
+        <td class="lbl" th:text="${s.label}">Label</td>
+        <td th:text="${s.value}">Value</td>
+    </tr>
+</table>
+
+<table class="lines">
+    <thead>
+    <tr><th th:each="c : ${columns}" th:classappend="${c.num} ? 'num' : ''" th:text="${c.label}">Column</th></tr>
+    </thead>
+    <tbody>
+    <tr th:each="row : ${rows}">
+        <td th:each="cell : ${row}" th:classappend="${cell.num} ? 'num' : ''" th:text="${cell.value}">cell</td>
+    </tr>
+    <tr th:if="${rows.isEmpty()}"><td th:attr="colspan=${columns.size()}">No rows.</td></tr>
+    </tbody>
+</table>
+
+<div class="footer" th:if="${footer != null}" th:text="${footer}">Footer</div>
+</body>
+</html>
