@@ -64,16 +64,25 @@ data class ExportRequest(
 class ReportExportController(
     private val exports: ExportService,
 ) {
-    @Operation(summary = "Export a report (synchronous CSV/XLSX)")
+    @Operation(summary = "Export a report (CSV/XLSX/PDF); streams the file when produced inline, else 202 with a ref")
     @PostMapping
-    fun export(@RequestBody request: ExportRequest): ResponseEntity<ByteArray> {
-        val file = exports.exportSync(request.reportKey, request.params, request.format)
-        return ResponseEntity.ok()
-            .contentType(MediaType.parseMediaType(file.contentType))
-            .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(file.fileName).build().toString())
-            .header(HttpHeaders.CACHE_CONTROL, "no-store")
-            .body(file.bytes)
+    fun export(
+        @RequestBody request: ExportRequest,
+        @RequestParam(required = false, defaultValue = "true") wait: Boolean,
+    ): ResponseEntity<*> = when (val outcome = exports.export(request.reportKey, request.params, request.format, wait)) {
+        is ExportService.Outcome.Ready -> fileResponse(outcome.file)
+        is ExportService.Outcome.Queued -> ResponseEntity.accepted().body(mapOf("ref" to outcome.ref, "status" to "QUEUED"))
     }
+
+    @Operation(summary = "Download a finished export by ref (the requester, or an Administrator)")
+    @GetMapping("/{ref}/file")
+    fun file(@PathVariable ref: String): ResponseEntity<ByteArray> = fileResponse(exports.download(ref))
+
+    private fun fileResponse(file: ExportService.ExportFile): ResponseEntity<ByteArray> = ResponseEntity.ok()
+        .contentType(MediaType.parseMediaType(file.contentType))
+        .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(file.fileName).build().toString())
+        .header(HttpHeaders.CACHE_CONTROL, "no-store")
+        .body(file.bytes)
 
     @Operation(summary = "The caller's exports")
     @GetMapping
