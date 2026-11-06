@@ -3,9 +3,11 @@ package com.zifiq.reports.api
 import com.zifiq.common.paging.PageRequest
 import com.zifiq.common.paging.PageResult
 import com.zifiq.reports.dto.CatalogReportEntry
+import com.zifiq.reports.dto.OutsourceStockReport
 import com.zifiq.reports.dto.ReportCatalog
 import com.zifiq.reports.dto.SciResult
 import com.zifiq.reports.service.ExportService
+import com.zifiq.reports.service.OutsourceStockService
 import com.zifiq.reports.service.ReportCatalogueService
 import com.zifiq.reports.service.SciService
 import com.zifiq.platform.api.ApiEnvelope
@@ -100,4 +102,23 @@ class SciController(
         val end = to ?: today
         return ApiEnvelope(sci.sci(scope, locationId, start, end, compare))
     }
+}
+
+@Tag(name = "Reports — Out-Source Stock", description = "Sell-through of outsourced consignments, FIFO-attributed per showroom (docs/13 §4.3)")
+@SecurityRequirement(name = "bearerAuth")
+@RestController
+@RequestMapping("/api/v1/reports/outsource-stock")
+class OutsourceStockController(
+    private val outsource: OutsourceStockService,
+) {
+    @Operation(summary = "Outsourced consignments with lifetime sell-through; filters are on the receipt date")
+    @GetMapping
+    @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'reports.outsource.read')")
+    fun report(
+        @RequestParam(required = false) manufacturerId: UUID?,
+        @RequestParam(required = false) locationId: UUID?,
+        @RequestParam(required = false) status: String?,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate?,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate?,
+    ): ApiEnvelope<OutsourceStockReport> = ApiEnvelope(outsource.report(manufacturerId, locationId, status, from, to))
 }

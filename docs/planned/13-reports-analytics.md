@@ -1,6 +1,6 @@
 # 13 — Reports & Analytics Module
 
-Status: **slices 1–2 implemented (ReportProvider contract, catalogue, export engine — CSV/XLSX; SCI statement + `FinancialSummary` SPI); slices 3 (analytics + outsource), 4 (async/PDF exports, schedules, search) pending**
+Status: **slices 1–2 + 3a implemented (ReportProvider contract, catalogue, export engine — CSV/XLSX; SCI statement + `FinancialSummary` SPI; Out-Source Stock Report); slice 3 remainder (3b sales analytics, 3c stock analytics + their SPIs) and slice 4 (async/PDF exports, schedules, search) pending. Slice 3 is being built as sub-slices 3a/3b/3c, one PR each.**
 Owner package: `com.zifiq.reports`
 Depends on: `platform`, `common`, `inventory` (OPEN), and every `spi`: `customers`, `settings`, `account`, `invoicing`, `cashier`, `showroom`, `communication`
 Depended on by: `dashboard`, `ai` (through `reports::spi`, read-only)
@@ -230,6 +230,8 @@ Perm `reports.outsource.read`. Query `manufacturerId` (external vendor), `locati
 Rows: one per outsource receipt line (`ShowroomQueries.stockEntries(kind OUTSOURCE_RECEIPT)`): `{ date, ref, product, vendor, showroom, qtySourced, qtySold, remaining, sellThroughPct, unitCost [cost], sellingPrice (average realised net unit price), marginRealised [cost], status }`.
 **Attribution of sales to consignments**: FIFO per (item, showroom). Sales of the item at that showroom (`SalesQueries.linesFor`, by completion date, less returns) consume receipt lines oldest first. `qtySold` and realised revenue are the portion allocated to that receipt line. `marginRealised = revenue allocated − qtySold × unitCost`. Status: item `SUSPENDED` → Suspended; `remaining = 0` → Sold out; else In stock.
 Stats: `{ costOfGoodsSourced [cost], revenueRealised, marginRealised [cost], marginPctOfRevenue [cost], unitsUnsold }`. Footnote: only company-registered outsourced products (`OUTSOURCED`) appear; direct entries are excluded, matching the PRD distinction.
+
+> **As implemented (slice 3a).** `GET /api/v1/reports/outsource-stock?manufacturerId=&locationId=&status=IN_STOCK|SOLD_OUT|SUSPENDED&from=&to=` (perm `reports.outsource.read`) returns `{ rows[], stats, costVisible }`. Each row is `{ date, ref, product, vendor, showroom (Refs), qtySourced, qtySold, remaining, sellThroughPct, unitCost [cost], sellingPrice, marginRealised [cost], status }`. All outsource receipts (lifetime) are read so FIFO attribution of lifetime sales (net of posted returns) is correct even when the receipt-date window hides the earliest lines; `sellingPrice` is the item's average realised net unit price at that showroom and revenue is attributed as `qtySold × sellingPrice`. `unitCost`, `marginRealised` and the cost stats (`costOfGoodsSourced`, `marginRealised`, `marginPctOfRevenue`) are null without `factory.costing.read`. Rows are ordered by receipt date desc. (V25 adds the permission only.)
 
 ### 4.4 Sales analytics — `GET /sales/analytics`
 
