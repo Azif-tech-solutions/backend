@@ -192,3 +192,17 @@ interface CommissionPayouts {
     /** Reverses a payout back into the same account. */
     fun reversePayout(request: CommissionPayoutRequest, reason: String): CommissionPayoutPosting
 }
+
+// ---- Reporting reads (§5) — used by Reports & Analytics (doc 13 §4.2) ----
+
+/** One operating-expense category's total for a period (docs/13 §4.2). */
+data class ExpenseLine(val categoryId: UUID, val categoryCode: String, val categoryName: String, val amount: BigDecimal)
+
+interface AccountReports {
+    /**
+     * APPROVED operating costs plus POSTED petty-cash payments by expense category in [from]..[to].
+     * [locationIds] restricts the location-bearing operating costs (petty cash, which has no location,
+     * is included only for a company-wide call). Runs in the caller's transaction.
+     */
+    fun operatingExpenses(from: LocalDate, to: LocalDate, locationIds: Set<UUID>? = null): List<ExpenseLine>
+}
