@@ -49,6 +49,7 @@ class SalesQueryService(
                 correspondentId = r[SalesTable.correspondentId], stockItemId = r[SaleLinesTable.stockItemId], itemCode = r[SaleLinesTable.itemCode],
                 itemName = r[SaleLinesTable.itemName], quantity = r[SaleLinesTable.quantity], lineNet = r[SaleLinesTable.lineNet],
                 receiptsConfirmed = confirmed[saleId] ?: true, invoicePaid = r[SalesTable.onAccount].signum() == 0,
+                locationId = r[SalesTable.locationId].value,
             )
         }
     }

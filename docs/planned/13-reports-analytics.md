@@ -1,10 +1,12 @@
 # 13 — Reports & Analytics Module
 
-Status: **slice 1 implemented (ReportProvider contract, catalogue, export engine — CSV/XLSX); slices 2 (SCI), 3 (analytics + outsource), 4 (async/PDF exports, schedules, search) pending**
+Status: **slices 1–2 implemented (ReportProvider contract, catalogue, export engine — CSV/XLSX; SCI statement + `FinancialSummary` SPI); slices 3 (analytics + outsource), 4 (async/PDF exports, schedules, search) pending**
 Owner package: `com.zifiq.reports`
 Depends on: `platform`, `common`, `inventory` (OPEN), and every `spi`: `customers`, `settings`, `account`, `invoicing`, `cashier`, `showroom`, `communication`
 Depended on by: `dashboard`, `ai` (through `reports::spi`, read-only)
-Migrations: `V23__reports_exports.sql` (slice 1 — the export-record tables; the planned `V17` number was taken). The schedules table arrives in slice 4.
+Migrations: `V23__reports_exports.sql` (slice 1 — the export-record tables; the planned `V17` number was taken), `V24__reports_sci.sql` (slice 2 — the `reports.sci.read` permission only; the SCI reads the owning modules' records at request time and stores nothing of its own). The schedules table arrives in slice 4.
+
+**Slice 2 (V24) — implemented.** `GET /reports/sci` (§4.2): the Statement of Comprehensive Income, `COMPANY` or `LOCATION` scope, with a `PRIOR_PERIOD` / `SAME_PERIOD_LAST_YEAR` / `NONE` comparison, assembled on demand from each owning module's records — revenue split by selling-location type and dealer status (`SalesQueries.linesFor` + `LocationsTable.type`) net of returns (`ShowroomQueries.returns`) and credit notes (`InvoiceQueries.creditNoteLines`); cost of sales as a single COGS figure from the inventory ledger (`(qty_out − qty_in) × unit_cost` over `POS_SALE`/`CUSTOMER_WAYBILL` and their `SALE_VOID`/`CUSTOMER_WAYBILL_CANCEL` reversals); gross profit; operating expenses by category (`AccountReports.operatingExpenses`) plus commissions (`CommissionQueries.allocatedFor`); net profit; and stock value at period end (net ledger quantity as at `to` × current landing cost). Cost-of-sales and closing-stock sections are **zeroed** and gross/net profit **withheld (null)** without `factory.costing.read` (doc 03 §14). The `FinancialSummary` SPI (`reports::spi`) exposes a compact snapshot of the same figures for the Dashboard and AI. New account SPI `AccountReports.operatingExpenses`; `SalesLineRef` gained `locationId`. **Deferred within the SCI (still as §4.2 describes):** the materials/labour/overhead cost-of-sales split (needs the §2.1 costing `kind` change), special-production and by-product/other-income revenue lines, the resaleable-returns and stock-loss cost lines, the factory-vs-showroom closing-stock split, the "goods sold awaiting delivery" reconciliation line, the single-location-restriction `403 LOCATION_ACCESS_DENIED` and the `locationIds` subset for `COMPANY` scope, per-month commission pro-rating, and the SCI export provider (`report_key reports.sci`, slice 4).
 
 **Slice 1 (V23) — implemented.** The platform `ReportProvider` contract (`platform.reporting`) — a Spring-bean interface each module implements for its own reports (dependency inversion, like `EventConsumer`), carrying its stream, parameters, columns, streaming rows, summary and a row estimate, and enforcing its own permission/location-scope/cost-masking against the ambient actor. The Reports module discovers all providers, catalogues them (`GET /reports/catalog` [+ `/{reportKey}`], grouped into the 14 streams, filtered by `canRun`), and runs **synchronous CSV/XLSX exports** (`POST /reports/exports`, Apache POI streaming + Commons CSV; `GET /reports/exports` history) recorded in `report_exports` / `report_export_files` (tenant-scoped composite FK). Inventory's Stock Register registers the first provider to prove the mechanism end to end. **Deferred to later slices:** the SCI statement (§4.2) + `FinancialSummary` SPI, Out-Source Stock (§4.3), Sales/Stock analytics (§4.4–4.5) + their SPIs, queued/async exports + PDF (§4.6), scheduled reports (§4.7), global search (§10), Postman, and promotion to `implemented/`.
 
@@ -220,6 +222,8 @@ Response:
 ```
 Callers without `factory.costing.read` get every `cost: true` section zeroed, gross profit and net profit **null** (`"values": [null, null]`) and `costVisible: false`. A zeroed cost would otherwise produce a profit figure that looks real but isn't, and the doc 03 §14 rule exists to prevent leaking or misleading. The revenue and expense sections stay visible. PDF/CSV/XLSX via the export engine (`report_key reports.sci`).
 
+> **As implemented (slice 2).** Query params are `scope`, `locationId`, `from`, `to` (default: the current month) and `compare` (`PRIOR_PERIOD` default | `SAME_PERIOD_LAST_YEAR` | `NONE`). `columns` are friendly labels (`"This period"`, `"Prior period"`/`"Prior year"`). The sections shipped are **Revenue** (showroom / dealer / factory / less returns / less credit notes), **Cost of sales** (one `Cost of goods sold` line; subtotal = gross profit), **Operating expenses** (one line per category + Commissions) and **Memorandum** (`Stock value at period end`), with `result` = net profit and `stats` carrying `totalRevenue`, `grossProfit`, `grossMarginPct`, `operatingExpenses`, `netProfit`, `netMarginPct`, `closingStockValue`, `costVisible`. The richer cost-of-sales and revenue breakdowns above, per-line margin fields on `result`, location-restriction `403`s and the SCI export provider are deferred as listed in the slice-2 status note at the top of this doc.
+
 ### 4.3 Out-Source Stock Report — `GET /outsource-stock`
 
 Perm `reports.outsource.read`. Query `manufacturerId` (external vendor), `locationId`, `status` (`IN_STOCK`|`SOLD_OUT`|`SUSPENDED`), `from`, `to` (receipt date).
@@ -262,11 +266,18 @@ Perm `reports.schedules.manage` (Administrator, Management) — plus `canRun` fo
 ## 5. Exposed to other modules — `com.zifiq.reports.spi` (read-only)
 
 ```kotlin
-interface FinancialSummary { fun sci(scope: SciScope, from: LocalDate, to: LocalDate): SciResult }          // dashboard KPIs, AI briefings
+// Implemented (slice 2): a compact period snapshot rather than the full SciResult, so Dashboard/AI
+// consumers do not depend on the statement's presentation shape. Cost-derived figures are null
+// without factory.costing.read, the same masking the SCI applies.
+interface FinancialSummary { fun snapshot(from: LocalDate, to: LocalDate, locationId: UUID? = null): FinancialSnapshot }
+data class FinancialSnapshot(val from, val to, val revenue, val costOfSales: BigDecimal?, val grossProfit: BigDecimal?,
+                             val operatingExpenses, val netProfit: BigDecimal?, val closingStockValue: BigDecimal?, val costVisible: Boolean)
+
+// Pending (slices 3): analytics SPIs.
 interface SalesAnalytics  { fun aggregate(q: SalesAnalyticsQuery): List<SalesAggregateRow> }
 interface StockAnalytics  { fun slowMoving(...); fun daysOfCover(...); fun valueBy(...) }
 ```
-These are the same services the endpoints use. Callers pass their own user's cost visibility (the result is masked accordingly).
+These are the same services the endpoints use. Callers' own cost visibility (the ambient actor's `factory.costing.read`) masks the result.
 
 ## 6. Permission codes
 

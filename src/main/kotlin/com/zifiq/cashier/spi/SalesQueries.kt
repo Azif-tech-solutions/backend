@@ -34,6 +34,8 @@ data class SalesLineRef(
     val lineNet: BigDecimal,
     val receiptsConfirmed: Boolean,
     val invoicePaid: Boolean,
+    /** The selling location of the sale (for the SCI revenue split by location type). */
+    val locationId: UUID? = null,
 )
 
 interface SalesQueries {
