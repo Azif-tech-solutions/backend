@@ -766,6 +766,22 @@ Generated from the schema by `scripts/db/index-report.sql` (regenerate after eve
 | `refresh_tokens_token_hash_key` | unique | token_hash |  |
 | `refresh_tokens_user_idx` | btree | user_id, tenant_id |  |
 
+### `report_export_files`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `report_export_files_pkey` | primary key | export_id |  |
+
+### `report_exports`
+
+| Index | Kind | Columns / expression | Only rows where |
+|---|---|---|---|
+| `report_exports_pkey` | primary key | id |  |
+| `report_exports_tenant_id_ref_key` | unique | tenant_id, ref |  |
+| `report_exports_tenant_id_key` | unique | tenant_id, id |  |
+| `report_exports_user_idx` | btree | tenant_id, requested_by_user_id, requested_at DESC |  |
+| `report_exports_queue_idx` | btree | status, requested_at | (status = 'QUEUED') |
+
 ### `role_permissions`
 
 | Index | Kind | Columns / expression | Only rows where |

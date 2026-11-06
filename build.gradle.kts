@@ -76,6 +76,9 @@ dependencies {
     // Barcode & QR (docs/11): ZXing renders label symbols (core) and decodes uploaded images (javase).
     implementation("com.google.zxing:core:3.5.3")
     implementation("com.google.zxing:javase:3.5.3")
+    // Reports & Analytics (docs/13) export engine: Apache POI (streaming XLSX) and Commons CSV; PDF reuses the Thymeleaf+OpenHTMLtoPDF stack.
+    implementation("org.apache.poi:poi-ooxml:5.3.0")
+    implementation("org.apache.commons:commons-csv:1.12.0")
     runtimeOnly("org.postgresql:postgresql")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")

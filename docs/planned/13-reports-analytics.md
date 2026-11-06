@@ -1,10 +1,12 @@
 # 13 — Reports & Analytics Module
 
-Status: **design finalized, not yet implemented**
+Status: **slice 1 implemented (ReportProvider contract, catalogue, export engine — CSV/XLSX); slices 2 (SCI), 3 (analytics + outsource), 4 (async/PDF exports, schedules, search) pending**
 Owner package: `com.zifiq.reports`
 Depends on: `platform`, `common`, `inventory` (OPEN), and every `spi`: `customers`, `settings`, `account`, `invoicing`, `cashier`, `showroom`, `communication`
 Depended on by: `dashboard`, `ai` (through `reports::spi`, read-only)
-Migration: `V17__reports_module.sql`
+Migrations: `V23__reports_exports.sql` (slice 1 — the export-record tables; the planned `V17` number was taken). The schedules table arrives in slice 4.
+
+**Slice 1 (V23) — implemented.** The platform `ReportProvider` contract (`platform.reporting`) — a Spring-bean interface each module implements for its own reports (dependency inversion, like `EventConsumer`), carrying its stream, parameters, columns, streaming rows, summary and a row estimate, and enforcing its own permission/location-scope/cost-masking against the ambient actor. The Reports module discovers all providers, catalogues them (`GET /reports/catalog` [+ `/{reportKey}`], grouped into the 14 streams, filtered by `canRun`), and runs **synchronous CSV/XLSX exports** (`POST /reports/exports`, Apache POI streaming + Commons CSV; `GET /reports/exports` history) recorded in `report_exports` / `report_export_files` (tenant-scoped composite FK). Inventory's Stock Register registers the first provider to prove the mechanism end to end. **Deferred to later slices:** the SCI statement (§4.2) + `FinancialSummary` SPI, Out-Source Stock (§4.3), Sales/Stock analytics (§4.4–4.5) + their SPIs, queued/async exports + PDF (§4.6), scheduled reports (§4.7), global search (§10), Postman, and promotion to `implemented/`.
 
 ---
 
