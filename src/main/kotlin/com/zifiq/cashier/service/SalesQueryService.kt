@@ -7,11 +7,13 @@ import com.zifiq.cashier.model.SalesTable
 import com.zifiq.cashier.spi.SalesLineFilter
 import com.zifiq.cashier.spi.SalesLineRef
 import com.zifiq.cashier.spi.SalesQueries
+import com.zifiq.inventory.model.StockLedgerEntriesTable
 import com.zifiq.platform.tenancy.TenantScopedTransaction
 import java.time.LocalDate
 import java.util.UUID
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.lessEq
 import org.jetbrains.exposed.sql.and
@@ -36,22 +38,47 @@ class SalesQueryService(
             .selectAll()
             .where {
                 var c = (SalesTable.tenantId eq support.tenantId()) and (SalesTable.status eq "COMPLETED") and (SalesTable.saleDate lessEq filter.completedTo)
+                if (filter.from != null) c = c and (SalesTable.saleDate greaterEq filter.from)
                 if (filter.locationId != null) c = c and (SalesTable.locationId eq filter.locationId)
+                filter.locationIds?.let { c = c and (SalesTable.locationId inList it) }
+                filter.customerTypes?.let { c = c and (SalesTable.customerType inList it) }
+                filter.channel?.let { c = c and (SalesTable.channel eq it) }
                 c
             }
             .toList()
         val confirmed = confirmedBySale(rows.map { it[SalesTable.id].value }.distinct())
+        // landingCostAtSale: the POS_SALE ledger unit cost per (sale ref, item), batched in one read.
+        val costByRefItem = if (filter.withCost) posSaleCosts(rows.mapNotNull { it[SalesTable.ref] }.distinct()) else emptyMap()
         rows.map { r ->
             val saleId = r[SalesTable.id].value
+            val ref = r[SalesTable.ref] ?: ""
             SalesLineRef(
                 saleId = saleId, saleLineId = r[SaleLinesTable.id].value, saleDate = r[SalesTable.saleDate] ?: filter.completedTo,
-                saleRef = r[SalesTable.ref] ?: "", customerId = r[SalesTable.customerId], customerCode = r[SalesTable.customerCode], customerName = r[SalesTable.customerName], customerType = r[SalesTable.customerType],
+                saleRef = ref, customerId = r[SalesTable.customerId], customerCode = r[SalesTable.customerCode], customerName = r[SalesTable.customerName], customerType = r[SalesTable.customerType],
                 correspondentId = r[SalesTable.correspondentId], stockItemId = r[SaleLinesTable.stockItemId], itemCode = r[SaleLinesTable.itemCode],
                 itemName = r[SaleLinesTable.itemName], quantity = r[SaleLinesTable.quantity], lineNet = r[SaleLinesTable.lineNet],
                 receiptsConfirmed = confirmed[saleId] ?: true, invoicePaid = r[SalesTable.onAccount].signum() == 0,
                 locationId = r[SalesTable.locationId].value,
+                cashierUserId = r[SalesTable.cashierUserId], channel = r[SalesTable.channel], categoryName = r[SaleLinesTable.categoryName],
+                grossAmount = r[SaleLinesTable.unitPrice].multiply(r[SaleLinesTable.quantity]),
+                discountTotal = r[SaleLinesTable.lineDiscount] + r[SaleLinesTable.instantDiscountShare],
+                vatAmount = r[SaleLinesTable.vatAmount],
+                landingCostAtSale = if (filter.withCost) costByRefItem[ref to r[SaleLinesTable.stockItemId]] else null,
             )
         }
+    }
+
+    /** The POS_SALE unit cost recorded at checkout per (sale ref, stock item), for analytics COGS (docs/13 §4.4). */
+    private fun posSaleCosts(saleRefs: List<String>): Map<Pair<String, UUID>, java.math.BigDecimal> {
+        if (saleRefs.isEmpty()) return emptyMap()
+        return StockLedgerEntriesTable
+            .select(StockLedgerEntriesTable.sourceReference, StockLedgerEntriesTable.stockItemId, StockLedgerEntriesTable.unitCost)
+            .where {
+                (StockLedgerEntriesTable.tenantId eq support.tenantId()) and (StockLedgerEntriesTable.sourceType eq "POS_SALE") and
+                    (StockLedgerEntriesTable.sourceReference inList saleRefs)
+            }
+            .mapNotNull { row -> row[StockLedgerEntriesTable.unitCost]?.let { (row[StockLedgerEntriesTable.sourceReference] to row[StockLedgerEntriesTable.stockItemId].value) to it } }
+            .toMap()
     }
 
     override fun firstCompletedSaleDates(customerIds: Collection<UUID>): Map<UUID, LocalDate> = tx.execute {
