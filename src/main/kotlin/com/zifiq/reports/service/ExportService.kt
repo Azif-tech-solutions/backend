@@ -5,16 +5,20 @@ import com.zifiq.common.paging.PageRequest
 import com.zifiq.common.paging.PageResult
 import com.zifiq.common.paging.Paging
 import com.zifiq.platform.directory.UserRef
+import com.zifiq.platform.documents.PdfRenderer
 import com.zifiq.platform.numbering.DocumentSequenceService
 import com.zifiq.platform.reporting.ReportColumn
 import com.zifiq.platform.reporting.ReportColumnType
 import com.zifiq.platform.reporting.ReportProvider
 import com.zifiq.platform.tenancy.TenantScopedTransaction
 import com.zifiq.reports.model.ReportExportsTable
+import com.zifiq.settings.spi.CompanyProfileProvider
 import java.io.ByteArrayOutputStream
 import java.io.StringWriter
 import java.math.BigDecimal
 import java.time.Instant
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 import org.apache.commons.csv.CSVFormat
 import org.apache.commons.csv.CSVPrinter
 import org.apache.poi.xssf.streaming.SXSSFWorkbook
@@ -37,6 +41,8 @@ class ExportService(
     private val support: ReportsSupport,
     private val tx: TenantScopedTransaction,
     private val sequences: DocumentSequenceService,
+    private val pdfRenderer: PdfRenderer,
+    private val companyProfile: CompanyProfileProvider,
     providers: List<ReportProvider>,
 ) {
     private val byKey = providers.associateBy { it.key }
@@ -47,15 +53,21 @@ class ExportService(
         val provider = byKey[reportKey] ?: throw ApiErrors.reportNotFound()
         if (!provider.canRun()) throw ApiErrors.accessDenied()
         val fmt = format.trim().uppercase()
-        if (fmt !in setOf("CSV", "XLSX")) throw ApiErrors.formatNotSupported(fmt)
+        if (fmt !in setOf("CSV", "XLSX", "PDF")) throw ApiErrors.formatNotSupported(fmt)
+        if (fmt == "PDF" && !provider.supportsPdf) throw ApiErrors.formatNotSupported(fmt)
         val costVisible = support.costVisible()
         val columns = provider.columns(params, costVisible)
         var count = 0
         val bytes = when (fmt) {
             "CSV" -> csv(provider, params, columns) { count++ }
-            else -> xlsx(provider, params, columns) { count++ }
+            "XLSX" -> xlsx(provider, params, columns) { count++ }
+            else -> pdf(provider, params, columns, costVisible) { count++ }
         }
-        val (contentType, ext) = if (fmt == "CSV") "text/csv" to "csv" else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" to "xlsx"
+        val (contentType, ext) = when (fmt) {
+            "CSV" -> "text/csv" to "csv"
+            "XLSX" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" to "xlsx"
+            else -> "application/pdf" to "pdf"
+        }
         val fileName = "${provider.title}.$ext"
         val exportRef = sequences.next("RPT")
         ReportExportsTable.insert {
@@ -117,6 +129,30 @@ class ExportService(
         }
     }
 
+    private fun pdf(provider: ReportProvider, params: Map<String, Any?>, columns: List<ReportColumn>, costVisible: Boolean, onRow: () -> Unit): ByteArray {
+        val numeric = setOf(ReportColumnType.MONEY, ReportColumnType.QTY, ReportColumnType.PCT)
+        val rows = ArrayList<List<Map<String, Any?>>>()
+        provider.rows(params) { row ->
+            rows += columns.map { c -> mapOf("value" to (row[c.key]?.toString() ?: ""), "num" to (c.type in numeric)) }
+            onRow()
+        }
+        val company = companyProfile.get()
+        val filters = params.filterValues { it != null && it.toString().isNotBlank() }.map { (k, v) -> mapOf("label" to k, "value" to v.toString()) }
+        val model = mapOf(
+            "title" to provider.title,
+            "generatedAt" to "Generated " + ZonedDateTime.now(support.zone()).format(GENERATED_FMT),
+            "company" to company,
+            "logo" to company.logoDataUri(),
+            "footer" to company.documentFooter,
+            "filters" to filters,
+            "note" to if (costVisible) null else "Cost columns hidden for your role",
+            "summaries" to provider.summary(params).map { mapOf("label" to it.label, "value" to it.value?.toString()) },
+            "columns" to columns.map { mapOf("label" to it.label, "num" to (it.type in numeric)) },
+            "rows" to rows,
+        )
+        return pdfRenderer.render("report", model)
+    }
+
     private fun setCell(cell: org.apache.poi.ss.usermodel.Cell, value: Any?, type: ReportColumnType) {
         if (value == null) return
         when (type) {
@@ -128,5 +164,9 @@ class ExportService(
                 }
             else -> cell.setCellValue(value.toString())
         }
+    }
+
+    companion object {
+        private val GENERATED_FMT = DateTimeFormatter.ofPattern("d MMM yyyy HH:mm")
     }
 }

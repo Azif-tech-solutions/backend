@@ -2,7 +2,10 @@ package com.zifiq.reports
 
 import com.zifiq.inventory.reports.StockRegisterReportProvider
 import com.zifiq.common.paging.PageRequest
+import com.zifiq.platform.documents.PdfRenderer
 import com.zifiq.platform.numbering.DocumentSequenceService
+import com.zifiq.settings.spi.CompanyProfile
+import com.zifiq.settings.spi.CompanyProfileProvider
 import com.zifiq.platform.security.CurrentActorProvider
 import com.zifiq.platform.security.PermissionAuthorizer
 import com.zifiq.platform.settings.ModuleSettings
@@ -76,7 +79,15 @@ class ReportExportIntegrationTest : PostgresIntegrationTest() {
     private val sequences = DocumentSequenceService(actors, tx)
     private val provider = StockRegisterReportProvider(actors, permissions)
     private val catalogue = ReportCatalogueService(listOf(provider), tx)
-    private val exports = ExportService(support, tx, sequences, listOf(provider))
+    private val companyProfile = object : CompanyProfileProvider {
+        override fun get() = CompanyProfile(
+            tradingName = "Reports Co", legalName = null, registrationNumber = null, tin = null, vatRegistrationNumber = null,
+            nrsBusinessId = null, businessDescription = null, email = null, phone = "0800", website = null,
+            streetAddress = "1 Main St", city = null, postalCode = null, stateCode = null, stateName = null, lgaCode = null,
+            countryCode = "NG", hasLogo = false, documentFooter = "Thank you",
+        )
+    }
+    private val exports = ExportService(support, tx, sequences, PdfRenderer(), companyProfile, listOf(provider))
 
     private fun signIn() {
         tenantContext.set(tenantId)
@@ -95,7 +106,7 @@ class ReportExportIntegrationTest : PostgresIntegrationTest() {
         val catalog = catalogue.catalog(null)
         val stock = catalog.streams.single { it.key == "STOCK" }
         assertThat(stock.reports.map { it.key }).contains("inventory.stock-register")
-        assertThat(stock.reports.single().formats).containsExactly("CSV", "XLSX")
+        assertThat(stock.reports.single().formats).containsExactly("CSV", "XLSX", "PDF")
 
         val csv = exports.exportSync("inventory.stock-register", emptyMap(), "CSV")
         val text = String(csv.bytes, Charsets.UTF_8)
@@ -106,7 +117,12 @@ class ReportExportIntegrationTest : PostgresIntegrationTest() {
         assertThat(xlsx.contentType).contains("spreadsheetml")
         assertThat(String(xlsx.bytes, Charsets.ISO_8859_1).take(2)).isEqualTo("PK")   // a zip-based XLSX
 
-        // Both exports were recorded as DONE for the caller.
-        assertThat(exports.list(false, PageRequest.of(0, 50)).items.map { it["status"] }).contains("DONE").hasSizeGreaterThanOrEqualTo(2)
+        val pdf = exports.exportSync("inventory.stock-register", emptyMap(), "PDF")
+        assertThat(pdf.fileName).isEqualTo("Stock Register.pdf")
+        assertThat(pdf.contentType).isEqualTo("application/pdf")
+        assertThat(String(pdf.bytes, Charsets.ISO_8859_1).take(5)).isEqualTo("%PDF-")
+
+        // The exports were recorded as DONE for the caller.
+        assertThat(exports.list(false, PageRequest.of(0, 50)).items.map { it["status"] }).contains("DONE").hasSizeGreaterThanOrEqualTo(3)
     }
 }
