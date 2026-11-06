@@ -1,6 +1,6 @@
 # 13 — Reports & Analytics Module
 
-Status: **slices 1–2 + 3a + 3b implemented (ReportProvider contract, catalogue, export engine — CSV/XLSX; SCI statement + `FinancialSummary` SPI; Out-Source Stock Report; Sales analytics + `SalesAnalytics` SPI); slice 3 remainder (3c stock analytics + `StockAnalytics` SPI) and slice 4 (async/PDF exports, schedules, search) pending. Slice 3 is being built as sub-slices 3a/3b/3c, one PR each.**
+Status: **slices 1–2 + 3 implemented (ReportProvider contract, catalogue, export engine — CSV/XLSX; SCI statement + `FinancialSummary` SPI; Out-Source Stock Report; Sales analytics + `SalesAnalytics` SPI; Stock analytics VALUE/SLOW_MOVING/DAYS_OF_COVER + `StockAnalytics` SPI); slice 4 (async/PDF exports, scheduled reports, global search) and the stock-analytics NEAR_EXPIRY view (needs batch/expiry data from the receiving modules) pending. Slice 3 was built as sub-slices 3a/3b/3c, one PR each.**
 Owner package: `com.zifiq.reports`
 Depends on: `platform`, `common`, `inventory` (OPEN), and every `spi`: `customers`, `settings`, `account`, `invoicing`, `cashier`, `showroom`, `communication`
 Depended on by: `dashboard`, `ai` (through `reports::spi`, read-only)
@@ -249,6 +249,8 @@ Perm `reports.stock.read`. Query `view`:
 - `NEAR_EXPIRY` — batches from receipts with `expiry_date` within `reports.nearExpiryDays` (raw-material receipts, outsource receipts and direct-entry lines that carry expiry), with the quantity still on hand estimated FIFO: `{ item, location, batch, expiryDate, daysToExpiry, estimatedQtyRemaining }`.
 All views are location-scoped and cost-masked per doc 03 §14.
 
+> **As implemented (slice 3c).** `GET /api/v1/reports/stock/analytics?view=VALUE|SLOW_MOVING|DAYS_OF_COVER&groupBy=LOCATION|CATEGORY|ITEM_TYPE&asOf=&locationIds=` (perm `reports.stock.read`; `asOf` defaults to today). On-hand, last-outbound date and last-30-days units sold are a **single grouped SQL aggregation** over the shared inventory ledger per item×location (never a row scan); item attributes (landing cost, reorder level, category, type) come from the master in one read. The response is `{ view, asOf, value?|slowMoving?|daysOfCover?, costVisible }` with only the chosen view's list populated. `VALUE` rows are `{ group (AnalyticsGroup with a Ref for LOCATION/CATEGORY), quantity, value [cost], shareOfValuePct [cost] }` ordered by value; `SLOW_MOVING` rows are `{ item, location (Refs), onHand, value [cost], lastOutboundAt, daysSinceOutbound, classification SLOW|DEAD }` (an item with stock and no outbound ever is DEAD; thresholds from `reports.slowMovingDays`/`reports.deadStockDays`); `DAYS_OF_COVER` rows are `{ item, location (Refs), available, avgDailySales, daysOfCover (null with no recent sales), reorderLevel, belowReorder }`. Stock value is null without `factory.costing.read`. **Deferred to slice 4: the `NEAR_EXPIRY` view** — it needs batch/expiry data and FIFO remaining-quantity from the receiving modules (factory raw-material receipts, showroom outsource/direct-entry lines), which is a new cross-module SPI rather than a ledger read.
+
 ### 4.6 Exports — `/exports`
 
 - **`POST /exports`** — `{ reportKey, params, format }`. The provider's `canRun` must pass → `403`; `PDF` on a provider without `supportsPdf` → `400 FORMAT_NOT_SUPPORTED`; params are validated against the provider's declared parameters → `400 VALIDATION_FAILED`. `ref = next("RPT")`.
@@ -281,8 +283,12 @@ data class FinancialSnapshot(val from, val to, val revenue, val costOfSales: Big
 // factory.costing.read. SalesAnalyticsQuery = { from, to, groupBy, interval, locationIds, customerTypes, top, compare }.
 interface SalesAnalytics  { fun aggregate(query: SalesAnalyticsQuery): List<SalesAnalyticsRow> }
 
-// Pending (slice 3c): stock analytics SPI.
-interface StockAnalytics  { fun slowMoving(...); fun daysOfCover(...); fun valueBy(...) }
+// Implemented (slice 3c): stock analytics, masked by the caller's factory.costing.read.
+interface StockAnalytics  {
+    fun valueBy(groupBy: String, asOf: LocalDate, locationIds: Set<UUID>? = null): List<StockValueRow>
+    fun slowMoving(asOf: LocalDate, locationIds: Set<UUID>? = null): List<SlowMovingRow>
+    fun daysOfCover(asOf: LocalDate, locationIds: Set<UUID>? = null): List<DaysOfCoverRow>
+}
 ```
 These are the same services the endpoints use. Callers' own cost visibility (the ambient actor's `factory.costing.read`) masks the result.
 
