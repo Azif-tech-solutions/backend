@@ -7,11 +7,13 @@ import com.zifiq.reports.dto.OutsourceStockReport
 import com.zifiq.reports.dto.ReportCatalog
 import com.zifiq.reports.dto.SalesAnalyticsResult
 import com.zifiq.reports.dto.SciResult
+import com.zifiq.reports.dto.StockAnalyticsResult
 import com.zifiq.reports.service.ExportService
 import com.zifiq.reports.service.OutsourceStockService
 import com.zifiq.reports.service.ReportCatalogueService
 import com.zifiq.reports.service.SalesAnalyticsService
 import com.zifiq.reports.service.SciService
+import com.zifiq.reports.service.StockAnalyticsService
 import com.zifiq.platform.api.ApiEnvelope
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
@@ -148,4 +150,22 @@ class SalesAnalyticsController(
         val today = LocalDate.now()
         return ApiEnvelope(analytics.analytics(from ?: today.withDayOfMonth(1), to ?: today, groupBy, interval, locationIds, customerTypes, top, compare))
     }
+}
+
+@Tag(name = "Reports — Stock analytics", description = "Stock value, slow-moving/dead stock and days of cover (docs/13 §4.5)")
+@SecurityRequirement(name = "bearerAuth")
+@RestController
+@RequestMapping("/api/v1/reports/stock/analytics")
+class StockAnalyticsController(
+    private val stock: StockAnalyticsService,
+) {
+    @Operation(summary = "A stock-analytics view; VALUE | SLOW_MOVING | DAYS_OF_COVER, as at 'asOf' (default today)")
+    @GetMapping
+    @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'reports.stock.read')")
+    fun analytics(
+        @RequestParam(required = false, defaultValue = "VALUE") view: String,
+        @RequestParam(required = false) groupBy: String?,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) asOf: LocalDate?,
+        @RequestParam(required = false) locationIds: Set<UUID>?,
+    ): ApiEnvelope<StockAnalyticsResult> = ApiEnvelope(stock.analytics(view, asOf ?: LocalDate.now(), groupBy, locationIds))
 }
