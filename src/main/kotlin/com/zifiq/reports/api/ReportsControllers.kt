@@ -5,10 +5,12 @@ import com.zifiq.common.paging.PageResult
 import com.zifiq.reports.dto.CatalogReportEntry
 import com.zifiq.reports.dto.OutsourceStockReport
 import com.zifiq.reports.dto.ReportCatalog
+import com.zifiq.reports.dto.SalesAnalyticsResult
 import com.zifiq.reports.dto.SciResult
 import com.zifiq.reports.service.ExportService
 import com.zifiq.reports.service.OutsourceStockService
 import com.zifiq.reports.service.ReportCatalogueService
+import com.zifiq.reports.service.SalesAnalyticsService
 import com.zifiq.reports.service.SciService
 import com.zifiq.platform.api.ApiEnvelope
 import io.swagger.v3.oas.annotations.Operation
@@ -121,4 +123,29 @@ class OutsourceStockController(
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate?,
     ): ApiEnvelope<OutsourceStockReport> = ApiEnvelope(outsource.report(manufacturerId, locationId, status, from, to))
+}
+
+@Tag(name = "Reports — Sales analytics", description = "Grouped sales with quantity, revenue, discounts, VAT and margin (docs/13 §4.4)")
+@SecurityRequirement(name = "bearerAuth")
+@RestController
+@RequestMapping("/api/v1/reports/sales/analytics")
+class SalesAnalyticsController(
+    private val analytics: SalesAnalyticsService,
+) {
+    @Operation(summary = "Sales aggregated by one or two dimensions and an optional interval, defaulting to the current month")
+    @GetMapping
+    @PreAuthorize("@permissionAuthorizer.hasPermission(authentication, 'reports.sales.read')")
+    fun analytics(
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate?,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate?,
+        @RequestParam groupBy: List<String>,
+        @RequestParam(required = false, defaultValue = "NONE") interval: String,
+        @RequestParam(required = false) locationIds: Set<UUID>?,
+        @RequestParam(required = false) customerTypes: Set<String>?,
+        @RequestParam(required = false, defaultValue = "20") top: Int,
+        @RequestParam(required = false, defaultValue = "NONE") compare: String,
+    ): ApiEnvelope<SalesAnalyticsResult> {
+        val today = LocalDate.now()
+        return ApiEnvelope(analytics.analytics(from ?: today.withDayOfMonth(1), to ?: today, groupBy, interval, locationIds, customerTypes, top, compare))
+    }
 }

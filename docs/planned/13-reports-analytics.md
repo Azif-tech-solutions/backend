@@ -1,6 +1,6 @@
 # 13 — Reports & Analytics Module
 
-Status: **slices 1–2 + 3a implemented (ReportProvider contract, catalogue, export engine — CSV/XLSX; SCI statement + `FinancialSummary` SPI; Out-Source Stock Report); slice 3 remainder (3b sales analytics, 3c stock analytics + their SPIs) and slice 4 (async/PDF exports, schedules, search) pending. Slice 3 is being built as sub-slices 3a/3b/3c, one PR each.**
+Status: **slices 1–2 + 3a + 3b implemented (ReportProvider contract, catalogue, export engine — CSV/XLSX; SCI statement + `FinancialSummary` SPI; Out-Source Stock Report; Sales analytics + `SalesAnalytics` SPI); slice 3 remainder (3c stock analytics + `StockAnalytics` SPI) and slice 4 (async/PDF exports, schedules, search) pending. Slice 3 is being built as sub-slices 3a/3b/3c, one PR each.**
 Owner package: `com.zifiq.reports`
 Depends on: `platform`, `common`, `inventory` (OPEN), and every `spi`: `customers`, `settings`, `account`, `invoicing`, `cashier`, `showroom`, `communication`
 Depended on by: `dashboard`, `ai` (through `reports::spi`, read-only)
@@ -238,6 +238,8 @@ Stats: `{ costOfGoodsSourced [cost], revenueRealised, marginRealised [cost], mar
 Perm `reports.sales.read`. Query `from`, `to`, `groupBy` (one or two of `PRODUCT`, `CATEGORY`, `LOCATION`, `CUSTOMER_TYPE`, `CUSTOMER`, `CORRESPONDENT`, `CASHIER`, `CHANNEL`), `interval` (`NONE`|`DAY`|`WEEK`|`MONTH`), `locationIds`, `categoryIds`, `customerTypes`, `top` (n, default 20, max 200), `compare` (as SCI).
 Row: `{ group: { key, label }, interval?: "2026-08", quantity, transactions, gross, discounts, net, vat, cogs [cost], grossMargin [cost], grossMarginPct [cost], avgSellingPrice, shareOfNetPct, comparison?: { net, changePct } }`. Totals row. Source: `SalesQueries.linesFor` + the ledger cost of each sold line (`landingCostAtSale`, doc 09 §5). Voided sales are excluded. Returns are an optional deduction (`netOfReturns=true`).
 
+> **As implemented (slice 3b).** `GET /api/v1/reports/sales/analytics?from=&to=&groupBy=&interval=NONE|DAY|WEEK|MONTH&locationIds=&customerTypes=&top=20&compare=NONE|PRIOR_PERIOD|SAME_PERIOD_LAST_YEAR` (perm `reports.sales.read`; `from`/`to` default to the current month, ≤ 366 days). `groupBy` is one or two of the dimensions above (repeated or comma-separated). The response is `{ groupBy, interval, period, comparison, rows[], totals, costVisible }`. Each row's `group` is a **list** (one `AnalyticsGroup { dimension, key, label, ref }` per `groupBy` dimension — `ref` carries the resolvable id for PRODUCT/LOCATION/CUSTOMER/CORRESPONDENT/CASHIER), `interval` is the bucket (`"2026-01"`, ISO `"2026-W03"`, or the date) or null, and measures are `quantity, transactions, gross, discounts, net, vat, cogs [cost], grossMargin [cost], grossMarginPct [cost], avgSellingPrice, shareOfNetPct, comparison`. Lines are read through the cashier SPI (`SalesQueries.linesFor`, which now carries `landingCostAtSale` and the analytics dimensions when `withCost` is set — docs/09 §5) and aggregated in the service; it is index-backed by tenant + date + the pushed-down `locationIds`/`customerTypes`/channel filters. `rows` are the top `n` groups by net (`shareOfNetPct` is over **all** groups via `totals`); the comparison attaches each group's prior-period net + change and is produced only when `interval = NONE`. Cost measures are null without `factory.costing.read`. **Deferred:** the `categoryIds` filter (sale lines carry only the category name, so CATEGORY groups by name), `netOfReturns` (analytics is gross of returns in 3b, since returns lack the cashier/channel/correspondent dimensions), per-bucket comparison when an interval is set, and an "Others" roll-up of groups beyond `top`.
+
 ### 4.5 Stock analytics — `GET /stock/analytics`
 
 Perm `reports.stock.read`. Query `view`:
@@ -275,8 +277,11 @@ interface FinancialSummary { fun snapshot(from: LocalDate, to: LocalDate, locati
 data class FinancialSnapshot(val from, val to, val revenue, val costOfSales: BigDecimal?, val grossProfit: BigDecimal?,
                              val operatingExpenses, val netProfit: BigDecimal?, val closingStockValue: BigDecimal?, val costVisible: Boolean)
 
-// Pending (slices 3): analytics SPIs.
-interface SalesAnalytics  { fun aggregate(q: SalesAnalyticsQuery): List<SalesAggregateRow> }
+// Implemented (slice 3b): the aggregated sales rows (SalesAnalyticsRow), masked by the caller's
+// factory.costing.read. SalesAnalyticsQuery = { from, to, groupBy, interval, locationIds, customerTypes, top, compare }.
+interface SalesAnalytics  { fun aggregate(query: SalesAnalyticsQuery): List<SalesAnalyticsRow> }
+
+// Pending (slice 3c): stock analytics SPI.
 interface StockAnalytics  { fun slowMoving(...); fun daysOfCover(...); fun valueBy(...) }
 ```
 These are the same services the endpoints use. Callers' own cost visibility (the ambient actor's `factory.costing.read`) masks the result.
