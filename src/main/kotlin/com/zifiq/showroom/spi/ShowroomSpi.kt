@@ -77,10 +77,23 @@ data class StockEntryLineRef(
     val manufacturerId: UUID?,
 )
 
+/** A received showroom stock batch that carries an expiry date (docs/13 §4.5 NEAR_EXPIRY). */
+data class BatchRef(
+    val stockItemId: UUID,
+    val locationId: UUID,
+    val batchNo: String?,
+    val receivedDate: LocalDate,
+    val expiryDate: LocalDate,
+    val quantity: BigDecimal,
+)
+
 interface ShowroomQueries {
     /** Throws SHOWROOM_NOT_FOUND. */
     fun showroom(id: UUID): ShowroomRef
     fun returns(filter: ReturnFilter): List<ReturnLineRef>
     /** Unmasked costs: callers are report modules that apply their own cost visibility. */
     fun stockEntries(filter: StockEntryFilter): List<StockEntryLineRef>
+
+    /** Showroom stock-entry lines that carry an expiry date, for the NEAR_EXPIRY report (docs/13 §4.5). */
+    fun batchesWithExpiry(locationIds: Set<UUID>? = null): List<BatchRef>
 }

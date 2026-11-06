@@ -129,6 +129,7 @@ class CommissionRunIntegrationTest : PostgresIntegrationTest() {
             ),
         )
         override fun stockEntries(filter: StockEntryFilter): List<StockEntryLineRef> = error("not used")
+        override fun batchesWithExpiry(locationIds: Set<UUID>?): List<com.zifiq.showroom.spi.BatchRef> = emptyList()
     }
     private val customersStub = object : CustomerDirectory {
         override fun get(id: UUID): CustomerRef = dealer(id, if (id == dlr42) "DLR-42" else "DLR-17", if (id == dlr42) "Dealer 42" else "Dealer 17")

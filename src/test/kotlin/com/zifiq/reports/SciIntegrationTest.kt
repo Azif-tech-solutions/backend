@@ -201,6 +201,7 @@ class SciIntegrationTest : PostgresIntegrationTest() {
             ),
         )
         override fun stockEntries(filter: StockEntryFilter): List<StockEntryLineRef> = emptyList()
+        override fun batchesWithExpiry(locationIds: Set<UUID>?): List<com.zifiq.showroom.spi.BatchRef> = emptyList()
     }
 
     private inner class FakeInvoices : InvoiceQueries {

@@ -1,6 +1,7 @@
 package com.zifiq.reports.spi
 
 import com.zifiq.reports.dto.DaysOfCoverRow
+import com.zifiq.reports.dto.NearExpiryRow
 import com.zifiq.reports.dto.SlowMovingRow
 import com.zifiq.reports.dto.StockValueRow
 import java.time.LocalDate
@@ -20,4 +21,7 @@ interface StockAnalytics {
 
     /** Days of cover from the last 30 days' sales, per item×location, as at [asOf]. */
     fun daysOfCover(asOf: LocalDate, locationIds: Set<UUID>? = null): List<DaysOfCoverRow>
+
+    /** Batches expiring within `reports.nearExpiryDays` of [asOf], with FIFO-estimated quantity remaining. */
+    fun nearExpiry(asOf: LocalDate, locationIds: Set<UUID>? = null): List<NearExpiryRow>
 }

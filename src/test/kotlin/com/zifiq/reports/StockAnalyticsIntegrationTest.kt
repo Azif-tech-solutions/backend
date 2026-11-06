@@ -10,6 +10,13 @@ import com.zifiq.platform.tenancy.TenantScopedTransaction
 import com.zifiq.reports.service.ReportsSettings
 import com.zifiq.reports.service.ReportsSupport
 import com.zifiq.reports.service.StockAnalyticsService
+import com.zifiq.showroom.spi.BatchRef
+import com.zifiq.showroom.spi.ReturnFilter
+import com.zifiq.showroom.spi.ReturnLineRef
+import com.zifiq.showroom.spi.ShowroomQueries
+import com.zifiq.showroom.spi.ShowroomRef
+import com.zifiq.showroom.spi.StockEntryFilter
+import com.zifiq.showroom.spi.StockEntryLineRef
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.util.UUID
@@ -63,6 +70,12 @@ class StockAnalyticsIntegrationTest : PostgresIntegrationTest() {
                 ledger(itemB, "POS_SALE", 0, 2, 50, "2025-11-01")
                 // C: 10 in, never sold → on-hand 10, dead.
                 ledger(itemC, "REFILL", 10, 0, 200, "2025-06-01")
+                // An inventory receipt for C carrying an expiry (near-expiry source alongside showroom batches).
+                exec(
+                    "insert into stock_receipts (id, tenant_id, location_id, ref, stock_item_id, quantity, unit_cost, expiry_date, " +
+                        "input_vat_rate, input_vat_amount, created_by_user_id, created_at) values " +
+                        "('${UUID.randomUUID()}', '$tenantId', '$loc', 'DL-1', '$itemC', 10, 200, '2026-02-20', 0, 0, '$admin', now())",
+                )
             }
         }
 
@@ -97,7 +110,18 @@ class StockAnalyticsIntegrationTest : PostgresIntegrationTest() {
     private val permissions = PermissionAuthorizer(actors, tx)
     private val moduleSettings = ModuleSettings(listOf(PlatformSettings(), ReportsSettings()), tenantContext)
     private val support = ReportsSupport(tenantContext, actors, permissions, moduleSettings)
-    private val service = StockAnalyticsService(support, tx)
+    private val service = StockAnalyticsService(support, tx, FakeShowroom())
+
+    /** A's two showroom batches: FIFO consumes the older first against A's on-hand of 30 (batches total 40 → 10 eaten). */
+    private inner class FakeShowroom : ShowroomQueries {
+        override fun showroom(id: UUID): ShowroomRef = throw UnsupportedOperationException()
+        override fun returns(filter: ReturnFilter): List<ReturnLineRef> = emptyList()
+        override fun stockEntries(filter: StockEntryFilter): List<StockEntryLineRef> = emptyList()
+        override fun batchesWithExpiry(locationIds: Set<UUID>?): List<BatchRef> = listOf(
+            BatchRef(itemA, loc, "LOT-1", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 2, 10), BigDecimal(20)),
+            BatchRef(itemA, loc, "LOT-2", LocalDate.of(2026, 1, 15), LocalDate.of(2026, 2, 25), BigDecimal(20)),
+        )
+    }
 
     private fun signIn(user: UUID) {
         tenantContext.set(tenantId)
@@ -153,6 +177,21 @@ class StockAnalyticsIntegrationTest : PostgresIntegrationTest() {
         val b = r.daysOfCover!!.single { it.available.compareTo(BigDecimal(6)) == 0 }
         assertThat(b.daysOfCover).isNull()                                   // no sales in the last 30 days
         assertThat(b.belowReorder).isTrue()                                  // 6 < reorder 10
+    }
+
+    @Test
+    fun `near expiry estimates remaining per batch FIFO across both sources`() {
+        signIn(admin)
+        val r = service.analytics("NEAR_EXPIRY", asOf, null, null)
+        // A's older LOT-1 (expiry 02-10) absorbs the 10 consumed → remaining 10; LOT-2 full 20; C's receipt 10.
+        assertThat(r.nearExpiry!!.map { it.batch }).containsExactlyInAnyOrder("LOT-1", "LOT-2", "DL-1")
+        val lot1 = r.nearExpiry!!.single { it.batch == "LOT-1" }
+        assertThat(lot1.estimatedQtyRemaining).isEqualByComparingTo(BigDecimal(10))
+        assertThat(lot1.daysToExpiry).isEqualTo(9L)   // 2026-02-01 → 2026-02-10
+        assertThat(r.nearExpiry!!.single { it.batch == "LOT-2" }.estimatedQtyRemaining).isEqualByComparingTo(BigDecimal(20))
+        val c = r.nearExpiry!!.single { it.batch == "DL-1" }
+        assertThat(c.estimatedQtyRemaining).isEqualByComparingTo(BigDecimal(10))
+        assertThat(c.daysToExpiry).isEqualTo(19L)     // 2026-02-01 → 2026-02-20
     }
 
     @Test
