@@ -21,7 +21,7 @@ One design doc per module, numbered in build order (`implemented/03-cross-module
 | 10 | Audit & compliance | Implemented | [implemented/10-audit-compliance.md](implemented/10-audit-compliance.md) |
 | 11 | Barcode & QR | Implemented | [implemented/11-barcode-qr.md](implemented/11-barcode-qr.md) |
 | 12 | Communication | Implemented | [implemented/12-communication.md](implemented/12-communication.md) |
-| 13 | Reports & analytics | Planned | [planned/13-reports-analytics.md](planned/13-reports-analytics.md) |
+| 13 | Reports & analytics | Implemented | [implemented/13-reports-analytics.md](implemented/13-reports-analytics.md) |
 | 14 | Dashboard | Planned | [planned/14-dashboard.md](planned/14-dashboard.md) |
 | 15 | Workflow & automation | Planned | [planned/15-workflow-automation.md](planned/15-workflow-automation.md) |
 | 16 | AI & automation | Planned | [planned/16-ai-automation.md](planned/16-ai-automation.md) |
