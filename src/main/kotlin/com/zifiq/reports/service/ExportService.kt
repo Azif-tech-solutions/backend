@@ -8,13 +8,16 @@ import com.zifiq.platform.directory.UserRef
 import com.zifiq.platform.documents.PdfRenderer
 import com.zifiq.platform.notifications.NotificationChannelType
 import com.zifiq.platform.notifications.model.NotificationOutboxTable
+import com.zifiq.platform.identity.model.AppUsersTable
 import com.zifiq.platform.numbering.DocumentSequenceService
 import com.zifiq.platform.reporting.ReportColumn
 import com.zifiq.platform.reporting.ReportColumnType
 import com.zifiq.platform.reporting.ReportProvider
 import com.zifiq.platform.tenancy.TenantScopedTransaction
+import com.zifiq.platform.tenancy.model.TenantMembershipsTable
 import com.zifiq.reports.model.ReportExportFilesTable
 import com.zifiq.reports.model.ReportExportsTable
+import com.zifiq.reports.model.ReportSchedulesTable
 import com.zifiq.settings.spi.CompanyProfileProvider
 import java.io.ByteArrayOutputStream
 import java.io.StringWriter
@@ -27,9 +30,11 @@ import java.util.UUID
 import org.apache.commons.csv.CSVFormat
 import org.apache.commons.csv.CSVPrinter
 import org.apache.poi.xssf.streaming.SXSSFWorkbook
+import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
@@ -135,6 +140,18 @@ class ExportService(
         }
     }
 
+    /** Records a QUEUED export for a schedule, produced later by the worker as the owner (docs/13 §4.7). */
+    fun enqueueScheduled(reportKey: String, params: Map<String, Any?>, format: String, scheduleId: UUID): String = tx.execute {
+        val (_, fmt) = validate(reportKey, format)
+        val exportRef = sequences.next("RPT")
+        ReportExportsTable.insert {
+            it[tenantId] = support.tenantId(); it[ref] = exportRef; it[ReportExportsTable.reportKey] = reportKey; it[ReportExportsTable.params] = params
+            it[ReportExportsTable.format] = fmt; it[status] = "QUEUED"; it[requestedByUserId] = support.userId(); it[requestedAt] = Instant.now()
+            it[ReportExportsTable.scheduleId] = scheduleId
+        }
+        exportRef
+    }
+
     /** Produces a claimed export's file and marks it DONE (or FAILED). Runs with the requester impersonated by the worker. */
     fun complete(exportId: UUID) = tx.execute {
         val row = ReportExportsTable.selectAll().where { ReportExportsTable.id eq exportId }.single()
@@ -151,9 +168,31 @@ class ExportService(
                 it[sizeBytes] = file.bytes.size.toLong(); it[finishedAt] = Instant.now(); it[expiresAt] = expires
             }
             notifyReady(row[ReportExportsTable.requestedByUserId].value, ref)
+            row[ReportExportsTable.scheduleId]?.let { emailScheduleRecipients(it, ref) }
         } catch (e: Exception) {
             ReportExportsTable.update({ ReportExportsTable.id eq exportId }) {
                 it[status] = "FAILED"; it[errorMessage] = (e.message ?: e.javaClass.simpleName).take(500); it[finishedAt] = Instant.now()
+            }
+        }
+    }
+
+    /** E-mails a finished scheduled export's recipients (tenant members) a download pointer (docs/13 §4.7). */
+    private fun emailScheduleRecipients(scheduleId: UUID, ref: String) {
+        val schedule = ReportSchedulesTable.selectAll().where { ReportSchedulesTable.id eq scheduleId }.firstOrNull() ?: return
+        val name = schedule[ReportSchedulesTable.name]
+        val recipientIds = schedule[ReportSchedulesTable.recipients].mapNotNull { runCatching { UUID.fromString(it) }.getOrNull() }.toSet()
+        if (recipientIds.isEmpty()) return
+        val emails = AppUsersTable.join(TenantMembershipsTable, JoinType.INNER, AppUsersTable.id, TenantMembershipsTable.userId)
+            .select(AppUsersTable.id, AppUsersTable.email)
+            .where { (AppUsersTable.id inList recipientIds) and (TenantMembershipsTable.tenantId eq support.tenantId()) }
+            .associate { it[AppUsersTable.id].value to it[AppUsersTable.email] }
+        recipientIds.forEach { rid ->
+            val email = emails[rid] ?: return@forEach
+            NotificationOutboxTable.insert {
+                it[tenantId] = support.tenantId(); it[channel] = NotificationChannelType.EMAIL.name; it[recipient] = email
+                it[subject] = "Scheduled report: $name"; it[body] = "Your scheduled report \"$name\" (export $ref) is ready to download."
+                it[metadata] = mapOf("ref" to ref, "scheduleId" to scheduleId.toString(), "kind" to "REPORT_EXPORT")
+                it[createdAt] = Instant.now()
             }
         }
     }

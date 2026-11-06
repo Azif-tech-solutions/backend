@@ -220,6 +220,8 @@ object ApiErrors {
     fun formatNotSupported(format: String) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.FORMAT_NOT_SUPPORTED, "This report can't be exported as $format")
     fun exportNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.EXPORT_NOT_FOUND, "Export not found")
     fun exportExpired() = ApiException(HttpStatus.GONE, ErrorCode.EXPORT_EXPIRED, "This export has expired; generate it again")
+    fun scheduleNotFound() = ApiException(HttpStatus.NOT_FOUND, ErrorCode.SCHEDULE_NOT_FOUND, "Scheduled report not found")
+    fun recipientNotPermitted(user: java.util.UUID) = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.RECIPIENT_NOT_PERMITTED, "A recipient can't be sent a report they couldn't run themselves", mapOf("user" to user.toString()))
     fun duplicateRecord() = ApiException(HttpStatus.CONFLICT, ErrorCode.DUPLICATE_RECORD, "A record with these details already exists")
     fun valueNotAllowed() = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION_FAILED, "Request validation failed", mapOf("body" to "A value is too long or not allowed"))
     fun referencedRecordMissing() = ApiException(HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION_FAILED, "Request validation failed", mapOf("body" to "A referenced record does not exist"))

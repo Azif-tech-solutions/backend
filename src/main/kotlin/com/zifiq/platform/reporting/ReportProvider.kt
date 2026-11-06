@@ -46,6 +46,12 @@ interface ReportProvider {
     val parameters: List<ReportParameter>
     val supportsPdf: Boolean
 
+    /**
+     * The single permission a recipient must hold to be scheduled this report (docs/13 §4.7). Null when
+     * eligibility can't be reduced to one code — a schedule then only requires active membership.
+     */
+    val permission: String? get() = null
+
     /** The report's own permission check, against the ambient actor. */
     fun canRun(): Boolean
 
