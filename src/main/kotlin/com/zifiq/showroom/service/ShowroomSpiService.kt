@@ -27,6 +27,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.lessEq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.isNotNull
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.selectAll
 import org.springframework.stereotype.Component
@@ -64,6 +65,23 @@ class ShowroomSpiService(private val tenantContext: TenantContext) : ShowroomQue
                     returnDate = it[CustomerReturnsTable.returnDate], stockItemId = it[CustomerReturnLinesTable.stockItemId], quantity = it[CustomerReturnLinesTable.quantity],
                     unitPrice = it[CustomerReturnLinesTable.unitPrice], lineValue = it[CustomerReturnLinesTable.lineValue], reason = it[CustomerReturnLinesTable.reason],
                     condition = it[CustomerReturnLinesTable.condition], status = it[CustomerReturnsTable.status],
+                )
+            }
+    }
+
+    override fun batchesWithExpiry(locationIds: Set<UUID>?): List<com.zifiq.showroom.spi.BatchRef> {
+        val parts = mutableListOf<Op<Boolean>>(
+            ShowroomStockEntriesTable.tenantId eq tenantContext.requireTenantId(),
+            ShowroomStockEntryLinesTable.expiryDate.isNotNull(),
+        )
+        locationIds?.let { parts += ShowroomStockEntriesTable.locationId inList it }
+        return ShowroomStockEntryLinesTable.join(ShowroomStockEntriesTable, JoinType.INNER, ShowroomStockEntryLinesTable.entryId, ShowroomStockEntriesTable.id)
+            .selectAll().where(parts.allOf()!!)
+            .map {
+                com.zifiq.showroom.spi.BatchRef(
+                    stockItemId = it[ShowroomStockEntryLinesTable.stockItemId], locationId = it[ShowroomStockEntriesTable.locationId],
+                    batchNo = it[ShowroomStockEntryLinesTable.batchNo], receivedDate = it[ShowroomStockEntriesTable.receivedDate],
+                    expiryDate = it[ShowroomStockEntryLinesTable.expiryDate]!!, quantity = it[ShowroomStockEntryLinesTable.quantity],
                 )
             }
     }

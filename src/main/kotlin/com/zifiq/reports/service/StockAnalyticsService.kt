@@ -6,15 +6,19 @@ import com.zifiq.common.search.RawExpression
 import com.zifiq.common.sql.Aggregates
 import com.zifiq.inventory.model.StockItemsTable
 import com.zifiq.inventory.model.StockLedgerEntriesTable
+import com.zifiq.inventory.model.StockReceiptsTable
 import com.zifiq.platform.directory.Ref
 import com.zifiq.platform.directory.ref
 import com.zifiq.platform.tenancy.TenantScopedTransaction
 import com.zifiq.reports.dto.AnalyticsGroup
 import com.zifiq.reports.dto.DaysOfCoverRow
+import com.zifiq.reports.dto.NearExpiryRow
 import com.zifiq.reports.dto.SlowMovingRow
 import com.zifiq.reports.dto.StockAnalyticsResult
 import com.zifiq.reports.dto.StockValueRow
 import com.zifiq.reports.spi.StockAnalytics
+import com.zifiq.showroom.spi.BatchRef
+import com.zifiq.showroom.spi.ShowroomQueries
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.LocalDate
@@ -24,6 +28,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.lessEq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.isNotNull
 import org.jetbrains.exposed.sql.and
 import org.springframework.stereotype.Service
 
@@ -38,6 +43,7 @@ import org.springframework.stereotype.Service
 class StockAnalyticsService(
     private val support: ReportsSupport,
     private val tx: TenantScopedTransaction,
+    private val showroom: ShowroomQueries,
 ) : StockAnalytics {
 
     fun analytics(view: String, asOf: LocalDate, groupBy: String?, locationIds: Set<UUID>?): StockAnalyticsResult = tx.execute {
@@ -47,7 +53,8 @@ class StockAnalyticsService(
             "VALUE" -> StockAnalyticsResult(v, asOf, value = valueRows(groupBy ?: "LOCATION", asOf, locationIds, costVisible), costVisible = costVisible)
             "SLOW_MOVING" -> StockAnalyticsResult(v, asOf, slowMoving = slowMovingRows(asOf, locationIds, costVisible), costVisible = costVisible)
             "DAYS_OF_COVER" -> StockAnalyticsResult(v, asOf, daysOfCover = daysOfCoverRows(asOf, locationIds), costVisible = costVisible)
-            else -> throw ApiErrors.validationFailed(mapOf("view" to "Must be VALUE, SLOW_MOVING or DAYS_OF_COVER (NEAR_EXPIRY is not yet available)"))
+            "NEAR_EXPIRY" -> StockAnalyticsResult(v, asOf, nearExpiry = nearExpiryRows(asOf, locationIds), costVisible = costVisible)
+            else -> throw ApiErrors.validationFailed(mapOf("view" to "Must be VALUE, SLOW_MOVING, DAYS_OF_COVER or NEAR_EXPIRY"))
         }
     }
 
@@ -59,6 +66,9 @@ class StockAnalyticsService(
 
     override fun daysOfCover(asOf: LocalDate, locationIds: Set<UUID>?): List<DaysOfCoverRow> =
         tx.execute { daysOfCoverRows(asOf, locationIds) }
+
+    override fun nearExpiry(asOf: LocalDate, locationIds: Set<UUID>?): List<NearExpiryRow> =
+        tx.execute { nearExpiryRows(asOf, locationIds) }
 
     // ---- computation ----
 
@@ -161,6 +171,51 @@ class StockAnalyticsService(
                 reorderLevel = reorder, belowReorder = b.onHand < reorder,
             )
         }.sortedBy { it.daysOfCover ?: BigDecimal(Long.MAX_VALUE) }
+    }
+
+    private data class Batch(val itemId: UUID, val locationId: UUID, val batchNo: String?, val received: LocalDate, val expiry: LocalDate, val qty: BigDecimal)
+
+    private fun nearExpiryRows(asOf: LocalDate, locationIds: Set<UUID>?): List<NearExpiryRow> {
+        val horizon = asOf.plusDays(support.settings().int(ReportsSettings.NEAR_EXPIRY_DAYS).toLong())
+        val zone = support.zone()
+        // Inventory receipts that carry an expiry (OPEN); showroom batches via the SPI.
+        val fromReceipts = StockReceiptsTable
+            .select(StockReceiptsTable.stockItemId, StockReceiptsTable.locationId, StockReceiptsTable.ref, StockReceiptsTable.quantity, StockReceiptsTable.expiryDate, StockReceiptsTable.createdAt)
+            .where {
+                var c = (StockReceiptsTable.tenantId eq support.tenantId()) and StockReceiptsTable.expiryDate.isNotNull()
+                if (locationIds != null) c = c and (StockReceiptsTable.locationId inList locationIds)
+                c
+            }
+            .map {
+                Batch(
+                    it[StockReceiptsTable.stockItemId].value, it[StockReceiptsTable.locationId], it[StockReceiptsTable.ref],
+                    it[StockReceiptsTable.createdAt].atZone(zone).toLocalDate(), it[StockReceiptsTable.expiryDate]!!, it[StockReceiptsTable.quantity],
+                )
+            }
+        val fromShowroom = showroom.batchesWithExpiry(locationIds).map { b: BatchRef ->
+            Batch(b.stockItemId, b.locationId, b.batchNo, b.receivedDate, b.expiryDate, b.quantity)
+        }
+        val batches = fromReceipts + fromShowroom
+        if (batches.isEmpty()) return emptyList()
+
+        val onHand = balances(asOf, locationIds).associate { (it.itemId to it.locationId) to it.onHand }
+        val rows = ArrayList<NearExpiryRow>()
+        batches.groupBy { it.itemId to it.locationId }.forEach { (key, group) ->
+            // FIFO: the oldest batches are consumed first, so what remains sits in the newest.
+            var consumed = (group.sumOf { it.qty } - (onHand[key] ?: BigDecimal.ZERO)).max(BigDecimal.ZERO)
+            group.sortedWith(compareBy({ it.received }, { it.expiry })).forEach { b ->
+                val eaten = consumed.min(b.qty)
+                consumed -= eaten
+                val remaining = b.qty - eaten
+                if (remaining.signum() > 0 && !b.expiry.isAfter(horizon)) {
+                    rows += NearExpiryRow(
+                        item = ref(b.itemId, Ref::stockItem), location = ref(b.locationId, Ref::location), batch = b.batchNo,
+                        expiryDate = b.expiry, daysToExpiry = ChronoUnit.DAYS.between(asOf, b.expiry), estimatedQtyRemaining = remaining,
+                    )
+                }
+            }
+        }
+        return rows.sortedBy { it.daysToExpiry }
     }
 
     companion object {

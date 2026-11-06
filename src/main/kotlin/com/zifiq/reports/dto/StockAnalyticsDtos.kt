@@ -34,11 +34,22 @@ data class DaysOfCoverRow(
     val belowReorder: Boolean,
 )
 
+/** A near-expiry batch with its FIFO-estimated quantity still on hand (docs/13 §4.5 NEAR_EXPIRY). */
+data class NearExpiryRow(
+    val item: Ref?,
+    val location: Ref?,
+    val batch: String?,
+    val expiryDate: LocalDate,
+    val daysToExpiry: Long,
+    val estimatedQtyRemaining: BigDecimal,
+)
+
 data class StockAnalyticsResult(
     val view: String,
     val asOf: LocalDate,
     val value: List<StockValueRow>? = null,
     val slowMoving: List<SlowMovingRow>? = null,
     val daysOfCover: List<DaysOfCoverRow>? = null,
+    val nearExpiry: List<NearExpiryRow>? = null,
     val costVisible: Boolean,
 )

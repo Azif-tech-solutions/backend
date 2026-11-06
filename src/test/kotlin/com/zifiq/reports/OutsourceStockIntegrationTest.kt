@@ -155,6 +155,7 @@ class OutsourceStockIntegrationTest : PostgresIntegrationTest() {
     private inner class FakeShowroom : ShowroomQueries {
         override fun showroom(id: UUID): ShowroomRef = throw UnsupportedOperationException()
         override fun returns(filter: ReturnFilter): List<ReturnLineRef> = emptyList()
+        override fun batchesWithExpiry(locationIds: Set<UUID>?): List<com.zifiq.showroom.spi.BatchRef> = emptyList()
         override fun stockEntries(filter: StockEntryFilter): List<StockEntryLineRef> = listOf(
             line("R1", itemA, "2026-01-05", 10, 100),
             line("R2", itemA, "2026-01-20", 10, 120),
