@@ -6,18 +6,22 @@ import com.zifiq.reports.dto.CatalogReportEntry
 import com.zifiq.reports.dto.OutsourceStockReport
 import com.zifiq.reports.dto.ReportCatalog
 import com.zifiq.reports.dto.SalesAnalyticsResult
+import com.zifiq.reports.dto.ScheduleRequest
+import com.zifiq.reports.dto.ScheduleView
 import com.zifiq.reports.dto.SciResult
 import com.zifiq.reports.dto.StockAnalyticsResult
 import com.zifiq.reports.service.ExportService
 import com.zifiq.reports.service.OutsourceStockService
 import com.zifiq.reports.service.ReportCatalogueService
 import com.zifiq.reports.service.SalesAnalyticsService
+import com.zifiq.reports.service.ScheduleService
 import com.zifiq.reports.service.SciService
 import com.zifiq.reports.service.StockAnalyticsService
 import com.zifiq.platform.api.ApiEnvelope
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
 import java.time.LocalDate
 import java.util.UUID
@@ -30,6 +34,7 @@ import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -177,4 +182,51 @@ class StockAnalyticsController(
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) asOf: LocalDate?,
         @RequestParam(required = false) locationIds: Set<UUID>?,
     ): ApiEnvelope<StockAnalyticsResult> = ApiEnvelope(stock.analytics(view, asOf ?: LocalDate.now(), groupBy, locationIds))
+}
+
+@Tag(name = "Reports — Schedules", description = "Scheduled reports produced on a cadence as the owner and delivered to permitted recipients (docs/13 §4.7)")
+@SecurityRequirement(name = "bearerAuth")
+@RestController
+@RequestMapping("/api/v1/reports/schedules")
+class ScheduleController(
+    private val schedules: ScheduleService,
+) {
+    private companion object {
+        const val MANAGE = "@permissionAuthorizer.hasPermission(authentication, 'reports.schedules.manage')"
+    }
+
+    @Operation(summary = "Create a scheduled report")
+    @PostMapping
+    @PreAuthorize(MANAGE)
+    fun create(@Valid @RequestBody request: ScheduleRequest): ApiEnvelope<ScheduleView> = ApiEnvelope(schedules.create(request))
+
+    @Operation(summary = "The tenant's scheduled reports")
+    @GetMapping
+    @PreAuthorize(MANAGE)
+    fun list(): ApiEnvelope<List<ScheduleView>> = ApiEnvelope(schedules.list())
+
+    @Operation(summary = "One scheduled report")
+    @GetMapping("/{id}")
+    @PreAuthorize(MANAGE)
+    fun get(@PathVariable id: UUID): ApiEnvelope<ScheduleView> = ApiEnvelope(schedules.get(id))
+
+    @Operation(summary = "Update a scheduled report")
+    @PutMapping("/{id}")
+    @PreAuthorize(MANAGE)
+    fun update(@PathVariable id: UUID, @Valid @RequestBody request: ScheduleRequest): ApiEnvelope<ScheduleView> = ApiEnvelope(schedules.update(id, request))
+
+    @Operation(summary = "Pause a scheduled report")
+    @PostMapping("/{id}/pause")
+    @PreAuthorize(MANAGE)
+    fun pause(@PathVariable id: UUID): ApiEnvelope<ScheduleView> = ApiEnvelope(schedules.pause(id))
+
+    @Operation(summary = "Resume a scheduled report")
+    @PostMapping("/{id}/resume")
+    @PreAuthorize(MANAGE)
+    fun resume(@PathVariable id: UUID): ApiEnvelope<ScheduleView> = ApiEnvelope(schedules.resume(id))
+
+    @Operation(summary = "Run a scheduled report now (queues an export, produced in the background)")
+    @PostMapping("/{id}/run-now")
+    @PreAuthorize(MANAGE)
+    fun runNow(@PathVariable id: UUID): ApiEnvelope<Map<String, String>> = ApiEnvelope(mapOf("ref" to schedules.runNow(id), "status" to "QUEUED"))
 }

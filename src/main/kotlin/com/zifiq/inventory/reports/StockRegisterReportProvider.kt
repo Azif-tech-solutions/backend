@@ -34,6 +34,7 @@ class StockRegisterReportProvider(
     override val screenPath = "/inventory/stock-register"
     override val endpoint = "/api/v1/inventory/stock-items"
     override val supportsPdf = true
+    override val permission = "inventory.stock.read"
     override val parameters = listOf(
         ReportParameter("status", ReportParameterType.ENUM, required = false, label = "Status", options = listOf("ACTIVE", "SUSPENDED", "DELETED")),
     )
